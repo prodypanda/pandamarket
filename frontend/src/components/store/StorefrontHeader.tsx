@@ -19,6 +19,7 @@ import {
 } from '../themes/shared';
 import { StorefrontThemeCartLink } from '../themes/StorefrontThemeCartLink';
 import { trackSearchPerformed, trackSearchResultClicked } from '../../lib/marketplace-analytics';
+import { useStorefrontCatalogState } from '../../lib/storefront-catalog-state';
 
 export type HeaderVariant =
   | 'classic'
@@ -71,6 +72,7 @@ function StorefrontSearchBar({
   onCloseMobileMenu?: () => void;
 }) {
   const router = useRouter();
+  const { update: updateCatalog } = useStorefrontCatalogState();
   const [internalQuery, setInternalQuery] = useState(searchQuery);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,11 +141,7 @@ function StorefrontSearchBar({
     setIsOpen(false);
     onCloseMobileMenu?.();
     const queryStr = q.trim();
-    if (queryStr) {
-      router.push(`${storePathBase}/products?q=${encodeURIComponent(queryStr)}`);
-    } else {
-      router.push(`${storePathBase}/products`);
-    }
+    updateCatalog({ q: queryStr || null }, `${storePathBase}/products`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -302,6 +300,7 @@ export function StorefrontHeader({
   storeId = branding?.store_id,
 }: StorefrontHeaderProps) {
   const tc = useThemeCustomization(theme, branding);
+  const { update: updateCatalog } = useStorefrontCatalogState();
   const logoUrl = getStoreBrandLogo(
     branding,
     getLogoSurfaceForColor(tc.colors.primary, getStoreThemeLogoSurface(theme.id)),
@@ -314,6 +313,11 @@ export function StorefrontHeader({
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const storePathBase = branding?.store_path_base || '';
+
+  const handleCategoryChange = (category: string) => {
+    onCategoryChange?.(category);
+    updateCatalog({ category: category || null });
+  };
 
   // Extract header menu items from navigation data
   const headerMenu = navigation?.menus?.find((m) => m.location === 'header');
@@ -571,7 +575,7 @@ export function StorefrontHeader({
                 {categories.slice(0, 5).map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => onCategoryChange?.(activeCategory === cat ? '' : cat)}
+                    onClick={() => handleCategoryChange(activeCategory === cat ? '' : cat)}
                     className={`hover:opacity-80 transition-opacity ${
                       activeCategory === cat ? 'font-bold underline' : ''
                     }`}
@@ -706,7 +710,7 @@ export function StorefrontHeader({
                   <nav className="space-y-1 text-xs">
                     <button
                       onClick={() => {
-                        onCategoryChange?.('');
+                        handleCategoryChange('');
                         setMobileMenuOpen(false);
                       }}
                       className={`block w-full text-left px-3 py-1.5 rounded-lg ${
@@ -719,7 +723,7 @@ export function StorefrontHeader({
                       <button
                         key={cat}
                         onClick={() => {
-                          onCategoryChange?.(cat);
+                          handleCategoryChange(cat);
                           setMobileMenuOpen(false);
                         }}
                         className={`block w-full text-left px-3 py-1.5 rounded-lg ${

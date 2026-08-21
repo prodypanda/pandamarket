@@ -1,7 +1,8 @@
 'use client';
 
 import { getResizedImageUrl } from '@/lib/image-url';
-import React, { useState } from 'react';
+import React from 'react';
+import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { Camera, Play } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,8 +22,7 @@ export function StudioTheme({ theme, storeName, products = [], branding, navigat
   const tc = useThemeCustomization(theme, branding);
   const accent = tc.colors.primary;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('');
+  const { searchQuery, setSearchQuery, activeCategory, setActiveCategory } = useStorefrontCatalogFilters();
 
   const allProducts = products;
 

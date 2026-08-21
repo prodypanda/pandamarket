@@ -1,7 +1,8 @@
 'use client';
 
 import { getResizedImageUrl } from '@/lib/image-url';
-import React, { useState } from 'react';
+import React from 'react';
+import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { ShoppingBag, MapPin, Star, Play } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,8 +22,7 @@ export function ArtisanTheme({ theme, storeName, products = [], branding, naviga
   const tc = useThemeCustomization(theme, branding);
   const earthBrown = tc.colors.primary;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
+  const { searchQuery, setSearchQuery, activeCategory, setActiveCategory } = useStorefrontCatalogFilters();
 
   const allProducts = products;
 

@@ -102,9 +102,11 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-07 — One URL-driven search/category state model
 
-- [ ] Extract a shared parser/serializer for query, category, sort, page, and filter state.
-- [ ] Make every theme consume the same URL state and preserve it across pagination, navigation, refresh, and back/forward.
-- [ ] Remove duplicated theme-local search/category state and add parity tests for all registered themes.
+- [x] Extract a shared parser/serializer for query, category, sort, page, and filter state.
+- [x] Make every theme consume the same URL state and preserve it across pagination, navigation, refresh, and back/forward.
+- [x] Replace per-theme URL parsing and category/search mutations with the shared storefront catalog adapter; contract tests cover normalization, canonical serialization, filter/page transitions, and all registered themes now use the adapter.
+
+**P1-07 evidence (2026-08-22):** `frontend/src/lib/storefront-catalog-state.ts` is the canonical parser, serializer, page-reset policy, sort allowlist, and `in_stock=1` normalizer. `CatalogControls`, `ThemeLayout`, and `StorefrontHeader` use the same updater while preserving unrelated query parameters. The 20 registered themes consume `useStorefrontCatalogFilters`, which keeps only a shared search draft and synchronizes it from URL state after refresh/back/forward; category changes commit through the shared header/sidebar URL writer. Search submission preserves existing category/sort/price/stock parameters. `frontend/src/lib/storefront-catalog-state.test.ts` passed 5 focused contract tests; frontend TypeScript, changed-source ESLint (no new errors), production build (101 generated pages), and `git diff --check` passed.
 
 ### P1-08 — Tenant authentication recovery
 

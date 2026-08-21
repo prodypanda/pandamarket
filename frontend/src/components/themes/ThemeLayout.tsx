@@ -7,9 +7,9 @@
  * and renders functional category, price, and sort sidebar controls.
  */
 
-import React, { useState } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 import type { ResolvedColors } from '../../lib/themes';
+import { useStorefrontCatalogState, type CatalogQueryKey } from '../../lib/storefront-catalog-state';
 
 export interface ThemeCategoryItem {
   id?: string;
@@ -41,39 +41,28 @@ export function ThemeLayout({
   onCategoryChange,
   children,
 }: ThemeLayoutProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { state, update } = useStorefrontCatalogState();
 
-  const activeCategoryParam = searchParams.get('category') || activeCategory;
-  const activeSortParam = searchParams.get('sort') || 'newest';
-  const [priceMinInput, setPriceMinInput] = useState(searchParams.get('price_min') || '');
-  const [priceMaxInput, setPriceMaxInput] = useState(searchParams.get('price_max') || '');
+  const activeCategoryParam = state.category || activeCategory;
+  const activeSortParam = state.sort;
+  const [priceMinInput, setPriceMinInput] = useState(state.priceMin || '');
+  const [priceMaxInput, setPriceMaxInput] = useState(state.priceMax || '');
+
+  useEffect(() => {
+    setPriceMinInput(state.priceMin || '');
+    setPriceMaxInput(state.priceMax || '');
+  }, [state.priceMax, state.priceMin]);
 
   const updateParam = (key: string, val: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (val === null || val === '') {
-      params.delete(key);
-    } else {
-      params.set(key, val);
-    }
-    params.delete('page');
-    const targetUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(targetUrl, { scroll: false });
+    update({ [key as CatalogQueryKey]: val });
   };
 
   const handlePriceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
-    if (priceMinInput.trim()) params.set('price_min', priceMinInput.trim());
-    else params.delete('price_min');
-
-    if (priceMaxInput.trim()) params.set('price_max', priceMaxInput.trim());
-    else params.delete('price_max');
-
-    params.delete('page');
-    const targetUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(targetUrl, { scroll: false });
+    update({
+      price_min: priceMinInput.trim() || null,
+      price_max: priceMaxInput.trim() || null,
+    });
   };
 
   if (!layout.hasSidebar) {

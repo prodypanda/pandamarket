@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   SlidersHorizontal,
   X,
@@ -10,6 +9,7 @@ import {
   ArrowUpDown,
   Filter,
 } from 'lucide-react';
+import { useStorefrontCatalogState } from '../../lib/storefront-catalog-state';
 
 export interface CatalogFilterState {
   category?: string;
@@ -60,21 +60,24 @@ export function CatalogControls({
   onFilterChange,
   children,
 }: CatalogControlsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { state, update } = useStorefrontCatalogState();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [minPriceInput, setMinPriceInput] = useState(searchParams.get('price_min') || '');
-  const [maxPriceInput, setMaxPriceInput] = useState(searchParams.get('price_max') || '');
+  const [minPriceInput, setMinPriceInput] = useState(state.priceMin || '');
+  const [maxPriceInput, setMaxPriceInput] = useState(state.priceMax || '');
 
-  const activeCategory = searchParams.get('category') || undefined;
-  const activeSort = searchParams.get('sort') || 'newest';
-  const activeMinPrice = searchParams.get('price_min') || undefined;
-  const activeMaxPrice = searchParams.get('price_max') || undefined;
-  const activeInStock = searchParams.get('in_stock') === '1' || searchParams.get('in_stock') === 'true';
-  const activeQuery = searchParams.get('q') || undefined;
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const activeCategory = state.category;
+  const activeSort = state.sort;
+  const activeMinPrice = state.priceMin;
+  const activeMaxPrice = state.priceMax;
+  const activeInStock = state.inStock;
+  const activeQuery = state.q;
+  const currentPage = state.page;
+
+  useEffect(() => {
+    setMinPriceInput(state.priceMin || '');
+    setMaxPriceInput(state.priceMax || '');
+  }, [state.priceMax, state.priceMin]);
 
   const hasActiveFilters =
     Boolean(activeCategory) ||
@@ -84,34 +87,18 @@ export function CatalogControls({
     Boolean(activeQuery);
 
   const updateQueryParams = (updates: Record<string, string | null | undefined>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([key, val]) => {
-      if (val === null || val === undefined || val === '') {
-        params.delete(key);
-      } else {
-        params.set(key, val);
-      }
-    });
-
-    // Reset page to 1 on filter changes if page wasn't explicitly updated
-    if (!('page' in updates)) {
-      params.delete('page');
-    }
-
-    const queryString = params.toString();
-    const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    router.push(targetUrl, { scroll: false });
+    const nextState = update(updates as Parameters<typeof update>[0]);
 
     // Trigger optional callback for parent analytics
     if (onFilterChange) {
       onFilterChange({
-        category: params.get('category') || undefined,
-        priceMin: params.get('price_min') || undefined,
-        priceMax: params.get('price_max') || undefined,
-        inStock: params.get('in_stock') === '1',
-        sort: params.get('sort') || undefined,
-        page: parseInt(params.get('page') || '1', 10),
-        q: params.get('q') || undefined,
+        category: nextState.category,
+        priceMin: nextState.priceMin,
+        priceMax: nextState.priceMax,
+        inStock: nextState.inStock,
+        sort: nextState.sort,
+        page: nextState.page,
+        q: nextState.q,
       });
     }
   };
@@ -126,10 +113,15 @@ export function CatalogControls({
   const handleClearAll = () => {
     setMinPriceInput('');
     setMaxPriceInput('');
-    const params = new URLSearchParams(searchParams.toString());
-    ['category', 'price_min', 'price_max', 'in_stock', 'q', 'page'].forEach((k) => params.delete(k));
-    const targetUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(targetUrl, { scroll: false });
+    updateQueryParams({
+      category: null,
+      price_min: null,
+      price_max: null,
+      in_stock: null,
+      q: null,
+      sort: null,
+      page: null,
+    });
   };
 
   return (

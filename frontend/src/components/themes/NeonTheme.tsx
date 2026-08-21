@@ -1,7 +1,8 @@
 'use client';
 
 import { getResizedImageUrl } from '@/lib/image-url';
-import React, { useState } from 'react';
+import React from 'react';
+import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { ShoppingBag, Gamepad2, Sparkles, Play, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,8 +26,7 @@ export function NeonTheme({ theme, storeName, products = [], branding, navigatio
   const tc = useThemeCustomization(theme, branding);
   const neon = tc.colors.primary;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('');
+  const { searchQuery, setSearchQuery, activeCategory, setActiveCategory } = useStorefrontCatalogFilters();
 
   const allProducts = products;
 

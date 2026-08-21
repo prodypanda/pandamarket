@@ -1,7 +1,8 @@
 'use client';
 
 import { getResizedImageUrl } from '@/lib/image-url';
-import React, { useState } from 'react';
+import React from 'react';
+import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { Heart, ShoppingBag, Play } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -15,8 +16,7 @@ export function KidsTheme({ theme, storeName, products = [], branding, navigatio
   const tc = useThemeCustomization(theme, branding);
   const primary = tc.colors.primary;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
+  const { searchQuery, setSearchQuery, activeCategory, setActiveCategory } = useStorefrontCatalogFilters();
 
   const allProducts = products;
 

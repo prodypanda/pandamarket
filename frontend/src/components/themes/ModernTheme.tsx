@@ -1,7 +1,8 @@
 'use client';
 
 import { getResizedImageUrl } from '@/lib/image-url';
-import React, { useState } from 'react';
+import React from 'react';
+import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { Sparkles, ArrowRight, ShoppingBag, Play } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -19,8 +20,7 @@ import { StorefrontHeader } from '../store/StorefrontHeader';
 
 export function ModernTheme({ theme, storeName, products = [], branding, navigation, children }: ThemeProps) {
   const tc = useThemeCustomization(theme, branding);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('');
+  const { searchQuery, setSearchQuery, activeCategory, setActiveCategory } = useStorefrontCatalogFilters();
 
   const tags = ['New Arrival', 'Trending', 'Pro', 'Best Seller'];
   const allProducts = products;
