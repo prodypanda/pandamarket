@@ -14,6 +14,11 @@ import { useLocale } from '../../../../contexts/LocaleContext';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../../lib/onboarding';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import {
+  DEFAULT_STOREFRONT_PRODUCT_LOADING_MODE,
+  normalizeStorefrontProductLoadingMode,
+} from '../../../../lib/storefront-product-loading';
+import type { StorefrontProductLoadingMode } from '@pandamarket/types';
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
 
@@ -115,6 +120,7 @@ export default function SettingsPage() {
   const [logoLightUrl, setLogoLightUrl] = useState('');
   const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [marketplaceHeaderImageUrl, setMarketplaceHeaderImageUrl] = useState('');
+  const [storefrontProductLoadingMode, setStorefrontProductLoadingMode] = useState<StorefrontProductLoadingMode>(DEFAULT_STOREFRONT_PRODUCT_LOADING_MODE);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [logoPickerTarget, setLogoPickerTarget] = useState<'default' | 'light' | 'dark' | null>(null);
   const [showHeaderImagePicker, setShowHeaderImagePicker] = useState(false);
@@ -185,6 +191,7 @@ export default function SettingsPage() {
         setLogoLightUrl(store.settings?.logo_light_url || '');
         setLogoDarkUrl(store.settings?.logo_dark_url || '');
         setMarketplaceHeaderImageUrl(store.settings?.marketplace_header_image_url || '');
+        setStorefrontProductLoadingMode(normalizeStorefrontProductLoadingMode(store.settings?.storefront_product_loading_mode));
         setSelectedTheme((store.theme_id || 'classic') as ThemeId);
         setThemeCustomization(store.settings?.themeCustomization || {});
         setCustomDomain(store.custom_domain || '');
@@ -351,6 +358,7 @@ export default function SettingsPage() {
             shipping_policy: shippingPolicy,
             returns_policy: returnsPolicy,
             payment_policy: paymentPolicy,
+            storefront_product_loading_mode: storefrontProductLoadingMode,
           },
         }),
       });
@@ -1221,6 +1229,66 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            <fieldset className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <legend className="px-1 text-sm font-bold text-slate-900">Navigation du catalogue produits</legend>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                Choisissez la façon dont les visiteurs parcourent les produits au-delà des 24 premiers articles. Le réglage s’applique à la page d’accueil de votre vitrine.
+              </p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3" role="radiogroup" aria-label="Mode de chargement des produits">
+                {([
+                  {
+                    value: 'pagination' as const,
+                    title: 'Pagination simple',
+                    description: 'Pages numérotées, partageables et faciles à retrouver.',
+                  },
+                  {
+                    value: 'load_more' as const,
+                    title: 'Bouton « Charger plus »',
+                    description: 'Les produits déjà consultés restent visibles et le visiteur contrôle le rythme.',
+                  },
+                  {
+                    value: 'infinite' as const,
+                    title: 'Chargement au défilement',
+                    description: 'Les produits suivants se chargent automatiquement près de la fin de la grille.',
+                  },
+                ]).map((option) => {
+                  const selected = storefrontProductLoadingMode === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={`relative flex cursor-pointer flex-col rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-[#B91C1C]/30 ${
+                        selected ? 'border-[#B91C1C] bg-amber-50 shadow-sm' : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/40'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="storefront-product-loading-mode"
+                        value={option.value}
+                        checked={selected}
+                        onChange={() => setStorefrontProductLoadingMode(option.value)}
+                        className="sr-only"
+                      />
+                      <span className="flex items-start gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? 'border-[#B91C1C]' : 'border-slate-300'}`}
+                        >
+                          {selected && <span className="h-2.5 w-2.5 rounded-full bg-[#B91C1C]" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-bold text-slate-900">{option.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">{option.description}</span>
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[11px] font-semibold text-slate-400">
+                Recommandé : « Bouton Charger plus » pour un bon équilibre entre performance, contrôle et accessibilité.
+              </p>
+            </fieldset>
 
             {/* Maintenance Mode Toggle */}
             {(storeStatus === 'verified' || storeStatus === 'maintenance') && (

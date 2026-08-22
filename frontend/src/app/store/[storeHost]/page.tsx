@@ -4,26 +4,6 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { themes, ThemeId, type ThemeCustomization, resolveThemeColors } from '../../../lib/themes';
-import { MinimalTheme } from '../../../components/themes/MinimalTheme';
-import { ClassicTheme } from '../../../components/themes/ClassicTheme';
-import { ModernTheme } from '../../../components/themes/ModernTheme';
-import { BoutiqueTheme } from '../../../components/themes/BoutiqueTheme';
-import { ArtisanTheme } from '../../../components/themes/ArtisanTheme';
-import { TechHubTheme } from '../../../components/themes/TechHubTheme';
-import { FlavorTheme } from '../../../components/themes/FlavorTheme';
-import { EleganceTheme } from '../../../components/themes/EleganceTheme';
-import { NeonTheme } from '../../../components/themes/NeonTheme';
-import { SaharaTheme } from '../../../components/themes/SaharaTheme';
-import { MedinaTheme } from '../../../components/themes/MedinaTheme';
-import { CoastalTheme } from '../../../components/themes/CoastalTheme';
-import { UrbanTheme } from '../../../components/themes/UrbanTheme';
-import { GardenTheme } from '../../../components/themes/GardenTheme';
-import { StudioTheme } from '../../../components/themes/StudioTheme';
-import { LuxeTheme } from '../../../components/themes/LuxeTheme';
-import { FreshTheme } from '../../../components/themes/FreshTheme';
-import { CraftTheme } from '../../../components/themes/CraftTheme';
-import { DigitalTheme } from '../../../components/themes/DigitalTheme';
-import { KidsTheme } from '../../../components/themes/KidsTheme';
 import { SafePageRenderer } from '../../../components/page-builder/SafePageRenderer';
 import { StoreCartIcon } from '../../../components/store/StoreCartIcon';
 import { headers } from 'next/headers';
@@ -42,10 +22,12 @@ import { StorefrontMaintenancePage } from '../../../components/store/StorefrontM
 import { selectLogoForSurface } from '../../../lib/public-assets';
 import { StorefrontAnalyticsTracker } from '../../../components/store/StorefrontAnalyticsTracker';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
-import { renderStorefrontTheme } from '../../../components/themes/ThemeWrapper';
 import { StorefrontSeoJsonLd } from '../../../components/store/StorefrontSeoJsonLd';
 import { getStorefrontCanonicalUrl, isPublicStore, type StorefrontSeoStore } from '../../../lib/storefront-seo';
-import { fetchStorefrontProducts, STOREFRONT_MERCHANDISING_LIMIT } from '../../../lib/public-products';
+import { fetchStorefrontProducts, STOREFRONT_MERCHANDISING_LIMIT, type PublicProductsResult, type StorefrontProductQuery } from '../../../lib/public-products';
+import { normalizeStorefrontProductLoadingMode } from '../../../lib/storefront-product-loading';
+import { StorefrontProductLoadingProvider } from '../../../components/store/StorefrontProductLoading';
+import { StorefrontThemeRenderer } from '../../../components/themes/StorefrontThemeRenderer';
 
 interface StoreBranding {
   store_id?: string;
@@ -69,6 +51,7 @@ interface StoreBranding {
   country?: string | null;
   map_embed_url?: string | null;
   social?: StoreSocialLinks | null;
+  storefront_product_loading_mode?: 'pagination' | 'infinite' | 'load_more';
 }
 
 interface StoreData {
@@ -209,6 +192,16 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
     next: { revalidate: 120 },
   });
   return result.data.slice(0, STOREFRONT_MERCHANDISING_LIMIT);
+}
+
+async function getStoreProductsResult(
+  storeId: string,
+  query: StorefrontProductQuery = {},
+): Promise<PublicProductsResult<StoreProduct>> {
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+  return fetchStorefrontProducts<StoreProduct>(backendUrl, storeId, query, {
+    next: { revalidate: 120 },
+  });
 }
 
 async function getStoreNavigation(storeId: string) {
@@ -546,11 +539,19 @@ export default async function StorePage({
   }
 
   // Default: Render the selected theme
-  const [products, marketplaceSettings, navigation] = await Promise.all([
-    getStoreProducts(store.id),
+  const storefrontLoadingMode = normalizeStorefrontProductLoadingMode(store.settings?.storefront_product_loading_mode);
+  const homepageQuery: StorefrontProductQuery = {};
+  for (const key of ['category', 'marketplace_category_id', 'storefront_category_id', 'price_min', 'price_max', 'in_stock', 'type', 'tag', 'discounted', 'seller_type', 'sort', 'q', 'page'] as const) {
+    if (key === 'page' && storefrontLoadingMode !== 'pagination') continue;
+    const value = getSearchParam(resolvedSearchParams, key);
+    if (value) homepageQuery[key] = value;
+  }
+  const [productsResult, marketplaceSettings, navigation] = await Promise.all([
+    getStoreProductsResult(store.id, homepageQuery),
     getMarketplaceSettings(),
     getStoreNavigation(store.id),
   ]);
+  const products = productsResult.data;
 
   // Use resolved colors as primary_color override for backward compatibility
   const branding: StoreBranding = {
@@ -579,6 +580,7 @@ export default async function StorePage({
     country: store.settings?.country,
     map_embed_url: store.settings?.map_embed_url,
     social: store.settings?.social,
+    storefront_product_loading_mode: storefrontLoadingMode,
   };
 
   const themeProps = { theme: activeTheme, storeName: store.name, products, branding, navigation };
@@ -590,7 +592,15 @@ export default async function StorePage({
         canonicalUrl={getStorefrontCanonicalUrl(decodedHost, store, '/')}
       />
       <StorefrontAnalyticsTracker storeId={store.id} />
-      {renderStorefrontTheme(themeProps)}
+      <StorefrontProductLoadingProvider
+        storeId={store.id}
+        initialProducts={products}
+        initialMeta={productsResult.meta}
+        mode={branding.storefront_product_loading_mode}
+        query={homepageQuery}
+      >
+        <StorefrontThemeRenderer {...themeProps} />
+      </StorefrontProductLoadingProvider>
     </>
   );
 }

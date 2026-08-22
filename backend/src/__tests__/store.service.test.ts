@@ -403,4 +403,27 @@ describe('StoreService maintenance publishing defaults', () => {
     ).resolves.toBeNull();
     expect(mocks.query).not.toHaveBeenCalled();
   });
+
+  it('rejects invalid storefront product loading modes before persistence', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+
+    await expect(
+      storeService.updateSettings('pd_store_new', { storefront_product_loading_mode: 'unsupported' }),
+    ).rejects.toThrow('Invalid storefront product loading mode');
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it('persists each supported storefront product loading mode in store settings', async () => {
+    const { StoreService } = await import('../services/store.service');
+    const storeService = new StoreService();
+    mocks.query.mockResolvedValueOnce({ rows: [{ id: 'pd_store_new', settings: {} }], rowCount: 1 });
+
+    await storeService.updateSettings('pd_store_new', { storefront_product_loading_mode: 'infinite' });
+
+    expect(mocks.query).toHaveBeenCalledWith(
+      expect.stringContaining('settings = settings || $3::jsonb'),
+      ['pd_store_new', null, JSON.stringify({ storefront_product_loading_mode: 'infinite' })],
+    );
+  });
 });

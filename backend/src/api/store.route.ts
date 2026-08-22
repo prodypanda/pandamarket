@@ -58,8 +58,19 @@ const selectStoreSchema = z.object({
   store_id: z.string().min(1),
 });
 
+const storefrontProductLoadingModeSchema = z.enum(['pagination', 'infinite', 'load_more']);
+
 const updateSettingsSchema = z.object({
-  settings: z.record(z.unknown()),
+  settings: z.record(z.unknown()).superRefine((settings, ctx) => {
+    const value = settings.storefront_product_loading_mode;
+    if (value !== undefined && !storefrontProductLoadingModeSchema.safeParse(value).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['storefront_product_loading_mode'],
+        message: 'Invalid storefront product loading mode',
+      });
+    }
+  }),
   seller_type: z.nativeEnum(SellerType).optional(),
 });
 
@@ -255,6 +266,7 @@ function publicStorefrontSettings(settings: StoreRow['settings'] | null | undefi
     shipping_policy: source.shipping_policy,
     returns_policy: source.returns_policy,
     payment_policy: source.payment_policy,
+    storefront_product_loading_mode: source.storefront_product_loading_mode,
   };
 }
 

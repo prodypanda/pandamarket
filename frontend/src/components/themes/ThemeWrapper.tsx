@@ -48,3 +48,5 @@ export function renderStorefrontTheme(props: ThemeProps) {
   const Component = themeComponents[props.theme.id] || ClassicTheme;
   return <Component {...props} />;
 }
+
+export { themeComponents };

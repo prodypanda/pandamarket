@@ -17,6 +17,7 @@ import {
   getLayoutClasses,
 } from '../../lib/themes';
 import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets';
+import type { StorefrontProductLoadingMode } from '@pandamarket/types';
 
 export interface StoreProduct {
   id: string;
@@ -102,6 +103,7 @@ export interface StoreBranding {
   country?: string | null;
   map_embed_url?: string | null;
   social?: StoreSocialLinks | null;
+  storefront_product_loading_mode?: StorefrontProductLoadingMode;
 }
 
 export type StoreSocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';

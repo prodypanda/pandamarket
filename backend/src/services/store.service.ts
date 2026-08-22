@@ -506,6 +506,17 @@ export class StoreService {
     storeId: string,
     settings: Record<string, unknown>,
   ): Promise<StoreRow> {
+    const loadingMode = settings.storefront_product_loading_mode;
+    if (
+      loadingMode !== undefined
+      && loadingMode !== 'pagination'
+      && loadingMode !== 'infinite'
+      && loadingMode !== 'load_more'
+    ) {
+      throw new PdValidationError('Invalid storefront product loading mode', {
+        storefront_product_loading_mode: loadingMode,
+      });
+    }
     const nextSettings: Record<string, unknown> = { ...settings };
     const storeName =
       typeof nextSettings.name === 'string' && nextSettings.name.trim().length > 0

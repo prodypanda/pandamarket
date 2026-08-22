@@ -53,6 +53,7 @@ export interface IUser {
 // =====================================================
 
 export interface IStoreSettings {
+  storefront_product_loading_mode?: StorefrontProductLoadingMode;
   colors?: { primary?: string; secondary?: string; accent?: string };
   logo_url?: string;
   marketplace_header_image_url?: string;
@@ -61,6 +62,8 @@ export interface IStoreSettings {
   store_description?: string;
   social?: { facebook?: string; instagram?: string; tiktok?: string };
 }
+
+export type StorefrontProductLoadingMode = 'pagination' | 'infinite' | 'load_more';
 
 export interface IStorePaymentConfig {
   flouci_app_token?: string; // encrypted at rest
