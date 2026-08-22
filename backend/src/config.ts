@@ -70,7 +70,8 @@ function asList(name: string, fallback: string[] = []): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-const envFallback = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+const runtimeEnv = process.env.PD_NODE_ENV || process.env.NODE_ENV;
+const envFallback = runtimeEnv === 'production' ? 'production' : 'development';
 
 export const config = {
   // App
@@ -141,6 +142,15 @@ export const config = {
     clientSecret: optional('PD_PAYPAL_CLIENT_SECRET', '')!,
     mode: (optional('PD_PAYPAL_MODE', 'sandbox') || 'sandbox') as 'sandbox' | 'live',
     webhookId: optional('PD_PAYPAL_WEBHOOK_ID', '')!,
+  },
+
+  // Shipping carriers. External adapters are enabled only when their
+  // provider-specific BASE_URL and API_KEY are configured. Simulation is a
+  // development fallback and is disabled by default in production.
+  shipping: {
+    simulationFallback: asBool('PD_SHIPPING_SIMULATION_FALLBACK', envFallback !== 'production'),
+    requestTimeoutMs: Math.max(1000, asInt('PD_SHIPPING_REQUEST_TIMEOUT_MS', 8000)),
+    maxAttempts: Math.min(8, Math.max(1, asInt('PD_SHIPPING_MAX_ATTEMPTS', 3))),
   },
 
   // AI

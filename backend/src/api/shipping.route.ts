@@ -9,7 +9,7 @@
  * POST /api/pd/shipping/pickup         — Request courier pickup
  */
 
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import {
   asyncHandler,
@@ -19,6 +19,7 @@ import {
   validate,
 } from '../middlewares';
 import { shippingService } from '../services/shipping.service';
+import { CarrierAdapterError, type CarrierId } from '../services/carrier-adapter';
 
 const router = Router();
 
@@ -95,6 +96,14 @@ const pickupSchema = z.object({
   pickup_address: addressSchema,
   contact_name: z.string().min(1),
   contact_phone: z.string().min(1),
+});
+
+const cancelShipmentSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+
+const carrierWebhookSchema = z.object({
+  provider: z.enum(['aramex', 'laposte_rapid', 'laposte', 'first_delivery', 'runex', 'fleex', 'own_fleet']),
 });
 
 // =====================================================
@@ -182,6 +191,27 @@ router.post(
 );
 
 /**
+ * POST /shipping/shipments/:id/cancel — Cancel a provider shipment and the
+ * store fulfillment. Provider cancellation is attempted before local state is
+ * changed; retries are idempotent once the shipment is terminal.
+ */
+router.post(
+  '/shipments/:id/cancel',
+  requireAuth,
+  requireVendor,
+  requireStore,
+  validate(cancelShipmentSchema),
+  asyncHandler(async (req, res) => {
+    const result = await shippingService.cancelShipment(
+      req.params.id,
+      req.body.reason,
+      req.user!.store_id!,
+    );
+    res.status(200).json({ data: result });
+  }),
+);
+
+/**
  * GET /shipping/track/:trackingNumber — Track a shipment with checkpoints
  */
 router.get(
@@ -189,6 +219,39 @@ router.get(
   asyncHandler(async (req, res) => {
     const info = await shippingService.track(req.params.trackingNumber);
     res.json({ data: info });
+  }),
+);
+
+/**
+ * POST /shipping/webhooks/:provider — Carrier callback. The application
+ * parser preserves rawBody, and adapters verify HMAC before accepting events.
+ */
+router.post(
+  '/webhooks/:provider',
+  validate(carrierWebhookSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+    const signatureHeader = req.headers['x-carrier-signature'] || req.headers['x-signature'] || req.headers['x-webhook-signature'];
+    const signature = typeof signatureHeader === 'string' ? signatureHeader : undefined;
+    if (!rawBody) {
+      res.status(400).json({ error: { code: 'CARRIER_WEBHOOK_RAW_BODY_MISSING', message: 'Raw webhook body is required' } });
+      return;
+    }
+    try {
+      const result = await shippingService.handleCarrierWebhook(
+        req.params.provider as CarrierId,
+        rawBody,
+        signature,
+        req.body,
+      );
+      res.status(200).json({ data: result });
+    } catch (error) {
+      if (error instanceof CarrierAdapterError && error.code === 'CARRIER_WEBHOOK_INVALID') {
+        res.status(401).json({ error: { code: error.code, message: 'Invalid carrier webhook signature' } });
+        return;
+      }
+      throw error;
+    }
   }),
 );
 

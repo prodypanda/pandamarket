@@ -68,9 +68,11 @@ import { startWebhookWorker } from './workers/webhook.worker';
 import { startNotificationBatchWorker } from './workers/notification-batch.worker';
 import { startDailyDigestWorker, scheduleDailyDigestCron } from './workers/daily-digest.worker';
 import { startPaymentReconciliationWorker } from './workers/payment-reconciliation.worker';
+import { startShipmentReconciliationWorker } from './workers/shipment-reconciliation.worker';
 import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { schedulePaymentReconciliationSweep } from './queues/payment-reconciliation-queue';
+import { scheduleShipmentReconciliationSweep } from './queues/shipment-reconciliation-queue';
 import { adsService } from './services/ads.service';
 import { adminNotesService } from './services/admin-notes.service';
 import { notificationService } from './services/notification.service';
@@ -506,6 +508,7 @@ async function bootstrap() {
         startNotificationBatchWorker(),
         startDailyDigestWorker(),
         startPaymentReconciliationWorker(),
+        startShipmentReconciliationWorker(),
       ];
 
       const shutdownWorkers = async () => {
@@ -519,7 +522,7 @@ async function bootstrap() {
       process.on('SIGINT', async () => {
         await shutdownWorkers();
       });
-      logger.info('🤖 All 9 background workers successfully started in-process.');
+      logger.info('🤖 All 10 background workers successfully started in-process.');
 
       // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
       // Non-blocking: don't let Redis queue scheduling hang the bootstrap.
@@ -528,8 +531,9 @@ async function bootstrap() {
         scheduleRecurringSubscriptionJobs(),
         scheduleDailyDigestCron(),
         schedulePaymentReconciliationSweep(),
+        scheduleShipmentReconciliationSweep(),
       ])
-        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout, subscription, daily digest, payment reconciliation).'))
+        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout, subscription, daily digest, payment and shipment reconciliation).'))
         .catch((err) => logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.'));
     } catch (err) {
       logger.error({ err }, 'Failed to start background workers in-process.');

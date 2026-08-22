@@ -63,6 +63,7 @@ export const csrfProtection: RequestHandler = (req, res, next) => {
     req.path.includes('/callback') ||
     req.path.includes('/shipping/smart-quotes') ||
     req.path.includes('/shipping/rates') ||
+    req.path.includes('/shipping/webhooks/') ||
     req.path.includes('/cart/sync') ||
     req.path.includes('/cart/gamified-spin') ||
     req.path.includes('/upload-s3-mock/')

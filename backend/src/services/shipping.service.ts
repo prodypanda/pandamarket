@@ -16,10 +16,23 @@
  *   - Multi-Carrier Tracking Checkpoint Events
  */
 
-import { query } from '../db/pool';
+import { query, transaction } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { IAddress } from '@pandamarket/types';
+import { randomInt } from 'node:crypto';
+import { config } from '../config';
+import { PdErrorCode, PdNotFoundError, PdValidationError } from '../errors';
+import {
+  CarrierAdapter,
+  CarrierAdapterError,
+  CarrierId,
+  CarrierShipmentRequest,
+  CarrierShipmentStatus,
+  CarrierTrackingEvent,
+  CarrierTrackingResult,
+  createConfiguredCarrierAdapter,
+} from './carrier-adapter';
 
 // =====================================================
 // Tunisian Governorates & Zone Matrix
@@ -81,7 +94,7 @@ export function resolveTunisianGovernorate(cityOrState?: string | null): Tunisia
 // Unified Carrier Adapters
 // =====================================================
 
-export type CarrierId = 'aramex' | 'laposte_rapid' | 'laposte' | 'first_delivery' | 'runex' | 'fleex' | 'own_fleet';
+export type { CarrierId } from './carrier-adapter';
 
 export interface CarrierInfo {
   id: CarrierId;
@@ -95,6 +108,8 @@ export interface CarrierInfo {
   cod_handling_tnd: number;
   tracking_prefix: string;
   active: boolean;
+  adapter_mode?: 'http' | 'manual' | 'simulation';
+  adapter_configured?: boolean;
 }
 
 export const TUNISIAN_CARRIERS: CarrierInfo[] = [
@@ -208,6 +223,7 @@ export interface SmartShippingQuote {
   is_best_rate: boolean;
   is_fastest: boolean;
   is_recommended: boolean;
+  source?: 'configured_carrier' | 'platform_fallback';
 }
 
 export interface ShipmentRequest {
@@ -242,6 +258,9 @@ export interface ShipmentResult {
   label_url: string | null;
   estimated_delivery: string | null;
   status: string;
+  provider_reference?: string | null;
+  source?: 'configured_carrier' | 'simulation' | 'manual';
+  fallback_reason?: string | null;
 }
 
 export interface TrackingEvent {
@@ -258,6 +277,51 @@ export interface TrackingInfo {
   status: string;
   events: TrackingEvent[];
   estimated_delivery: string | null;
+  source?: 'configured_carrier' | 'simulation';
+}
+
+function normalizeCarrierId(provider?: CarrierId | 'auto'): CarrierId {
+  if (!provider || provider === 'auto') return 'aramex';
+  if ((provider as string) === 'manual') return 'own_fleet';
+  return provider === 'laposte' ? 'laposte_rapid' : provider;
+}
+
+function carrierEnvId(provider: CarrierId): CarrierId {
+  return provider === 'laposte' ? 'laposte_rapid' : provider;
+}
+
+function nextSyncForStatus(status: CarrierShipmentStatus): Date | null {
+  if (status === 'delivered' || status === 'cancelled' || status === 'returned') return null;
+  const intervalMs = status === 'created' ? 15 * 60 * 1000 : 60 * 60 * 1000;
+  return new Date(Date.now() + intervalMs);
+}
+
+function safeDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function mapTrackingStatus(status: CarrierShipmentStatus): string {
+  return status;
+}
+
+function normalizePersistedShipmentStatus(value: unknown): CarrierShipmentStatus {
+  switch (String(value || '').trim().toLowerCase()) {
+    case 'created':
+    case 'picked_up':
+    case 'in_transit':
+    case 'out_for_delivery':
+    case 'delivered':
+    case 'cancelled':
+    case 'returned':
+      return String(value).trim().toLowerCase() as CarrierShipmentStatus;
+    default:
+      // Older rows can contain values from the pre-adapter implementation.
+      // Treat them as newly created rather than returning an invalid provider
+      // status to the tracking contract.
+      return 'created';
+  }
 }
 
 // =====================================================
@@ -265,13 +329,45 @@ export interface TrackingInfo {
 // =====================================================
 
 export class ShippingService {
+  private getShippingConfig() {
+    return config.shipping || {
+      simulationFallback: false,
+      requestTimeoutMs: 8000,
+      maxAttempts: 3,
+    };
+  }
+
+  private getAdapter(provider: CarrierId): CarrierAdapter | null {
+    const normalized = carrierEnvId(provider);
+    if (normalized === 'own_fleet') return null;
+    const shippingConfig = this.getShippingConfig();
+    return createConfiguredCarrierAdapter(normalized, {
+      timeoutMs: shippingConfig.requestTimeoutMs,
+      maxAttempts: shippingConfig.maxAttempts,
+    });
+  }
+
+  private getAdapterState(provider: CarrierId): { mode: 'http' | 'manual' | 'simulation'; configured: boolean } {
+    if (provider === 'own_fleet') return { mode: 'manual', configured: false };
+    return this.getAdapter(provider)
+      ? { mode: 'http', configured: true }
+      : { mode: 'simulation', configured: false };
+  }
+
   /**
    * Get all active carriers and governorates.
    */
   getCarriersAndGovernorates() {
     return {
-      carriers: TUNISIAN_CARRIERS,
+      carriers: TUNISIAN_CARRIERS.map((carrier) => ({
+        ...carrier,
+        ...(() => {
+          const state = this.getAdapterState(carrier.id);
+          return { adapter_mode: state.mode, adapter_configured: state.configured };
+        })(),
+      })),
       governorates: TUNISIAN_GOVERNORATES,
+      simulation_fallback_enabled: this.getShippingConfig().simulationFallback,
     };
   }
 
@@ -337,8 +433,44 @@ export class ShippingService {
         is_best_rate: false,
         is_fastest: false,
         is_recommended: false,
+        source: 'platform_fallback',
       };
     });
+
+    // Replace fallback estimates with configured carrier rates when a provider
+    // adapter is available. A provider outage never turns a quote request into
+    // a 500: the caller receives the deterministic platform fallback and the
+    // source flag makes that decision visible to checkout/audit code.
+    const requestedCarrierIds = req.provider && req.provider !== 'auto'
+      ? [normalizeCarrierId(req.provider)]
+      : TUNISIAN_CARRIERS.map((carrier) => carrier.id);
+    await Promise.all(requestedCarrierIds.map(async (carrierId) => {
+      const adapter = this.getAdapter(carrierId);
+      if (!adapter) return;
+      try {
+        const rate = await adapter.getRates({
+          origin_city: req.origin_city,
+          destination: req.destination,
+          weight_kg: weight,
+          cod_amount: cod,
+        });
+        if (!rate) return;
+        const quote = quotes.find((candidate) => candidate.carrier_id === carrierId);
+        if (!quote) return;
+        const codFee = Math.max(0, Number(rate.cod_fee_tnd || 0));
+        const basePrice = Math.max(0, Number(rate.price_tnd || 0));
+        quote.price_tnd = Math.round(basePrice * 1000) / 1000;
+        quote.cod_fee_tnd = Math.round(codFee * 1000) / 1000;
+        quote.total_shipping_tnd = Math.round((basePrice + codFee) * 1000) / 1000;
+        quote.currency = rate.currency || quote.currency;
+        quote.service_type = rate.service_type || quote.service_type;
+        quote.estimated_hours_min = rate.estimated_hours_min || quote.estimated_hours_min;
+        quote.estimated_hours_max = rate.estimated_hours_max || quote.estimated_hours_max;
+        quote.source = 'configured_carrier';
+      } catch (error) {
+        logger.warn({ carrier: carrierId, err: error }, 'Carrier rate adapter unavailable; using platform fallback');
+      }
+    }));
 
     // Determine Best Rate
     let minPrice = Infinity;
@@ -400,96 +532,219 @@ export class ShippingService {
   }
 
   /**
-   * Create a shipment and generate an AWB (Air Waybill).
+   * Create a shipment through a configured carrier adapter. Internal AWBs are
+   * generated only for own-fleet delivery or when the explicitly enabled
+   * development simulation fallback is active.
    */
   async createShipment(req: ShipmentRequest): Promise<ShipmentResult> {
-    const rawProvider = req.provider === 'laposte' ? 'laposte_rapid' : req.provider;
-    const carrierId: CarrierId = rawProvider || 'aramex';
-    const carrier = TUNISIAN_CARRIERS.find(c => c.id === carrierId) || TUNISIAN_CARRIERS[0];
+    const carrierId = normalizeCarrierId(req.provider);
+    const carrier = TUNISIAN_CARRIERS.find((candidate) => candidate.id === carrierId) || TUNISIAN_CARRIERS[0];
+
+    const { rows: existingRows } = await query<{
+      id: string;
+      tracking_number: string;
+      provider: string;
+      provider_reference: string | null;
+      label_url: string | null;
+      estimated_delivery: Date | string | null;
+      status: string;
+      metadata: Record<string, unknown> | null;
+    }>(
+      `SELECT id, tracking_number, provider, provider_reference, label_url,
+              estimated_delivery, status, metadata
+       FROM pd_shipment
+       WHERE order_id = $1 AND fulfillment_id = $2
+         AND status NOT IN ('cancelled', 'returned')
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [req.order_id, req.fulfillment_id],
+    );
+    const existing = existingRows[0];
+    if (existing) {
+      const existingCarrierId = normalizeCarrierId(existing.provider as CarrierId);
+      const existingCarrier = TUNISIAN_CARRIERS.find((candidate) => candidate.id === existingCarrierId) || carrier;
+      const existingMetadata = existing.metadata || {};
+      return {
+        id: existing.id,
+        tracking_number: existing.tracking_number,
+        provider: existingCarrierId,
+        carrier_name: existingCarrier.name,
+        label_url: existing.label_url,
+        estimated_delivery: existing.estimated_delivery ? new Date(existing.estimated_delivery).toISOString() : null,
+        status: normalizePersistedShipmentStatus(existing.status),
+        provider_reference: existing.provider_reference,
+        source: existingMetadata.source === 'configured_carrier'
+          ? 'configured_carrier'
+          : existingMetadata.source === 'manual' || existingCarrierId === 'own_fleet'
+            ? 'manual'
+            : 'simulation',
+      };
+    }
+
+    const adapter = this.getAdapter(carrierId);
+    const shippingConfig = this.getShippingConfig();
+    const carrierRequest: CarrierShipmentRequest = {
+      order_id: req.order_id,
+      fulfillment_id: req.fulfillment_id,
+      sender: req.sender,
+      recipient: req.recipient,
+      parcels: req.parcels,
+      cod_amount: req.cod_amount,
+    };
+    let carrierResult: {
+      tracking_number: string;
+      provider_reference?: string | null;
+      label_url?: string | null;
+      estimated_delivery?: string | null;
+      status?: CarrierShipmentStatus;
+      raw?: Record<string, unknown>;
+    };
+    let source: 'configured_carrier' | 'simulation' | 'manual' = 'configured_carrier';
+    let fallbackReason: string | null = null;
+
+    try {
+      if (adapter) {
+        carrierResult = await adapter.createShipment(carrierRequest, `${req.order_id}:${req.fulfillment_id}`);
+      } else if (carrierId === 'own_fleet') {
+        source = 'manual';
+        carrierResult = this.createSimulationResult(carrier, req, 'manual_own_fleet');
+      } else {
+        throw new CarrierAdapterError(
+          `Carrier ${carrierId} is not configured`,
+          'CARRIER_NOT_CONFIGURED',
+          false,
+        );
+      }
+    } catch (error) {
+      if (!shippingConfig.simulationFallback || carrierId === 'own_fleet') throw error;
+      source = 'simulation';
+      fallbackReason = error instanceof CarrierAdapterError ? error.code : 'CARRIER_REQUEST_FAILED';
+      carrierResult = this.createSimulationResult(carrier, req, fallbackReason);
+      logger.warn({ carrier: carrierId, order_id: req.order_id, reason: fallbackReason }, 'Shipment adapter failed; simulation fallback used');
+    }
+
     const id = pdId('ship');
 
-    // Generate realistic AWB Tracking Code
-    const randomCode = Math.floor(10000000 + Math.random() * 90000000).toString();
-    const trackingNumber = `${carrier.tracking_prefix}-${randomCode}`;
+    const status = carrierResult.status || 'created';
+    const estimatedDelivery = carrierResult.estimated_delivery || new Date(Date.now() + carrier.sla_hours_max * 60 * 60 * 1000).toISOString();
+    const nextSyncAt = nextSyncForStatus(status);
+    const metadata = {
+      carrier_name: carrier.name,
+      cod_amount: req.cod_amount || 0,
+      parcels: req.parcels,
+      sender: req.sender,
+      recipient: req.recipient,
+      source,
+      fallback_reason: fallbackReason,
+      provider_response: carrierResult.raw || null,
+    };
 
-    const estimatedDays = Math.ceil(carrier.sla_hours_max / 24);
-    const estimatedDelivery = new Date(Date.now() + estimatedDays * 24 * 60 * 60 * 1000).toISOString();
-    const labelUrl = `/api/pd/shipping/labels/${trackingNumber}`;
-
-    // Store shipment in database
-    await query(
-      `INSERT INTO pd_shipment
-        (id, order_id, fulfillment_id, store_id, provider, tracking_number, label_url, status, estimated_delivery, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'created', $8, $9)`,
-      [
-        id,
-        req.order_id,
-        req.fulfillment_id,
-        req.store_id,
-        carrierId,
-        trackingNumber,
-        labelUrl,
-        estimatedDelivery,
-        JSON.stringify({
-          carrier_name: carrier.name,
-          cod_amount: req.cod_amount || 0,
-          parcels: req.parcels,
-          sender: req.sender,
-          recipient: req.recipient,
-        }),
-      ],
-    );
-
-    // Update fulfillment with carrier & tracking number
-    await query(
-      `UPDATE pd_fulfillment
-       SET tracking_number = $2, carrier = $3, status = 'shipped', shipped_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [req.fulfillment_id, trackingNumber, carrier.name],
-    );
-
-    // Insert or update Courier Settlement Ledger row
-    if (req.cod_amount && req.cod_amount > 0) {
+    try {
       await query(
-        `INSERT INTO pd_courier_settlement
-          (id, store_id, order_id, carrier, tracking_number, collected_amount, courier_fee, net_payout, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
-         ON CONFLICT (order_id, store_id) DO UPDATE
-         SET carrier = EXCLUDED.carrier,
-             tracking_number = EXCLUDED.tracking_number,
-             collected_amount = EXCLUDED.collected_amount,
-             updated_at = NOW()`,
+        `INSERT INTO pd_shipment
+          (id, order_id, fulfillment_id, store_id, provider, provider_reference,
+           tracking_number, label_url, status, estimated_delivery, next_sync_at, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
-          pdId('cstl'),
-          req.store_id,
+          id,
           req.order_id,
+          req.fulfillment_id,
+          req.store_id,
           carrierId,
-          trackingNumber,
-          req.cod_amount,
-          carrier.base_rate_tnd,
-          Math.max(0, req.cod_amount - carrier.base_rate_tnd),
+          carrierResult.provider_reference || null,
+          carrierResult.tracking_number,
+          carrierResult.label_url || (source === 'configured_carrier' ? null : `/api/pd/shipping/labels/${carrierResult.tracking_number}`),
+          status,
+          estimatedDelivery,
+          nextSyncAt,
+          JSON.stringify(metadata),
         ],
       );
+
+      await query(
+        `UPDATE pd_fulfillment
+         SET tracking_number = $2, carrier = $3, status = 'shipped', shipped_at = COALESCE(shipped_at, NOW()), updated_at = NOW()
+         WHERE id = $1 AND store_id = $4`,
+        [req.fulfillment_id, carrierResult.tracking_number, carrier.name, req.store_id],
+      );
+
+      if (req.cod_amount && req.cod_amount > 0) {
+        await query(
+          `INSERT INTO pd_courier_settlement
+            (id, store_id, order_id, carrier, tracking_number, collected_amount, courier_fee, net_payout, status, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
+           ON CONFLICT (order_id, store_id) DO UPDATE
+           SET carrier = EXCLUDED.carrier,
+               tracking_number = EXCLUDED.tracking_number,
+               collected_amount = EXCLUDED.collected_amount,
+               updated_at = NOW()`,
+          [
+            pdId('cstl'),
+            req.store_id,
+            req.order_id,
+            carrierId,
+            carrierResult.tracking_number,
+            req.cod_amount,
+            carrier.base_rate_tnd,
+            Math.max(0, req.cod_amount - carrier.base_rate_tnd),
+          ],
+        );
+      }
+    } catch (error) {
+      if (adapter && source === 'configured_carrier') {
+        await adapter.cancelShipment(carrierResult.tracking_number, 'PandaMarket database persistence failed').catch((cancelError) => {
+          logger.error({ carrier: carrierId, tracking: carrierResult.tracking_number, err: cancelError }, 'Carrier compensation cancellation failed');
+        });
+      }
+      throw error;
     }
 
     logger.info(
-      { shipment_id: id, tracking: trackingNumber, carrier: carrier.name },
-      'Unified Tunisian Shipment AWB created',
+      { shipment_id: id, tracking: carrierResult.tracking_number, carrier: carrier.name, source },
+      'Shipment created',
     );
 
     return {
       id,
-      tracking_number: trackingNumber,
+      tracking_number: carrierResult.tracking_number,
       provider: carrierId,
       carrier_name: carrier.name,
-      label_url: labelUrl,
+      label_url: carrierResult.label_url || (source === 'configured_carrier' ? null : `/api/pd/shipping/labels/${carrierResult.tracking_number}`),
+      estimated_delivery: estimatedDelivery,
+      status,
+      provider_reference: carrierResult.provider_reference || null,
+      source,
+      fallback_reason: fallbackReason,
+    };
+  }
+
+  private createSimulationResult(
+    carrier: CarrierInfo,
+    req: ShipmentRequest,
+    reason: string,
+  ): {
+    tracking_number: string;
+    provider_reference: string;
+    label_url: string;
+    estimated_delivery: string;
+    status: CarrierShipmentStatus;
+    raw: Record<string, unknown>;
+  } {
+    const trackingNumber = `${carrier.tracking_prefix}-${randomInt(10_000_000, 100_000_000)}`;
+    const estimatedDelivery = new Date(Date.now() + carrier.sla_hours_max * 60 * 60 * 1000).toISOString();
+    return {
+      tracking_number: trackingNumber,
+      provider_reference: `sim-${req.order_id}-${req.fulfillment_id}`,
+      label_url: `/api/pd/shipping/labels/${trackingNumber}`,
       estimated_delivery: estimatedDelivery,
       status: 'created',
+      raw: { simulation: true, reason },
     };
   }
 
   /**
-   * Track a shipment with detailed Tunisian timeline checkpoints.
+   * Track a shipment through the configured carrier. Development simulation
+   * remains deterministic and is clearly marked in the response/metadata.
    */
   async track(trackingNumber: string): Promise<TrackingInfo> {
     const { rows } = await query<{
@@ -501,63 +756,297 @@ export class ShippingService {
       created_at: Date;
       metadata?: Record<string, unknown>;
     }>(
-      'SELECT * FROM pd_shipment WHERE tracking_number = $1',
+      'SELECT id, provider, status, tracking_number, estimated_delivery, created_at, metadata FROM pd_shipment WHERE tracking_number = $1 LIMIT 1',
       [trackingNumber],
     );
+    const shipment = rows[0];
+    if (!shipment) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Shipment not found');
 
-    const carrierId = (rows[0]?.provider || 'aramex') as CarrierId;
-    const carrier = TUNISIAN_CARRIERS.find(c => c.id === carrierId) || TUNISIAN_CARRIERS[0];
-    const createdAt = rows[0]?.created_at ? new Date(rows[0].created_at) : new Date();
+    const carrierId = normalizeCarrierId(shipment.provider as CarrierId);
+    const carrier = TUNISIAN_CARRIERS.find((candidate) => candidate.id === carrierId) || TUNISIAN_CARRIERS[0];
+    const adapter = this.getAdapter(carrierId);
+    let result: CarrierTrackingResult;
+    let source: 'configured_carrier' | 'simulation' = 'configured_carrier';
 
-    const t0 = createdAt.toISOString();
-    const t1 = new Date(createdAt.getTime() + 4 * 3600 * 1000).toISOString();
-    const t2 = new Date(createdAt.getTime() + 18 * 3600 * 1000).toISOString();
-    const t3 = new Date(createdAt.getTime() + 26 * 3600 * 1000).toISOString();
-
-    const events: TrackingEvent[] = [
-      {
-        timestamp: t0,
-        location: 'Centre Expéditeur',
-        description: `Bordereau AWB généré — En attente d'enlèvement par ${carrier.name}`,
-        status: 'created',
-      },
-      {
-        timestamp: t1,
-        location: 'Hub Central Tunis-Carthage',
-        description: `Colis réceptionné et scanné au centre de tri ${carrier.name}`,
-        status: 'picked_up',
-      },
-      {
-        timestamp: t2,
-        location: 'Agence Régionale de Distribution',
-        description: 'Acheminement inter-gouvernorats terminé — Colis prêt pour tournée',
-        status: 'in_transit',
-      },
-      {
-        timestamp: t3,
-        location: 'Secteur de Livraison Client',
-        description: 'En cours de livraison avec le coursier livreur',
-        status: 'out_for_delivery',
-      },
-    ];
-
-    if (rows[0]?.status === 'delivered') {
-      events.push({
-        timestamp: new Date(createdAt.getTime() + 30 * 3600 * 1000).toISOString(),
-        location: 'Adresse Destinataire',
-        description: 'Colis remis en main propre & Paiement COD encaissé',
-        status: 'delivered',
-      });
+    try {
+      if (adapter) {
+        result = await adapter.track(shipment.tracking_number);
+      } else if (this.getShippingConfig().simulationFallback || carrierId === 'own_fleet') {
+        source = 'simulation';
+        result = this.createSimulationTracking(shipment, carrier);
+      } else {
+        throw new CarrierAdapterError(`Carrier ${carrierId} is not configured`, 'CARRIER_NOT_CONFIGURED');
+      }
+    } catch (error) {
+      if (!this.getShippingConfig().simulationFallback) throw error;
+      source = 'simulation';
+      result = this.createSimulationTracking(shipment, carrier);
+      logger.warn({ carrier: carrierId, tracking: shipment.tracking_number, err: error }, 'Carrier tracking failed; simulation fallback used');
     }
 
+    await this.persistTrackingResult(shipment.id, result, source);
     return {
-      tracking_number: trackingNumber,
+      tracking_number: result.tracking_number,
       provider: carrierId,
       carrier_name: carrier.name,
-      status: rows[0]?.status || 'in_transit',
-      events,
-      estimated_delivery: rows[0]?.estimated_delivery || new Date(createdAt.getTime() + 48 * 3600 * 1000).toISOString(),
+      status: result.status,
+      events: result.events.map((event) => ({
+        timestamp: event.timestamp,
+        location: event.location || '',
+        description: event.description || '',
+        status: event.status,
+      })),
+      estimated_delivery: result.estimated_delivery || shipment.estimated_delivery || null,
+      source,
     };
+  }
+
+  private createSimulationTracking(
+    shipment: { tracking_number: string; status: string; created_at: Date },
+    carrier: CarrierInfo,
+  ): CarrierTrackingResult {
+    const createdAt = new Date(shipment.created_at);
+    const timestamps = [0, 4, 18, 26].map((hours) => new Date(createdAt.getTime() + hours * 3600 * 1000).toISOString());
+    const events: CarrierTrackingEvent[] = [
+      { provider_event_id: `simulation-created-${shipment.tracking_number}`, timestamp: timestamps[0], location: 'Centre expéditeur', description: `AWB créé — ${carrier.name}`, status: 'created' },
+      { provider_event_id: `simulation-picked-${shipment.tracking_number}`, timestamp: timestamps[1], location: 'Hub régional', description: `Colis remis à ${carrier.name}`, status: 'picked_up' },
+      { provider_event_id: `simulation-transit-${shipment.tracking_number}`, timestamp: timestamps[2], location: 'Centre de tri', description: 'Colis en transit', status: 'in_transit' },
+      { provider_event_id: `simulation-out-${shipment.tracking_number}`, timestamp: timestamps[3], location: 'Secteur de livraison', description: 'Colis en cours de livraison', status: 'out_for_delivery' },
+    ];
+    const currentStatus = normalizePersistedShipmentStatus(shipment.status);
+    if (currentStatus === 'delivered') {
+      events.push({
+        provider_event_id: `simulation-delivered-${shipment.tracking_number}`,
+        timestamp: new Date(createdAt.getTime() + 30 * 3600 * 1000).toISOString(),
+        location: 'Adresse destinataire',
+        description: 'Colis livré',
+        status: 'delivered',
+      });
+    } else if (currentStatus === 'returned' || currentStatus === 'cancelled') {
+      events.push({
+        provider_event_id: `simulation-terminal-${shipment.tracking_number}`,
+        timestamp: new Date().toISOString(),
+        location: 'Centre expéditeur',
+        description: currentStatus === 'returned' ? 'Colis retourné à l’expéditeur' : 'Expédition annulée',
+        status: currentStatus,
+      });
+    }
+    return {
+      tracking_number: shipment.tracking_number,
+      status: currentStatus || 'in_transit',
+      estimated_delivery: new Date(createdAt.getTime() + carrier.sla_hours_max * 3600 * 1000).toISOString(),
+      events,
+    };
+  }
+
+  private async persistTrackingResult(
+    shipmentId: string,
+    result: CarrierTrackingResult,
+    source: 'configured_carrier' | 'simulation',
+  ): Promise<void> {
+    const nextSyncAt = nextSyncForStatus(result.status);
+    await transaction(async (client) => {
+      for (const [index, event] of result.events.entries()) {
+        const providerEventId = event.provider_event_id || `${source}-${result.tracking_number}-${index}-${event.timestamp}`;
+        await client.query(
+          `INSERT INTO pd_shipment_event
+             (id, shipment_id, provider_event_id, status, location, description, occurred_at, source, raw_payload)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+           ON CONFLICT (shipment_id, provider_event_id) DO NOTHING`,
+          [
+            pdId('shevt'),
+            shipmentId,
+            providerEventId,
+            event.status,
+            event.location || null,
+            event.description || null,
+            safeDate(event.timestamp) || new Date(),
+            source,
+            JSON.stringify(event.raw || {}),
+          ],
+        );
+      }
+      await client.query(
+        `UPDATE pd_shipment
+         SET status = $2,
+             estimated_delivery = COALESCE($3, estimated_delivery),
+             delivered_at = CASE WHEN $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
+             last_synced_at = NOW(),
+             next_sync_at = $4,
+             sync_attempts = 0,
+             last_sync_error = NULL,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [shipmentId, mapTrackingStatus(result.status), result.estimated_delivery ? safeDate(result.estimated_delivery) : null, nextSyncAt],
+      );
+      await client.query(
+        `UPDATE pd_fulfillment
+         SET status = CASE
+               WHEN $2 = 'delivered' THEN 'delivered'
+               WHEN $2 IN ('cancelled', 'returned') THEN 'cancelled'
+               ELSE CASE WHEN status = 'pending' THEN 'shipped' ELSE status END
+             END,
+             rto_reason_code = CASE WHEN $2 = 'returned' THEN COALESCE(rto_reason_code, 'carrier_returned') ELSE rto_reason_code END,
+             rto_at = CASE WHEN $2 = 'returned' THEN COALESCE(rto_at, NOW()) ELSE rto_at END,
+             delivered_at = CASE WHEN $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
+             updated_at = NOW()
+         WHERE id = (SELECT fulfillment_id FROM pd_shipment WHERE id = $1)`,
+        [shipmentId, mapTrackingStatus(result.status)],
+      );
+    });
+  }
+
+  async cancelShipment(shipmentId: string, reason?: string, storeId?: string): Promise<ShipmentResult> {
+    const { rows } = await query<{
+      id: string;
+      order_id: string;
+      fulfillment_id: string | null;
+      provider: string;
+      provider_reference: string | null;
+      tracking_number: string;
+      label_url: string | null;
+      status: string;
+      estimated_delivery: Date | string | null;
+      metadata: Record<string, unknown> | null;
+    }>(
+      `SELECT * FROM pd_shipment
+       WHERE id = $1 ${storeId ? 'AND store_id = $2' : ''}
+       LIMIT 1`,
+      storeId ? [shipmentId, storeId] : [shipmentId],
+    );
+    const shipment = rows[0];
+    if (!shipment) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Shipment not found');
+    if (shipment.status === 'delivered') throw new PdValidationError('Delivered shipments cannot be cancelled');
+    if (shipment.status === 'cancelled') return this.toShipmentResult(shipment, shipment.metadata?.source);
+
+    const carrierId = normalizeCarrierId(shipment.provider as CarrierId);
+    const adapter = this.getAdapter(carrierId);
+    if (adapter) {
+      await adapter.cancelShipment(shipment.tracking_number, reason);
+    } else if (!this.getShippingConfig().simulationFallback && carrierId !== 'own_fleet') {
+      throw new CarrierAdapterError(`Carrier ${carrierId} is not configured`, 'CARRIER_NOT_CONFIGURED');
+    }
+
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE pd_shipment
+         SET status = 'cancelled', cancellation_reason = $2,
+             cancellation_requested_at = COALESCE(cancellation_requested_at, NOW()),
+             cancelled_at = NOW(), next_sync_at = NULL, updated_at = NOW()
+         WHERE id = $1`,
+        [shipmentId, reason || null],
+      );
+      if (shipment.fulfillment_id) {
+        await client.query(
+          `UPDATE pd_fulfillment SET status = 'cancelled', updated_at = NOW() WHERE id = $1 AND status <> 'delivered'`,
+          [shipment.fulfillment_id],
+        );
+      }
+    });
+
+    return this.toShipmentResult({ ...shipment, status: 'cancelled', metadata: shipment.metadata || {} }, shipment.metadata?.source);
+  }
+
+  private toShipmentResult(
+    shipment: {
+      id: string;
+      provider: string;
+      tracking_number: string;
+      label_url: string | null;
+      estimated_delivery: Date | string | null;
+      status: string;
+      provider_reference?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+    source?: unknown,
+  ): ShipmentResult {
+    const carrier = TUNISIAN_CARRIERS.find((candidate) => candidate.id === normalizeCarrierId(shipment.provider as CarrierId)) || TUNISIAN_CARRIERS[0];
+    return {
+      id: shipment.id,
+      tracking_number: shipment.tracking_number,
+      provider: normalizeCarrierId(shipment.provider as CarrierId),
+      carrier_name: carrier.name,
+      label_url: shipment.label_url,
+      estimated_delivery: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toISOString() : null,
+      status: normalizePersistedShipmentStatus(shipment.status),
+      provider_reference: shipment.provider_reference || null,
+      source: source === 'configured_carrier'
+        ? 'configured_carrier'
+        : source === 'manual' || normalizeCarrierId(shipment.provider as CarrierId) === 'own_fleet'
+          ? 'manual'
+          : 'simulation',
+    };
+  }
+
+  async syncShipment(shipmentId: string): Promise<TrackingInfo> {
+    const { rows } = await query<{ tracking_number: string }>('SELECT tracking_number FROM pd_shipment WHERE id = $1 LIMIT 1', [shipmentId]);
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Shipment not found');
+    return this.track(rows[0].tracking_number);
+  }
+
+  async handleCarrierWebhook(
+    provider: CarrierId,
+    rawBody: Buffer,
+    signature: string | undefined,
+    payload: unknown,
+  ): Promise<{ shipment_id: string; status: string }> {
+    const carrierId = normalizeCarrierId(provider);
+    const adapter = this.getAdapter(carrierId);
+    if (!adapter || !adapter.verifyWebhook(rawBody, signature)) {
+      throw new CarrierAdapterError('Invalid carrier webhook signature or provider configuration', 'CARRIER_WEBHOOK_INVALID');
+    }
+    const event = adapter.parseWebhook(payload);
+    if (!event) throw new CarrierAdapterError('Carrier webhook did not include a tracking number', 'CARRIER_INVALID_RESPONSE');
+
+    const { rows } = await query<{ id: string }>(
+      'SELECT id FROM pd_shipment WHERE provider = $1 AND tracking_number = $2 ORDER BY created_at DESC LIMIT 1',
+      [carrierId, event.tracking_number],
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Shipment not found for carrier webhook');
+    await this.persistTrackingResult(rows[0].id, event, 'configured_carrier');
+    return { shipment_id: rows[0].id, status: event.status };
+  }
+
+  async reconcileDueShipments(): Promise<{ attempted: number; succeeded: number; failed: number }> {
+    const { rows } = await query<{ id: string }>(
+      `SELECT id
+       FROM pd_shipment
+       WHERE status IN ('created', 'picked_up', 'in_transit', 'out_for_delivery')
+         AND next_sync_at IS NOT NULL AND next_sync_at <= NOW()
+       ORDER BY next_sync_at ASC
+       LIMIT 50`,
+    );
+    let succeeded = 0;
+    let failed = 0;
+    for (const row of rows) {
+      try {
+        await this.syncShipment(row.id);
+        await query(
+          `INSERT INTO pd_shipment_reconciliation (id, shipment_id, action, status, attempt_count, resolved_at, updated_at)
+           VALUES ($1, $2, 'tracking_sync', 'resolved', 1, NOW(), NOW())
+           ON CONFLICT (shipment_id, action) DO UPDATE
+           SET status = 'resolved', attempt_count = pd_shipment_reconciliation.attempt_count + 1,
+               last_error = NULL, resolved_at = NOW(), updated_at = NOW()`,
+          [pdId('shrec'), row.id],
+        );
+        succeeded++;
+      } catch (error) {
+        await query(
+          `INSERT INTO pd_shipment_reconciliation (id, shipment_id, action, status, attempt_count, next_attempt_at, last_error, updated_at)
+           VALUES ($1, $2, 'tracking_sync', 'retry', 1, NOW() + INTERVAL '15 minutes', $3, NOW())
+           ON CONFLICT (shipment_id, action) DO UPDATE
+           SET status = 'retry', attempt_count = pd_shipment_reconciliation.attempt_count + 1,
+               next_attempt_at = NOW() + INTERVAL '15 minutes', last_error = $3, updated_at = NOW()`,
+          [pdId('shrec'), row.id, error instanceof Error ? error.message.slice(0, 500) : 'tracking sync failed'],
+        );
+        await query(
+          `UPDATE pd_shipment SET sync_attempts = sync_attempts + 1, last_sync_error = $2, next_sync_at = NOW() + INTERVAL '15 minutes', updated_at = NOW() WHERE id = $1`,
+          [row.id, error instanceof Error ? error.message.slice(0, 500) : 'tracking sync failed'],
+        );
+        failed++;
+      }
+    }
+    return { attempted: rows.length, succeeded, failed };
   }
 
   /**

@@ -127,10 +127,12 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P1-10 — Real carrier integrations
 
-- [ ] Define a carrier adapter interface for rates, label creation, tracking, cancellation, webhook verification, and capability health.
-- [ ] Replace simulated shipment creation with feature-flagged adapters and explicit fallback behavior.
-- [ ] Add retry/backoff, cancellation, tracking sync, webhook deduplication, and reconciliation jobs.
-- [ ] Add return-to-origin states and COD risk/confirmation handling.
+- [x] Define a carrier adapter interface for rates, label creation, tracking, cancellation, health checks, webhook verification, and normalized payload parsing. Provider-specific auth headers/prefixes are environment-configurable.
+- [x] Replace simulated shipment creation with feature-flagged HTTP adapters and explicit fallback behavior. Simulation is enabled by default only outside production and can be disabled in development.
+- [x] Add retry/backoff, idempotent shipment creation, cancellation compensation, tracking sync, immutable webhook event deduplication, and BullMQ/in-process reconciliation jobs.
+- [-] Add return-to-origin state persistence and COD risk/confirmation handling. RTO fields, carrier-returned transitions, COD verification, OTP, and courier settlement persistence are implemented; carrier-specific return reason mapping, operational dashboards, and end-to-end delivery acceptance remain.
+
+**P1-10 evidence (2026-08-22):** `carrier-adapter.ts` provides a typed HTTP adapter contract with rates, shipment/label creation, tracking, cancellation, health checks, HMAC webhook verification, normalized payload parsing, bounded timeout/retry behavior, redirect refusal, idempotency keys, and configurable provider auth headers. `ShippingService` persists provider references, immutable shipment events, sync state, fallback metadata, COD settlement rows, and RTO transitions; routes expose cancellation and signed carrier webhooks. Migration `083_shipping_integrations_and_cod.sql` adds shipment reconciliation/event state, RTO columns, and the COD verification/settlement tables with rollback support. Focused carrier tests pass; backend type-check/build and changed-source lint pass. The complete migration chain applied successfully in disposable PostgreSQL 16, and migration 083 rolled back successfully. Deployment acceptance remains for each carrier's sandbox credentials, endpoint mappings, auth/signature format, rate/label payload contract, and webhook replay.
 
 ## P2 — storefront scale and test health
 
