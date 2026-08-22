@@ -17,7 +17,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor, act } from '@testing-library/react';
 import { fetchWithCsrf } from '@/lib/api';
 
 vi.mock('@/lib/api', () => ({
@@ -590,6 +590,50 @@ describe('Adversarial UI Stress Tests: StoreFollowButton (Milestone M2)', () => 
   // 7. BOUNDARY VALUES & REACT PROP SYNCHRONIZATION
   // =========================================================================
   describe('7. Boundary Values & Dynamic Prop Synchronization', () => {
+    it('removes unmounted subscriber listeners without affecting another store instance', () => {
+      const first = render(
+        <StoreFollowButton
+          storeId="store_listener_1"
+          initialCount={10}
+        />
+      );
+      const second = render(
+        <StoreFollowButton
+          storeId="store_listener_2"
+          initialCount={20}
+        />
+      );
+
+      const firstCount = within(first.container).getByTestId('subscriber-count');
+      const secondCount = within(second.container).getByTestId('subscriber-count');
+      expect(firstCount).toHaveTextContent('10 abonnés');
+      expect(secondCount).toHaveTextContent('20 abonnés');
+
+      first.unmount();
+      expect(screen.queryByTestId('store-follow-container-store_listener_1')).not.toBeInTheDocument();
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('store:subscribers_updated', {
+            detail: { store_id: 'store_listener_1', subscribers_count: 99 },
+          })
+        );
+      });
+      expect(secondCount).toHaveTextContent('20 abonnés');
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('store:subscribers_updated', {
+            detail: { store_id: 'store_listener_2', subscribers_count: 21 },
+          })
+        );
+      });
+      expect(secondCount).toHaveTextContent('21 abonnés');
+
+      second.unmount();
+      expect(screen.queryByTestId('store-follow-container-store_listener_2')).not.toBeInTheDocument();
+    });
+
     it('synchronizes internal state when parent component updates initialCount / initialSubscribed props', () => {
       const { rerender } = render(
         <StoreFollowButton
@@ -683,17 +727,20 @@ describe('Adversarial UI Stress Tests: StoreFollowButton (Milestone M2)', () => 
     });
 
     it('applies correct styling classes across small, medium, and large sizes', () => {
-      const { unmount: u1 } = render(<StoreFollowButton storeId="s_sm" size="sm" />);
-      expect(screen.getByTestId('store-follow-btn-s_sm').className).toContain('px-2.5 py-1 text-xs');
-      u1();
+      const first = render(<StoreFollowButton storeId="s_sm" size="sm" />);
+      expect(within(first.container).getByTestId('store-follow-btn-s_sm').className).toContain('px-2.5 py-1 text-xs');
+      first.unmount();
+      expect(screen.queryByTestId('store-follow-container-s_sm')).not.toBeInTheDocument();
 
-      const { unmount: u2 } = render(<StoreFollowButton storeId="s_md" size="md" />);
-      expect(screen.getByTestId('store-follow-btn-s_md').className).toContain('px-4 py-2 text-sm');
-      u2();
+      const second = render(<StoreFollowButton storeId="s_md" size="md" />);
+      expect(within(second.container).getByTestId('store-follow-btn-s_md').className).toContain('px-4 py-2 text-sm');
+      second.unmount();
+      expect(screen.queryByTestId('store-follow-container-s_md')).not.toBeInTheDocument();
 
-      const { unmount: u3 } = render(<StoreFollowButton storeId="s_lg" size="lg" />);
-      expect(screen.getByTestId('store-follow-btn-s_lg').className).toContain('px-6 py-3 text-base');
-      u3();
+      const third = render(<StoreFollowButton storeId="s_lg" size="lg" />);
+      expect(within(third.container).getByTestId('store-follow-btn-s_lg').className).toContain('px-6 py-3 text-base');
+      third.unmount();
+      expect(screen.queryByTestId('store-follow-container-s_lg')).not.toBeInTheDocument();
     });
   });
 });

@@ -11,9 +11,9 @@
  *     - Error rollback, 429 rate limit guard, and unauthenticated redirects
  */
 
-import React, { useState, useEffect } from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import React from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, within, fireEvent, waitFor, act } from '@testing-library/react';
 import { fetchWithCsrf } from '@/lib/api';
 
 // Mock API layer
@@ -50,7 +50,6 @@ describe('Feature 20: StoreFollowButton & Subscriber Badges (R1)', () => {
       expect(followBtn).toHaveTextContent('Suivre');
       expect(followBtn).toHaveAttribute('aria-pressed', 'false');
 
-      const countBadge = screen.getByTestId('subscriber-count');
       expect(screen.getByTestId('subscriber-count')).toHaveTextContent(/42\s*abonnés/);
     });
 
@@ -188,17 +187,20 @@ describe('Feature 20: StoreFollowButton & Subscriber Badges (R1)', () => {
     });
 
     it('T1.7: renders across all 3 display variants (pdp_card, action_bar, directory_card)', () => {
-      const { unmount: u1 } = render(<StoreFollowButton storeId="s1" variant="pdp_card" />);
-      expect(screen.getByTestId('store-follow-container-s1')).toBeInTheDocument();
-      u1();
+      const first = render(<StoreFollowButton storeId="s1" variant="pdp_card" />);
+      expect(within(first.container).getByTestId('store-follow-container-s1')).toBeInTheDocument();
+      first.unmount();
+      expect(screen.queryByTestId('store-follow-container-s1')).not.toBeInTheDocument();
 
-      const { unmount: u2 } = render(<StoreFollowButton storeId="s2" variant="action_bar" />);
-      expect(screen.getByTestId('store-follow-container-s2')).toBeInTheDocument();
-      u2();
+      const second = render(<StoreFollowButton storeId="s2" variant="action_bar" />);
+      expect(within(second.container).getByTestId('store-follow-container-s2')).toBeInTheDocument();
+      second.unmount();
+      expect(screen.queryByTestId('store-follow-container-s2')).not.toBeInTheDocument();
 
-      const { unmount: u3 } = render(<StoreFollowButton storeId="s3" variant="directory_card" />);
-      expect(screen.getByTestId('store-follow-container-s3')).toBeInTheDocument();
-      u3();
+      const third = render(<StoreFollowButton storeId="s3" variant="directory_card" />);
+      expect(within(third.container).getByTestId('store-follow-container-s3')).toBeInTheDocument();
+      third.unmount();
+      expect(screen.queryByTestId('store-follow-container-s3')).not.toBeInTheDocument();
     });
   });
 

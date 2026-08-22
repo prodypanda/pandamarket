@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react/pure';
 import React from 'react';
 
 // Mock next/navigation
@@ -40,6 +41,9 @@ global.fetch = vi.fn();
 
 // Reset mocks between tests
 afterEach(() => {
+  // Keep test roots and their window listeners isolated even when a test file
+  // imports Testing Library through a different entry point.
+  cleanup();
   vi.restoreAllMocks();
   localStorageMock.clear();
 });

@@ -148,9 +148,11 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P2-02 — Follow-button test isolation
 
-- [ ] Configure deterministic DOM cleanup after each test.
-- [ ] Scope multi-instance assertions to their render container and explicitly unmount intentional repeated renders.
-- [ ] Keep adversarial isolation tests and add a regression for leaked listeners/state.
+- [x] Configure deterministic DOM cleanup after each test.
+- [x] Scope multi-instance assertions to their render container and explicitly unmount intentional repeated renders.
+- [x] Keep adversarial isolation tests and add a regression for leaked listeners/state.
+
+**P2-02 evidence (2026-08-22):** The shared Vitest setup now calls explicit Testing Library cleanup after every test, including suites that use a different Testing Library entry point. Follow-button multi-instance assertions use `within(container)` and unmount each intentional instance before rendering the next one. The adversarial suite verifies that an unmounted follow button no longer responds to `store:subscribers_updated` events while another store instance still does. Focused follow-button suites (41/41) pass.
 
 ### P2-03 — Stable full backend test runs
 
