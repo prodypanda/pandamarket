@@ -45,6 +45,7 @@ import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../components/themes/ThemeWrapper';
 import { StorefrontSeoJsonLd } from '../../../components/store/StorefrontSeoJsonLd';
 import { getStorefrontCanonicalUrl, isPublicStore, type StorefrontSeoStore } from '../../../lib/storefront-seo';
+import { fetchStorefrontProducts, STOREFRONT_MERCHANDISING_LIMIT } from '../../../lib/public-products';
 
 interface StoreBranding {
   store_id?: string;
@@ -203,17 +204,11 @@ async function getPublishedPages(storeId: string): Promise<HomepageOverride[]> {
   }
 }
 async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
-  try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=100`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
-  }
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+  const result = await fetchStorefrontProducts<StoreProduct>(backendUrl, storeId, {}, {
+    next: { revalidate: 120 },
+  });
+  return result.data.slice(0, STOREFRONT_MERCHANDISING_LIMIT);
 }
 
 async function getStoreNavigation(storeId: string) {

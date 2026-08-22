@@ -17,6 +17,7 @@ import {
   isPublicStore,
   type StorefrontSearchParams,
 } from '../../../../lib/storefront-seo';
+import { buildStorefrontProductUrl, STOREFRONT_MERCHANDISING_LIMIT } from '../../../../lib/public-products';
 
 interface StoreData {
   id: string;
@@ -75,22 +76,14 @@ async function getStoreProducts(
 ): Promise<ProductsResult> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const params = new URLSearchParams({ store_id: storeId, limit: '24' });
-
-    Object.entries(queryParams).forEach(([key, val]) => {
-      if (val !== undefined && val !== null && val !== '') {
-        const strVal = Array.isArray(val) ? val[0] : val;
-        params.set(key, strVal);
-      }
-    });
-
-    const res = await fetch(`${backendUrl}/api/pd/products/public?${params.toString()}`, {
+    const url = buildStorefrontProductUrl(backendUrl, storeId, queryParams);
+    const res = await fetch(url, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return { products: [] };
     const data = await res.json();
     return {
-      products: data.data || [],
+      products: Array.isArray(data.data) ? data.data.slice(0, STOREFRONT_MERCHANDISING_LIMIT) : [],
       meta: data.meta,
     };
   } catch {

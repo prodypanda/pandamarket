@@ -6,6 +6,7 @@ import { getStoreRouteContext } from '@/lib/store-routing';
 import { getStoreThemeLogoSurface, type StoreSocialLinks } from '../../../../components/themes/shared';
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { StorefrontPreviewBar } from '../../../../components/store/StorefrontPreviewBar';
+import { fetchStorefrontProducts, STOREFRONT_MERCHANDISING_LIMIT } from '../../../../lib/public-products';
 
 export const metadata: Metadata = {
   title: 'Aperçu du thème | PandaMarket',
@@ -52,6 +53,18 @@ interface StoreData {
   };
 }
 
+interface StoreProduct {
+  id: string;
+  title: string;
+  price: number | string;
+  slug?: string | null;
+  thumbnail?: string | null;
+  images?: Array<string | { url: string }>;
+  category?: string | null;
+  store_id: string;
+  [key: string]: unknown;
+}
+
 async function getPreviewData(storeHost: string, token: string) {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
@@ -73,19 +86,18 @@ async function getPreviewData(storeHost: string, token: string) {
     const previewData = await previewRes.json();
 
     // Fetch live products and navigation
-    const [productsRes, navRes, settingsRes] = await Promise.all([
-      fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=100`, { cache: 'no-store' }),
+    const [productsResult, navRes, settingsRes] = await Promise.all([
+      fetchStorefrontProducts<StoreProduct>(backendUrl, storeId, {}, { cache: 'no-store' }),
       fetch(`${backendUrl}/api/pd/stores/storefront/v1/navigation?store_id=${storeId}`, { cache: 'no-store' }),
       fetch(`${backendUrl}/api/pd/marketplace/settings`, { cache: 'no-store' }),
     ]);
 
-    const productsData = productsRes.ok ? await productsRes.json() : {};
     const navData = navRes.ok ? await navRes.json() : {};
     const settingsData = settingsRes.ok ? await settingsRes.json() : {};
 
     return {
       store: previewData.store as StoreData,
-      products: productsData.data || [],
+      products: productsResult.data.slice(0, STOREFRONT_MERCHANDISING_LIMIT),
       navigation: navData.navigation || navData.data || undefined,
       marketplaceSettings: settingsData.data || {},
     };

@@ -18,6 +18,7 @@ import { selectLogoForSurface } from '../../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../../components/themes/ThemeWrapper';
 import { getStorefrontCanonicalUrl, isPublicStore } from '../../../../../lib/storefront-seo';
+import { fetchStorefrontProducts, STOREFRONT_MERCHANDISING_LIMIT } from '../../../../../lib/public-products';
 
 /**
  * Storefront Custom Page Renderer
@@ -164,17 +165,11 @@ async function getPublishedPages(storeId: string): Promise<StorePageData[]> {
 }
 
 async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
-  try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-    const res = await fetch(`${backendUrl}/api/pd/products/public?store_id=${storeId}&limit=100`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
-  }
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+  const result = await fetchStorefrontProducts<StoreProduct>(backendUrl, storeId, {}, {
+    next: { revalidate: 120 },
+  });
+  return result.data.slice(0, STOREFRONT_MERCHANDISING_LIMIT);
 }
 
 async function getStoreNavigation(storeId: string) {

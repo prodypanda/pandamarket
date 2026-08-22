@@ -138,9 +138,11 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P2-01 — Intentional product merchandising limits
 
-- [ ] Replace silent `limit=100` storefront loads with server pagination or an admin-configured merchandising window.
-- [ ] Expose total/next-page metadata and preserve category/search ordering.
-- [ ] Add large-catalog performance and pagination regression tests.
+- [x] Replace silent `limit=100` storefront loads with an intentional 24-product merchandising window; keep `/products` server-paginated at 24 items per page.
+- [x] Expose exact `from`/`to` range and `next_page`/`prev_page` metadata, preserve URL-driven filters, and prevent query state from overriding store scope or page size.
+- [x] Add large-catalog pagination regression coverage, including multi-page sitemap collection, first/middle/final/empty ranges, and deterministic sort tie-breakers.
+
+**P2-01 evidence (2026-08-22):** `frontend/src/lib/public-products.ts` centralizes authoritative storefront requests and walks the backend's 100-item maximum for sitemap generation. Storefront home, preview, Page Builder, and catalog routes use the helper; tenant and marketplace sitemaps no longer request unsupported `limit=1000`. `ProductService.listPublished()` adds stable `p.id` tie-breakers and exact range/navigation metadata. Focused frontend helper tests (4/4), backend catalog/search tests (9/9), frontend/backend type-checks, and changed-source lint pass; backend tests emit only the existing unavailable-local-Redis connection warnings.
 
 ### P2-02 — Follow-button test isolation
 

@@ -3,6 +3,7 @@ import { MetadataRoute } from 'next';
 import { getMarketplacePublicUrl, getMarketplaceSettings } from '../lib/marketplace-settings';
 import { classifyHost } from '../lib/store-hosts';
 import { getStorefrontCanonicalUrl, isEmptyStore, isPublicStore, type StorefrontSeoStore } from '../lib/storefront-seo';
+import { fetchAllPublicProducts } from '../lib/public-products';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +59,8 @@ async function getStorefrontSitemap(host: string, store: StorefrontSeoStore): Pr
   if (!isPublicStore(store) || isEmptyStore(store)) return [];
 
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-  const [productsPayload, pagesPayload] = await Promise.all([
-    getJson<{ data?: StorefrontSitemapProduct[] }>(`${backendUrl}/api/pd/products/public?store_id=${encodeURIComponent(store.id)}&limit=1000`),
+  const [products, pagesPayload] = await Promise.all([
+    fetchAllPublicProducts<StorefrontSitemapProduct>(backendUrl, { storeId: store.id }, { cache: 'no-store' }),
     getJson<{ data?: StorefrontSitemapPage[] }>(`${backendUrl}/api/pd/stores/${encodeURIComponent(store.id)}/pages`),
   ]);
   const baseUrl = getStorefrontCanonicalUrl(host, store, '/').replace(/\/$/, '');
@@ -67,7 +68,7 @@ async function getStorefrontSitemap(host: string, store: StorefrontSeoStore): Pr
   return [
     { url: `${baseUrl}/`, changeFrequency: 'daily' as const, priority: 1.0 },
     { url: `${baseUrl}/products`, changeFrequency: 'daily' as const, priority: 0.8 },
-    ...(productsPayload?.data || []).filter((product) => product.slug).map((product) => ({
+    ...products.filter((product) => product.slug).map((product) => ({
       url: `${baseUrl}/product/${encodeURIComponent(product.slug as string)}`,
       lastModified: parseLastModified(product.updated_at),
       changeFrequency: 'weekly' as const,
@@ -113,23 +114,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
-    let res: Response;
     try {
-      res = await fetch(`${backendUrl}/api/pd/products/public?page=1&limit=1000`, {
+      const products = await fetchAllPublicProducts<SitemapProduct>(backendUrl, {}, {
         next: { revalidate: 3600 },
         signal: controller.signal,
       });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (res.ok) {
-      const data = await res.json();
-      productPages = (data.data || []).map((product: SitemapProduct) => ({
+      productPages = products.map((product) => ({
         url: productUrl(baseUrl, product),
         lastModified: new Date(product.updated_at),
         changeFrequency: 'weekly' as const,
         priority: 0.6,
       }));
+    } finally {
+      clearTimeout(timer);
     }
   } catch {
     // Silently fail — sitemap will just have static pages

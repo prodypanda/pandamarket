@@ -26,8 +26,12 @@ export interface CatalogPaginationMeta {
   limit: number;
   total: number;
   total_pages: number;
+  from?: number;
+  to?: number;
   has_next?: boolean;
   has_prev?: boolean;
+  next_page?: number | null;
+  prev_page?: number | null;
 }
 
 interface CatalogControlsProps {
@@ -150,7 +154,14 @@ export function CatalogControls({
         <div className="text-xs font-semibold text-slate-500">
           {meta ? (
             <span>
-              Affichage de <strong className="text-slate-800">{meta.total}</strong> produit{meta.total !== 1 ? 's' : ''}
+              {meta.total === 0 ? (
+                'Aucun produit'
+              ) : (
+                <>
+                  Affichage de <strong className="text-slate-800">{meta.from ?? ((meta.page - 1) * meta.limit + 1)}-{meta.to ?? Math.min(meta.page * meta.limit, meta.total)}</strong>{' '}
+                  sur <strong className="text-slate-800">{meta.total}</strong> produit{meta.total !== 1 ? 's' : ''}
+                </>
+              )}
             </span>
           ) : (
             <span>Produits du catalogue</span>

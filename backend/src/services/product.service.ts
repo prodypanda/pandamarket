@@ -503,15 +503,15 @@ function buildWholesalePricingMetadata(input: {
 }
 
 function publicProductOrderBy(sortBy?: string) {
-  if (sortBy === 'oldest') return 'p.created_at ASC';
-  if (sortBy === 'price_asc') return 'p.price ASC, p.created_at DESC';
-  if (sortBy === 'price_desc') return 'p.price DESC, p.created_at DESC';
-  if (sortBy === 'title_asc' || sortBy === 'alphabetical') return 'LOWER(p.title) ASC, p.created_at DESC';
-  if (sortBy === 'title_desc') return 'LOWER(p.title) DESC, p.created_at DESC';
-  if (sortBy === 'popular') return 'p.inventory_quantity DESC, p.created_at DESC';
-  if (sortBy === 'best_sellers') return 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC';
+  if (sortBy === 'oldest') return 'p.created_at ASC, p.id ASC';
+  if (sortBy === 'price_asc') return 'p.price ASC, p.created_at DESC, p.id ASC';
+  if (sortBy === 'price_desc') return 'p.price DESC, p.created_at DESC, p.id ASC';
+  if (sortBy === 'title_asc' || sortBy === 'alphabetical') return 'LOWER(p.title) ASC, p.created_at DESC, p.id ASC';
+  if (sortBy === 'title_desc') return 'LOWER(p.title) DESC, p.created_at DESC, p.id ASC';
+  if (sortBy === 'popular') return 'p.inventory_quantity DESC, p.created_at DESC, p.id ASC';
+  if (sortBy === 'best_sellers') return 'COALESCE(s.subscribers_count, 0) DESC, p.created_at DESC, p.id ASC';
   if (sortBy === 'random') return 'RANDOM()';
-  return 'p.created_at DESC';
+  return 'p.created_at DESC, p.id ASC';
 }
 
 export class ProductService {
@@ -1709,7 +1709,11 @@ export class ProductService {
     );
 
     const total = parseInt(countRows[0].count, 10);
-    const total_pages = Math.ceil(total / limit) || 1;
+    const total_pages = Math.ceil(total / limit);
+    const has_next = total_pages > 0 && page < total_pages;
+    const has_prev = total_pages > 0 && page > 1;
+    const from = rows.length > 0 ? offset + 1 : 0;
+    const to = rows.length > 0 ? Math.min(offset + rows.length, total) : 0;
     const formattedData = rows.map(formatPublicProductResponse);
 
     return {
@@ -1719,8 +1723,12 @@ export class ProductService {
         limit,
         total,
         total_pages,
-        has_next: page < total_pages,
-        has_prev: page > 1,
+        from,
+        to,
+        has_next,
+        has_prev,
+        next_page: has_next ? page + 1 : null,
+        prev_page: has_prev ? page - 1 : null,
       },
     };
   }

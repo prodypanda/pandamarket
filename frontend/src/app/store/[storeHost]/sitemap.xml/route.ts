@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStorefrontCanonicalUrl, isPublicStore } from '../../../../lib/storefront-seo';
+import { fetchAllPublicProducts } from '../../../../lib/public-products';
 
 interface StoreData {
   id: string;
@@ -73,15 +74,15 @@ export async function GET(
   }
 
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
-  const [productsPayload, pagesPayload] = await Promise.all([
-    getJson<{ data?: ProductRow[] }>(`${backendUrl}/api/pd/products/public?store_id=${encodeURIComponent(store.id)}&limit=1000`),
+  const [products, pagesPayload] = await Promise.all([
+    fetchAllPublicProducts<ProductRow>(backendUrl, { storeId: store.id }, { cache: 'no-store' }),
     getJson<{ data?: PageRow[] }>(`${backendUrl}/api/pd/stores/${encodeURIComponent(store.id)}/pages`),
   ]);
   const baseUrl = getStorefrontCanonicalUrl(decodedHost, store, '/').replace(/\/$/, '');
   const urls: SitemapUrl[] = [
     { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
     { loc: `${baseUrl}/products`, priority: '0.8', changefreq: 'daily' },
-    ...(productsPayload?.data || []).filter((product) => product.slug).map((product) => ({
+    ...products.filter((product) => product.slug).map((product) => ({
       loc: `${baseUrl}/product/${encodeURIComponent(product.slug as string)}`,
       lastmod: product.updated_at,
       priority: '0.6',
