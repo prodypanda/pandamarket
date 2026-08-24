@@ -69,6 +69,11 @@
 | `PD_ORDER_ALREADY_CANCELLED` | 409 | Cette commande est déjà annulée | `{ order_id }` |
 | `PD_ORDER_CANNOT_CANCEL` | 400 | Cette commande ne peut plus être annulée | `{ order_id, status }` |
 | `PD_ORDER_EMPTY_CART` | 400 | Le panier est vide | — |
+| `PD_ORDER_QUOTE_NOT_FOUND` | 404 | Le devis de commande est introuvable | `{}` |
+| `PD_ORDER_QUOTE_EXPIRED` | 409 | Le devis de commande a expiré | `{ quote_id }` |
+| `PD_ORDER_QUOTE_STALE` | 409 | Le devis de commande n'est plus valide | `{ quote_id, order_id? }` |
+| `PD_ORDER_QUOTE_VERSION_UNSUPPORTED` | 409 | La version du devis de commande n'est pas prise en charge | `{ quote_id, quote_version, supported_versions }` |
+| `PD_ORDER_IDEMPOTENCY_CONFLICT` | 409 | La clé d'idempotence est déjà liée à un autre client | `{}` |
 
 ## 6. Paiements (PD_PAY_*)
 

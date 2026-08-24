@@ -49,6 +49,13 @@ interface PreparedItem {
   product_type: ProductType;
 }
 
+interface IdempotencyBinding {
+  customer_id?: string | null;
+  storefront_customer_id?: string | null;
+  quote_id?: string | null;
+  payment_gateway?: PaymentGateway;
+}
+
 export interface OrderRow {
   id: string;
   customer_id: string | null;
@@ -71,6 +78,11 @@ export interface OrderRow {
   shipping_address: IAddress | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface CheckoutResult {
+  order: OrderRow;
+  replayed: boolean;
 }
 
 export interface StoreOrderRow extends OrderRow {
@@ -371,27 +383,70 @@ export class OrderService {
     shipping_address?: IAddress | null;
     payment_gateway: PaymentGateway;
     ads_attribution?: { campaign_id:string; creative_id:string; event_key:string };
-  }): Promise<OrderRow> {
+  }): Promise<CheckoutResult> {
     if (!opts.items || opts.items.length === 0) {
       throw new PdValidationError('Cart is empty', { code: PdErrorCode.ORDER_EMPTY_CART });
     }
+    if (opts.idempotency_key && opts.idempotency_key.length > 128) {
+      throw new PdValidationError('Idempotency-Key must be 128 characters or fewer');
+    }
     if (opts.idempotency_key) {
-      const existing = await this.getByIdempotencyKey(opts.idempotency_key);
-      if (existing) return existing;
+      const existing = await this.getByIdempotencyKey(opts.idempotency_key, {
+        customer_id: opts.customer_id,
+        storefront_customer_id: opts.storefront_customer_id,
+        quote_id: opts.quote_id,
+        payment_gateway: opts.payment_gateway,
+      });
+      if (existing) return { order: existing, replayed: true };
     }
     return transaction(async (c) => {
+      if (opts.idempotency_key) {
+        // Serialize all attempts for the same key before touching quote or
+        // inventory rows. This closes the race where two requests both miss
+        // the pre-transaction lookup and the loser later observes a consumed
+        // quote instead of the committed order.
+        await c.query(
+          'SELECT pg_advisory_xact_lock(hashtext($1))',
+          [`pd_checkout:idempotency:${opts.idempotency_key}`],
+        );
+        const existing = await this.getByIdempotencyKeyWithExecutor(c, opts.idempotency_key);
+        if (existing) {
+          return { order: this.assertIdempotencyBinding(existing, opts), replayed: true };
+        }
+      }
       const platformSettings = await platformConfigService.getSettingsFresh(
         c,
         ['finance', 'shipping'],
       );
-      const quote = opts.quote_id
-        ? await checkoutQuoteService.lockForCheckout(
-          c,
-          opts.quote_id,
-          opts.customer_id,
-          opts.storefront_customer_id,
-        )
-        : null;
+      let quote = null as Awaited<ReturnType<typeof checkoutQuoteService.lockForCheckout>> | null;
+      if (opts.quote_id) {
+        try {
+          quote = await checkoutQuoteService.lockForCheckout(
+            c,
+            opts.quote_id,
+            opts.customer_id,
+            opts.storefront_customer_id,
+          );
+        } catch (err) {
+          // A concurrent request with the same idempotency key may have
+          // committed the order while this transaction waited on the quote
+          // row. Replay that committed order instead of surfacing the quote's
+          // consumed-state conflict.
+          const details = err instanceof PdConflictError ? err.details : undefined;
+          if (
+            opts.idempotency_key
+            && err instanceof PdConflictError
+            && err.code === PdErrorCode.ORDER_QUOTE_STALE
+            && typeof details?.order_id === 'string'
+          ) {
+            const existing = await this.getByIdempotencyKeyWithExecutor(c, opts.idempotency_key);
+            if (existing?.id === details.order_id) {
+              return { order: this.assertIdempotencyBinding(existing, opts), replayed: true };
+            }
+          }
+          throw err;
+        }
+      }
 
       // Lock affected products and variants in deterministic ascending ID order to prevent deadlocks
       const uniqueProductIds = Array.from(new Set(opts.items.map((it) => it.product_id))).sort();
@@ -579,7 +634,7 @@ export class OrderService {
           store_id: opts.store_id,
           items: opts.items,
           shipping_address: opts.shipping_address,
-          coupon_code: quote?.coupon_code ?? opts.coupon_code,
+          coupon_code: opts.coupon_code,
           totals: quoteTotals,
         });
       }
@@ -621,15 +676,14 @@ export class OrderService {
         throw new PdValidationError('Customer is required');
       }
 
-      let orderRows: OrderRow[];
-      try {
-        const res = await c.query<OrderRow>(
-          `INSERT INTO pd_order
+      const { rows: orderRows } = await c.query<OrderRow>(
+        `INSERT INTO pd_order
             (id, customer_id, storefront_customer_id, status, payment_gateway, gross_subtotal,
              subtotal, discount_total, shipping_total, tax_total, total, currency, shipping_address,
              idempotency_key, quote_id, quote_version, payment_capability_version, coupon_code,
              discount_breakdown, quote_snapshot)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+           ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
            RETURNING *`,
           [
             orderId,
@@ -653,14 +707,17 @@ export class OrderService {
             JSON.stringify(quoteTotals.breakdown),
             JSON.stringify(quoteTotals.snapshot),
           ],
-        );
-        orderRows = res.rows;
-      } catch (err) {
-        if ((err as { code?: string }).code === '23505' && opts.idempotency_key) {
-          const existing = await this.getByIdempotencyKey(opts.idempotency_key);
-          if (existing) return existing;
+      );
+
+      if (!orderRows[0] && opts.idempotency_key) {
+        const existing = await this.getByIdempotencyKeyWithExecutor(c, opts.idempotency_key);
+        if (existing) {
+          return { order: this.assertIdempotencyBinding(existing, opts), replayed: true };
         }
-        throw err;
+        throw new PdConflictError(
+          PdErrorCode.ORDER_IDEMPOTENCY_CONFLICT,
+          'The idempotency key is already associated with another checkout',
+        );
       }
 
       // ----- Create order items -----
@@ -816,16 +873,39 @@ export class OrderService {
       if (customerId) {
         buyerInterestService.syncBuyerProfile(customerId).catch(() => {});
       }
-      return orderRows[0];
+      return { order: orderRows[0], replayed: false };
     });
   }
 
-  async getByIdempotencyKey(key: string): Promise<OrderRow | null> {
-    const { rows } = await query<OrderRow>(
+  private assertIdempotencyBinding(order: OrderRow, binding: IdempotencyBinding): OrderRow {
+    if (!Object.keys(binding).length) return order;
+    const sameCustomer = (order.customer_id ?? null) === (binding.customer_id ?? null);
+    const sameStorefrontCustomer = (order.storefront_customer_id ?? null) === (binding.storefront_customer_id ?? null);
+    const sameQuote = (order.quote_id ?? null) === (binding.quote_id ?? null);
+    const sameGateway = !binding.payment_gateway || order.payment_gateway === binding.payment_gateway;
+    if (!sameCustomer || !sameStorefrontCustomer || !sameQuote || !sameGateway) {
+      throw new PdConflictError(
+        PdErrorCode.ORDER_IDEMPOTENCY_CONFLICT,
+        'The idempotency key is already associated with a different checkout',
+      );
+    }
+    return order;
+  }
+
+  private async getByIdempotencyKeyWithExecutor(executor: PoolClient, key: string): Promise<OrderRow | null> {
+    const { rows } = await executor.query<OrderRow>(
       `SELECT * FROM pd_order WHERE idempotency_key = $1`,
       [key],
     );
     return rows[0] ?? null;
+  }
+
+  async getByIdempotencyKey(key: string, binding?: IdempotencyBinding): Promise<OrderRow | null> {
+    const { rows } = await query<OrderRow>(
+      `SELECT * FROM pd_order WHERE idempotency_key = $1`,
+      [key],
+    );
+    return rows[0] ? this.assertIdempotencyBinding(rows[0], binding || {}) : null;
   }
 
   async getById(id: string): Promise<OrderRow> {

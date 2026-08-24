@@ -57,6 +57,32 @@ function productRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function persistedQuoteRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'quote_1',
+    quote_version: 1,
+    owner_user_id: 'buyer_1',
+    owner_storefront_customer_id: null,
+    store_id: null,
+    items: [],
+    shipping_address: null,
+    coupon_code: null,
+    currency: 'TND',
+    subtotal: '0',
+    discount_total: '0',
+    shipping_total: '0',
+    tax_total: '0',
+    total: '0',
+    breakdown: {},
+    snapshot_hash: 'stable-hash',
+    created_at: new Date('2026-08-20T12:00:00.000Z'),
+    expires_at: new Date(Date.now() + 60_000),
+    consumed_at: null,
+    consumed_order_id: null,
+    ...overrides,
+  };
+}
+
 describe('CheckoutQuoteService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -109,6 +135,7 @@ describe('CheckoutQuoteService', () => {
       total: 100,
       breakdown: {},
       snapshot_hash: 'hash',
+      issued_at: new Date('2026-08-20T12:00:00.000Z').toISOString(),
       expires_at: new Date(Date.now() + 60_000).toISOString(),
       consumed_at: null,
       consumed_order_id: null,
@@ -137,9 +164,14 @@ describe('CheckoutQuoteService', () => {
 
   it('creates a short-lived persisted quote with a tamper-evident snapshot hash', async () => {
     const service = new CheckoutQuoteService();
+    const createdAt = new Date();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     mocks.clientQuery
       .mockResolvedValueOnce({ rows: [productRow()] })
-      .mockResolvedValueOnce({ rows: [] });
+      .mockResolvedValueOnce({ rows: [{
+        created_at: createdAt,
+        expires_at: expiresAt,
+      }] });
 
     const quote = await service.createQuote({
       owner_user_id: 'buyer_1',
@@ -149,8 +181,95 @@ describe('CheckoutQuoteService', () => {
     });
 
     expect(quote.id).toBe('pd_quote_test');
+    expect(quote.quote_version).toBe(1);
+    expect(quote.issued_at).toBe(createdAt.toISOString());
     expect(new Date(quote.expires_at).getTime()).toBeGreaterThan(Date.now());
     expect(quote.snapshot_hash).toContain('hash:');
     expect(mocks.clientQuery).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO pd_checkout_quote'), expect.any(Array));
+  });
+
+  it('accepts the current quote version and exposes the database issuance time', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = {
+      query: vi.fn().mockResolvedValue({ rows: [persistedQuoteRow()] }),
+    } as any;
+    mocks.sha256.mockReturnValueOnce('stable-hash');
+
+    const quote = await service.lockForCheckout(executor, 'quote_1', 'buyer_1');
+
+    expect(quote).toMatchObject({
+      id: 'quote_1',
+      quote_version: 1,
+      issued_at: '2026-08-20T12:00:00.000Z',
+    });
+  });
+
+  it('rejects an unknown quote with a machine-readable not-found error', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = { query: vi.fn().mockResolvedValue({ rows: [] }) } as any;
+
+    await expect(service.lockForCheckout(executor, 'quote_missing', 'buyer_1'))
+      .rejects.toMatchObject({ code: 'PD_ORDER_QUOTE_NOT_FOUND' });
+  });
+
+  it('rejects an expired quote after verifying its snapshot', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = {
+      query: vi.fn().mockResolvedValue({
+        rows: [persistedQuoteRow({ expires_at: new Date(Date.now() - 1) })],
+      }),
+    } as any;
+    mocks.sha256.mockReturnValueOnce('stable-hash');
+
+    await expect(service.lockForCheckout(executor, 'quote_1', 'buyer_1'))
+      .rejects.toMatchObject({ code: 'PD_ORDER_QUOTE_EXPIRED' });
+  });
+
+  it('rejects a consumed quote and returns its existing order binding', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = {
+      query: vi.fn().mockResolvedValue({ rows: [persistedQuoteRow({
+        consumed_at: new Date(),
+        consumed_order_id: 'order_existing',
+      })] }),
+    } as any;
+    mocks.sha256.mockReturnValueOnce('stable-hash');
+
+    await expect(service.lockForCheckout(executor, 'quote_1', 'buyer_1'))
+      .rejects.toMatchObject({
+        code: 'PD_ORDER_QUOTE_STALE',
+        details: { quote_id: 'quote_1', order_id: 'order_existing' },
+      });
+  });
+
+  it('rejects a quote whose persisted financial snapshot no longer matches its digest', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = {
+      query: vi.fn().mockResolvedValue({ rows: [persistedQuoteRow({ snapshot_hash: 'tampered' })] }),
+    } as any;
+
+    await expect(service.lockForCheckout(executor, 'quote_1', 'buyer_1'))
+      .rejects.toMatchObject({
+        code: 'PD_ORDER_QUOTE_STALE',
+        message: 'Checkout quote integrity check failed',
+      });
+  });
+
+  it('rejects a consumed forward quote version before it can be replayed', async () => {
+    const service = new CheckoutQuoteService();
+    const executor = {
+      query: vi.fn().mockResolvedValue({ rows: [persistedQuoteRow({
+        id: 'quote_future',
+        quote_version: 2,
+        consumed_at: new Date(),
+        consumed_order_id: 'order_future',
+      })] }),
+    } as any;
+
+    await expect(service.lockForCheckout(executor, 'quote_future', 'buyer_1'))
+      .rejects.toMatchObject({
+        code: 'PD_ORDER_QUOTE_VERSION_UNSUPPORTED',
+        details: { quote_id: 'quote_future', quote_version: 2, supported_versions: [1] },
+      });
   });
 });

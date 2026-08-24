@@ -20,6 +20,7 @@ const mockedFetchWithCsrf = vi.mocked(fetchWithCsrf);
 const quote: CheckoutQuote = {
   id: 'quote_12345678',
   quote_version: 1,
+  issued_at: '2026-08-20T12:00:00.000Z',
   store_id: null,
   items: [],
   shipping_address: null,
@@ -100,6 +101,25 @@ describe('checkout quote client', () => {
       items: [{ product_id: 'prod_1', quantity: 1 }],
       shippingAddress: null,
     })).rejects.toThrow('checkout quote response was incomplete');
+  });
+
+  it('rejects a forward quote version with a machine-readable recoverable error', async () => {
+    mockedFetchWithCsrf.mockResolvedValue(new Response(JSON.stringify({
+      data: {
+        ...quote,
+        quote_version: 2,
+      },
+    }), { status: 201 }));
+
+    await expect(requestCheckoutQuote({
+      scope: 'hub',
+      items: [{ product_id: 'prod_1', quantity: 1 }],
+      shippingAddress: null,
+    })).rejects.toMatchObject({
+      status: 409,
+      code: 'PD_ORDER_QUOTE_VERSION_UNSUPPORTED',
+      details: { quote_version: 2, supported_versions: [1] },
+    });
   });
 
   it('submits the authoritative quote and reuses the supplied idempotency key', async () => {

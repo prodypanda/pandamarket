@@ -113,6 +113,7 @@ import StoreCheckoutPage from '../app/store/[storeHost]/checkout/page';
 const quoteFor = (available: boolean): CheckoutQuote => ({
   id: 'quote_1',
   quote_version: 1,
+  issued_at: '2026-08-20T12:00:00.000Z',
   store_id: available ? 'store_1' : null,
   items: [{
     product_id: 'product_1',

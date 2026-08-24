@@ -1,6 +1,7 @@
 import { fetchWithCsrf } from './api';
 
 export type CheckoutScope = 'hub' | 'storefront';
+export const SUPPORTED_CHECKOUT_QUOTE_VERSIONS = [1] as const;
 
 export interface CheckoutAddressForm {
   full_name: string;
@@ -87,6 +88,7 @@ export interface CheckoutPaymentCapabilities {
 export interface CheckoutQuote {
   id: string;
   quote_version: number;
+  issued_at: string;
   store_id: string | null;
   items: CheckoutQuoteLine[];
   shipping_address: CheckoutAddress | null;
@@ -116,6 +118,7 @@ export const RECOVERABLE_QUOTE_ERROR_CODES = new Set([
   'PD_ORDER_QUOTE_NOT_FOUND',
   'PD_ORDER_QUOTE_EXPIRED',
   'PD_ORDER_QUOTE_STALE',
+  'PD_ORDER_QUOTE_VERSION_UNSUPPORTED',
   'PD_PAY_CAPABILITY_STALE',
   'PD_PAY_GATEWAY_UNAVAILABLE',
 ]);
@@ -155,6 +158,10 @@ function isQuotePayload(value: unknown): value is CheckoutQuote {
   return Boolean(
     quote.id &&
     Number.isInteger(quote.quote_version) &&
+    SUPPORTED_CHECKOUT_QUOTE_VERSIONS.includes(
+      quote.quote_version as (typeof SUPPORTED_CHECKOUT_QUOTE_VERSIONS)[number],
+    ) &&
+    typeof quote.issued_at === 'string' &&
     Array.isArray(quote.items) &&
     typeof quote.currency === 'string' &&
     typeof quote.subtotal === 'number' &&
@@ -303,6 +310,23 @@ export async function requestCheckoutQuote(input: {
   if (!response.ok) throw requestError(response, payload, 'Unable to calculate the order total');
 
   const quote = (payload as { data?: unknown } | null)?.data;
+  if (
+    quote
+    && typeof quote === 'object'
+    && Number.isInteger((quote as { quote_version?: unknown }).quote_version)
+    && !SUPPORTED_CHECKOUT_QUOTE_VERSIONS.includes(
+      (quote as { quote_version: number }).quote_version as (typeof SUPPORTED_CHECKOUT_QUOTE_VERSIONS)[number],
+    )
+  ) {
+    throw new CheckoutRequestError('This checkout quote version is not supported by the client', {
+      status: 409,
+      code: 'PD_ORDER_QUOTE_VERSION_UNSUPPORTED',
+      details: {
+        quote_version: (quote as { quote_version: number }).quote_version,
+        supported_versions: [...SUPPORTED_CHECKOUT_QUOTE_VERSIONS],
+      },
+    });
+  }
   if (!isQuotePayload(quote)) {
     throw new CheckoutRequestError('The checkout quote response was incomplete', { status: response.status });
   }

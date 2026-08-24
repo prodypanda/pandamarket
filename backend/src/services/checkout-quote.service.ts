@@ -21,6 +21,16 @@ import {
 import { roundTnd } from '../utils/money';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 
+export const CURRENT_CHECKOUT_QUOTE_VERSION = 1;
+export const SUPPORTED_CHECKOUT_QUOTE_VERSIONS = [CURRENT_CHECKOUT_QUOTE_VERSION] as const;
+
+// Quote v1 deliberately uses SHA-256 as a deterministic commerce-snapshot
+// digest, not as authentication against a privileged database writer. Direct
+// database mutation is outside the checkout trust boundary and is controlled
+// through database access, audit, and backup policy. If that threat model
+// changes, introduce a new quote version with a key ID and HMAC rotation plan;
+// retrofitting keyed hashing onto v1 would invalidate outstanding quotes.
+
 const QUOTE_TTL_MS = 15 * 60 * 1000;
 const FALLBACK_SHIPPING_RATE = 7;
 const COMBINED_SHIPPING_REBATE = 3;
@@ -83,6 +93,7 @@ export interface CheckoutQuote {
   total: number;
   breakdown: Record<string, unknown>;
   snapshot_hash: string;
+  issued_at: string;
   expires_at: string;
   consumed_at: string | null;
   consumed_order_id: string | null;
@@ -105,6 +116,7 @@ interface QuoteRow {
   total: string | number;
   breakdown: Record<string, unknown>;
   snapshot_hash: string;
+  created_at: Date | string;
   expires_at: Date | string;
   consumed_at: Date | string | null;
   consumed_order_id: string | null;
@@ -300,6 +312,7 @@ function toQuote(row: QuoteRow): CheckoutQuote {
     total: asNumber(row.total),
     breakdown: row.breakdown || {},
     snapshot_hash: row.snapshot_hash,
+    issued_at: new Date(row.created_at).toISOString(),
     expires_at: new Date(row.expires_at).toISOString(),
     consumed_at: row.consumed_at ? new Date(row.consumed_at).toISOString() : null,
     consumed_order_id: row.consumed_order_id,
@@ -307,6 +320,22 @@ function toQuote(row: QuoteRow): CheckoutQuote {
 }
 
 export class CheckoutQuoteService {
+  assertSupportedVersion(quoteVersion: number, quoteId?: string): void {
+    if (!SUPPORTED_CHECKOUT_QUOTE_VERSIONS.includes(
+      quoteVersion as (typeof SUPPORTED_CHECKOUT_QUOTE_VERSIONS)[number],
+    )) {
+      throw new PdConflictError(
+        PdErrorCode.ORDER_QUOTE_VERSION_UNSUPPORTED,
+        'Checkout quote version is not supported',
+        {
+          ...(quoteId ? { quote_id: quoteId } : {}),
+          quote_version: quoteVersion,
+          supported_versions: [...SUPPORTED_CHECKOUT_QUOTE_VERSIONS],
+        },
+      );
+    }
+  }
+
   async resolveLines(executor: SqlExecutor, items: QuoteItemInput[], storeId?: string | null): Promise<QuoteLine[]> {
     if (!items.length) throw new PdValidationError('Cart is empty', { code: PdErrorCode.ORDER_EMPTY_CART });
     const lines: QuoteLine[] = [];
@@ -636,7 +665,7 @@ export class CheckoutQuoteService {
       const storeId = opts.store_id || null;
       const couponCode = (opts.coupon_code || '').trim().toUpperCase() || null;
       const snapshotHash = sha256(quoteHashPayload({
-        quote_version: 1,
+        quote_version: CURRENT_CHECKOUT_QUOTE_VERSION,
         owner_user_id: ownerUserId,
         owner_storefront_customer_id: ownerStorefrontCustomerId,
         store_id: storeId,
@@ -651,14 +680,19 @@ export class CheckoutQuoteService {
         total: totals.total,
         breakdown: totals.breakdown,
       }));
-      await c.query(
+      const { rows: persistedRows } = await c.query<{
+        created_at: Date | string;
+        expires_at: Date | string;
+      }>(
         `INSERT INTO pd_checkout_quote
           (id, quote_version, owner_user_id, owner_storefront_customer_id, store_id, items,
            shipping_address, coupon_code, currency, subtotal, discount_total, shipping_total,
            tax_total, total, breakdown, snapshot_hash, expires_at)
-         VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         RETURNING created_at, expires_at`,
         [
           id,
+          CURRENT_CHECKOUT_QUOTE_VERSION,
           ownerUserId,
           ownerStorefrontCustomerId,
           storeId,
@@ -676,9 +710,17 @@ export class CheckoutQuoteService {
           expiresAt,
         ],
       );
+      const persisted = persistedRows[0];
+      if (!persisted) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_QUOTE_STALE,
+          'Checkout quote could not be persisted',
+          { quote_id: id },
+        );
+      }
       return {
         id,
-        quote_version: 1,
+        quote_version: CURRENT_CHECKOUT_QUOTE_VERSION,
         owner_user_id: ownerUserId,
         owner_storefront_customer_id: ownerStorefrontCustomerId,
         store_id: storeId,
@@ -693,7 +735,8 @@ export class CheckoutQuoteService {
         total: totals.total,
         breakdown: totals.breakdown,
         snapshot_hash: snapshotHash,
-        expires_at: expiresAt.toISOString(),
+        issued_at: new Date(persisted.created_at).toISOString(),
+        expires_at: new Date(persisted.expires_at).toISOString(),
         consumed_at: null,
         consumed_order_id: null,
       };
@@ -716,6 +759,7 @@ export class CheckoutQuoteService {
     );
     if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_QUOTE_NOT_FOUND, 'Checkout quote not found');
     const quote = toQuote(rows[0]);
+    this.assertSupportedVersion(quote.quote_version, quote.id);
     const expectedHash = sha256(quoteHashPayload({
       quote_version: quote.quote_version,
       owner_user_id: quote.owner_user_id,
@@ -759,6 +803,7 @@ export class CheckoutQuoteService {
       totals: QuoteTotals;
     },
   ): void {
+    this.assertSupportedVersion(quote.quote_version, quote.id);
     if (quote.owner_user_id !== (opts.owner_user_id || null) || quote.owner_storefront_customer_id !== (opts.owner_storefront_customer_id || null)) {
       throw new PdConflictError(PdErrorCode.ORDER_QUOTE_STALE, 'Checkout quote owner does not match the current session');
     }

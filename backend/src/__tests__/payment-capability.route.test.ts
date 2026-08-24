@@ -40,6 +40,7 @@ import cartRouter from '../api/cart.route';
 const quote = {
   id: 'quote_12345678',
   quote_version: 1,
+  issued_at: '2026-08-20T12:00:00.000Z',
   currency: 'TND',
   items: [],
   shipping_address: null,

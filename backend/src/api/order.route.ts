@@ -3,8 +3,20 @@ import { z } from 'zod';
 import { orderService } from '../services/order.service';
 import { asyncHandler, validate, requireAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
 import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
+import { PdValidationError } from '../errors';
 
 const router = Router();
+
+function readIdempotencyKey(req: Request): string | undefined {
+  const key = (
+    (req.headers['idempotency-key'] as string | undefined)
+    || (req.headers['x-idempotency-key'] as string | undefined)
+  )?.trim();
+  if (key && key.length > 128) {
+    throw new PdValidationError('Idempotency-Key must be 128 characters or fewer');
+  }
+  return key || undefined;
+}
 
 const shippingAddressSchema = z.preprocess((value) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
@@ -131,25 +143,26 @@ router.post(
   requireAuth,
   validate(checkoutSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const idempotencyKey = (
-      (req.headers['idempotency-key'] as string | undefined) ||
-      (req.headers['x-idempotency-key'] as string | undefined)
-    )?.trim();
+    const idempotencyKey = readIdempotencyKey(req);
 
     if (idempotencyKey) {
-      const existing = await orderService.getByIdempotencyKey(idempotencyKey);
+      const existing = await orderService.getByIdempotencyKey(idempotencyKey, {
+        customer_id: req.user!.id,
+        quote_id: req.body.quote_id,
+        payment_gateway: req.body.payment_gateway,
+      });
       if (existing) {
         res.status(200).json({ order: existing });
         return;
       }
     }
 
-    const order = await orderService.checkout({
+    const result = await orderService.checkout({
       customer_id: req.user!.id,
       idempotency_key: idempotencyKey,
       ...req.body,
     });
-    res.status(201).json({ order });
+    res.status(result.replayed ? 200 : 201).json({ order: result.order });
   }),
 );
 
@@ -171,10 +184,7 @@ router.post(
   requireStorefrontCustomer,
   validate(checkoutSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const idempotencyKey = (
-      (req.headers['idempotency-key'] as string | undefined) ||
-      (req.headers['x-idempotency-key'] as string | undefined)
-    )?.trim();
+    const idempotencyKey = readIdempotencyKey(req);
 
     if (!idempotencyKey) {
       res.status(400).json({
@@ -186,19 +196,23 @@ router.post(
       return;
     }
 
-    const existing = await orderService.getByIdempotencyKey(idempotencyKey);
+    const existing = await orderService.getByIdempotencyKey(idempotencyKey, {
+      storefront_customer_id: req.storefrontCustomer!.id,
+      quote_id: req.body.quote_id,
+      payment_gateway: req.body.payment_gateway,
+    });
     if (existing) {
       res.status(200).json({ order: existing });
       return;
     }
 
-    const order = await orderService.checkout({
+    const result = await orderService.checkout({
       storefront_customer_id: req.storefrontCustomer!.id,
       store_id: req.storefrontCustomer!.store_id,
       idempotency_key: idempotencyKey,
       ...req.body,
     });
-    res.status(201).json({ order });
+    res.status(result.replayed ? 200 : 201).json({ order: result.order });
   }),
 );
 
