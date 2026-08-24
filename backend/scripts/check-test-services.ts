@@ -1,3 +1,5 @@
+/* eslint-disable no-console -- this file is a CLI diagnostic command. */
+
 import { Client } from 'pg';
 import IORedis from 'ioredis';
 import { config } from '../src/config';

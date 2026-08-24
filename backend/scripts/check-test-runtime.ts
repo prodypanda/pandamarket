@@ -1,3 +1,5 @@
+/* eslint-disable no-console -- this file is a CLI diagnostic command. */
+
 import fs from 'node:fs';
 import path from 'node:path';
 
