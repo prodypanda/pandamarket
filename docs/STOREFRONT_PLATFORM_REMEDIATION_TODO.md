@@ -156,9 +156,11 @@ This is the canonical execution checklist for the current remediation backlog. O
 
 ### P2-03 — Stable full backend test runs
 
-- [ ] Record the supported Node/Vitest runtime and enforce it in CI.
-- [ ] Investigate worker exits, open handles, database/Redis teardown, and parallel resource pressure.
-- [ ] Add a serial diagnostic command and make the normal CI run deterministic with bounded workers.
+- [x] Record the supported Node/Vitest runtime and enforce it in CI.
+- [x] Investigate worker exits, open handles, database/Redis teardown, and parallel resource pressure.
+- [x] Add a serial diagnostic command and make the normal CI run deterministic with bounded workers.
+
+**P2-03 evidence (2026-08-22):** Backend Vitest is pinned to 2.1.9 and CI enforces the repository Node 20 runtime via `test:runtime`. The default backend runner uses the `forks` pool with two bounded workers, while `test:serial` disables file parallelism and runs one worker for diagnosing shared-resource failures. `test:services` performs bounded PostgreSQL/Redis readiness checks before the suite, and `test:ci` applies migrations before emitting `backend/test-results.xml`. The auth service test now mocks its email queue boundary, and tenant isolation tests provide the current `getSettingsFresh` platform-config contract. With local PostgreSQL/Redis stopped, the preflight fails immediately with actionable service addresses instead of producing cascading connection errors or a 10-second Redis timeout. Full green verification remains a CI acceptance step because this workstation has no running local test services.
 
 ## Commerce and fulfillment completion
 

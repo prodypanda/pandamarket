@@ -108,7 +108,7 @@ unit_tests_backend:
     - name: redis:7.2-alpine
       alias: redis
   script:
-    - cd backend && npm run test
+    - cd backend && npm run test:ci
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     when: always

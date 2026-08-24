@@ -60,6 +60,23 @@
   ```
 - **Pass/Fail Semantics**: Exit code 0 indicates all authentication, SQL query building, tag sanitization, metrics, and security assertions passed.
 
+#### Full backend run and diagnostics
+
+The backend suite is an integration suite: PostgreSQL and Redis must be reachable before it starts. The normal runner uses Vitest's `forks` pool with two bounded workers. It performs a bounded service preflight, so a missing local dependency fails in seconds with the configured host/port instead of producing cascading connection errors or hanging Redis tests.
+
+```bash
+# From the repository root, after starting PostgreSQL and Redis:
+npm run test -w backend
+
+# CI-equivalent run (runtime check, service preflight, migrations, JUnit output):
+npm run test:ci -w backend
+
+# One-worker diagnostic for shared state, open handles, or resource pressure:
+npm run test:serial -w backend
+```
+
+The supported test runtime is Node.js 20 (the repository `.nvmrc` and CI image) with Vitest 2.1.9. `test:runtime` enforces both values before CI executes the suite. Do not point these tests at production databases or queues; use disposable development/CI services.
+
 ---
 
 ## Real-World Application Scenarios (Tier 4)

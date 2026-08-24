@@ -17,9 +17,13 @@
     "worker:payment-reconciliation": "tsx src/workers/payment-reconciliation-runner.ts",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
-    "test": "vitest run",
+    "test": "npm run test:services && vitest run",
+    "test:ci": "npm run test:runtime && npm run test:services && npm run migrate && vitest run --reporter=default --reporter=junit --outputFile.junit=test-results.xml",
+    "test:serial": "npm run test:services && vitest run --pool=forks --no-file-parallelism --maxWorkers=1 --minWorkers=1 --reporter=verbose",
+    "test:runtime": "tsx scripts/check-test-runtime.ts",
+    "test:services": "tsx scripts/check-test-services.ts",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "npm run test:services && vitest run --coverage",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -64,12 +68,12 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitest/coverage-v8": "^2.0.5",
+    "@vitest/coverage-v8": "2.1.9",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "supertest": "^7.0.0",
     "tsx": "^4.17.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "2.1.9"
   }
 }

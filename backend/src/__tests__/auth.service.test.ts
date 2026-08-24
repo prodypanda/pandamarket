@@ -27,6 +27,15 @@ vi.mock('../db/redis', () => ({
   withRedisTimeout: vi.fn(async (promise: Promise<unknown>) => promise),
 }));
 
+// The service test verifies the reset-token contract, not BullMQ connectivity.
+// Keep the email side effect in-process so an unavailable Redis cannot leave
+// this unit test waiting for a queue connection.
+vi.mock('../queues/email-queue', () => ({
+  emailQueue: {
+    add: vi.fn().mockResolvedValue({ id: 'test-password-reset-job' }),
+  },
+}));
+
 vi.mock('../utils/crypto', () => ({
   pdId: vi.fn(() => 'test-user-id'),
   sha256: vi.fn((input: string) => `sha256_${input}`),

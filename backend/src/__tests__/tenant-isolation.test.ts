@@ -51,6 +51,9 @@ vi.mock('../services/platform-config.service', () => ({
     getSettings: vi.fn().mockResolvedValue({
       shipping_enabled: false,
     }),
+    getSettingsFresh: vi.fn().mockResolvedValue({
+      shipping_enabled: false,
+    }),
   },
 }));
 
