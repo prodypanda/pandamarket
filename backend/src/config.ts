@@ -213,14 +213,28 @@ if (config.env === 'production') {
       );
     }
   }
-  const warnIfDefault = (name: string, value: string, devDefault: string) => {
-    if (value === devDefault) {
-      console.warn(`[config] WARNING: ${name} is using the public sandbox default in production.`);
+  // Payment gateways must never run silently on public sandbox credentials in
+  // production: webhook HMACs would be forgeable by anyone who reads the repo.
+  // Boot fails unless PD_ALLOW_SANDBOX_PAYMENTS=true is explicitly set, so a
+  // staging environment can keep using sandbox gateways deliberately.
+  const allowSandboxPayments = asBool('PD_ALLOW_SANDBOX_PAYMENTS', false);
+  const assertNotSandboxDefault = (name: string, value: string, sentinel: string) => {
+    if (value !== sentinel) return;
+    if (allowSandboxPayments) {
+      console.warn(
+        `[config] WARNING: ${name} is using the public sandbox default in production (PD_ALLOW_SANDBOX_PAYMENTS=true).`,
+      );
+      return;
     }
+    throw new Error(
+      `[config] Refusing to start in production: ${name} is still the public sandbox default ('${sentinel}'). ` +
+        `Set a real credential, or explicitly set PD_ALLOW_SANDBOX_PAYMENTS=true to accept sandbox payment gateways.`,
+    );
   };
-  warnIfDefault('PD_FLOUCI_APP_TOKEN', config.flouci.appToken, 'sandbox_token');
-  warnIfDefault('PD_FLOUCI_APP_SECRET', config.flouci.appSecret, 'sandbox_secret');
-  warnIfDefault('PD_KONNECT_API_KEY', config.konnect.apiKey, 'sandbox_key');
+  assertNotSandboxDefault('PD_FLOUCI_APP_TOKEN', config.flouci.appToken, 'sandbox_token');
+  assertNotSandboxDefault('PD_FLOUCI_APP_SECRET', config.flouci.appSecret, 'sandbox_secret');
+  assertNotSandboxDefault('PD_KONNECT_API_KEY', config.konnect.apiKey, 'sandbox_key');
+  assertNotSandboxDefault('PD_KONNECT_RECEIVER_WALLET', config.konnect.receiverWallet, 'sandbox_wallet');
 }
 
 export type AppConfig = typeof config;

@@ -158,7 +158,12 @@ function sanitizeInlineStyles(html: string): string {
  * Allows a generous set of tags/attributes for page builder output
  * while stripping dangerous elements (script, event handlers, etc.).
  */
-function sanitizeHtml(html: string): string {
+/**
+ * Sanitize untrusted rich HTML for safe rendering via dangerouslySetInnerHTML.
+ * Exported so the Platform CMS write path (platform-cms.service) reuses the
+ * exact same sanitization as the store page builder (audit P1-5).
+ */
+export function sanitizeHtml(html: string): string {
   if (!html) return '';
   // Strip <script> tags and their content
   let clean = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
@@ -184,8 +189,9 @@ function sanitizeHtml(html: string): string {
 /**
  * Sanitize CSS to prevent CSS-based attacks.
  * Strips @import, expression(), url() with javascript:, and behavior properties.
+ * Exported alongside sanitizeHtml for the Platform CMS write path (audit P1-5).
  */
-function sanitizeCss(css: string): string {
+export function sanitizeCss(css: string): string {
   if (!css) return '';
   let clean = css;
   clean = clean.replace(/\/\*[\s\S]*?\*\//g, '');

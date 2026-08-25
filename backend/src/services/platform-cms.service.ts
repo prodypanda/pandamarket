@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import { getPool } from '../db/pool';
-import { v4 as uuidv4 } from 'uuid';
+import { pdId } from '../utils/crypto';
+// Audit P1-5: reuse the store page-builder sanitizers — do not write new ones.
+import { sanitizeCss, sanitizeHtml } from './page-builder.service';
 
 export interface PlatformPage {
   id: string;
@@ -54,19 +56,20 @@ export class PlatformCmsService {
   }
 
   async createPage(data: Partial<PlatformPage>): Promise<PlatformPage> {
-    const id = uuidv4();
+    // Audit P1-7: use the schema-standard pd_<type>_<nanoid> id shape.
+    const id = pdId('page');
     const res = await this.pool.query(
-      `INSERT INTO pd_platform_page 
-        (id, slug, title, builder_data, html, css, is_published, show_in_footer, show_in_header, sort_order) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      `INSERT INTO pd_platform_page
+        (id, slug, title, builder_data, html, css, is_published, show_in_footer, show_in_header, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         id,
         data.slug,
         data.title,
         data.builder_data || {},
-        data.html || '',
-        data.css || '',
+        sanitizeHtml(data.html || ''),
+        sanitizeCss(data.css || ''),
         data.is_published || false,
         data.show_in_footer || false,
         data.show_in_header || false,
@@ -77,28 +80,39 @@ export class PlatformCmsService {
   }
 
   async updatePage(id: string, data: Partial<PlatformPage>): Promise<PlatformPage> {
-    // Build dynamic update query
-    const updates: string[] = [];
-    const values: any[] = [];
-    let i = 1;
-
-    for (const [key, value] of Object.entries(data)) {
-      if (['slug', 'title', 'builder_data', 'html', 'css', 'is_published', 'show_in_footer', 'show_in_header', 'sort_order'].includes(key)) {
-        updates.push(`${key} = $${i}`);
-        values.push(value);
-        i++;
-      }
-    }
-
-    if (updates.length === 0) {
+    // Audit P1-7: static SET list with COALESCE — no identifier is ever built
+    // by string concatenation from caller-influenced keys. Sanitize rich
+    // content on write (audit P1-5).
+    const res = await this.pool.query(
+      `UPDATE pd_platform_page SET
+         slug           = COALESCE($2, slug),
+         title          = COALESCE($3, title),
+         builder_data   = COALESCE($4, builder_data),
+         html           = COALESCE($5, html),
+         css            = COALESCE($6, css),
+         is_published   = COALESCE($7, is_published),
+         show_in_footer = COALESCE($8, show_in_footer),
+         show_in_header = COALESCE($9, show_in_header),
+         sort_order     = COALESCE($10, sort_order),
+         updated_at     = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [
+        id,
+        data.slug ?? null,
+        data.title ?? null,
+        data.builder_data ?? null,
+        data.html === undefined ? null : sanitizeHtml(data.html),
+        data.css === undefined ? null : sanitizeCss(data.css),
+        data.is_published ?? null,
+        data.show_in_footer ?? null,
+        data.show_in_header ?? null,
+        data.sort_order ?? null,
+      ]
+    );
+    if (!res.rows[0]) {
       return this.getPage(id) as Promise<PlatformPage>;
     }
-
-    values.push(id);
-    const res = await this.pool.query(
-      `UPDATE pd_platform_page SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`,
-      values
-    );
     return res.rows[0];
   }
 

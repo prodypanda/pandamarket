@@ -129,7 +129,9 @@ export class SearchService {
 
     if (searchQuery.trim()) {
       params.push(`%${searchQuery.trim()}%`);
-      sql += ` AND (title ILIKE $${params.length} OR description ILIKE $${params.length} OR category ILIKE $${params.length} OR $${params.length} = ANY(tags))`;
+      // tags is jsonb — cast to text for ILIKE (audit P1-8: `$n = ANY(tags)`
+      // throws 42809 on every invocation against the live schema).
+      sql += ` AND (title ILIKE $${params.length} OR description ILIKE $${params.length} OR category ILIKE $${params.length} OR tags::text ILIKE $${params.length})`;
     }
 
     // Get count

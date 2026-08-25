@@ -69,6 +69,7 @@ import { startNotificationBatchWorker } from './workers/notification-batch.worke
 import { startDailyDigestWorker, scheduleDailyDigestCron } from './workers/daily-digest.worker';
 import { startPaymentReconciliationWorker } from './workers/payment-reconciliation.worker';
 import { startShipmentReconciliationWorker } from './workers/shipment-reconciliation.worker';
+import { outboxWorker } from './workers/outbox.worker';
 import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { schedulePaymentReconciliationSweep } from './queues/payment-reconciliation-queue';
@@ -513,8 +514,13 @@ async function bootstrap() {
 
       const shutdownWorkers = async () => {
         logger.info('Shutting down in-process background workers...');
+        outboxWorker.stop();
         await Promise.all(workers.map((w) => w.close().catch(() => {})));
       };
+
+      // Audit P1-11: the outbox worker was fully built and tested but never
+      // started, leaving every pd_outbox_event stuck in 'pending' forever.
+      outboxWorker.start();
 
       process.on('SIGTERM', async () => {
         await shutdownWorkers();
@@ -522,7 +528,7 @@ async function bootstrap() {
       process.on('SIGINT', async () => {
         await shutdownWorkers();
       });
-      logger.info('🤖 All 10 background workers successfully started in-process.');
+      logger.info('🤖 All background workers successfully started in-process (10 BullMQ workers + outbox poller).');
 
       // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
       // Non-blocking: don't let Redis queue scheduling hang the bootstrap.

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SectionHeader } from '@/components/admin/SectionHeader';
+// Audit P1-9: mutating calls must go through the CSRF helper like everywhere else.
+import { fetchWithCsrf } from '@/lib/api';
 
 interface PlatformPage {
   id: string;
@@ -37,7 +39,7 @@ export default function CmsPagesPage() {
       if (!title) return;
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       
-      const res = await fetch('/api/pd/marketplace/cms', {
+      const res = await fetchWithCsrf('/api/pd/marketplace/cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, slug, is_published: false })
@@ -56,7 +58,7 @@ export default function CmsPagesPage() {
   const deletePage = async (id: string) => {
     if (!confirm('Are you sure you want to delete this page?')) return;
     try {
-      await fetch(`/api/pd/marketplace/cms/${id}`, { method: 'DELETE' });
+      await fetchWithCsrf(`/api/pd/marketplace/cms/${id}`, { method: 'DELETE' });
       setPages(pages.filter(p => p.id !== id));
     } catch (e) {
       alert('Error deleting page');

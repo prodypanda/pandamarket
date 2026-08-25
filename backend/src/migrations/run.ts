@@ -66,6 +66,41 @@ export function getMigrationFiles(migrationsDir = resolveMigrationsDir()): strin
     .sort();
 }
 
+/**
+ * Audit P1-12 preflight: detect duplicate numeric prefixes (e.g. two files
+ * starting with "066_") and suspiciously small placeholder files.
+ *
+ * Existing duplicates are reported loudly but do NOT abort: they are already
+ * recorded in pd_migrations on live databases, and aborting would break every
+ * deploy. The warning exists so the next contributor renumbers instead of
+ * adding a third collision. New collisions only ever cause mis-ordered
+ * application on FRESH databases, where alphabetical order decides.
+ */
+export function assertMigrationHygiene(files: string[], migrationsDir: string): void {
+  const byPrefix = new Map<string, string[]>();
+  for (const file of files) {
+    const prefix = file.split('_')[0];
+    byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), file]);
+  }
+  for (const [prefix, prefixed] of byPrefix.entries()) {
+    if (prefixed.length > 1) {
+      logger.warn(
+        { prefix, files: prefixed },
+        `Duplicate migration prefix "${prefix}" — renumber one of these files; ordering is ambiguous on fresh databases.`,
+      );
+    }
+  }
+  for (const file of files) {
+    try {
+      if (fs.statSync(path.join(migrationsDir, file)).size < 20) {
+        logger.warn({ file }, 'Suspiciously small migration — is this a forgotten placeholder?');
+      }
+    } catch {
+      // stat failure is handled later by readFileSync in applyMigration
+    }
+  }
+}
+
 export async function run(): Promise<void> {
   const dir = resolveMigrationsDir();
   logger.info({ dir }, 'Running migrations…');
@@ -79,6 +114,7 @@ export async function run(): Promise<void> {
   const applied = await getApplied();
 
   const files = getMigrationFiles(dir);
+  assertMigrationHygiene(files, dir);
 
   let count = 0;
   for (const file of files) {
