@@ -5,7 +5,12 @@ import { Metadata } from 'next';
 // page builder — never raw dangerouslySetInnerHTML for CMS content.
 import { SafePageRenderer } from '@/components/page-builder/SafePageRenderer';
 
-export const revalidate = 0; // Or standard revalidation if we implement caching
+export const revalidate = 0; // Preview tokens must always reflect live content
+
+interface HubCmsPageProps {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
 async function getPageBySlug(slug: string) {
   try {
@@ -25,7 +30,26 @@ async function getPageBySlug(slug: string) {
   }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+/**
+ * Audit P1-6: resolve draft/unpublished content via a short-lived signed
+ * preview token minted by POST /marketplace/cms/:id/preview.
+ */
+async function getPageBySlugForPreview(slug: string, token: string) {
+  try {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
+    const res = await fetch(
+      `${backendUrl}/api/pd/marketplace/cms/slug/${slug}/preview?pb_preview=${encodeURIComponent(token)}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: HubCmsPageProps): Promise<Metadata> {
   const { slug } = await params;
   const page = await getPageBySlug(slug);
   if (!page || !page.is_published) {
@@ -43,12 +67,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function HubCmsPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function HubCmsPage({ params, searchParams }: HubCmsPageProps) {
   const { slug } = await params;
-  const page = await getPageBySlug(slug);
+  const resolvedSearchParams = await searchParams;
+  const previewTokenRaw = resolvedSearchParams.pb_preview;
+  const previewToken = Array.isArray(previewTokenRaw) ? previewTokenRaw[0] : previewTokenRaw;
 
-  if (!page || !page.is_published) {
-    notFound();
+  let page = null;
+  if (previewToken) {
+    page = await getPageBySlugForPreview(slug, previewToken);
+    if (!page) notFound();
+  } else {
+    page = await getPageBySlug(slug);
+    if (!page || !page.is_published) notFound();
   }
 
   // Same rendering logic as Vendor PageBuilder pages — sanitized on write

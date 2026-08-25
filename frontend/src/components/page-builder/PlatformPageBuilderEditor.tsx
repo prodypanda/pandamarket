@@ -2250,9 +2250,9 @@ export function PageBuilderEditor({
       if (!res.ok || !data?.token || !data.page?.slug) {
         throw new Error(data?.error?.message || data?.message || t('dashboardPages.pageBuilder.editor.errorGeneratePreview'));
       }
-      const previewPath = data.page.is_homepage
-        ? `/store/${encodeURIComponent(host)}`
-        : `/store/${encodeURIComponent(host)}/pages/${encodeURIComponent(data.page.slug)}`;
+      // Audit P1-6: platform CMS pages live on the Hub, not on a storefront.
+      // The cloned store-editor path (/store/<host>/pages/<slug>) 404'd here.
+      const previewPath = `/hub/pages/${encodeURIComponent(data.page.slug)}`;
       const previewUrl = `${previewPath}?pb_preview=${encodeURIComponent(data.token)}`;
       if (previewWindow) {
         previewWindow.opener = null;

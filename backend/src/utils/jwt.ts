@@ -62,6 +62,38 @@ export function signPageBuilderPreviewToken(
   return jwt.sign({ ...payload, type: 'page_builder_preview' }, config.jwt.secret, options);
 }
 
+export interface PlatformPagePreviewTokenPayload {
+  sub: string;
+  page_id: string;
+  slug: string;
+  type: 'platform_page_preview';
+  iat?: number;
+  exp?: number;
+}
+
+export function signPlatformPagePreviewToken(
+  payload: Omit<PlatformPagePreviewTokenPayload, 'iat' | 'exp' | 'type'>,
+): string {
+  const options: SignOptions = { expiresIn: '15m' };
+  return jwt.sign({ ...payload, type: 'platform_page_preview' }, config.jwt.secret, options);
+}
+
+export function verifyPlatformPagePreviewToken(token: string): PlatformPagePreviewTokenPayload {
+  try {
+    const payload = jwt.verify(token, config.jwt.secret) as PlatformPagePreviewTokenPayload;
+    if (payload.type !== 'platform_page_preview' || !payload.sub || !payload.page_id || !payload.slug) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid platform page preview token');
+    }
+    return payload;
+  } catch (err) {
+    if (err instanceof PdAuthenticationError) throw err;
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_EXPIRED, 'Platform page preview token expired');
+    }
+    throw new PdAuthenticationError(PdErrorCode.AUTH_TOKEN_INVALID, 'Invalid platform page preview token');
+  }
+}
+
 export function signMockFileToken(
   payload: Omit<MockFileTokenPayload, 'iat' | 'exp'>,
   expiresInSeconds = 900,

@@ -58,6 +58,67 @@ router.get(
   })
 );
 
+// GET /api/pd/marketplace/cms/slug/:slug/preview?pb_preview=<token>
+// Audit P1-6: resolves draft/unpublished content for the platform page
+// builder preview window (short-lived signed token, slug-bound).
+router.get(
+  '/slug/:slug/preview',
+  asyncHandler(async (req: Request, res: Response) => {
+    const token = (req.query.pb_preview as string) || '';
+    if (!token) {
+      res.status(401).json({ error: 'Missing preview token' });
+      return;
+    }
+    const page = await platformCmsService.getPageBySlugForPreview(req.params.slug, token);
+    if (!page) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    res.json({ data: page });
+  })
+);
+
+// GET /api/pd/marketplace/cms/:id/versions — version history (audit P1-6)
+router.get(
+  '/:id/versions',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const versions = await platformCmsService.listVersions(req.params.id);
+    res.json({ data: versions, count: versions.length });
+  })
+);
+
+// POST /api/pd/marketplace/cms/:id/versions/:versionId/restore — restore (audit P1-6)
+router.post(
+  '/:id/versions/:versionId/restore',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const page = await platformCmsService.restoreVersion(req.params.id, req.params.versionId);
+    if (!page) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+    res.json({ page });
+  })
+);
+
+// POST /api/pd/marketplace/cms/:id/preview — mint a short-lived preview token (audit P1-6)
+router.post(
+  '/:id/preview',
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req: Request, res: Response) => {
+    const preview = await platformCmsService.createPagePreviewToken(req.params.id, req.user!.id);
+    if (!preview) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    res.json(preview);
+  })
+);
+
 // GET /api/pd/marketplace/cms/:id
 router.get(
   '/:id',
@@ -92,7 +153,7 @@ router.put(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     const data = updatePageSchema.parse(req.body);
-    const page = await platformCmsService.updatePage(req.params.id, data);
+    const page = await platformCmsService.updatePage(req.params.id, data, req.user!.id);
     res.json({ data: page });
   })
 );
