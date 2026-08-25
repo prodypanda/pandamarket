@@ -101,6 +101,10 @@ export function assertMigrationHygiene(files: string[], migrationsDir: string): 
   }
 }
 
+// Audit P2-18: session-level advisory lock key. Prevents two instances
+// booting simultaneously from racing to apply the same pending migrations.
+const MIGRATION_LOCK_KEY = 827364152;
+
 export async function run(): Promise<void> {
   const dir = resolveMigrationsDir();
   logger.info({ dir }, 'Running migrations…');
@@ -110,23 +114,35 @@ export async function run(): Promise<void> {
     return;
   }
 
-  await ensureMigrationsTable();
-  const applied = await getApplied();
+  const client = await getPool().connect();
+  try {
+    // Block (rather than skip) so a second boot waits for the first to finish,
+    // then sees a fully-applied schema instead of a half-migrated one.
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+    try {
+      await ensureMigrationsTable();
+      const applied = await getApplied();
 
-  const files = getMigrationFiles(dir);
-  assertMigrationHygiene(files, dir);
+      const files = getMigrationFiles(dir);
+      assertMigrationHygiene(files, dir);
 
-  let count = 0;
-  for (const file of files) {
-    if (applied.has(file)) continue;
-    await applyMigration(file, dir);
-    count++;
-  }
+      let count = 0;
+      for (const file of files) {
+        if (applied.has(file)) continue;
+        await applyMigration(file, dir);
+        count++;
+      }
 
-  if (count === 0) {
-    logger.info('Database is up to date — no migrations to apply.');
-  } else {
-    logger.info({ count }, `Applied ${count} migration(s).`);
+      if (count === 0) {
+        logger.info('Database is up to date — no migrations to apply.');
+      } else {
+        logger.info({ count }, `Applied ${count} migration(s).`);
+      }
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]);
+    }
+  } finally {
+    client.release();
   }
 }
 

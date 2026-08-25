@@ -38,6 +38,11 @@ vi.mock('../middlewares', () => ({
   },
   validate: () => (req: any, _res: any, next: any) => next(),
 }));
+// Audit P2-22: keep tests hermetic — never construct the Redis-backed limiter
+// store (it would attempt a live Redis connection).
+vi.mock('../middlewares/rate-limit-store', () => ({
+  redisRateLimitStore: () => undefined,
+}));
 
 import cartRouter from '../api/cart.route';
 import { cartService } from '../services/cart.service';

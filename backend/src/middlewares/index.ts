@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { verifyAccessToken } from '../utils/jwt';
 import { logger, childLogger } from '../utils/logger';
+import { redisRateLimitStore } from './rate-limit-store';
 import {
   PdAuthenticationError,
   PdError,
@@ -301,6 +302,11 @@ export function validate<T>(schema: ZodSchema<T>, source: 'body' | 'query' | 'pa
 // =====================================================
 
 /**
+ * Audit P2-22: all limiters share the Redis-backed store (see
+ * ./rate-limit-store.ts) so counts survive restarts and span instances.
+ */
+
+/**
  * Strict rate limit for sensitive auth endpoints (login, register, forgot).
  */
 export const authRateLimit = rateLimit({
@@ -308,6 +314,7 @@ export const authRateLimit = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('pd_rl_auth:'),
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many requests' } },
 });
 
@@ -319,6 +326,7 @@ export const adsEventRateLimit = rateLimit({
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('pd_rl_adsev:'),
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising events' } },
 });
 
@@ -327,6 +335,7 @@ export const adsDeliveryRateLimit = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('pd_rl_adsdl:'),
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising requests' } },
 });
 
@@ -335,6 +344,7 @@ export const apiRateLimit = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('pd_rl_api:'),
   keyGenerator: (req) => {
     if (req.user?.id) return `u:${req.user.id}`;
     if (req.apiKey?.id) return `k:${req.apiKey.id}`;

@@ -22,6 +22,7 @@ import {
 import { cartService } from '../services/cart.service';
 import { checkoutQuoteService } from '../services/checkout-quote.service';
 import { paymentCapabilityService } from '../services/payment-capability.service';
+import { redisRateLimitStore } from '../middlewares/rate-limit-store';
 
 const router = Router();
 
@@ -100,6 +101,7 @@ const gamifiedSpinRateLimit = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('pd_rl_spin:'),
   message: {
     error: {
       code: 'PD_RATE_LIMITED',

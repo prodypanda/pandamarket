@@ -95,6 +95,12 @@ async function bootstrap() {
       const { run: runMigrations } = await import('./migrations/run');
       await runMigrations();
     } catch (migErr) {
+      // Audit P2-18: a failed migration must not leave a half-migrated schema
+      // serving traffic. Fail hard in production; keep dev resilient.
+      if (config.env === 'production') {
+        logger.error({ err: migErr }, 'Automatic migration failed — refusing to start in production.');
+        process.exit(1);
+      }
       logger.warn({ err: migErr }, 'Automatic migration runner encountered an issue during bootstrap, continuing server startup');
     }
   } catch (err) {
