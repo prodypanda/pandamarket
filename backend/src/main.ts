@@ -15,7 +15,7 @@ import { metricsMiddleware, metricsRouter, logMetricsStatus } from './utils/metr
 
 import fs from 'fs';
 import { getPool, query } from './db/pool';
-import { getRedis } from './db/redis';
+import { getRedis, withRedisTimeout } from './db/redis';
 import { imageVariantService } from './services/image-variant.service';
 
 // Routers
@@ -484,34 +484,41 @@ async function bootstrap() {
 
   // Admin notes reminder scheduler — poll due reminders every 2 minutes
   // and emit in-app + realtime notifications for admins.
-  const handledReminderIds = new Set<string>();
+  //
+  // Audit P2-17: dedupe moved from a process-local Set (clear()ed wholesale at
+  // 1000 entries, causing already-handled reminders to re-fire) to Redis
+  // SET-NX-EX keys with a 24h TTL. The sweep itself is now one JOIN query
+  // instead of an N+1 per-admin loop.
+  const REMINDER_DEDUPE_TTL_SECONDS = 24 * 60 * 60;
+  const acquireReminderLock = async (adminId: string, noteId: string): Promise<boolean> => {
+    try {
+      const res = await withRedisTimeout(
+        getRedis().set(`pd_note_reminder:${adminId}:${noteId}`, '1', 'EX', REMINDER_DEDUPE_TTL_SECONDS, 'NX'),
+      );
+      return res === 'OK';
+    } catch {
+      // Fail-open: Redis unavailable → still deliver the reminder (a duplicate
+      // during an outage is preferable to silently dropping it).
+      return true;
+    }
+  };
   const reminderTimer = setInterval(
     () => {
       (async () => {
         try {
-          const res = await query('SELECT id FROM pd_user WHERE role IN ($1, $2, $3)', [
-            'admin',
-            'superadmin',
-            'super_admin',
-          ]);
-          for (const admin of res.rows as Array<{ id: string }>) {
-            const due = await adminNotesService.fetchDueReminders(admin.id, 2 / 60);
-            for (const note of due) {
-              const key = `${admin.id}:${note.id}`;
-              if (handledReminderIds.has(key)) continue;
-              handledReminderIds.add(key);
-              await notificationService
-                .create({
-                  user_id: admin.id,
-                  type: 'admin_note_reminder',
-                  title: 'Reminder due',
-                  message: note.title || 'A note reminder is due',
-                  data: { note_id: note.id, reminder_at: note.reminder_at },
-                })
-                .catch(() => undefined);
-            }
+          const due = await adminNotesService.fetchDueRemindersForAllAdmins(2 / 60);
+          for (const note of due) {
+            if (!(await acquireReminderLock(note.admin_id, note.id))) continue;
+            await notificationService
+              .create({
+                user_id: note.admin_id,
+                type: 'admin_note_reminder',
+                title: 'Reminder due',
+                message: note.title || 'A note reminder is due',
+                data: { note_id: note.id, reminder_at: note.reminder_at },
+              })
+              .catch(() => undefined);
           }
-          if (handledReminderIds.size > 1000) handledReminderIds.clear();
         } catch (err) {
           logger.warn({ err }, 'Admin notes reminder sweep failed');
         }

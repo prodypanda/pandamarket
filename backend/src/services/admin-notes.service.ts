@@ -796,6 +796,28 @@ class AdminNotesService {
     return result.rows;
   }
 
+  /**
+   * Audit P2-17: single-JOIN variant of the reminder sweep — returns every due
+   * reminder for ALL admin users in one query, replacing the previous N+1
+   * pattern (one SELECT of admins, then one fetchDueReminders per admin).
+   */
+  async fetchDueRemindersForAllAdmins(sinceHoursAgo = 1): Promise<AdminNote[]> {
+    const result = await query<AdminNote>(
+      `SELECT n.*
+       FROM admin_notes n
+       JOIN pd_user u ON u.id = n.admin_id
+       WHERE u.role IN ('admin', 'superadmin', 'super_admin')
+         AND n.status = 'active'
+         AND n.is_completed = FALSE
+         AND n.reminder_at IS NOT NULL
+         AND n.reminder_at < NOW()
+         AND n.reminder_at >= (NOW() - ($1::numeric * INTERVAL '1 hour'))
+       ORDER BY n.reminder_at ASC`,
+      [sinceHoursAgo],
+    );
+    return result.rows;
+  }
+
   // ─── FOLDERS & SORTING ─────────────────────────────────────────────
 
   async createFolder(adminId: string, name: string, color?: string): Promise<AdminNoteFolder> {
