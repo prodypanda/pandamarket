@@ -118,6 +118,23 @@ async function bootstrap() {
 
   app.set('trust proxy', 1);
 
+  // Audit P2-21: config-derived CSP sources can be empty, relative (S3 public
+  // base URL defaults to a path), or localhost defaults — all invalid or wrong
+  // in a production header. Filter them out instead of emitting broken CSP.
+  const cspSource = (src: string | undefined): string | null => {
+    if (!src) return null;
+    if (/^https?:\/\//i.test(src)) {
+      if (
+        config.env === 'production' &&
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(src)
+      ) {
+        return null;
+      }
+      return src;
+    }
+    return null; // relative paths are not valid CSP sources
+  };
+
   // Sentry request handler (must be first middleware)
   app.use(sentryRequestHandler());
 
@@ -138,18 +155,18 @@ async function bootstrap() {
             "'self'",
             'data:',
             'blob:',
-            config.s3.publicBaseUrl,
+            cspSource(config.s3.publicBaseUrl),
             '*.r2.cloudflarestorage.com',
             'https://picsum.photos',
-          ],
+          ].filter((s): s is string => Boolean(s)),
           connectSrc: [
             "'self'",
-            config.meili.host,
-            config.s3.endpoint,
+            cspSource(config.meili.host),
+            cspSource(config.s3.endpoint),
             'https://developers.flouci.com',
             'https://api.konnect.network',
             'https://api.preprod.konnect.network',
-          ],
+          ].filter((s): s is string => Boolean(s)),
           frameSrc: ["'self'", 'https://flouci.com', 'https://pay.konnect.network'],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
@@ -173,13 +190,23 @@ async function bootstrap() {
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
 
-        // Always allow localhost / 127.0.0.1 on any port
-        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        // Allow localhost / 127.0.0.1 on any port — development only
+        // (audit P2-14: production CORS previously accepted any localhost).
+        if (
+          config.env !== 'production' &&
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
           return callback(null, true);
         }
 
-        // Allow platform domains (Render, Vercel, PandaMarket, garbage.team)
-        if (/^https?:\/\/[a-zA-Z0-9-.]*\.(onrender\.com|vercel\.app|pandamarket\.tn|garbage\.team)(:\d+)?$/.test(origin)) {
+        // Platform domains. Audit P2-14: in production, drop the wildcard
+        // *.vercel.app / *.onrender.com namespaces (anyone can register a
+        // subdomain there); they remain available outside production.
+        const platformHosts =
+          config.env === 'production'
+            ? '(pandamarket\\.tn|garbage\\.team)'
+            : '(onrender\\.com|vercel\\.app|pandamarket\\.tn|garbage\\.team)';
+        if (new RegExp(`^https?:\\/\\/[a-zA-Z0-9-.]*\\.${platformHosts}(:\\d+)?$`).test(origin)) {
           return callback(null, true);
         }
 
@@ -358,21 +385,20 @@ async function bootstrap() {
       allHealthy = false;
     }
 
-    // Meilisearch
+    // Meilisearch — optional dependency (audit P2-13): search has a working
+    // PostgreSQL fallback, so a missing/unconfigured Meili is 'degraded',
+    // never a readiness failure. This also keeps /ready meaningful while
+    // Meilisearch is intentionally unconfigured.
     try {
       const start = Date.now();
       const meiliRes = await fetch(`${config.meili.host}/health`, {
         signal: AbortSignal.timeout(5000),
       });
-      if (meiliRes.ok) {
-        checks.meilisearch = { status: 'ok', latency_ms: Date.now() - start };
-      } else {
-        checks.meilisearch = { status: 'error' };
-        allHealthy = false;
-      }
+      checks.meilisearch = meiliRes.ok
+        ? { status: 'ok', latency_ms: Date.now() - start }
+        : { status: 'degraded' };
     } catch {
-      checks.meilisearch = { status: 'error' };
-      allHealthy = false;
+      checks.meilisearch = { status: 'degraded' };
     }
 
     // MinIO / S3

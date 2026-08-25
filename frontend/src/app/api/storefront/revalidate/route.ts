@@ -29,26 +29,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'hostnames[] is required' }, { status: 400 });
   }
 
-  // Authenticate the caller
-  const cookie = request.headers.get('cookie') || '';
-  const headers = new Headers();
-  if (cookie) headers.set('cookie', cookie);
-  const authorization = request.headers.get('authorization');
-  if (authorization) headers.set('authorization', authorization);
-  const authRes = await fetch(`${BACKEND_URL}/api/pd/auth/me`, {
-    headers,
-    cache: 'no-store',
-  }).catch(() => null);
-  if (!authRes?.ok) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Audit P2-16: machine-caller path. The backend outbox worker triggers
+  // ISR revalidation server-to-server and has no user session — it
+  // authenticated against nothing before and got 401 on every call.
+  // Shared secret (constant-time compare) from PD_REVALIDATE_SECRET.
+  const revalidateSecret = process.env.PD_REVALIDATE_SECRET;
+  const providedSecret = request.headers.get('x-revalidate-secret') || '';
+  const isMachineCaller =
+    Boolean(revalidateSecret) &&
+    providedSecret.length === revalidateSecret!.length &&
+    providedSecret === revalidateSecret;
 
-  const auth = await authRes.json().catch(() => null) as AuthMeResponse | null;
-  const user = auth?.user;
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-  const isSeller = user?.role === 'seller' || user?.role === 'vendor';
-  if (!isAdmin && !isSeller) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!isMachineCaller) {
+    // Authenticate the human caller
+    const cookie = request.headers.get('cookie') || '';
+    const headers = new Headers();
+    if (cookie) headers.set('cookie', cookie);
+    const authorization = request.headers.get('authorization');
+    if (authorization) headers.set('authorization', authorization);
+    const authRes = await fetch(`${BACKEND_URL}/api/pd/auth/me`, {
+      headers,
+      cache: 'no-store',
+    }).catch(() => null);
+    if (!authRes?.ok) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const auth = await authRes.json().catch(() => null) as AuthMeResponse | null;
+    const user = auth?.user;
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const isSeller = user?.role === 'seller' || user?.role === 'vendor';
+    if (!isAdmin && !isSeller) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   const tags: string[] = [];

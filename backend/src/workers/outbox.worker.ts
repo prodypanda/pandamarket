@@ -137,9 +137,15 @@ export class OutboxWorker {
   private async revalidateStorefrontHosts(hostnames: string[]): Promise<void> {
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      // Audit P2-16: authenticate as machine caller. Before this header the
+      // revalidate route required a user session and rejected the worker 401.
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (process.env.PD_REVALIDATE_SECRET) {
+        headers['x-revalidate-secret'] = process.env.PD_REVALIDATE_SECRET;
+      }
       await fetch(`${frontendUrl}/api/storefront/revalidate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ hostnames }),
       });
     } catch {
