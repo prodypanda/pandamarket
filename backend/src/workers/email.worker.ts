@@ -618,7 +618,19 @@ export function startEmailWorker(): Worker<EmailJobData> {
       } catch (err) {
         const errMsg = (err as Error).message;
         if (errMsg === 'nodemailer_missing' || errMsg === 'no_smtp_config') {
-          // Graceful degradation: log and succeed
+          if (config.env === 'production') {
+            // Audit P1-10/M5: never report success for an email that was not
+            // delivered. Throwing makes BullMQ retry with backoff and marks
+            // the job 'failed', where monitoring can see it — instead of the
+            // previous silent console-log-and-succeed path that made password
+            // resets vanish without a trace.
+            logger.error(
+              { to, template },
+              'SMTP not configured in production — email NOT delivered',
+            );
+            throw new Error(`email_not_delivered: ${errMsg}`);
+          }
+          // Graceful degradation in development only: log and succeed
           await consoleTransport.send({
             to,
             from: config.mailFrom,
