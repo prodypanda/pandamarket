@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { PlatformRevenueAnalytics } from '@/types/analytics';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
-import { formatMoney, formatPercent, formatNumber } from '@/lib/analytics-formatters';
+import { formatMoney, formatPercent } from '@/lib/analytics-formatters';
 import {
   fetchTriFoldReconciliation,
   fetchSaaSMRRWaterfall,

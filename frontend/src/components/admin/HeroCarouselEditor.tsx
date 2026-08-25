@@ -2,7 +2,7 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Image as ImageIcon, Sparkles, Link as LinkIcon, Layers, ChevronLeft, ChevronRight, Eye, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Copy, Image as ImageIcon, Sparkles, Link as LinkIcon, Layers, Eye, AlertTriangle, RotateCcw } from 'lucide-react';
 import { MarketplaceAssetPicker } from './MarketplaceAssetPicker';
 
 export interface CarouselSlide {
@@ -260,7 +260,7 @@ export function HeroCarouselEditor({ value, onChange }: HeroCarouselEditorProps)
           <Layers className="mx-auto h-8 w-8 text-slate-300" />
           <p className="mt-2 text-sm font-bold text-slate-700">No Custom Carousel Slides Created</p>
           <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            Click the "Add Carousel Slide" button above to create custom hero banners with custom text, images, and links.
+            Click the &quot;Add Carousel Slide&quot; button above to create custom hero banners with custom text, images, and links.
           </p>
           <button
             type="button"

@@ -10,7 +10,7 @@ import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
 import { LazyBlurImage } from '../ui/LazyBlurImage';
-import { RecentlyViewedRail, isRtlLocale, StarRating, QuickAddToCartButton, StoreInfoBadge } from './home-template-shared';
+import { RecentlyViewedRail, isRtlLocale, StarRating, StoreInfoBadge } from './home-template-shared';
 import { HubProductPagination } from './HubProductPagination';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';

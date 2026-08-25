@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Sparkles, Check, ChevronUp } from 'lucide-react';
+import { ShoppingBag, Check } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 
 export interface StickyProductCartBarProps {

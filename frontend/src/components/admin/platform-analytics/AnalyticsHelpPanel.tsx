@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { HelpCircle, CheckCircle2, AlertCircle, RefreshCw, Database, Shield, Zap, FileText, Layers, Eye } from 'lucide-react';
+import { HelpCircle, RefreshCw, Database, Shield, Zap, Layers, Eye } from 'lucide-react';
 import { getAnalyticsHealth } from '@/lib/admin-platform-analytics';
 import { AnalyticsHealthDTO } from '@/types/analytics';
 
@@ -109,7 +109,7 @@ export function AnalyticsHelpPanel({ isOpen, onClose }: AnalyticsHelpPanelProps)
             <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-1">
               <h4 className="font-bold text-slate-900 dark:text-slate-100">1. Selected Period vs. Current State Metrics</h4>
               <p className="text-slate-600 dark:text-slate-400">
-                Metrics with range labels (e.g. <code>24h</code>, <code>7d</code>, <code>30d</code>) reflect activity strictly within the chosen window compared to the prior period. Metrics marked as "Current State" (e.g. total active vendors or total inventory) show current database snapshot numbers.
+                Metrics with range labels (e.g. <code>24h</code>, <code>7d</code>, <code>30d</code>) reflect activity strictly within the chosen window compared to the prior period. Metrics marked as &quot;Current State&quot; (e.g. total active vendors or total inventory) show current database snapshot numbers.
               </p>
             </div>
 

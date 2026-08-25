@@ -38,7 +38,7 @@ import {
   ReportScheduleDTO,
   ReportFrequency,
 } from '@/types/analytics';
-import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
+import { formatMoney } from '@/lib/analytics-formatters';
 
 interface IntelligenceTabProps {
   currency?: string;

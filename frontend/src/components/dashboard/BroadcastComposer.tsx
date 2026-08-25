@@ -161,7 +161,7 @@ export const BroadcastComposer: React.FC<BroadcastComposerProps> = ({
 
       {totalSubscribers === 0 ? (
         <div className="p-6 text-center rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 text-xs space-y-2">
-          <p>Vous n'avez pas encore d'abonnés pour envoyer une diffusion privée.</p>
+          <p>Vous n&apos;avez pas encore d&apos;abonnés pour envoyer une diffusion privée.</p>
           <p className="text-[11px] text-zinc-400">
             Partagez votre boutique sur vos réseaux sociaux pour attirer vos premiers abonnés !
           </p>

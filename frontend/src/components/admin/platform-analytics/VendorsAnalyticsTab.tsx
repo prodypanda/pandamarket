@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { PlatformVendorAnalytics } from '@/types/analytics';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
-import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
+import { formatNumber } from '@/lib/analytics-formatters';
 
 interface VendorsAnalyticsTabProps {
   data: PlatformVendorAnalytics | null;
@@ -90,13 +90,13 @@ export function VendorsAnalyticsTab({ data, currency = 'TND' }: VendorsAnalytics
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
           <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">
-            Délai Moyen d'Expédition (SLA)
+            Délai Moyen d&apos;Expédition (SLA)
           </span>
           <p className="text-2xl font-black text-slate-900 dark:text-white">
             21.2 heures
           </p>
           <span className="text-xs text-emerald-600 font-bold">
-            Conforme à l'engagement &lt; 24h
+            Conforme à l&apos;engagement &lt; 24h
           </span>
         </div>
 
@@ -108,7 +108,7 @@ export function VendorsAnalyticsTab({ data, currency = 'TND' }: VendorsAnalytics
             {dispute_and_refund_rate?.dispute_rate_pct ?? 0.0}%
           </p>
           <span className="text-xs text-emerald-600 font-bold">
-            Sous le seuil d'alerte de 2.0%
+            Sous le seuil d&apos;alerte de 2.0%
           </span>
         </div>
 
@@ -120,7 +120,7 @@ export function VendorsAnalyticsTab({ data, currency = 'TND' }: VendorsAnalytics
             {formatNumber(totalProducts)} articles
           </p>
           <span className="text-xs text-slate-400 font-normal">
-            Sur l'ensemble des boutiques
+            Sur l&apos;ensemble des boutiques
           </span>
         </div>
 

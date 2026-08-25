@@ -580,7 +580,7 @@ export default function AdminAdsPage() {
                               Store: {c.store_name} {c.owner_email ? `(${c.owner_email})` : ''}
                             </p>
                             <p className="mt-0.5 text-xs text-slate-500 font-medium">
-                              Headline: "{primaryCreative?.title || 'No creative headline'}" · Budget: {money(c.spent_amount)} / {money(c.total_budget)}
+                              Headline: &quot;{primaryCreative?.title || 'No creative headline'}&quot; · Budget: {money(c.spent_amount)} / {money(c.total_budget)}
                             </p>
                           </div>
                         </div>

@@ -2,7 +2,7 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
-import { FileText, ImageIcon, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface FileAsset {
@@ -380,7 +380,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
             </div>
           ) : filteredAssets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-xs font-semibold text-gray-500">
-              No assets found in folder "{selectedFolder}".
+              No assets found in folder &quot;{selectedFolder}&quot;.
             </div>
           ) : (
             <div className="grid max-h-[500px] grid-cols-2 gap-3.5 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">

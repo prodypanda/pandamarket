@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, Loader2, MonitorSmartphone, ShieldAlert, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, Loader2, ShieldAlert, XCircle } from 'lucide-react';
 
 interface AdminSecuritySession {
   id: string;

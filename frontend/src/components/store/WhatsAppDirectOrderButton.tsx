@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MessageSquare, PhoneCall } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 
 interface WhatsAppDirectOrderButtonProps {
   storePhone?: string | null;

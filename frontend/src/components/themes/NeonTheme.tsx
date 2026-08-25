@@ -1,6 +1,5 @@
 'use client';
 
-import { getResizedImageUrl } from '@/lib/image-url';
 import React from 'react';
 import { useStorefrontCatalogFilters } from '../../lib/storefront-catalog-state';
 import { ShoppingBag, Gamepad2, Sparkles, Play, ChevronRight } from 'lucide-react';

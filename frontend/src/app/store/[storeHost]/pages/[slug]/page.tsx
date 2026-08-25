@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { StoreCartIcon } from '../../../../../components/store/StoreCartIcon';
 import { SafePageRenderer } from '../../../../../components/page-builder/SafePageRenderer';
 import { getMarketplaceSettings } from '@/lib/marketplace-settings';
 import { getStoreRouteContext } from '@/lib/store-routing';
@@ -10,8 +9,6 @@ import {
   pageBuilderPageTag,
   pageBuilderStoreTag,
 } from '@/lib/page-builder-cache';
-import { MarketplaceBrand } from '../../../../../components/MarketplaceBrand';
-import { StorefrontSocialLinks } from '../../../../../components/themes/StorefrontSocialLinks';
 import { getStoreThemeLogoSurface, type StoreBranding, type StoreSocialLinks } from '../../../../../components/themes/shared';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '../../../../../lib/themes';
 import { selectLogoForSurface } from '../../../../../lib/public-assets';

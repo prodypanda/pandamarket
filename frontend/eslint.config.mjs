@@ -19,16 +19,19 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/immutability": "off",
 
-      // ── Audit P2-23 tiered gate (2026-08-25) ─────────────────────────────
-      // Correctness rules stay at "error" and BLOCK the CI gate:
-      //   react-hooks/rules-of-hooks, react-hooks/refs, react-hooks/use-memo.
-      // The four rules below are tracked technical debt downgraded to "warn"
-      // so the error-gate is enforceable today. Counts at downgrade time:
-      //   no-explicit-any 351 · no-unescaped-entities 77 ·
-      //   static-components 23 · purity 12 · preserve-manual-memoization 1.
-      // Re-escalate each to "error" as the debt is burned down.
+      // ── Audit P2-23 tiered gate (updated 2026-08-25) ─────────────────────
+      // Correctness rules stay at "error" and BLOCK the CI gate.
+      // react/no-unescaped-entities was re-escalated to error after a
+      // codemod cleared all 77 findings (2026-08-25).
+      //
+      // Remaining tracked debt (counts at last sweep):
+      //   no-explicit-any ~350 · no-unused-vars ~300 (multi-line imports &
+      //   locals — single-line imports cleared) · no-img-element 101 ·
+      //   static-components 23 · purity 12 · exhaustive-deps 33 ·
+      //   preserve-manual-memoization 1
       "@typescript-eslint/no-explicit-any": "warn",
-      "react/no-unescaped-entities": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@next/next/no-img-element": "warn",
       "react-hooks/static-components": "warn",
       "react-hooks/purity": "warn",
       "react-hooks/preserve-manual-memoization": "warn",

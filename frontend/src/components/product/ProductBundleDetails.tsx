@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Package, CheckCircle, AlertTriangle, Layers, Tag, ArrowRight } from 'lucide-react';
+import { Package, CheckCircle, AlertTriangle, Tag } from 'lucide-react';
 import { getResizedImageUrl } from '@/lib/image-url';
 
 export interface BundleComponentItem {

@@ -100,7 +100,7 @@ function matchesRoutePrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-import { classifyHost, isAdminHost, isMarketplaceHost, extractStoreSubdomain } from './lib/store-hosts';
+import { classifyHost, extractStoreSubdomain } from './lib/store-hosts';
 
 function hasAuthCookie(req: NextRequest) {
   return Boolean(req.cookies.get('pd_at')?.value);

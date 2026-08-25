@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle, Clock, Download, FileText, Loader2, MessageSquare, Paperclip, Send, Upload, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, Download, Loader2, MessageSquare, Paperclip, Send, Upload, XCircle, AlertTriangle } from 'lucide-react';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../../hooks/useMarketplaceTheme';
@@ -221,7 +221,7 @@ export default function BuyerCaseDetailPage() {
             <section className={`${classes.panel} overflow-hidden`}>
               <div className="border-b border-gray-100 p-6">
                 <h2 className="text-xl font-black text-gray-900">Conversation avec marketplace</h2>
-                <p className="mt-1 text-sm text-gray-500">Ces messages sont visibles par vous et l'équipe marketplace.</p>
+                <p className="mt-1 text-sm text-gray-500">Ces messages sont visibles par vous et l&apos;équipe marketplace.</p>
               </div>
 
               <div className="max-h-[520px] space-y-4 overflow-y-auto p-6">

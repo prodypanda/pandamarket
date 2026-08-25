@@ -3,7 +3,7 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, BadgePercent, Flame, Grid3X3, Headphones, Package, Search, ShieldCheck, ShoppingBag, Star, Store, Truck, Zap } from 'lucide-react';
+import { ArrowRight, BadgePercent, Flame, Grid3X3, Headphones, Package, Search, ShieldCheck, Star, Store, Truck, Zap } from 'lucide-react';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { getMarketplaceThemeClasses, resolveMarketplaceTheme } from '../../lib/marketplace-theme';

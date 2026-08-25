@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { SectionHeader } from '@/components/admin/SectionHeader';
 // Audit P1-9: mutating calls must go through the CSRF helper like everywhere else.
 import { fetchWithCsrf } from '@/lib/api';
 

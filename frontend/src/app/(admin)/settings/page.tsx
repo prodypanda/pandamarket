@@ -1782,7 +1782,7 @@ function AiTaggingHealthCard() {
             </span>
           </h4>
           <p className="text-xs text-slate-500 mt-0.5">
-            Couverture des tags d'intérêt générés automatiquement pour alimenter le moteur de recommandation du Hub.
+            Couverture des tags d&apos;intérêt générés automatiquement pour alimenter le moteur de recommandation du Hub.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -1842,7 +1842,7 @@ function AiTaggingHealthCard() {
         <div className="space-y-3 pt-2">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
             <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <span>🏷️</span> Tous les centres d'intérêt détectés ({health.top_tags.length}) :
+              <span>🏷️</span> Tous les centres d&apos;intérêt détectés ({health.top_tags.length}) :
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px]">
@@ -1887,7 +1887,7 @@ function AiTaggingHealthCard() {
               </span>
             ))}
             {filteredTags.length === 0 && (
-              <span className="text-xs text-slate-400 italic py-2">Aucun centre d'intérêt ne correspond à votre filtre "{tagQuery}".</span>
+              <span className="text-xs text-slate-400 italic py-2">Aucun centre d&apos;intérêt ne correspond à votre filtre &quot;{tagQuery}&quot;.</span>
             )}
           </div>
         </div>
@@ -1966,7 +1966,7 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
             </span>
           </h4>
           <p className="text-xs text-slate-500 mt-0.5">
-            Testez et visualisez en temps réel l'impact de vos réglages (tri, ratio IA, pénalité anti-bulle) selon différents profils d'acheteurs.
+            Testez et visualisez en temps réel l&apos;impact de vos réglages (tri, ratio IA, pénalité anti-bulle) selon différents profils d&apos;acheteurs.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -2052,7 +2052,7 @@ function FeedSimulatorPanel({ currentSettings }: { currentSettings: PlatformSett
           {/* Active Tags Badge */}
           {simData?.persona_tags && simData.persona_tags.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100">
-              <span className="font-bold text-indigo-900">Tags d'Intérêt du Persona simulé :</span>
+              <span className="font-bold text-indigo-900">Tags d&apos;Intérêt du Persona simulé :</span>
               <div className="flex flex-wrap gap-1">
                 {simData.persona_tags.map((tag) => (
                   <span key={tag} className="px-2 py-0.5 rounded-md bg-white border border-indigo-200 text-indigo-800 text-[11px] font-semibold">
@@ -3488,7 +3488,7 @@ export default function SuperAdminSettingsPage() {
             {/* Position Grid */}
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                Positionnement sur l'Image
+                Positionnement sur l&apos;Image
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -3599,7 +3599,7 @@ export default function SuperAdminSettingsPage() {
             {/* Display Scope Checkboxes & Anti-theft Toggle */}
             <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 space-y-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Périmètre d'affichage & Protection
+                Périmètre d&apos;affichage & Protection
               </h4>
               <div className="grid grid-cols-1 gap-3">
                 {[
@@ -3688,7 +3688,7 @@ export default function SuperAdminSettingsPage() {
               </div>
 
               <p className="text-[11px] text-slate-400 leading-relaxed italic border-t border-slate-800 pt-3">
-                💡 Le filigrane s'applique dynamiquement dans le navigateur pour tous les visiteurs du marketplace, sans altérer vos fichiers sources d'origine ni impacter les boutiques storefronts privées.
+                💡 Le filigrane s&apos;applique dynamiquement dans le navigateur pour tous les visiteurs du marketplace, sans altérer vos fichiers sources d&apos;origine ni impacter les boutiques storefronts privées.
               </p>
             </div>
           </div>
@@ -4024,7 +4024,7 @@ export default function SuperAdminSettingsPage() {
               <div className="mt-4 flex items-center gap-2 pt-3 border-t border-slate-100 text-[11px] font-bold text-slate-400">
                 <span>⚡ Galerie simple</span>
                 <span>•</span>
-                <span>📦 Panneau d'achat classique</span>
+                <span>📦 Panneau d&apos;achat classique</span>
               </div>
             </div>
 
@@ -4506,7 +4506,7 @@ export default function SuperAdminSettingsPage() {
               <span>📋</span> Tri de Base du Catalogue
             </h4>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Définit l'ordre de tri appliqué au flux standard des produits pour les visiteurs anonymes ou comme socle de base.
+              Définit l&apos;ordre de tri appliqué au flux standard des produits pour les visiteurs anonymes ou comme socle de base.
             </p>
             <select
               data-testid="select-hub-feed-base-sort"
@@ -4530,7 +4530,7 @@ export default function SuperAdminSettingsPage() {
           <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3">
             <div className="flex justify-between items-center">
               <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                <span>🤖</span> Injection par Centres d'Intérêt IA
+                <span>🤖</span> Injection par Centres d&apos;Intérêt IA
               </h4>
               <span className="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
                 {settings.hub_feed_personalization_pct ?? 30}%
@@ -4605,7 +4605,7 @@ export default function SuperAdminSettingsPage() {
                 <span>🛡️</span> Pénalité de Diversité (Anti-Bulle de Filtre & Équité Vendeurs)
               </h4>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Empêche un vendeur ou un monopole algorithmique de saturer le flux. Répartit équitablement l'exposition entre boutiques artisanales.
+                Empêche un vendeur ou un monopole algorithmique de saturer le flux. Répartit équitablement l&apos;exposition entre boutiques artisanales.
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -4666,7 +4666,7 @@ export default function SuperAdminSettingsPage() {
               {/* Diversity Strength */}
               <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-slate-700">Intensité de l'Anti-Bulle :</span>
+                  <span className="text-xs font-bold text-slate-700">Intensité de l&apos;Anti-Bulle :</span>
                   <span className="px-2 py-0.5 rounded-md text-xs font-black bg-blue-100 text-blue-800">
                     {settings.hub_feed_diversity_strength ?? 50}%
                   </span>
@@ -4710,7 +4710,7 @@ export default function SuperAdminSettingsPage() {
             <div className="p-3 bg-white rounded-xl border border-slate-200">
               <div className="font-bold text-slate-700">🛡️ Isolation Storefront Privée</div>
               <p className="text-slate-500 mt-1 leading-relaxed">
-                Sur les sous-domaines marchands privés, le moteur n'injecte <strong>aucun concurrent</strong> afin de protéger les conversions du vendeur.
+                Sur les sous-domaines marchands privés, le moteur n&apos;injecte <strong>aucun concurrent</strong> afin de protéger les conversions du vendeur.
               </p>
             </div>
           </div>

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Package, Sparkles, ArrowRight, Tag } from 'lucide-react';
+import { Package, Sparkles, ArrowRight } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { getResizedImageUrl } from '@/lib/image-url';
 
@@ -79,7 +79,7 @@ export function BundleCrossPromotionWidget({
         Cet article est également disponible en Pack Promotionnel !
       </h4>
       <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-        Achetez en lot et profitez d'une réduction immédiate sur l'ensemble.
+        Achetez en lot et profitez d&apos;une réduction immédiate sur l&apos;ensemble.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -135,7 +135,7 @@ export function BundleCrossPromotionWidget({
                 </div>
 
                 <div className="flex items-center gap-1 mt-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
-                  <span>Voir l'offre groupée</span>
+                  <span>Voir l&apos;offre groupée</span>
                   <ArrowRight className="w-3 h-3" />
                 </div>
               </div>

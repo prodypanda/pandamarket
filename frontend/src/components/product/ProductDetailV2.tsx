@@ -36,7 +36,6 @@ import { SponsoredAdsRail } from '@/components/hub/SponsoredAdsRail';
 import { ContactSellerButton } from '@/components/chat/ContactSellerButton';
 import { StoreFollowButton } from '@/components/store/StoreFollowButton';
 import { ReviewSection } from '@/components/hub/ReviewSection';
-import { WishlistButton } from '@/components/hub/WishlistButton';
 import { ProductBundleDetails } from '@/components/product/ProductBundleDetails';
 import { BundleCrossPromotionWidget } from '@/components/product/BundleCrossPromotionWidget';
 import { DeliveryEstimatorWidget } from '@/components/product/DeliveryEstimatorWidget';

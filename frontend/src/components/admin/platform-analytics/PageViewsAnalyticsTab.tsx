@@ -38,7 +38,6 @@ import {
 import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
-import { TunisiaChoroplethMap } from './TunisiaChoroplethMap';
 
 interface LiveData {
   live_active_visitors_now: number;

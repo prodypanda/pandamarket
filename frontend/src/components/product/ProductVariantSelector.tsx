@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { AddToCartButton } from '../store/AddToCartButton';
-import { Heart, Check, AlertCircle } from 'lucide-react';
+import { Heart, AlertCircle } from 'lucide-react';
 
 export interface VariantOption {
   id: string;

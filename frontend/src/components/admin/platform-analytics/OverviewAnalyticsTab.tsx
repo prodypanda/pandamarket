@@ -20,7 +20,6 @@ import { AnalyticsTabID, PlatformOverviewAnalytics } from '@/types/analytics';
 import { MetricCard } from './MetricCard';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
 import { TunisiaChoroplethMap } from './TunisiaChoroplethMap';
-import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
 
 interface OverviewAnalyticsTabProps {
 

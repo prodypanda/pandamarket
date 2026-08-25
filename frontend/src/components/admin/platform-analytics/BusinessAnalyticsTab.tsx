@@ -27,7 +27,7 @@ import {
 import { PlatformBusinessAnalytics } from '@/types/analytics';
 import { MetricCard } from './MetricCard';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
-import { formatMoney, formatNumber, formatPercent } from '@/lib/analytics-formatters';
+import { formatMoney, formatNumber } from '@/lib/analytics-formatters';
 import { fetchPageViewsAnalytics } from '@/lib/admin-platform-analytics';
 
 interface BusinessAnalyticsTabProps {

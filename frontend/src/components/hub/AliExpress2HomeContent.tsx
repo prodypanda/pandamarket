@@ -2,13 +2,13 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import Link from 'next/link';
-import { ArrowRight, BadgePercent, Crown, Flame, Gift, Headphones, Package, Search, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Timer, Truck, Zap } from 'lucide-react';
+import { ArrowRight, BadgePercent, Crown, Flame, Gift, Headphones, Package, Search, ShieldCheck, Sparkles, Star, Store, Timer, Truck, Zap } from 'lucide-react';
 import { getHubProductHref } from '../../lib/product-links';
 import { normalizePublicAssetUrl } from '../../lib/public-assets';
 import { HubProductPagination } from './HubProductPagination';
 import { useLocale } from '../../contexts/LocaleContext';
 import { resolveHomeBlocks } from '../../lib/home-blocks';
-import { BlockBanner, QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale, StoreInfoBadge } from './home-template-shared';
+import { QuickAddToCartButton, RecentlyViewedRail, StarRating, isRtlLocale, StoreInfoBadge } from './home-template-shared';
 import { ProductImagePlaceholder } from '../ui/ProductImagePlaceholder';
 import { WatermarkOverlay } from '../watermark/MarketplaceWatermark';
 import { useMemo, useCallback } from 'react';

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
-import { Download, Search, Users, Crown, Bell, RefreshCw, Send, CheckCircle2, AlertCircle, Sparkles, ChevronLeft, ChevronRight, UserCheck, Mail, MapPin } from 'lucide-react';
+import { Download, Search, Users, Crown, RefreshCw, Send, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { BroadcastComposer } from './BroadcastComposer';
 
 export interface LoyaltyKpiData {
@@ -323,7 +323,7 @@ export const SellerLoyaltyDashboard: React.FC<{
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          📊 Vue d'ensemble & Analyses
+          📊 Vue d&apos;ensemble & Analyses
         </button>
 
         <button
@@ -546,7 +546,7 @@ export const SellerLoyaltyDashboard: React.FC<{
                       <th className="py-3.5 px-4">Localisation</th>
                       <th className="py-3.5 px-4">Statut Acheteur</th>
                       <th className="py-3.5 px-4">Préférences</th>
-                      <th className="py-3.5 px-4">Date d'abonnement</th>
+                      <th className="py-3.5 px-4">Date d&apos;abonnement</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-800 dark:text-zinc-200">
@@ -652,7 +652,7 @@ export const SellerLoyaltyDashboard: React.FC<{
 
             {broadcasts.length === 0 ? (
               <div className="p-8 text-center text-xs text-zinc-500" data-testid="empty-broadcast-history">
-                Aucune diffusion envoyée jusqu'à présent.
+                Aucune diffusion envoyée jusqu&apos;à présent.
               </div>
             ) : (
               <div className="overflow-x-auto">

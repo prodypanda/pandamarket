@@ -3989,7 +3989,7 @@ export default function ProductsPage() {
                                 />
                                 <span className="text-xs font-black text-slate-700 dark:text-slate-300">% de réduction</span>
                               </div>
-                              <p className="text-[10px] text-slate-400">Le prix de vente est calculé automatiquement d'après le total.</p>
+                              <p className="text-[10px] text-slate-400">Le prix de vente est calculé automatiquement d&apos;après le total.</p>
                             </div>
                           </div>
 
@@ -4097,7 +4097,7 @@ export default function ProductsPage() {
                       <div className="p-4 rounded-2xl border border-rose-100 dark:border-rose-950/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Prix d'Origine / Barré (TND)
+                            Prix d&apos;Origine / Barré (TND)
                           </label>
                           {(() => {
                             const p = parseFloat(form.price);
@@ -4350,7 +4350,7 @@ export default function ProductsPage() {
                                     Aucun palier grossiste configuré.
                                   </p>
                                   <p className="text-[11px] text-slate-400 mt-1">
-                                    Cliquez sur un modèle en 1 clic ci-dessus ou sur "Ajouter un Palier" pour débuter.
+                                    Cliquez sur un modèle en 1 clic ci-dessus ou sur &quot;Ajouter un Palier&quot; pour débuter.
                                   </p>
                                 </div>
                               ) : (
@@ -4762,7 +4762,7 @@ export default function ProductsPage() {
                         <div className="py-10 text-center text-xs text-slate-400 space-y-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
                           <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
                           <p className="font-bold text-slate-600 dark:text-slate-400">Aucune variante configurée pour ce produit.</p>
-                          <p>Cliquez sur "Générateur Matriciel 1-Clic" pour combiner vos options ou ajoutez une ligne simple.</p>
+                          <p>Cliquez sur &quot;Générateur Matriciel 1-Clic&quot; pour combiner vos options ou ajoutez une ligne simple.</p>
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
@@ -5266,7 +5266,7 @@ export default function ProductsPage() {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-black rounded-xl bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900 transition-all disabled:opacity-50 cursor-pointer shadow-xs"
                           >
                             {extractingAttributes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />}
-                            <span>✨ Générer les Attributs par l'IA</span>
+                            <span>✨ Générer les Attributs par l&apos;IA</span>
                           </button>
                           <button
                             type="button"
@@ -5737,7 +5737,7 @@ export default function ProductsPage() {
                           ) : (
                             <>
                               <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                              <span>✨ Optimiser le SEO par l'IA</span>
+                              <span>✨ Optimiser le SEO par l&apos;IA</span>
                             </>
                           )}
                         </button>
@@ -6024,7 +6024,7 @@ export default function ProductsPage() {
                                 </div>
                               ) : (
                                 <div className="h-32 w-full rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-xs">
-                                  Pas d'image de couverture
+                                  Pas d&apos;image de couverture
                                 </div>
                               )}
                               <h4 className="font-bold text-xs text-white line-clamp-1">{effectiveTitle}</h4>
@@ -6682,7 +6682,7 @@ export default function ProductsPage() {
                     {smartFillLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Extraction intelligente par l'IA en cours...</span>
+                        <span>Extraction intelligente par l&apos;IA en cours...</span>
                       </>
                     ) : (
                       <>
@@ -6699,7 +6699,7 @@ export default function ProductsPage() {
             {smartFillMode === 'current' && (
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  L'IA utilisera le titre actuel (<strong>{form.title || 'Non renseigné'}</strong>), la description et l'image actuelle de votre fiche produit pour enrichir et compléter tous les champs manquants.
+                  L&apos;IA utilisera le titre actuel (<strong>{form.title || 'Non renseigné'}</strong>), la description et l&apos;image actuelle de votre fiche produit pour enrichir et compléter tous les champs manquants.
                 </p>
                 <button
                   type="button"
@@ -6731,7 +6731,7 @@ export default function ProductsPage() {
                       ✓
                     </span>
                     <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                      Fiche Produit Complète Extraite par l'IA
+                      Fiche Produit Complète Extraite par l&apos;IA
                     </h4>
                   </div>
 
@@ -7085,7 +7085,7 @@ export default function ProductsPage() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                 >
                   {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600" />}
-                  <span>Régénérer d'autres propositions</span>
+                  <span>Régénérer d&apos;autres propositions</span>
                 </button>
               </div>
 
@@ -7233,7 +7233,7 @@ export default function ProductsPage() {
               <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 space-y-2">
                 <p className="font-bold">⚠️ Réinitialisation des prix barrés</p>
                 <p>
-                  Cette action supprimera le prix d'origine/barré sur les <strong>{selectedIds.size}</strong> produits sélectionnés.
+                  Cette action supprimera le prix d&apos;origine/barré sur les <strong>{selectedIds.size}</strong> produits sélectionnés.
                   Les clients verront le prix catalogue normal sans badge promotionnel.
                 </p>
               </div>
@@ -7324,7 +7324,7 @@ export default function ProductsPage() {
                   </div>
                   {bulkPriceActionType === 'apply_discount' && (
                     <p className="text-[11px] text-slate-400">
-                      Le prix actuel sera conservé en <strong>prix barré d'origine</strong> et le nouveau prix réduit sera calculé automatiquement.
+                      Le prix actuel sera conservé en <strong>prix barré d&apos;origine</strong> et le nouveau prix réduit sera calculé automatiquement.
                     </p>
                   )}
                 </div>
@@ -7714,7 +7714,7 @@ export default function ProductsPage() {
                     Mise à Jour Groupée du Stock
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Ajuster l'inventaire de <strong>{selectedIds.size}</strong> produit(s)
+                    Ajuster l&apos;inventaire de <strong>{selectedIds.size}</strong> produit(s)
                   </p>
                 </div>
               </div>

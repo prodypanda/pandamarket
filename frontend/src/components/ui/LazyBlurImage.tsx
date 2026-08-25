@@ -1,6 +1,5 @@
 'use client';
 
-import { getResizedImageUrl } from '@/lib/image-url';
 import React, { useState, useEffect, useRef } from 'react';
 import { Wind } from 'lucide-react';
 

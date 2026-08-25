@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { fetchWithCsrf } from '@/lib/api';
 
 vi.mock('@/lib/api', () => ({
@@ -226,7 +226,7 @@ export const SellerLoyaltyDashboard: React.FC<{
             <span>⭐</span> Abonnés & Fidélité
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Suivez votre communauté d'acheteurs fidèles et envoyez des coupons de réduction privés.
+            Suivez votre communauté d&apos;acheteurs fidèles et envoyez des coupons de réduction privés.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export const SellerLoyaltyDashboard: React.FC<{
 
           {kpis.total_subscribers === 0 ? (
             <div className="p-6 text-center rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 text-xs space-y-2">
-              <p>Vous n'avez pas encore d'abonnés pour envoyer une diffusion privée.</p>
+              <p>Vous n&apos;avez pas encore d&apos;abonnés pour envoyer une diffusion privée.</p>
               <p className="text-[11px] text-zinc-400">Partagez votre boutique sur vos réseaux sociaux pour attirer vos premiers abonnés !</p>
             </div>
           ) : (
@@ -455,7 +455,7 @@ export const SellerLoyaltyDashboard: React.FC<{
 
         {broadcasts.length === 0 ? (
           <div className="p-8 text-center text-xs text-zinc-500" data-testid="empty-broadcast-history">
-            Aucune diffusion envoyée jusqu'à présent.
+            Aucune diffusion envoyée jusqu&apos;à présent.
           </div>
         ) : (
           <div className="overflow-x-auto">

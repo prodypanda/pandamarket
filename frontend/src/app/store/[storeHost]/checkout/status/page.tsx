@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { AlertTriangle, RefreshCcw, ArrowLeft, Store } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, Store } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '@/lib/themes';
 

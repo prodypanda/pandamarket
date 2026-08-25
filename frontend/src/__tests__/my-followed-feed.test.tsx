@@ -163,7 +163,7 @@ export const MyFollowedFeedPage: React.FC<{
         <div className="p-10 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <span className="text-4xl mb-4 inline-block">🛍️</span>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-            Votre fil d'actualités exclusif
+            Votre fil d&apos;actualités exclusif
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto mb-6 text-sm">
             Suivez vos boutiques préférées pour recevoir en temps réel les baisses de prix, les nouveaux arrivages et des recommandations IA sur mesure.

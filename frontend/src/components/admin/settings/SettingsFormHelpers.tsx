@@ -1,6 +1,5 @@
 import React from 'react';
 import { UseFormRegister, FieldErrors, Path } from 'react-hook-form';
-import { PlatformSettings } from '@/types/settings';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface SettingsFormProps<T extends Record<string, any>> {

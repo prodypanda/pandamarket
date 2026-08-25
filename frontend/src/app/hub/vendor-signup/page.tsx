@@ -86,7 +86,7 @@ export default function VendorSignupPage() {
 
           {plans.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-8 text-center text-sm font-semibold text-gray-500">
-              Aucun plan n'est disponible actuellement.
+              Aucun plan n&apos;est disponible actuellement.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

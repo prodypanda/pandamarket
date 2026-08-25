@@ -38,7 +38,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/admin-platform-analytics', () => mocks);
 
-import { fetchDrilldownData } from '@/lib/admin-platform-analytics';
 
 // Mock Fixtures
 const MOCK_RANGE = {

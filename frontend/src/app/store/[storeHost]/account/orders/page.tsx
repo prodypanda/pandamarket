@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Package, Clock, CheckCircle2, AlertCircle, Eye } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Eye } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 
 interface OrderItem {

@@ -25,7 +25,7 @@ import {
 import Link from 'next/link';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { getHubProductHref } from '../../../lib/product-links';
-import { getSellerTypeLabel, getSellerTypeOptions } from '../../../lib/seller-type';
+import { getSellerTypeOptions } from '../../../lib/seller-type';
 import { isAliExpressTheme } from '../../../lib/marketplace-theme';
 import { SponsoredAdsRail } from '../../../components/hub/SponsoredAdsRail';
 import { trackSearchPerformed } from '../../../lib/marketplace-analytics';

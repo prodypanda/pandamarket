@@ -70,7 +70,7 @@ export default function BuyerCasesPage() {
         <section className={`mb-6 rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
           <p className="text-sm font-black uppercase tracking-[0.2em] text-white/70">Centre de résolution</p>
           <h1 className="mt-3 text-3xl font-black">Mes dossiers</h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/75">Suivez vos signalements, ajoutez des informations et joignez des preuves pour aider l'équipe marketplace.</p>
+          <p className="mt-2 max-w-2xl text-sm text-white/75">Suivez vos signalements, ajoutez des informations et joignez des preuves pour aider l&apos;équipe marketplace.</p>
         </section>
 
         <div className="mb-6 flex flex-wrap gap-2">

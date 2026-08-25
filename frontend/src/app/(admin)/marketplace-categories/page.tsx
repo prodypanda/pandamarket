@@ -174,7 +174,7 @@ function SearchableParentCategorySelect({
           </button>
 
           {filtered.length === 0 ? (
-            <div className="py-3 text-center text-xs font-semibold text-slate-400">No parent category matches "{search}"</div>
+            <div className="py-3 text-center text-xs font-semibold text-slate-400">No parent category matches &quot;{search}&quot;</div>
           ) : (
             filtered.map((opt) => (
               <button
@@ -1631,7 +1631,7 @@ export default function MarketplaceCategoriesPage() {
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">Delete Category</h3>
-                <p className="text-xs font-semibold text-slate-500">"{deleteWarning.name}"</p>
+                <p className="text-xs font-semibold text-slate-500">&quot;{deleteWarning.name}&quot;</p>
               </div>
             </div>
 

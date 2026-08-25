@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { fetchWithCsrf } from '@/lib/api';
 
 vi.mock('@/lib/api', () => ({
@@ -140,7 +140,7 @@ export const AdminAlgorithmSettingsCard: React.FC<{
   if (!isAdmin) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl" data-testid="admin-access-denied">
-        Accès restreint. Seuls les super-administrateurs peuvent ajuster les paramètres de l'algorithme.
+        Accès restreint. Seuls les super-administrateurs peuvent ajuster les paramètres de l&apos;algorithme.
       </div>
     );
   }
@@ -183,7 +183,7 @@ export const AdminAlgorithmSettingsCard: React.FC<{
 
       {saveSuccess && (
         <div role="status" className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-medium dark:bg-emerald-950/40 dark:text-emerald-300">
-          Paramètres de l'algorithme enregistrés avec succès !
+          Paramètres de l&apos;algorithme enregistrés avec succès !
         </div>
       )}
 
@@ -200,7 +200,7 @@ export const AdminAlgorithmSettingsCard: React.FC<{
             Tri de Base du Hub
           </label>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Définit l'ordre par défaut des articles non personnalisés sur la page d'accueil du Hub.
+            Définit l&apos;ordre par défaut des articles non personnalisés sur la page d&apos;accueil du Hub.
           </p>
           <select
             data-testid="select-base-sort"
@@ -229,7 +229,7 @@ export const AdminAlgorithmSettingsCard: React.FC<{
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Proportion de produits suggérés selon le profil d'intérêt de l'acheteur (0% à 50%).
+            Proportion de produits suggérés selon le profil d&apos;intérêt de l&apos;acheteur (0% à 50%).
           </p>
           <input
             type="range"
@@ -271,7 +271,7 @@ export const AdminAlgorithmSettingsCard: React.FC<{
               <span>🧠</span> Moniteur Diagnostic Auto-Tagging Gemini Pro
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Génération d'étiquettes cachées d'intérêt pour le moteur de recommandation.
+              Génération d&apos;étiquettes cachées d&apos;intérêt pour le moteur de recommandation.
             </p>
           </div>
           <div className="flex items-center gap-3">

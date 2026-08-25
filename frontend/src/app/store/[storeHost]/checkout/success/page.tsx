@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Clock, Package, AlertCircle, ArrowLeft, Store, FileText } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
-import { isMarketplaceHost } from '@/lib/store-hosts';
 import { getHubAbsoluteUrl } from '@/lib/storefront-url';
 import { resolveThemeColors, themes, type ThemeCustomization, type ThemeId } from '@/lib/themes';
 

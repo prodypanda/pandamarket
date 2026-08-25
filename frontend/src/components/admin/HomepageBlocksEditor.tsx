@@ -206,7 +206,7 @@ export function HomepageBlocksEditor({ value, onChange }: HomepageBlocksEditorPr
                         className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       />
                       <label htmlFor={`sponsored-${block.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">
-                        Enforce "Sponsored" disclosure badge
+                        Enforce &quot;Sponsored&quot; disclosure badge
                       </label>
                     </div>
                   </div>
