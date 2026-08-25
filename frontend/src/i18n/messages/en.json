@@ -3204,7 +3204,14 @@
     "filterVerified": "Verified Buyers Only",
     "joinedDate": "Subscribed Date",
     "actions": "Actions",
-    "broadcastSentSuccess": "Broadcast sent successfully to {count} subscribers!"
+    "broadcastSentSuccess": "Broadcast sent successfully to {count} subscribers!",
+    "subtitle": "Track your loyal buyer community and send them private discount coupons.",
+    "newThisWeek": "New this week",
+    "verifiedBuyers": "Verified Buyers",
+    "growthRate": "Growth Rate",
+    "governoratesDistribution": "Distribution by Governorate",
+    "searchPlaceholder": "Search by name, email or city...",
+    "verifiedOnly": "Verified buyers only"
   },
   "aiCategoryClassifier": {
     "title": "AI Automatic Category Classification (NLP & Taxonomy)",

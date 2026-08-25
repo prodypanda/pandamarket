@@ -3044,7 +3044,13 @@
       "continueBtn": "المتابعة",
       "createDraftBtn": "إنشاء المسودة",
       "creatingBtn": "جاري الإنشاء..."
-    }
+    },
+    "proof": "الإثبات",
+    "captured": "تم التحصيل",
+    "pendingReview": "قيد المراجعة",
+    "rejected": "مرفوض",
+    "viewProof": "عرض الإثبات",
+    "refillDesc": "دفع آمن عبر المنصة؛ الأموال منفصلة عن إيرادات المبيعات."
   },
   "analytics": {
     "title": "محرك تحليلات المنصة الفائقة",
@@ -3198,7 +3204,14 @@
     "filterVerified": "المشترون الموثقون فقط",
     "joinedDate": "تاريخ المتابعة",
     "actions": "إجراءات",
-    "broadcastSentSuccess": "تم إرسال البث بنجاح إلى {count} متابع!"
+    "broadcastSentSuccess": "تم إرسال البث بنجاح إلى {count} متابع!",
+    "subtitle": "تابع مجتمع مشتريك الأوفياء وأرسل لهم كوبونات خصم خاصة.",
+    "newThisWeek": "جدد هذا الأسبوع",
+    "verifiedBuyers": "مشترون موثوقون",
+    "growthRate": "معدل النمو",
+    "governoratesDistribution": "التوزيع حسب الولايات",
+    "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني أو المدينة...",
+    "verifiedOnly": "المشترون الموثوقون فقط"
   },
   "aiCategoryClassifier": {
     "title": "التصنيف التلقائي بالذكاء الاصطناعي (NLP وهيكلة الفئات)",

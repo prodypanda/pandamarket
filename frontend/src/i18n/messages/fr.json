@@ -3044,7 +3044,13 @@
       "continueBtn": "Continuer",
       "createDraftBtn": "Créer le brouillon",
       "creatingBtn": "Création..."
-    }
+    },
+    "proof": "Justificatif",
+    "captured": "Capturé",
+    "pendingReview": "En attente de révision",
+    "rejected": "Rejeté",
+    "viewProof": "Voir le justificatif",
+    "refillDesc": "Paiement sécurisé via la plateforme ; les fonds sont séparés des revenus des ventes."
   },
   "analytics": {
     "title": "Moteur d'Analytics de la Plateforme Superadmin",
@@ -3200,7 +3206,12 @@
     "exportCsv": "Exporter CSV",
     "searchPlaceholder": "Rechercher par nom, email ou ville...",
     "verifiedOnly": "Acheteurs vérifiés uniquement",
-    "broadcastSentSuccess": "Diffusion envoyée avec succès à {count} abonnés !"
+    "broadcastSentSuccess": "Diffusion envoyée avec succès à {count} abonnés !",
+    "searchSubscribers": "Rechercher par nom, email ou ville...",
+    "filterAll": "Tous les abonnés",
+    "filterVerified": "Acheteurs vérifiés uniquement",
+    "joinedDate": "Date d'abonnement",
+    "actions": "Actions"
   },
   "aiCategoryClassifier": {
     "title": "Classification Automatique IA (NLP & Taxonomie)",
