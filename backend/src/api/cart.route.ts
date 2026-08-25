@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { UserRole } from '@pandamarket/types';
 import {
   asyncHandler,
+  clientBucketKey,
   optionalAuth,
   requireAuth,
   requireRole,
@@ -102,6 +103,7 @@ const gamifiedSpinRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: redisRateLimitStore('pd_rl_spin:'),
+  keyGenerator: clientBucketKey,
   message: {
     error: {
       code: 'PD_RATE_LIMITED',

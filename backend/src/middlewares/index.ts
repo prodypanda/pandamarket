@@ -307,6 +307,25 @@ export function validate<T>(schema: ZodSchema<T>, source: 'body' | 'query' | 'pa
  */
 
 /**
+ * Behind Render's proxy, `req.ip` resolves to an internal 10.x hop — meaning
+ * every client shared one bucket (observed live: pd_rl_api:10.x keys). Key by
+ * the real client IP from proxy headers instead.
+ */
+export function clientBucketKey(req: Request): string {
+  if (req.user?.id) return `u:${req.user.id}`;
+  if ((req as unknown as { apiKey?: { id?: string } }).apiKey?.id)
+    return `k:${(req as unknown as { apiKey: { id: string } }).apiKey.id}`;
+  const forwarded = req.headers['cf-connecting-ip'] || req.headers['x-real-ip'];
+  const xffFirst = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim();
+  return (
+    (typeof forwarded === 'string' ? forwarded : undefined) ||
+    xffFirst ||
+    req.ip ||
+    'unknown'
+  );
+}
+
+/**
  * Strict rate limit for sensitive auth endpoints (login, register, forgot).
  */
 export const authRateLimit = rateLimit({
@@ -315,6 +334,7 @@ export const authRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: redisRateLimitStore('pd_rl_auth:'),
+  keyGenerator: clientBucketKey,
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many requests' } },
 });
 
@@ -327,6 +347,7 @@ export const adsEventRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: redisRateLimitStore('pd_rl_adsev:'),
+  keyGenerator: clientBucketKey,
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising events' } },
 });
 
@@ -336,6 +357,7 @@ export const adsDeliveryRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: redisRateLimitStore('pd_rl_adsdl:'),
+  keyGenerator: clientBucketKey,
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many advertising requests' } },
 });
 
@@ -345,11 +367,7 @@ export const apiRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: redisRateLimitStore('pd_rl_api:'),
-  keyGenerator: (req) => {
-    if (req.user?.id) return `u:${req.user.id}`;
-    if (req.apiKey?.id) return `k:${req.apiKey.id}`;
-    return req.ip ?? 'unknown';
-  },
+  keyGenerator: clientBucketKey,
   message: { error: { code: PdErrorCode.RATE_LIMITED, message: 'Too many requests' } },
 });
 

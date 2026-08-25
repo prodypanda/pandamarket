@@ -37,6 +37,7 @@ vi.mock('../middlewares', () => ({
     next();
   },
   validate: () => (req: any, _res: any, next: any) => next(),
+  clientBucketKey: () => 'test-client',
 }));
 // Audit P2-22: keep tests hermetic — never construct the Redis-backed limiter
 // store (it would attempt a live Redis connection).
