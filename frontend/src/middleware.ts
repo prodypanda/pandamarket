@@ -145,39 +145,104 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 3
   }
 }
 
+// =====================================================
+// Audit P2-15: middleware previously made two sequential,
+// uncached backend round-trips before rendering any
+// storefront/hub request (up to ~2s at measured backend
+// latency). Both statuses are now fetched in parallel where
+// both are needed and cached with a short TTL.
+//
+// Correctness notes:
+// - maintenance_active_for_request depends on the caller IP
+//   (allowlist bypass), so that cache is keyed per IP.
+// - Storefront status is store-level state, cached per host.
+// - Negative results are cached briefly so a down backend
+//   degrades instead of adding latency to every request.
+// =====================================================
+type CachedEntry<T> = { value: T; expires: number };
+const STATUS_TTL_MS = 30_000;
+const NEGATIVE_TTL_MS = 5_000;
+const CACHE_MAX_ENTRIES = 1_000;
+
+const maintenanceCache = new Map<string, CachedEntry<MaintenanceStatus>>();
+const storeStatusCache = new Map<string, CachedEntry<StorefrontStatus | null>>();
+
+function getCached<T>(cache: Map<string, CachedEntry<T>>, key: string): T | undefined {
+  const hit = cache.get(key);
+  if (!hit) return undefined;
+  if (hit.expires <= Date.now()) {
+    cache.delete(key);
+    return undefined;
+  }
+  return hit.value;
+}
+
+function setCached<T>(
+  cache: Map<string, CachedEntry<T>>,
+  key: string,
+  value: T,
+  ttlMs: number,
+): void {
+  // Simple bound — middleware runs in a shared isolate; never let this grow.
+  if (cache.size >= CACHE_MAX_ENTRIES) cache.clear();
+  cache.set(key, { value, expires: Date.now() + ttlMs });
+}
+
 async function getMaintenanceStatus(req: NextRequest): Promise<MaintenanceStatus> {
+  const cacheKey = getClientIp(req) || 'no-ip';
+  const cached = getCached(maintenanceCache, cacheKey);
+  if (cached) return cached;
+  const disabledStatus: MaintenanceStatus = {
+    maintenance_enabled: false,
+    maintenance_active_for_request: false,
+    maintenance_block_storefronts: false,
+  };
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetchWithTimeout(`${backendUrl}/api/pd/marketplace/maintenance`, {
       headers: forwardedIpHeaders(req),
       cache: 'no-store',
-    }, 3000);
-    if (!res.ok) return { maintenance_enabled: false, maintenance_active_for_request: false, maintenance_block_storefronts: false };
+    }, 1500);
+    if (!res.ok) {
+      setCached(maintenanceCache, cacheKey, disabledStatus, NEGATIVE_TTL_MS);
+      return disabledStatus;
+    }
     const data = await res.json();
     const enabled = data.data?.maintenance_enabled === true || data.data?.maintenance_enabled === 'true';
     const activeForRequest = data.data?.maintenance_active_for_request === true || data.data?.maintenance_active_for_request === 'true';
     const blockStorefronts = data.data?.maintenance_block_storefronts === true || data.data?.maintenance_block_storefronts === 'true';
-    return {
+    const status: MaintenanceStatus = {
       maintenance_enabled: enabled,
       maintenance_active_for_request: activeForRequest,
       maintenance_block_storefronts: blockStorefronts,
     };
+    setCached(maintenanceCache, cacheKey, status, STATUS_TTL_MS);
+    return status;
   } catch {
-    return { maintenance_enabled: false, maintenance_active_for_request: false, maintenance_block_storefronts: false };
+    setCached(maintenanceCache, cacheKey, disabledStatus, NEGATIVE_TTL_MS);
+    return disabledStatus;
   }
 }
 
 async function getStorefrontStatus(storeHost: string, req: NextRequest): Promise<StorefrontStatus | null> {
+  const cached = getCached(storeStatusCache, storeHost);
+  if (cached !== undefined) return cached;
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetchWithTimeout(`${backendUrl}/api/pd/stores/by-host/${encodeURIComponent(storeHost)}`, {
       headers: forwardedIpHeaders(req),
       cache: 'no-store',
-    }, 3000);
-    if (!res.ok) return null;
+    }, 1500);
+    if (!res.ok) {
+      setCached(storeStatusCache, storeHost, null, NEGATIVE_TTL_MS);
+      return null;
+    }
     const data = await res.json();
-    return { status: data.store?.status };
+    const status: StorefrontStatus | null = { status: data.store?.status };
+    setCached(storeStatusCache, storeHost, status, STATUS_TTL_MS);
+    return status;
   } catch {
+    setCached(storeStatusCache, storeHost, null, NEGATIVE_TTL_MS);
     return null;
   }
 }
@@ -204,16 +269,23 @@ export async function middleware(req: NextRequest) {
   // 1. Hub central (pandamarket.tn)
   if (hostType === 'hub') {
     if (url.pathname === '/store' || url.pathname.startsWith('/store/')) {
-      const maintenance = await getMaintenanceStatus(req);
+      // Audit P2-15: fetch both statuses in parallel instead of sequentially.
+      const storeRouteHost = getStoreHostFromMarketplacePath(url.pathname);
+      const needsStoreStatus =
+        storeRouteHost !== null &&
+        !isStoreMaintenancePath(url.pathname) &&
+        !url.searchParams.has('pb_preview');
+      const [maintenance, storeStatus] = await Promise.all([
+        getMaintenanceStatus(req),
+        needsStoreStatus && storeRouteHost
+          ? getStorefrontStatus(storeRouteHost, req)
+          : Promise.resolve(null as StorefrontStatus | null),
+      ]);
       if (maintenance.maintenance_active_for_request && maintenance.maintenance_block_storefronts) {
         return NextResponse.rewrite(new URL('/maintenance', req.url));
       }
-      const storeRouteHost = getStoreHostFromMarketplacePath(url.pathname);
-      if (storeRouteHost && !isStoreMaintenancePath(url.pathname) && !url.searchParams.has('pb_preview')) {
-        const storeStatus = await getStorefrontStatus(storeRouteHost, req);
-        if (storeStatus?.status === 'maintenance') {
-          return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeRouteHost)}/maintenance`, req.url));
-        }
+      if (storeStatus?.status === 'maintenance' && storeRouteHost) {
+        return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeRouteHost)}/maintenance`, req.url));
       }
       return NextResponse.next();
     }
@@ -274,17 +346,21 @@ export async function middleware(req: NextRequest) {
   // 3. Storefront (subdomains or custom domains)
   const storeHost = extractStoreSubdomain(hostname) || hostname;
 
-  // Maintenance check for storefronts
-  const maintenance = await getMaintenanceStatus(req);
+  // Audit P2-15: both statuses in parallel (was sequential — the single
+  // biggest user-visible latency win in the request path).
+  const needsStoreStatus = url.pathname !== '/maintenance' && !url.searchParams.has('pb_preview');
+  const [maintenance, storeStatus] = await Promise.all([
+    getMaintenanceStatus(req),
+    needsStoreStatus
+      ? getStorefrontStatus(storeHost, req)
+      : Promise.resolve(null as StorefrontStatus | null),
+  ]);
   if (maintenance.maintenance_active_for_request && maintenance.maintenance_block_storefronts) {
     return NextResponse.rewrite(new URL('/maintenance', req.url));
   }
 
-  if (url.pathname !== '/maintenance' && !url.searchParams.has('pb_preview')) {
-    const storeStatus = await getStorefrontStatus(storeHost, req);
-    if (storeStatus?.status === 'maintenance') {
-      return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeHost)}/maintenance`, req.url));
-    }
+  if (storeStatus?.status === 'maintenance') {
+    return NextResponse.rewrite(new URL(`/store/${encodeURIComponent(storeHost)}/maintenance`, req.url));
   }
 
   // Rewrite to the storefront route — the page fetches store data by hostname
