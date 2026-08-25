@@ -31,7 +31,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock SocketContext
 let registeredSocketHandler: ((payload: any) => void) | null = null;
-let mockResetRealtimeCount = vi.fn();
+const mockResetRealtimeCount = vi.fn();
 let mockIsConnected = true;
 
 vi.mock('../contexts/SocketContext', () => ({

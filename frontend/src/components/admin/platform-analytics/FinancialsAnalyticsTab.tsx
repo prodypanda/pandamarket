@@ -66,26 +66,8 @@ export function FinancialsAnalyticsTab({ data, currency = 'TND' }: FinancialsAna
     };
   }, [currency]);
 
-  if (!data) {
-    return (
-      <AnalyticsEmptyState
-        title="No Financial Analytics"
-        message="No SaaS revenue telemetry recorded for the selected range."
-      />
-    );
-  }
-
-  const { saas_metrics, mrr_movement, cohort_matrix } = data;
-
-  // Tri-Fold Data (Live Backend PostgreSQL or Computed from Real DB Metrics)
-  const grossOrderGmv = liveReconciliation?.gross_gmv_tnd ?? (saas_metrics?.total_arr_tnd || 120000) * 1.85;
-  const platformCommissionTake = liveReconciliation?.platform_take_tnd ?? grossOrderGmv * 0.085;
-  const escrowFloating = liveReconciliation?.escrow_balance_tnd ?? grossOrderGmv * 0.28;
-  const settledPayouts = liveReconciliation?.settled_payouts_tnd ?? grossOrderGmv * 0.61;
-  const deductedRefunds = liveReconciliation?.refunds_tnd ?? grossOrderGmv * 0.025;
-  const isBalanced = liveReconciliation
-    ? liveReconciliation.is_balanced
-    : Math.abs(grossOrderGmv - (settledPayouts + escrowFloating + platformCommissionTake + deductedRefunds)) < 1;
+  // Audit P2-23: hooks must run unconditionally — these declarations and
+  // the gateways useMemo previously sat below the `if (!data)` early return.
 
   const GATEWAY_NAMES: Record<string, string> = {
     flouci: 'Flouci (Cartes Bancaires & Portefeuille)',
@@ -167,6 +149,28 @@ export function FinancialsAnalyticsTab({ data, currency = 'TND' }: FinancialsAna
 
     return result;
   }, [liveGateways, defaultGateways]);
+
+  if (!data) {
+    return (
+      <AnalyticsEmptyState
+        title="No Financial Analytics"
+        message="No SaaS revenue telemetry recorded for the selected range."
+      />
+    );
+  }
+
+  const { saas_metrics, mrr_movement, cohort_matrix } = data;
+
+  // Tri-Fold Data (Live Backend PostgreSQL or Computed from Real DB Metrics)
+  const grossOrderGmv = liveReconciliation?.gross_gmv_tnd ?? (saas_metrics?.total_arr_tnd || 120000) * 1.85;
+  const platformCommissionTake = liveReconciliation?.platform_take_tnd ?? grossOrderGmv * 0.085;
+  const escrowFloating = liveReconciliation?.escrow_balance_tnd ?? grossOrderGmv * 0.28;
+  const settledPayouts = liveReconciliation?.settled_payouts_tnd ?? grossOrderGmv * 0.61;
+  const deductedRefunds = liveReconciliation?.refunds_tnd ?? grossOrderGmv * 0.025;
+  const isBalanced = liveReconciliation
+    ? liveReconciliation.is_balanced
+    : Math.abs(grossOrderGmv - (settledPayouts + escrowFloating + platformCommissionTake + deductedRefunds)) < 1;
+
 
 
   // MRR Waterfall Breakdown

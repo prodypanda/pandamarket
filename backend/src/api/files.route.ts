@@ -149,7 +149,7 @@ router.post(
         bucket = config.s3.bucketPublic;
         keyPrefix = `products/${req.user!.store_id ?? req.user!.id}`;
         break;
-      case 'store_asset':
+      case 'store_asset': {
         if (!req.user!.store_id) {
           throw new PdForbiddenError(
             PdErrorCode.PERM_FORBIDDEN,
@@ -164,6 +164,7 @@ router.post(
             : 'uncategorized';
         keyPrefix = `stores/${req.user!.store_id}/${storeSubFolder}`;
         break;
+      }
       case 'digital_product':
         if (!req.user!.store_id) {
           throw new PdForbiddenError(
@@ -186,7 +187,7 @@ router.post(
         bucket = config.s3.bucketThemes;
         keyPrefix = `themes/${req.user!.store_id ?? req.user!.id}`;
         break;
-      case 'marketplace_asset':
+      case 'marketplace_asset': {
         bucket = config.s3.bucketPublic;
         const subFolder =
           req.body.folder &&
@@ -195,6 +196,7 @@ router.post(
             : 'general';
         keyPrefix = `marketplace/${subFolder}/${req.user!.id}`;
         break;
+      }
       case 'report_evidence':
         bucket = config.s3.bucketPrivate;
         keyPrefix = `reports/${req.user!.id}`;
@@ -566,8 +568,10 @@ mockFilesRouter.get(
         if (filePath) {
           try {
             await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-            await fs.promises.writeFile(filePath, rows[0].data);
-          } catch {}
+          await fs.promises.writeFile(filePath, rows[0].data);
+        } catch {
+          // Non-fatal: local mirror write is best-effort
+        }
         }
         res.setHeader('Content-Type', rows[0].content_type || 'image/jpeg');
         res.send(rows[0].data);

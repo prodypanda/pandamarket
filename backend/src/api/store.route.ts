@@ -702,7 +702,7 @@ router.get(
       if (!pm.url || itemsMap.has(pm.url)) continue;
       const pathParts = pm.url.split('/');
       const filename = pm.alt_text || pm.product_title || pathParts[pathParts.length - 1] || 'product-image.jpg';
-      let key = pm.url.replace(/^\/?(pd-product-images\/)?/, '');
+      const key = pm.url.replace(/^\/?(pd-product-images\/)?/, '');
       itemsMap.set(pm.url, {
         key,
         url: pm.url,
@@ -722,7 +722,7 @@ router.get(
     const allItems = Array.from(itemsMap.values());
 
     // Filter
-    let filtered = allItems.filter((item) => {
+    const filtered = allItems.filter((item) => {
       if (folderFilter !== 'all' && item.folder !== folderFilter) return false;
       if (searchQuery) {
         const matchesName = item.filename.toLowerCase().includes(searchQuery);
@@ -968,12 +968,16 @@ router.post(
       if (fs.existsSync(diskPath)) {
         fs.writeFileSync(diskPath, newBuffer);
       }
-    } catch {}
+    } catch {
+        // Non-fatal: best-effort local mirror / variant generation
+      }
 
     // Regenerate variants
     try {
       await imageVariantService.generateVariantsForBuffer(newBuffer, bucket, key);
-    } catch {}
+    } catch {
+        // Non-fatal: best-effort local mirror / variant generation
+      }
 
     // Update pd_file_asset file_size
     await query(

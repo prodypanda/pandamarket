@@ -19,9 +19,9 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock SocketContext
-let mockSocketOn: ((event: string, handler: (payload: any) => void) => () => void) | null = null;
+const mockSocketOn: ((event: string, handler: (payload: any) => void) => () => void) | null = null;
 let registeredSocketHandler: ((payload: any) => void) | null = null;
-let mockResetRealtimeCount = vi.fn();
+const mockResetRealtimeCount = vi.fn();
 
 vi.mock('../contexts/SocketContext', () => ({
   useSocketContext: () => ({

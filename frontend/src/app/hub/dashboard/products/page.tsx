@@ -1764,7 +1764,7 @@ export default function ProductsPage() {
         const normItemName = item.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
         // Check if this category level already exists in the store under currentParentId
-        let existingNode = currentCategoriesList.find((c) => {
+        const existingNode = currentCategoriesList.find((c) => {
           if (c.is_default) return false;
           const normC = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
           const matchesName = normC === normItemName;

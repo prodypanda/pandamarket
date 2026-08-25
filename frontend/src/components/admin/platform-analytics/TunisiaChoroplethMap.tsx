@@ -536,9 +536,13 @@ export function TunisiaChoroplethMap({
 
     if (mapContainerRef.current) {
       const rect = mapContainerRef.current.getBoundingClientRect();
+      // Clamp in the handler — audit P2-23: reading refs during render is
+      // illegal under React Compiler rules, so the clamped values are stored.
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
       setTooltipPos({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: Math.min(Math.max(rawX, 110), (rect.width || 400) - 110),
+        y: Math.max(rawY - 12, 10),
       });
     }
   };
@@ -863,8 +867,8 @@ export function TunisiaChoroplethMap({
               <div
                 className="absolute p-3.5 rounded-2xl bg-slate-950/95 text-white text-xs backdrop-blur-xl shadow-2xl border border-indigo-500/30 pointer-events-none z-30 space-y-1.5 transform -translate-x-1/2 -translate-y-full mb-3 transition-all duration-75 min-w-[200px]"
                 style={{
-                  left: Math.min(Math.max(tooltipPos.x, 110), (mapContainerRef.current?.clientWidth || 400) - 110),
-                  top: Math.max(tooltipPos.y - 12, 10),
+                  left: tooltipPos.x,
+                  top: tooltipPos.y,
                 }}
               >
                 <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">

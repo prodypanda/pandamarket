@@ -57,6 +57,22 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
     };
   }, [currency]);
 
+  // Zero-Result Search Demands (Derived from live search queries log)
+  // Audit P2-23: hooks must run unconditionally — this useMemo previously sat
+  // below the `if (!data)` early return, violating rules-of-hooks.
+  const realSearches = (pageViewsTelemetry?.top_marketplace_searches || []).filter((s: any) => s.zero_results || s.count > 0);
+  const unmetSearches = useMemo(() => {
+    if (realSearches && realSearches.length > 0) {
+      return realSearches.slice(0, 6).map((s: any) => ({
+        query: String(s.query || ''),
+        count: Number(s.count || 1),
+        category: s.category || 'Recherche Marketplace',
+        potentialRevenueTnd: Number(s.count || 1) * Number(data?.orders?.average_order_value_tnd || 45),
+      }));
+    }
+    return [];
+  }, [realSearches, data?.orders?.average_order_value_tnd]);
+
   if (!data) {
     return (
       <AnalyticsEmptyState
@@ -89,20 +105,6 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
     { label: '6. Checkouts Initiés', count: checkoutStarts, icon: CreditCard, color: 'bg-orange-500', dropPct: addToCarts > 0 && checkoutStarts < addToCarts ? Math.round(((addToCarts - checkoutStarts) / addToCarts) * 100) : 0 },
     { label: '7. Commandes Payées', count: completedPayments, icon: PackageCheck, color: 'bg-emerald-500', dropPct: checkoutStarts > 0 && completedPayments < checkoutStarts ? Math.round(((checkoutStarts - completedPayments) / checkoutStarts) * 100) : 0 },
   ];
-
-  // Zero-Result Search Demands (Derived from live search queries log)
-  const realSearches = (pageViewsTelemetry?.top_marketplace_searches || []).filter((s: any) => s.zero_results || s.count > 0);
-  const unmetSearches = useMemo(() => {
-    if (realSearches && realSearches.length > 0) {
-      return realSearches.slice(0, 6).map((s: any) => ({
-        query: String(s.query || ''),
-        count: Number(s.count || 1),
-        category: s.category || 'Recherche Marketplace',
-        potentialRevenueTnd: Number(s.count || 1) * Number(orders.average_order_value_tnd || 45),
-      }));
-    }
-    return [];
-  }, [realSearches, orders.average_order_value_tnd]);
 
   const handleNotifyVendors = (queryTerm: string) => {
     setNotifiedQueries((prev) => new Set([...prev, queryTerm]));

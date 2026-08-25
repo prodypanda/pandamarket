@@ -4632,7 +4632,9 @@ router.post(
             if (fs.existsSync(diskPath)) {
               fs.writeFileSync(diskPath, compressedBuffer);
             }
-          } catch {}
+          } catch {
+        // Non-fatal: best-effort local mirror / variant generation
+      }
 
           totalOriginal += originalSize;
           totalNew += newSize;

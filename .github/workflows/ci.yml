@@ -1,0 +1,52 @@
+name: CI
+
+# Audit P2-23: blocking quality gate. Lint runs with the tiered rule config —
+# any ESLint *error* (warnings are tracked debt) fails the build, as does a
+# type-check failure or a frontend unit-test regression.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend — lint + type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci --workspace backend --include-workspace-root=false || npm ci
+      - name: Type-check
+        working-directory: backend
+        run: npm run type-check
+      - name: Lint (0 errors required)
+        working-directory: backend
+        run: npx eslint "src/**/*.ts"
+
+  frontend:
+    name: Frontend — lint + type-check + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci --workspace frontend --include-workspace-root=false || npm ci
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc -p tsconfig.json --noEmit --types vitest/globals,node
+      - name: Lint (0 errors required)
+        working-directory: frontend
+        run: npx eslint .
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run

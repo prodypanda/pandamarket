@@ -404,7 +404,7 @@ export class SubscriptionPaymentService {
     const filename = `PandaMarket_GL_Export_${format.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.csv`;
 
     let headers: string[] = [];
-    let csvRows: string[][] = [];
+    const csvRows: string[][] = [];
 
     if (format === 'sage') {
       headers = ['Journal', 'Date', 'Account_Code', 'Account_Label', 'Debit_TND', 'Credit_TND', 'Reference', 'Partner_Name'];

@@ -281,7 +281,7 @@ export class ImageVariantService {
       if (!row.data || row.data.length === 0) continue;
 
       let cleanKey = row.key;
-      let bucket = row.bucket || 'pd-product-images';
+      const bucket = row.bucket || 'pd-product-images';
 
       if (cleanKey.startsWith(`${bucket}/`)) {
         cleanKey = cleanKey.substring(bucket.length + 1);

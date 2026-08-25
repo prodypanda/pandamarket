@@ -171,8 +171,8 @@ function extractAttributesFromHtml(html: string): Array<{ name: string; value: s
   const liRegex = /<li[^>]*>\s*<(?:strong|b)[^>]*>([^<:]+)[\s:]*<\/(?:strong|b)>\s*([^<]+)/gi;
   let match;
   while ((match = liRegex.exec(html)) !== null) {
-    const name = match[1].replace(/[:*_\-]/g, '').trim();
-    const value = match[2].replace(/^[:\s\-]+/, '').trim();
+    const name = match[1].replace(/[:*_-]/g, '').trim();
+    const value = match[2].replace(/^[:\s-]+/, '').trim();
     if (name && value && !seen.has(name.toLowerCase()) && name.length <= 60 && value.length <= 200) {
       seen.add(name.toLowerCase());
       results.push({ name, value });
@@ -183,8 +183,8 @@ function extractAttributesFromHtml(html: string): Array<{ name: string; value: s
   if (results.length === 0) {
     const strongRegex = /<(?:strong|b)[^>]*>([^<:]+)[\s:]*<\/(?:strong|b)>\s*([^<\n\r]+)/gi;
     while ((match = strongRegex.exec(html)) !== null) {
-      const name = match[1].replace(/[:*_\-]/g, '').trim();
-      const value = match[2].replace(/^[:\s\-]+/, '').trim();
+      const name = match[1].replace(/[:*_-]/g, '').trim();
+      const value = match[2].replace(/^[:\s-]+/, '').trim();
       if (name && value && name.length <= 50 && value.length <= 150 && !seen.has(name.toLowerCase())) {
         seen.add(name.toLowerCase());
         results.push({ name, value });
@@ -295,17 +295,17 @@ function extractVariantsHeuristic(text: string): Array<{ name: string; values: s
     }
   } else {
     // List of sizes: "tailles: S, M, L, XL"
-    const sizeListMatch = text.match(/(?:tailles?|sizes?)\s*[:=]?\s*([SMLXL2-4]+(?:\s*[,/\-]\s*[SMLXL2-4]+)+)/i);
+    const sizeListMatch = text.match(/(?:tailles?|sizes?)\s*[:=]?\s*([SMLXL2-4]+(?:\s*[,/-]\s*[SMLXL2-4]+)+)/i);
     if (sizeListMatch && sizeListMatch[1]) {
-      const values = sizeListMatch[1].split(/[,/\-]/).map((v) => v.trim()).filter(Boolean);
+      const values = sizeListMatch[1].split(/[,/-]/).map((v) => v.trim()).filter(Boolean);
       if (values.length > 0) variants.push({ name: 'Taille', values });
     }
   }
 
   // Colors: "couleurs: noir, blanc, rouge"
-  const colorMatch = text.match(/(?:couleurs?|colors?)\s*[:=]?\s*([a-zA-ZÀ-ÿ]+(?:\s*[,/\-]\s*[a-zA-ZÀ-ÿ]+)+)/i);
+  const colorMatch = text.match(/(?:couleurs?|colors?)\s*[:=]?\s*([a-zA-ZÀ-ÿ]+(?:\s*[,/-]\s*[a-zA-ZÀ-ÿ]+)+)/i);
   if (colorMatch && colorMatch[1]) {
-    const values = colorMatch[1].split(/[,/\-]/).map((v) => v.trim()).filter((v) => v.length >= 2);
+    const values = colorMatch[1].split(/[,/-]/).map((v) => v.trim()).filter((v) => v.length >= 2);
     if (values.length > 0) variants.push({ name: 'Couleur', values });
   }
 
@@ -1086,7 +1086,9 @@ router.post(
     let storefrontCategories: StorefrontCategoryRow[] = [];
     try {
       storefrontCategories = await categoryService.listStorefrontCategories(storeId);
-    } catch {}
+    } catch {
+              // Non-fatal: ignore mirror/enrichment failures
+            }
 
     const formatStorefrontTree = (cats: StorefrontCategoryRow[]): string => {
       const activeCats = cats.filter((c) => !c.is_default);
@@ -1587,7 +1589,7 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
         if (matchedSf) {
           sfName = matchedSf.name;
         }
-        let sfParentId = matchedSf ? matchedSf.parent_id : null;
+        const sfParentId = matchedSf ? matchedSf.parent_id : null;
 
         if (applyAutomatically) {
           if (!sfId) {
@@ -1599,7 +1601,9 @@ RÉPONDEZ EXCLUSIVEMENT PAR UN OBJET JSON VALIDE SANS TEXTE ADDITIONNEL :
               });
               sfId = newCat.id;
               sfName = newCat.name;
-            } catch {}
+            } catch {
+              // Non-fatal: leave ids unnamed if enrichment fails
+            }
           }
 
           await query(

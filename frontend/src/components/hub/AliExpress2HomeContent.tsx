@@ -152,9 +152,12 @@ export function AliExpress2HomeContent({ trendingProducts, categories, marketpla
   const { t, locale } = useLocale();
   const dir = isRtlLocale(undefined, locale) ? 'rtl' : 'ltr';
 
+  // Audit P2-23: hoisted so the useMemo dependency is a simple expression
+  // (React Compiler rejects optional chains in dependency arrays).
+  const hubHomepageBlocks = (marketplaceSettings as any)?.hub_homepage_blocks;
   const blocks = useMemo(
-    () => resolveHomeBlocks((marketplaceSettings as any)?.hub_homepage_blocks, 'aliexpress'),
-    [(marketplaceSettings as any)?.hub_homepage_blocks]
+    () => resolveHomeBlocks(hubHomepageBlocks, 'aliexpress'),
+    [hubHomepageBlocks]
   );
   const blockById = useMemo(() => new Map(blocks.map((b) => [b.id, b])), [blocks]);
   const blockLimit = useCallback(
