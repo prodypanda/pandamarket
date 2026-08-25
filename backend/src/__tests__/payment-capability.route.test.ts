@@ -25,9 +25,13 @@ vi.mock('../middlewares', () => ({
   asyncHandler: (handler: any) => (req: any, res: any, next: any) => Promise.resolve(handler(req, res, next)).catch(next),
   optionalAuth: (req: any, _res: any, next: any) => next(),
   requireAuth: (req: any, _res: any, next: any) => {
-    req.user = { id: 'buyer_1' };
+    req.user = { id: 'buyer_1', role: 'customer' };
     next();
   },
+  requireRole:
+    () =>
+    (_req: any, _res: any, next: any) =>
+      next(),
   requireStorefrontCustomer: (req: any, _res: any, next: any) => {
     req.storefrontCustomer = { id: 'storefront_buyer_1', store_id: 'store_1' };
     next();
@@ -36,6 +40,7 @@ vi.mock('../middlewares', () => ({
 }));
 
 import cartRouter from '../api/cart.route';
+import { cartService } from '../services/cart.service';
 
 const quote = {
   id: 'quote_12345678',
@@ -87,5 +92,52 @@ describe('checkout quote payment capability routes', () => {
       owner_storefront_customer_id: 'storefront_buyer_1',
       store_id: 'store_1',
     }));
+  });
+});
+
+// =====================================================
+// Audit P0-1 / P0-2 regression guards
+// =====================================================
+
+describe('gamified spin/leads hardening', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('never forwards client-supplied prize fields to the service (P0-1)', async () => {
+    vi.mocked(cartService.recordGamifiedLead).mockResolvedValue({
+      success: true,
+      lead_id: 'pd_lead_test',
+      coupon_code: 'SPIN-TEST01',
+      prize_won: '2 TND off your next order',
+      discount_value: 2,
+    } as never);
+
+    const response = await request(app)
+      .post('/api/pd/cart/gamified-spin')
+      .send({
+        game_type: 'spin_wheel',
+        phone: '+21620123456',
+        prize_won: 'AUDIT_PROBE',
+        coupon_code: 'AUDITPROBE1',
+        discount_value: 99999,
+      });
+
+    expect(response.status).toBe(201);
+    expect(cartService.recordGamifiedLead).toHaveBeenCalledTimes(1);
+    const forwarded = vi.mocked(cartService.recordGamifiedLead).mock.calls[0][0];
+    expect(forwarded).not.toHaveProperty('prize_won');
+    expect(forwarded).not.toHaveProperty('coupon_code');
+    expect(forwarded).not.toHaveProperty('discount_value');
+    expect(forwarded).not.toHaveProperty('consent_given');
+  });
+
+  it('scopes gamified lead listing to the caller store and never admin mode for non-admins (P0-2)', async () => {
+    vi.mocked(cartService.getStoreGamifiedLeads).mockResolvedValue([] as never);
+
+    const response = await request(app).get('/api/pd/cart/gamified-leads');
+
+    expect(response.status).toBe(200);
+    expect(cartService.getStoreGamifiedLeads).toHaveBeenCalledWith(undefined, false);
   });
 });

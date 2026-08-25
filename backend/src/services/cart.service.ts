@@ -2,7 +2,9 @@
  * CartService — Server-side Cart Synchronization, Multi-Vendor Combined Shipping & Gamified Retention Leads.
  */
 
+import { randomBytes } from 'node:crypto';
 import { query } from '../db/pool';
+import { PdValidationError } from '../errors';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
 
@@ -40,12 +42,39 @@ export interface GamifiedLeadParams {
   store_id?: string;
   phone?: string;
   email?: string;
-  consent_given: boolean;
   game_type: 'spin_wheel' | 'scratch_card';
-  prize_won: string;
-  coupon_code: string;
-  discount_value: number;
   device_fingerprint?: string;
+}
+
+export interface GamifiedPrizeDefinition {
+  prize_won: string;
+  discount_value: number;
+}
+
+/**
+ * Server-authoritative prize catalog (audit P0-1): clients must never decide
+ * which prize they win, what the coupon code is, or what it is worth.
+ * Values are intentionally small until a real coupon system (with redemption
+ * limits) replaces the hardcoded checkout coupon literals.
+ */
+const GAMIFIED_PRIZE_CATALOG: ReadonlyArray<GamifiedPrizeDefinition> = [
+  { prize_won: '5 TND off your next order', discount_value: 5 },
+  { prize_won: '3 TND off your next order', discount_value: 3 },
+  { prize_won: '2 TND off your next order', discount_value: 2 },
+  { prize_won: 'A little something on your next order', discount_value: 0 },
+];
+
+// Ambiguous characters (0/O, 1/I/L) excluded for human-typed codes.
+const COUPON_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function drawGamifiedPrize(): GamifiedPrizeDefinition & { coupon_code: string } {
+  const prize = GAMIFIED_PRIZE_CATALOG[Math.floor(Math.random() * GAMIFIED_PRIZE_CATALOG.length)];
+  const bytes = randomBytes(6);
+  let suffix = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    suffix += COUPON_ALPHABET[bytes[i] % COUPON_ALPHABET.length];
+  }
+  return { ...prize, coupon_code: `SPIN-${suffix}` };
 }
 
 export class CartService {
@@ -232,36 +261,63 @@ export class CartService {
 
   /**
    * Record a gamified retention lead (Spin the Wheel / Scratch Card).
+   *
+   * Audit P0-1 hardening:
+   * - The prize is drawn server-side; client-supplied prize fields are ignored.
+   * - The 24h frequency cap (per phone OR per device fingerprint) now blocks
+   *   the insertion instead of only logging it, and also covers submissions
+   *   without a phone number.
    */
   async recordGamifiedLead(params: GamifiedLeadParams) {
     const id = pdId('lead');
 
-    // Check frequency cap (1 entry per phone/device per 24 hours)
-    if (params.phone) {
-      const { rows } = await query<{ count: string }>(
-        `SELECT COUNT(*) as count FROM pd_gamified_lead
-         WHERE phone = $1 AND created_at > NOW() - INTERVAL '24 hours'`,
-        [params.phone],
+    if (params.store_id) {
+      const { rows: storeRows } = await query<{ id: string }>(
+        `SELECT id FROM pd_store WHERE id = $1 LIMIT 1`,
+        [params.store_id],
       );
-      if (parseInt(rows[0]?.count || '0', 10) > 0) {
-        logger.info({ phone: params.phone }, 'Gamified reward rate limited for phone');
+      if (!storeRows.length) {
+        throw new PdValidationError('Unknown store for reward lead');
       }
     }
+
+    const identifiers: Array<{ column: 'phone' | 'device_fingerprint'; value: string }> = [];
+    if (params.phone) {
+      identifiers.push({ column: 'phone', value: params.phone });
+    }
+    if (params.device_fingerprint) {
+      identifiers.push({ column: 'device_fingerprint', value: params.device_fingerprint });
+    }
+
+    for (const identifier of identifiers) {
+      const sql =
+        identifier.column === 'phone'
+          ? `SELECT COUNT(*)::int AS count FROM pd_gamified_lead
+             WHERE phone = $1 AND created_at > NOW() - INTERVAL '24 hours'`
+          : `SELECT COUNT(*)::int AS count FROM pd_gamified_lead
+             WHERE device_fingerprint = $1 AND created_at > NOW() - INTERVAL '24 hours'`;
+      const { rows } = await query<{ count: number }>(sql, [identifier.value]);
+      if ((rows[0]?.count ?? 0) > 0) {
+        logger.info({ scope: identifier.column }, 'Gamified reward rate limited');
+        throw new PdValidationError('Reward already claimed in the last 24 hours.');
+      }
+    }
+
+    const prize = drawGamifiedPrize();
 
     await query(
       `INSERT INTO pd_gamified_lead
         (id, store_id, phone, email, consent_given, game_type, prize_won, coupon_code, discount_value, device_fingerprint, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+       VALUES ($1, $2, $3, $4, TRUE, $5, $6, $7, $8, $9, NOW())`,
       [
         id,
         params.store_id || null,
         params.phone || null,
         params.email || null,
-        params.consent_given ?? true,
         params.game_type,
-        params.prize_won,
-        params.coupon_code.toUpperCase(),
-        params.discount_value || 0,
+        prize.prize_won,
+        prize.coupon_code,
+        prize.discount_value,
         params.device_fingerprint || null,
       ],
     );
@@ -269,22 +325,36 @@ export class CartService {
     return {
       success: true,
       lead_id: id,
-      coupon_code: params.coupon_code.toUpperCase(),
-      prize_won: params.prize_won,
-      discount_value: params.discount_value,
+      coupon_code: prize.coupon_code,
+      prize_won: prize.prize_won,
+      discount_value: prize.discount_value,
     };
   }
 
   /**
    * Get captured retention leads for vendor dashboard.
+   *
+   * Audit P0-2 fix: vendors are strictly scoped to their own store's leads
+   * (the previous `OR store_id IS NULL` branch leaked every tenant's leads to
+   * every seller). Platform admins may list all leads. Callers with no store
+   * and no admin role get an empty result — never an unscoped SELECT.
    */
-  async getStoreGamifiedLeads(storeId?: string | null) {
-    const sql = storeId
-      ? `SELECT * FROM pd_gamified_lead WHERE store_id = $1 OR store_id IS NULL ORDER BY created_at DESC LIMIT 100`
-      : `SELECT * FROM pd_gamified_lead ORDER BY created_at DESC LIMIT 100`;
-    const params = storeId ? [storeId] : [];
+  async getStoreGamifiedLeads(storeId: string | null | undefined, isAdmin = false) {
+    if (isAdmin) {
+      const { rows } = await query(
+        `SELECT * FROM pd_gamified_lead ORDER BY created_at DESC LIMIT 100`,
+      );
+      return rows;
+    }
 
-    const { rows } = await query(sql, params);
+    if (!storeId) {
+      return [];
+    }
+
+    const { rows } = await query(
+      `SELECT * FROM pd_gamified_lead WHERE store_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      [storeId],
+    );
     return rows;
   }
 }

@@ -8,11 +8,14 @@
  */
 
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
+import { UserRole } from '@pandamarket/types';
 import {
   asyncHandler,
   optionalAuth,
   requireAuth,
+  requireRole,
   requireStorefrontCustomer,
   validate,
 } from '../middlewares';
@@ -78,16 +81,31 @@ const checkoutQuoteSchema = z.object({
   coupon_code: z.string().trim().max(64).optional(),
 });
 
-const gamifiedLeadSchema = z.object({
-  store_id: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional(),
-  consent_given: z.boolean().default(true),
-  game_type: z.enum(['spin_wheel', 'scratch_card']),
-  prize_won: z.string(),
-  coupon_code: z.string(),
-  discount_value: z.number().nonnegative().default(0),
-  device_fingerprint: z.string().optional(),
+const gamifiedLeadSchema = z
+  .object({
+    store_id: z.string().trim().min(1).max(64).optional(),
+    phone: z.string().trim().min(6).max(30).optional(),
+    email: z.string().trim().email().max(254).optional(),
+    game_type: z.enum(['spin_wheel', 'scratch_card']),
+    device_fingerprint: z.string().trim().min(8).max(128).optional(),
+  })
+  .refine((data) => Boolean(data.phone || data.email), {
+    message: 'A phone number or email is required to claim a reward.',
+  });
+
+// Audit P0-1: dedicated abuse control — the global apiRateLimit is a throughput
+// limit, not an anti-abuse control for a public lead-capture endpoint.
+const gamifiedSpinRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'PD_RATE_LIMITED',
+      message: 'Too many reward attempts. Please try again later.',
+    },
+  },
 });
 
 // =====================================================
@@ -166,24 +184,49 @@ router.post(
 
 /**
  * POST /cart/gamified-spin — Submit Spin-the-Wheel / Scratch lead with PDP consent
+ *
+ * Audit P0-1 hardening:
+ * - Dedicated per-IP rate limit (10/hour) on top of the global limiter.
+ * - CSRF double-submit required (exemption removed from csrf.middleware.ts).
+ * - Prize, coupon code and discount value are drawn SERVER-SIDE from a fixed
+ *   catalog — the client body can no longer mint arbitrary coupons.
+ * - The 24h frequency cap in CartService.recordGamifiedLead now blocks instead
+ *   of merely logging.
  */
 router.post(
   '/gamified-spin',
+  gamifiedSpinRateLimit,
   validate(gamifiedLeadSchema),
   asyncHandler(async (req, res) => {
-    const result = await cartService.recordGamifiedLead(req.body);
+    const result = await cartService.recordGamifiedLead({
+      store_id: req.body.store_id,
+      phone: req.body.phone,
+      email: req.body.email,
+      game_type: req.body.game_type,
+      device_fingerprint: req.body.device_fingerprint,
+    });
     res.status(201).json({ data: result });
   }),
 );
 
 /**
  * GET /cart/gamified-leads — List captured leads (Vendor/Admin)
+ *
+ * Audit P0-2 fix: buyers (no store_id) previously triggered an unscoped
+ * cross-tenant SELECT *. Access is now restricted to vendor/admin roles and
+ * vendors are strictly scoped to their own store's leads.
  */
 router.get(
   '/gamified-leads',
   requireAuth,
+  requireRole(UserRole.Vendor, UserRole.Admin, UserRole.SuperAdmin),
   asyncHandler(async (req, res) => {
-    const leads = await cartService.getStoreGamifiedLeads(req.user?.store_id);
+    const isAdmin =
+      req.user!.role === UserRole.Admin || req.user!.role === UserRole.SuperAdmin;
+    const leads = await cartService.getStoreGamifiedLeads(
+      isAdmin ? null : req.user!.store_id,
+      isAdmin,
+    );
     res.json({ data: leads });
   }),
 );
