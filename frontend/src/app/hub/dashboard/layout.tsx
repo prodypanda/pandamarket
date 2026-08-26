@@ -202,8 +202,8 @@ export default function DashboardLayout({
       try {
         const [onboardingState, productsRes, kycRes] = await Promise.all([
           fetchOnboardingState(),
-          fetchWithCsrf('/api/pd/products?limit=1', { credentials: 'include' }).catch(() => null),
-          fetchWithCsrf('/api/pd/kyc/me', { credentials: 'include' }).catch(() => null),
+          fetchWithCsrf('/api/pd/stores/me/products?limit=1', { credentials: 'include' }).catch(() => null),
+          fetchWithCsrf('/api/pd/verification/status', { credentials: 'include' }).catch(() => null),
         ]);
         if (cancelled) return;
 
@@ -220,7 +220,7 @@ export default function DashboardLayout({
         let kycVerified = Boolean(currentStore?.is_verified || onboardingState.kyc?.completed);
         if (!kycVerified && kycRes && kycRes.ok) {
           const kData = await kycRes.json().catch(() => ({}));
-          const status = kData.status || kData.data?.status;
+          const status = kData.verification?.status || kData.status || kData.data?.status;
           kycVerified = status === 'approved' || status === 'verified';
         }
 

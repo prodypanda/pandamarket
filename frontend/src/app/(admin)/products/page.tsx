@@ -212,7 +212,7 @@ export default function AdminProductsPage() {
           }
         }
         // Fallback endpoint
-        const fallbackRes = await fetchWithCsrf('/api/pd/marketplace-categories');
+        const fallbackRes = await fetchWithCsrf('/api/pd/admin/marketplace-categories');
         if (fallbackRes.ok && active) {
           const fbJson = await fallbackRes.json();
           if (fbJson.data && Array.isArray(fbJson.data)) {

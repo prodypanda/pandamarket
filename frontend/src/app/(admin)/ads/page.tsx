@@ -337,7 +337,7 @@ export default function AdminAdsPage() {
     const ip_hash = String(fd.get('ip_hash') || '').trim();
     const reason = String(fd.get('reason') || '').trim();
     if (!ip_hash) return;
-    const r = await fetchWithCsrf('/api/pd/admin/ads/fraud/blocked-ips', {
+    const r = await fetchWithCsrf('/api/pd/admin/ads/fraud/block-ip', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip_hash, reason }),

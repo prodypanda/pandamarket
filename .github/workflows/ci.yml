@@ -50,3 +50,14 @@ jobs:
       - name: Unit tests
         working-directory: frontend
         run: npx vitest run
+
+  contract:
+    name: API contract — frontend calls vs backend routes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run contract audit
+        run: node scripts/api-contract-audit.cjs

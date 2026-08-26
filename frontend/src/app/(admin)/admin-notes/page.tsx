@@ -754,7 +754,8 @@ export default function AdminNotesPage() {
           return;
         }
       } else {
-        await fetchWithCsrf(`/api/pd/admin/notes/${id}/${action}`, {
+        const actionPath = { archive: 'archive', trash: 'trash', restore: 'restore' }[action];
+        await fetchWithCsrf(`/api/pd/admin/notes/${id}/${actionPath}`, {
           method: 'PATCH',
           credentials: 'include',
         });

@@ -2331,7 +2331,7 @@ export default function ProductsPage() {
     setBulkActionLoading(true);
     setError('');
     try {
-      const res = await fetchWithCsrf('/api/pd/stores/me/products/batch', {
+      const res = await fetchWithCsrf('/api/pd/products/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
