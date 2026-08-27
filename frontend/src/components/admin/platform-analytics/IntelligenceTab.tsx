@@ -21,6 +21,7 @@ import {
   Layers,
 } from 'lucide-react';
 import {
+  fetchOverviewAnalytics,
   fetchAnomalies,
   fetchVendorRisk,
   fetchChurnRisk,
@@ -31,6 +32,7 @@ import {
   triggerReportScheduleNow,
 } from '@/lib/admin-platform-analytics';
 import {
+  PlatformOverviewAnalytics,
   AnomalyInsightItem,
   VendorRiskItem,
   ChurnRiskItem,
@@ -54,6 +56,7 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
   const [churnRisk, setChurnRisk] = useState<ChurnRiskItem[]>([]);
   const [cohorts, setCohorts] = useState<CohortItem[]>([]);
   const [schedules, setSchedules] = useState<ReportScheduleDTO[]>([]);
+  const [overview, setOverview] = useState<PlatformOverviewAnalytics | null>(null);
 
   // What-If Scenario Simulator State (R5)
   const [simCommissionDelta, setSimCommissionDelta] = useState<number>(0); // -3% to +5%
@@ -71,7 +74,8 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
     setLoading(true);
     setError(null);
     try {
-      const [anomRes, vRiskRes, cRiskRes, cohortRes, schedRes] = await Promise.all([
+      const [overviewRes, anomRes, vRiskRes, cRiskRes, cohortRes, schedRes] = await Promise.all([
+        fetchOverviewAnalytics().catch(() => null),
         fetchAnomalies().catch(() => ({ insights: [] })),
         fetchVendorRisk().catch(() => ({ vendors: [] })),
         fetchChurnRisk().catch(() => ({ vendors: [] })),
@@ -79,6 +83,7 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
         fetchReportSchedules().catch(() => []),
       ]);
 
+      if (overviewRes) setOverview(overviewRes);
       setAnomalies(anomRes?.insights || []);
       setVendorRisk(vRiskRes?.vendors || []);
       setChurnRisk(cRiskRes?.vendors || []);
@@ -95,10 +100,21 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
     loadIntelligenceData();
   }, []);
 
-  // Simulator Projections Calculation
-  const baselineMonthlyGmv = 145000;
-  const baselineMonthlySubRev = 18500;
-  const baselineTakeRate = 8.5; // 8.5%
+  // Simulator Projections Calculation sourced from live analytics
+  const baselineMonthlyGmv = useMemo(() => {
+    const rawGmv = Number((overview as any)?.financials?.gmv_cents || 0) / 100;
+    return rawGmv > 0 ? Math.round(rawGmv) : 0;
+  }, [overview]);
+
+  const baselineMonthlySubRev = useMemo(() => {
+    const rawSub = Number((overview as any)?.subscriptions?.total_revenue_cents || 0) / 100;
+    return rawSub > 0 ? Math.round(rawSub) : 0;
+  }, [overview]);
+
+  const baselineTakeRate = useMemo(() => {
+    const rawTakeRate = Number((overview as any)?.financials?.take_rate_pct || 0);
+    return rawTakeRate > 0 ? rawTakeRate : 0;
+  }, [overview]);
 
   const simProjectedGmv = useMemo(() => {
     const trafficFactor = 1 + simTrafficGrowthPct / 100;

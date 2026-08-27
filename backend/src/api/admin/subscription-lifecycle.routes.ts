@@ -415,7 +415,7 @@ router.post(
         baseRes = { rows: [] };
       }
 
-      let finalProducts = baseRes.rows.length >= 6 ? [...baseRes.rows] : [...MOCK_CATALOG];
+      let finalProducts = baseRes.rows.length >= 6 ? [...baseRes.rows] : (req.query.demo === 'true' ? [...MOCK_CATALOG] : [...baseRes.rows]);
 
       if (personaTags.length > 0 && cfg.personalization_pct > 0) {
         let recsRows: any[] = [];
@@ -442,7 +442,7 @@ router.post(
         }
 
         // If no DB products match the tags, match from mock catalog
-        if (recsRows.length === 0) {
+        if (recsRows.length === 0 && req.query.demo === 'true') {
           recsRows = MOCK_CATALOG.filter((p) =>
             p.interest_tags.some((t) => personaTags.includes(t.toLowerCase()))
           );
