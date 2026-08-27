@@ -1,0 +1,30 @@
+# Tier 1 · Platform Stability & High-Priority Bugs (Week 1)
+
+- [ ] **[B-06]** ⚡ Delete duplicate `/buyers/:id/suspend|reactivate` pair from `reports.routes.ts` that shadows `vendors.routes.ts` and skips session logout.
+- [ ] **[B-07]** ⚡ Fix `SELECT DISTINCT` over `json` column in `product.service.ts:2276` that generates 173 errors in system log.
+- [ ] **[B-08]** ⚡ Create shared escaped `<JsonLd>` component in `hub/page.tsx:333`.
+- [ ] **[B-09]** 🛠 Distinguish backend errors from missing resources in product, category, and CMS pages.
+- [ ] **[B-10]** ⚡ Verify payment status on checkout success page; replace dead CTA button with Link.
+- [ ] **[B-11]** 🏗 Centralize cart totals and coupons on `POST /api/pd/cart/quote`.
+- [ ] **[B-12]** 🛠 Fix 3 broken steps in seller onboarding (logo asset purpose, shipping settings, publish toggle).
+- [ ] **[B-13]** 🛠 Enforce subscription feature gating across UI buttons (AI, themes, domains, API keys).
+- [ ] **[B-14]** ⚡ Fix commission rate percentage ambiguity in `admin/stats.routes.ts`.
+- [ ] **[B-15]** ⚡ Add 4 missing Mandat bank coordinates keys to `finance` settings section.
+- [ ] **[B-16]** ⚡ Add 13 missing image-size setting keys to `SETTINGS_TAB_KEYS.operations`.
+- [ ] **[B-17]** 🛠 Implement `whatsapp_gateway` in `sms.service.ts`; stop logging OTPs in production.
+- [ ] **[B-18]** 🛠 Add payout idempotency key to `walletService.withdraw`.
+- [ ] **[B-19]** 🏗 Implement refund execution lifecycle (gateway refund + wallet debit).
+- [ ] **[B-20]** ⚡ Secure `/metrics` behind token and remove `store_id` from `/internal/tls-allowed`.
+- [ ] **[B-21]** 🛠 Sanitize request bodies in Sentry and set `rejectUnauthorized: true` on Supabase pool.
+- [ ] **[B-22]** 🛠 Make outbox worker claims atomic (`FOR UPDATE SKIP LOCKED`).
+- [ ] **[B-23]** 🛠 Fix ads click-fraud IP detector from self-destructing on Render proxy IP.
+- [ ] **[B-24]** 🛠 Move ads lifecycle sweep to BullMQ repeatable job; reconcile reservations incrementally.
+- [ ] **[B-25]** ⚡ Add `isPublicStore` gate to storefront `/products` page.
+- [ ] **[B-26]** ⚡ Route storefront 401 token refresh to `/storefront/auth/refresh`.
+- [ ] **[B-27]** ⚡ Use `isomorphic-dompurify` on page builder SSR path.
+- [ ] **[B-28]** ⚡ Check `res.ok` on product image uploads and surface quota errors.
+- [ ] **[B-29]** 🛠 Move product filters and exports to server-side queries.
+- [ ] **[B-30]** 🛠 Paginate `/me/media` and store image dimensions on upload.
+- [ ] **[B-31]** 🛠 Fix RTL CSS logical properties in seller dashboard shell.
+- [ ] **[B-32]** 🛠 Remove simulated numbers and fake forms from admin analytics.
+- [ ] **[B-33]** 🛠 Renumber 12 duplicate migration prefixes sequentially.

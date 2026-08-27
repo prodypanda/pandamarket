@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TEST_USERS, API_BASE } from './helpers/test-data';
-import { loginViaUI, loginViaAPI } from './helpers/auth';
+import { loginViaAPI } from './helpers/auth';
 
 /**
  * E2E Test Suite: Superadmin Marketplace Products Management & Tagging Hub

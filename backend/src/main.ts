@@ -55,6 +55,7 @@ import adsRouter from './api/ads.route';
 import cartRouter from './api/cart.route';
 import buyerRouter from './api/buyer.route';
 import { sellerRouter } from './api/seller.route';
+import retentionRouter from './api/retention.route';
 import { socketGateway } from './realtime/socket-gateway';
 import { registerAllSubscribers } from './subscribers';
 import swaggerUi from 'swagger-ui-express';
@@ -342,6 +343,7 @@ async function bootstrap() {
   apiRouter.use('/support', supportRouter);
   apiRouter.use('/ads', adsRouter);
   apiRouter.use('/cart', cartRouter);
+  apiRouter.use('/retention', retentionRouter);
   apiRouter.use('/buyer', buyerRouter);
   apiRouter.use('/seller', sellerRouter);
 

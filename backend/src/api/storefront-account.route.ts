@@ -33,6 +33,20 @@ const addressSchema = z.object({
 
 const updateAddressSchema = addressSchema.partial();
 
+// Session probe — audit B8/A11: storefront account layout resolves the
+// authenticated customer through this endpoint.
+router.get(
+  '/me',
+  requireStorefrontCustomer,
+  asyncHandler(async (req: Request, res: Response) => {
+    const customer = await storefrontAuthService.getById(
+      req.storefrontCustomer!.id,
+      req.storefrontCustomer!.store_id,
+    );
+    res.status(200).json({ customer, data: customer });
+  }),
+);
+
 // Profile
 router.put(
   '/profile',

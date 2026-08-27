@@ -6,6 +6,27 @@ import { z } from 'zod';
 /** Platform Subscription Orders & Manual Mandat Approval — extracted from admin.route.ts (E15 split). */
 const router = Router();
 
+// POST /api/pd/admin/subscription-orders/cron-job
+// Manually trigger the automated subscription orders cron sweep (audit A7).
+router.post(
+  '/cron-job',
+  requireAdmin,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const { subscriptionPaymentService } = await import('../../services/subscription-payment.service');
+    const result = await subscriptionPaymentService.runAutomatedSubscriptionCronJob();
+    res.status(200).json({
+      success: true,
+      message: 'Subscription cron executed',
+      result: {
+        cron_id: result.cron_id,
+        processed_count: result.processed_count,
+        actions_log: result.actions,
+      },
+    });
+  }),
+);
+
+
 const reviewSubscriptionOrderSchema = z.object({
   decision: z.enum(['approved', 'rejected']),
   reason: z.string().optional(),
