@@ -20,6 +20,15 @@ import { ReviewStatus } from '@pandamarket/types';
 import { logger } from '../utils/logger';
 import { platformConfigService } from './platform-config.service';
 
+export interface ReviewMediaRow {
+  id: string;
+  review_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  status: 'approved' | 'pending' | 'rejected';
+  created_at: Date;
+}
+
 export interface ReviewRow {
   id: string;
   product_id: string;
@@ -36,6 +45,7 @@ export interface ReviewRow {
   created_at: Date;
   updated_at: Date;
   customer_name?: string;
+  media?: ReviewMediaRow[];
 }
 
 export interface ProductRatingRow {
@@ -59,6 +69,7 @@ export class ReviewService {
     title?: string;
     body?: string;
     order_id?: string;
+    media_urls?: string[];
   }): Promise<ReviewRow> {
     const settings = await platformConfigService.getSettings();
     if (!settings.reviews_enabled) {
@@ -66,6 +77,10 @@ export class ReviewService {
     }
     if (opts.rating < 1 || opts.rating > 5) {
       throw new PdValidationError('Rating must be between 1 and 5');
+    }
+
+    if (opts.media_urls && opts.media_urls.length > 3) {
+      throw new PdValidationError('Maximum 3 photos/media allowed per review');
     }
 
     // Resolve the store_id from the product
@@ -112,6 +127,16 @@ export class ReviewService {
           ],
         );
 
+        if (opts.media_urls && opts.media_urls.length > 0) {
+          for (const url of opts.media_urls) {
+            await client.query(
+              `INSERT INTO pd_review_media (id, review_id, media_url, media_type, status, created_at)
+               VALUES ($1, $2, $3, 'image', 'approved', NOW())`,
+              [pdId('revmed'), id, url],
+            );
+          }
+        }
+
         // Recalculate product rating aggregate
         await this.recalculateRating(client, opts.product_id);
 
@@ -123,9 +148,8 @@ export class ReviewService {
         'Review created',
       );
       return review;
-    } catch (err: unknown) {
-      // unique_violation = duplicate review
-      if ((err as { code?: string }).code === '23505') {
+    } catch (err: any) {
+      if (err.code === '23505') {
         throw new PdConflictError(
           PdErrorCode.VALIDATION_ERROR,
           'You have already reviewed this product',
@@ -133,6 +157,38 @@ export class ReviewService {
       }
       throw err;
     }
+  }
+
+  async addReviewMedia(
+    reviewId: string,
+    customerId: string,
+    mediaUrl: string,
+    mediaType: 'image' | 'video' = 'image',
+  ): Promise<ReviewMediaRow> {
+    const { rows: revRows } = await query<ReviewRow>(
+      `SELECT * FROM pd_review WHERE id = $1 AND customer_id = $2`,
+      [reviewId, customerId],
+    );
+    if (!revRows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Review not found or not owned by user');
+    }
+
+    const { rows: countRows } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text as count FROM pd_review_media WHERE review_id = $1`,
+      [reviewId],
+    );
+    if (parseInt(countRows[0]?.count || '0', 10) >= 3) {
+      throw new PdValidationError('Maximum of 3 media attachments allowed per review');
+    }
+
+    const mediaId = pdId('revmed');
+    const { rows } = await query<ReviewMediaRow>(
+      `INSERT INTO pd_review_media (id, review_id, media_url, media_type, status, created_at)
+       VALUES ($1, $2, $3, $4, 'approved', NOW())
+       RETURNING *`,
+      [mediaId, reviewId, mediaUrl, mediaType],
+    );
+    return rows[0];
   }
 
   // ─── Update (owner only) ──────────────────────────────────────────
