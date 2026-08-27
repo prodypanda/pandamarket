@@ -166,7 +166,13 @@ export const config = {
     model: optional('PD_OPENAI_MODEL', process.env.OPENAI_MODEL || 'gpt-4o-mini')!,
   },
 
-  // Mail
+  // Mail & Transactional Providers
+  email: {
+    brevoApiKey: optional('PD_BREVO_API_KEY', '')!,
+    resendApiKey: optional('PD_RESEND_API_KEY', '')!,
+    fromName: optional('PD_MAIL_FROM_NAME', 'PandaMarket')!,
+    fromEmail: optional('PD_MAIL_FROM_EMAIL', 'noreply@pandamarket.tn')!,
+  },
   smtp: {
     host: optional('PD_SMTP_HOST', '')!,
     port: asInt('PD_SMTP_PORT', 587),

@@ -2,11 +2,7 @@
  * Email worker — processes BullMQ jobs for transactional emails.
  *
  * In development, emails are simply logged.
- * In production, set PD_SMTP_* env vars and we use nodemailer-compatible SMTP.
- *
- * Templates (template ids defined in `notifications-system.md`) are rendered
- * inline as small HTML strings — keep this lean; for richer templates,
- * swap the body builder with a real template engine (mjml, react-email…).
+ * In production, set Brevo / Resend API keys or PD_SMTP_* env vars.
  */
 
 import { Job, Worker } from 'bullmq';
@@ -16,6 +12,7 @@ import { logger } from '../utils/logger';
 import { EmailJobData } from '../queues/email-queue';
 import { emailTemplateService } from '../services/email-template.service';
 import { platformConfigService, type PlatformSettings } from '../services/platform-config.service';
+import { emailProvider } from '../services/email-provider.service';
 
 // ----------------------------------------------------------------
 // Template renderer
@@ -563,6 +560,20 @@ class BrevoApiTransport implements MailTransport {
 
 const brevoApiTransport = new BrevoApiTransport();
 
+class EmailProviderTransport implements MailTransport {
+  async send(opts: { to: string; from: string; subject: string; html: string; text: string }) {
+    await emailProvider.send({
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    });
+  }
+}
+
+const emailProviderTransport = new EmailProviderTransport();
+
+
 async function pickTransport(): Promise<MailTransport> {
   try {
     const { platformConfigService } = await import('../services/platform-config.service');
@@ -588,6 +599,9 @@ async function pickTransport(): Promise<MailTransport> {
     // DB not available — check env
   }
 
+  if (config.email?.brevoApiKey || config.email?.resendApiKey) {
+    return emailProviderTransport;
+  }
   if (config.smtp.host) {
     return smtpTransport;
   }
