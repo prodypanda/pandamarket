@@ -18,6 +18,7 @@ import { platformConfigService } from '../services/platform-config.service';
 import { ProductType } from '@pandamarket/types';
 import { incrementBusinessMetric } from '../utils/metrics';
 import { marketplaceAnalyticsEventService } from '../services/marketplace-analytics-event.service';
+import { whatsAppOrderNotificationService } from '../services/whatsapp-order-notification.service';
 
 /**
  * Map a payment gateway identifier to the matching platform-config retention key.
@@ -71,9 +72,13 @@ async function onOrderPlaced(orderId: string): Promise<void> {
     storefront_store_id: string | null;
     total: string;
     customer_email: string | null;
+    customer_name: string;
+    customer_phone: string;
   }>(
     `SELECT o.id, o.customer_id, o.storefront_customer_id, sc.store_id AS storefront_store_id, o.total::text,
-            COALESCE(u.email, sc.email) AS customer_email
+            COALESCE(u.email, sc.email) AS customer_email,
+            COALESCE(u.full_name, sc.full_name, 'Client') AS customer_name,
+            COALESCE(u.phone, sc.phone, o.shipping_address->>'phone', '') AS customer_phone
      FROM pd_order o
      LEFT JOIN pd_user u ON u.id = o.customer_id
      LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
@@ -107,6 +112,31 @@ async function onOrderPlaced(orderId: string): Promise<void> {
       scope: order.storefront_store_id ? 'store' : 'marketplace',
       store_id: order.storefront_store_id,
     });
+  }
+
+  // Dispatch WhatsApp order confirmation if customer phone exists
+  if (order.customer_phone) {
+    try {
+      const { rows: itemRows } = await query<{ title: string; quantity: number }>(
+        `SELECT COALESCE(p.title, i.product_id) AS title, i.quantity
+         FROM pd_order_item i
+         LEFT JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = $1`,
+        [order.id],
+      );
+      await whatsAppOrderNotificationService.sendOrderConfirmationWhatsApp({
+        orderId: order.id,
+        phone: order.customer_phone,
+        customerName: order.customer_name,
+        items: itemRows,
+        totalTnd: parseFloat(order.total) || 0,
+        trackingUrl: order.storefront_store_id
+          ? `https://pandamarket.tn/store/orders/${order.id}`
+          : `https://pandamarket.tn/hub/orders`,
+      });
+    } catch (err) {
+      logger.warn({ err, orderId: order.id }, 'Could not dispatch WhatsApp order confirmation');
+    }
   }
 
   // Notify each vendor (one email per distinct store in the order)
@@ -342,9 +372,13 @@ async function onOrderFulfilled(payload: {
     customer_id: string | null;
     storefront_customer_id: string | null;
     customer_email: string | null;
+    customer_name: string;
+    customer_phone: string;
   }>(
     `SELECT o.customer_id, o.storefront_customer_id,
-            COALESCE(u.email, sc.email) AS customer_email
+            COALESCE(u.email, sc.email) AS customer_email,
+            COALESCE(u.full_name, sc.full_name, 'Client') AS customer_name,
+            COALESCE(u.phone, sc.phone, o.shipping_address->>'phone', '') AS customer_phone
        FROM pd_order o
        LEFT JOIN pd_user u ON u.id = o.customer_id
        LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
@@ -372,5 +406,21 @@ async function onOrderFulfilled(payload: {
         tracking_number: payload.tracking_number ?? '',
       },
     });
+  }
+
+  // Dispatch WhatsApp shipment update if customer phone exists
+  if (c.customer_phone) {
+    try {
+      await whatsAppOrderNotificationService.sendOrderShippedWhatsApp({
+        orderId: payload.order_id,
+        phone: c.customer_phone,
+        customerName: c.customer_name,
+        carrierName: payload.carrier || 'Livraison Express',
+        trackingNumber: payload.tracking_number || 'N/A',
+        trackingUrl: `https://pandamarket.tn/hub/orders`,
+      });
+    } catch (err) {
+      logger.warn({ err, orderId: payload.order_id }, 'Could not dispatch WhatsApp shipping notification');
+    }
   }
 }
