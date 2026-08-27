@@ -1,3 +1,4 @@
+import { couponService } from './coupon.service';
 /**
  * Server-authoritative checkout quotes.
  *
@@ -478,7 +479,25 @@ export class CheckoutQuoteService {
     let couponStoreId: string | null = null;
     let couponRecognized = false;
 
-    if (couponCode === 'CHANCE5DT') {
+    const dynCoupon = couponCode
+      ? await couponService.validateCoupon(couponCode, {
+          subtotal,
+          storeIds,
+          shippingTotal,
+        })
+      : null;
+
+    if (dynCoupon && dynCoupon.valid) {
+      couponRecognized = true;
+      couponType = dynCoupon.discountType;
+      couponScope = dynCoupon.freeShipping ? 'shipping' : 'order';
+      if (dynCoupon.freeShipping) {
+        couponShippingDiscount = shippingTotal;
+        shippingTotal = 0;
+      } else {
+        productDiscount = roundTnd(dynCoupon.discountAmount);
+      }
+    } else if (couponCode === 'CHANCE5DT') {
       couponRecognized = true;
       productDiscount = Math.min(subtotal, 5);
       couponType = 'fixed';

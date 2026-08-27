@@ -1,3 +1,4 @@
+import { couponService } from './coupon.service';
 /**
  * CartService — Server-side Cart Synchronization, Multi-Vendor Combined Shipping & Gamified Retention Leads.
  */
@@ -132,23 +133,35 @@ export class CartService {
     let discountAmount = 0;
     const coupon = (params.coupon_code || '').trim().toUpperCase();
 
-    if (coupon === 'CHANCE5DT') {
-      discountAmount = Math.min(subtotal, 5.000);
-    } else if (coupon === 'LIVRAISON_ZERO') {
-      discountAmount = shippingTotal;
-      shippingTotal = 0;
-    } else if (coupon === 'PANDA10') {
-      discountAmount = Math.round(subtotal * 0.1 * 1000) / 1000;
-    } else if (coupon === 'SUPER15') {
-      if (subtotal >= 80.000) {
-        discountAmount = 15.000;
-      }
-    } else if (coupon === 'FIDELITE5') {
-      discountAmount = Math.round(subtotal * 0.05 * 1000) / 1000;
-    } else if (coupon) {
-      // Look up seller broadcast coupons for stores present in cart
+    if (coupon) {
       const storeIds = Array.from(storeMap.keys());
-      if (storeIds.length > 0) {
+      const dynResult = await couponService.validateCoupon(coupon, {
+        subtotal,
+        storeIds,
+        shippingTotal,
+      });
+
+      if (dynResult.valid) {
+        if (dynResult.freeShipping) {
+          discountAmount = shippingTotal;
+          shippingTotal = 0;
+        } else {
+          discountAmount = dynResult.discountAmount;
+        }
+      } else if (coupon === 'CHANCE5DT') {
+        discountAmount = Math.min(subtotal, 5.000);
+      } else if (coupon === 'LIVRAISON_ZERO') {
+        discountAmount = shippingTotal;
+        shippingTotal = 0;
+      } else if (coupon === 'PANDA10') {
+        discountAmount = Math.round(subtotal * 0.1 * 1000) / 1000;
+      } else if (coupon === 'SUPER15') {
+        if (subtotal >= 80.000) {
+          discountAmount = 15.000;
+        }
+      } else if (coupon === 'FIDELITE5') {
+        discountAmount = Math.round(subtotal * 0.05 * 1000) / 1000;
+      } else if (storeIds.length > 0) {
         const broadcastRes = await query<{
           store_id: string;
           discount_type: 'percentage' | 'fixed';
