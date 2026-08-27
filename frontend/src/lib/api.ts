@@ -48,20 +48,48 @@ export async function ensureCsrfToken(): Promise<string | null> {
 }
 
 let refreshInFlight: Promise<boolean> | null = null;
+let storefrontRefreshInFlight: Promise<boolean> | null = null;
 
 /**
- * Refreshes the session using the httpOnly pd_rt refresh cookie.
- * Deduplicated so parallel 401s trigger a single refresh call.
+ * Refreshes the session using the httpOnly pd_rt / pd_storefront_rt refresh cookie.
+ * Deduplicated per auth domain so parallel 401s trigger a single refresh call.
  */
-async function refreshSession(): Promise<boolean> {
+export async function refreshSession(isStorefront: boolean = false): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+
+  const refreshUrl = isStorefront ? '/api/pd/storefront/auth/refresh' : '/api/pd/auth/refresh';
+
+  if (isStorefront) {
+    if (!storefrontRefreshInFlight) {
+      storefrontRefreshInFlight = (async () => {
+        try {
+          const headers = new Headers({ 'Content-Type': 'application/json' });
+          const token = await ensureCsrfToken();
+          if (token) headers.set(CSRF_HEADER, token);
+          const res = await fetch(refreshUrl, {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: '{}',
+          });
+          return res.ok;
+        } catch {
+          return false;
+        }
+      })().finally(() => {
+        storefrontRefreshInFlight = null;
+      });
+    }
+    return storefrontRefreshInFlight;
+  }
+
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
         const headers = new Headers({ 'Content-Type': 'application/json' });
         const token = await ensureCsrfToken();
         if (token) headers.set(CSRF_HEADER, token);
-        const res = await fetch('/api/pd/auth/refresh', {
+        const res = await fetch(refreshUrl, {
           method: 'POST',
           headers,
           credentials: 'include',
@@ -103,10 +131,12 @@ export async function fetchWithCsrf(input: RequestInfo | URL, init: RequestInit 
   let response = await doFetch();
 
   // If the short-lived access token expired, silently refresh the session
-  // once and retry, so users are not logged out while working in dashboards.
-  const isAuthSessionEndpoint = /\/api\/pd\/auth\/(login|logout|refresh|register|csrf)/.test(requestUrl(input));
+  // once and retry, so users are not logged out while browsing or in dashboards.
+  const reqUrl = requestUrl(input);
+  const isAuthSessionEndpoint = /\/api\/pd\/(auth|storefront\/auth)\/(login|logout|refresh|register|csrf)/.test(reqUrl);
   if (response.status === 401 && !isAuthSessionEndpoint && typeof window !== 'undefined') {
-    const refreshed = await refreshSession();
+    const isStorefront = reqUrl.includes('/api/pd/storefront/') || window.location.pathname.startsWith('/store/');
+    const refreshed = await refreshSession(isStorefront);
     if (refreshed) {
       response = await doFetch();
     }
