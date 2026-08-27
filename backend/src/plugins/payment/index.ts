@@ -45,10 +45,15 @@ export function decryptVendorConfig(encrypted: string | null): Record<string, st
   }
 }
 
+import { d17PaymentProvider } from './d17.provider';
+import { sobflousPaymentProvider } from './sobflous.provider';
+
 export {
   flouciProvider,
   konnectProvider,
   manualMandatProvider,
   codProvider,
   paypalProvider,
+  d17PaymentProvider,
+  sobflousPaymentProvider,
 };
