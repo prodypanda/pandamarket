@@ -585,19 +585,22 @@ router.get(
     const searchQuery = ((req.query.search as string) || '').trim().toLowerCase();
     const sortBy = (req.query.sort_by as string) || 'date_desc';
 
-    // 1. Fetch file blobs related to this store from pd_file_blobs
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+
+    // 1. Fetch file blobs related to this store (metadata only, without large bytea data payload)
     const blobResult = await query<{
       key: string;
       bucket: string;
       content_type: string;
       size: string;
       created_at: Date;
-      data: Buffer | null;
       asset_filename: string | null;
       asset_id: string | null;
+      asset_metadata: Record<string, unknown> | null;
     }>(
-      `SELECT b.key, b.bucket, b.content_type, OCTET_LENGTH(b.data) as size, b.created_at, b.data,
-              a.filename as asset_filename, a.id as asset_id
+      `SELECT b.key, b.bucket, b.content_type, OCTET_LENGTH(b.data) as size, b.created_at,
+              a.filename as asset_filename, a.id as asset_id, a.metadata as asset_metadata
        FROM pd_file_blobs b
        LEFT JOIN pd_file_asset a ON (a.file_key = b.key OR a.url LIKE '%' || b.key)
        WHERE (
@@ -667,17 +670,9 @@ router.get(
       const url = `/${row.bucket}/${cleanKey}`;
       const prodInfo = productMap.get(url) || productMap.get(cleanKey) || productMap.get(rawKey);
 
-      let width: number | null = null;
-      let height: number | null = null;
-      if (row.data && row.content_type?.startsWith('image/')) {
-        try {
-          const meta = await sharp(row.data).metadata();
-          width = meta.width ?? null;
-          height = meta.height ?? null;
-        } catch {
-          // Ignore sharp metadata error
-        }
-      }
+      // Extract width & height directly from asset metadata without re-reading bytea buffer
+      const width = (row.asset_metadata?.width as number) ?? null;
+      const height = (row.asset_metadata?.height as number) ?? null;
 
       const filename = row.asset_filename || prodInfo?.product_title || pathParts[pathParts.length - 1] || cleanKey;
 
@@ -745,9 +740,18 @@ router.get(
 
     const totalStorageUsed = allItems.reduce((acc, cur) => acc + (cur.size || 0), 0);
 
+    const offset = (page - 1) * limit;
+    const paginatedItems = filtered.slice(offset, offset + limit);
+
     res.status(200).json({
       success: true,
-      data: filtered,
+      data: paginatedItems,
+      meta: {
+        page,
+        limit,
+        total: filtered.length,
+        total_pages: Math.ceil(filtered.length / limit) || 1,
+      },
       summary: {
         total: allItems.length,
         products: allItems.filter((i) => i.folder === 'products').length,
