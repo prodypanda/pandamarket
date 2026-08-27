@@ -25,6 +25,32 @@ export function resolveMigrationsDir(): string {
   return path.join(__dirname, 'sql');
 }
 
+export const RENAMED_MIGRATIONS: Record<string, string> = {
+  '025_store_order_notes.sql': '025b_store_order_notes.sql',
+  '026_page_builder_seo_navigation.sql': '026b_page_builder_seo_navigation.sql',
+  '027_page_builder_draft_publish.sql': '027b_page_builder_draft_publish.sql',
+  '028_page_builder_versions.sql': '028b_page_builder_versions.sql',
+  '029_audit_log_action_text.sql': '029b_audit_log_action_text.sql',
+  '032_platform_page_builder.sql': '032b_platform_page_builder.sql',
+  '046_complete_subcategory_multilingual_translations.sql': '046b_complete_subcategory_multilingual_translations.sql',
+  '046_seed_multilingual_category_descriptions.sql': '046c_seed_multilingual_category_descriptions.sql',
+  '047_update_category_classification_prompt.sql': '047b_update_category_classification_prompt.sql',
+  '066_store_menus_and_footers.sql': '066b_store_menus_and_footers.sql',
+  '067_theme_referential_integrity.sql': '067b_theme_referential_integrity.sql',
+  '068_storefront_digital_downloads.sql': '068b_storefront_digital_downloads.sql',
+  '069_storefront_mandat_receipts.sql': '069b_storefront_mandat_receipts.sql',
+};
+
+export async function syncRenamedMigrations(): Promise<void> {
+  const pool = getPool();
+  for (const [oldName, newName] of Object.entries(RENAMED_MIGRATIONS)) {
+    await pool.query(
+      `UPDATE pd_migrations SET id = $1 WHERE id = $2 AND NOT EXISTS (SELECT 1 FROM pd_migrations WHERE id = $1)`,
+      [newName, oldName],
+    );
+  }
+}
+
 async function ensureMigrationsTable(): Promise<void> {
   await getPool().query(`
     CREATE TABLE IF NOT EXISTS pd_migrations (
@@ -121,6 +147,7 @@ export async function run(): Promise<void> {
     await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
     try {
       await ensureMigrationsTable();
+      await syncRenamedMigrations();
       const applied = await getApplied();
 
       const files = getMigrationFiles(dir);
