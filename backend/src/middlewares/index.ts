@@ -18,6 +18,7 @@ import {
   PdValidationError,
 } from '../errors';
 import { UserRole } from '@pandamarket/types';
+import { adminCapabilityService } from '../services/admin-capability.service';
 import { apiKeyService } from '../services/api-key.service';
 import { systemLogService } from '../services/system-log.service';
 import { captureException, setUser } from '../utils/sentry';
@@ -190,6 +191,45 @@ export function requireRole(...roles: UserRole[]): RequestHandler {
 export const requireAdmin: RequestHandler = requireRole(UserRole.Admin, UserRole.SuperAdmin);
 export const requireSuperAdmin: RequestHandler = requireRole(UserRole.SuperAdmin);
 export const requireVendor: RequestHandler = requireRole(UserRole.Vendor);
+
+/**
+ * Require specific administrative capabilities (RBAC). SuperAdmin bypasses all capability checks.
+ */
+export function requireCapability(...capabilities: string[]): RequestHandler {
+  return async (req, _res, next) => {
+    if (!req.user) {
+      return next(new PdAuthenticationError());
+    }
+    if (req.user.role === UserRole.SuperAdmin) {
+      return next();
+    }
+    if (req.user.role !== UserRole.Admin) {
+      return next(
+        new PdForbiddenError(
+          PdErrorCode.PERM_FORBIDDEN,
+          'Admin privileges required',
+        ),
+      );
+    }
+
+    try {
+      const userCaps = await adminCapabilityService.getUserCapabilities(req.user.id);
+      const hasAny = capabilities.some((cap) => userCaps.includes(cap));
+      if (!hasAny) {
+        return next(
+          new PdForbiddenError(
+            PdErrorCode.PERM_FORBIDDEN,
+            `Required capability missing: ${capabilities.join(' or ')}`,
+            { required_capabilities: capabilities, user_capabilities: userCaps },
+          ),
+        );
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
 
 /**
  * Require that the authenticated vendor has a store and return it.
