@@ -360,7 +360,7 @@ export default function SellerOnboardingPage() {
       if (!res.ok) throw new Error('Failed to submit verification request');
 
       const nextOnboarding = await updateOnboardingStep('kyc', {
-        completed: true,
+        completed: false,
         metadata: { status: 'submitted' },
       });
       setOnboardingState(nextOnboarding);
@@ -435,26 +435,19 @@ export default function SellerOnboardingPage() {
     setSavingStep(true);
     setWizardError('');
     try {
-      // 1. Save Shipping Fee
-      const shipRes = await fetchWithCsrf('/api/pd/stores/me/shipping', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shipping_flat_fee: parsedShippingFee }),
-      });
-      if (!shipRes.ok) throw new Error('Failed to save shipping configurations');
-
-      // 2. Save Payout details
-      const payRes = await fetchWithCsrf('/api/pd/stores/me/settings', {
+      // 1. Save Shipping Fee & Payout details in store settings
+      const settingsRes = await fetchWithCsrf('/api/pd/stores/me/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           settings: {
+            shipping_flat_fee: parsedShippingFee,
             payout_method: codEnabled ? 'COD' : 'bank_transfer',
             payout_details: bankTransferDetails,
           },
         }),
       });
-      if (!payRes.ok) throw new Error('Failed to save payout settings');
+      if (!settingsRes.ok) throw new Error('Failed to save shipping and payout settings');
 
       const nextOnboarding = await updateOnboardingStep('payment_shipping', {
         completed: true,
@@ -491,6 +484,9 @@ export default function SellerOnboardingPage() {
       setSavingStep(false);
     }
   };
+
+  // Store is online when not in maintenance and verified
+  const isOnline = store?.status !== 'maintenance' && (store?.status === 'verified' || Boolean(store?.is_verified));
 
   // Clean dashboard status counts
   const storeBasicsComplete = Boolean(onboardingState.store_basics?.completed || (store?.name && logoUrl));
@@ -645,7 +641,7 @@ export default function SellerOnboardingPage() {
             <div>
               <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">Visibility Status</span>
               <span className="block mt-1 text-sm font-black text-white">
-                {store?.status === 'published' ? '🟢 Published / Active' : '🟡 In Maintenance Mode'}
+                {isOnline ? '🟢 Published / Active' : '🟡 In Maintenance Mode'}
               </span>
             </div>
             <Link
@@ -878,7 +874,7 @@ export default function SellerOnboardingPage() {
                                   if (file) {
                                     try {
                                       setWizardError('');
-                                      const url = await handleFileUpload(file, 'store_logo');
+                                      const url = await handleFileUpload(file, 'store_asset');
                                       setLogoUrl(url);
                                     } catch (err) {
                                       setWizardError('Failed to upload logo image');
@@ -920,7 +916,7 @@ export default function SellerOnboardingPage() {
                                   if (file) {
                                     try {
                                       setWizardError('');
-                                      const url = await handleFileUpload(file, 'store_logo');
+                                      const url = await handleFileUpload(file, 'store_asset');
                                       setLogoDarkUrl(url);
                                     } catch (err) {
                                       setWizardError('Failed to upload logo image');
@@ -1299,14 +1295,14 @@ export default function SellerOnboardingPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => publishStoreToggle(store?.status !== 'published')}
+                        onClick={() => publishStoreToggle(!isOnline)}
                         className={`rounded-2xl px-6 py-3.5 text-xs font-black text-white transition-all shadow-md ${
-                          store?.status === 'published'
+                          isOnline
                             ? 'bg-emerald-600 hover:bg-emerald-700'
                             : 'bg-[#B91C1C] hover:bg-[#991B1B]'
                         }`}
                       >
-                        {store?.status === 'published' ? '🟢 Published Live' : '🔴 Offline / Private'}
+                        {isOnline ? '🟢 Published Live' : '🔴 Offline / Private'}
                       </button>
                     </div>
 

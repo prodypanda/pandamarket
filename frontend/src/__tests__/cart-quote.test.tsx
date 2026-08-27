@@ -50,6 +50,7 @@ describe('PLAN-B-11: Centralized Cart & Coupon Calculation Engine', () => {
         quantity: 2,
         store_id: 'store_1',
         store_name: 'Store 1',
+        image_url: 'https://example.com/item.jpg',
       });
     });
 
@@ -89,6 +90,7 @@ describe('PLAN-B-11: Centralized Cart & Coupon Calculation Engine', () => {
         quantity: 1,
         store_id: 'store_1',
         store_name: 'Store 1',
+        image_url: 'https://example.com/item.jpg',
       });
     });
 
