@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
-import { Globe, Save, ExternalLink, RefreshCw } from 'lucide-react';
+import { Globe, Save, ExternalLink, RefreshCw, Lock, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useDashboardSubscription } from '@/contexts/DashboardSubscriptionContext';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { useLocale } from '@/contexts/LocaleContext';
 
 export default function DomainsPage() {
   const { t } = useLocale();
+  const { limits } = useDashboardSubscription();
+  const hasCustomDomainAccess = limits === null || limits.has_custom_domain;
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [initialCustomDomain, setInitialCustomDomain] = useState('');
@@ -130,33 +134,57 @@ export default function DomainsPage() {
 
       {/* Custom Domain Card */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-slate-900">{t('dashboardPages.domains.customDomainHeading')}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900">{t('dashboardPages.domains.customDomainHeading')}</h2>
+          {!hasCustomDomainAccess && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-black text-amber-700">
+              <Lock className="h-3 w-3" /> Plan Starter requis
+            </span>
+          )}
+        </div>
         <p className="text-xs text-slate-500">
           {t('dashboardPages.domains.customDomainDesc')}
         </p>
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.domains.customDomain')}</label>
-          <input
-            type="text"
-            value={customDomain}
-            onChange={(e) => {
-              setCustomDomain(e.target.value);
-              setIsDirty(true);
-            }}
-            placeholder={t('dashboardPages.domains.customDomainPlaceholder')}
-            className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
-          />
-        </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? t('dashboardPages.domains.saving') : t('dashboardPages.domains.saveDomain')}
-        </button>
+        {!hasCustomDomainAccess ? (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4 text-xs space-y-2">
+            <p className="font-bold text-amber-900">
+              Les domaines personnalisés (ex: boutique.com) sont disponibles à partir du forfait Starter.
+            </p>
+            <Link
+              href="/hub/dashboard/subscription"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Mettre à niveau mon abonnement
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.domains.customDomain')}</label>
+              <input
+                type="text"
+                value={customDomain}
+                onChange={(e) => {
+                  setCustomDomain(e.target.value);
+                  setIsDirty(true);
+                }}
+                placeholder={t('dashboardPages.domains.customDomainPlaceholder')}
+                className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !hasCustomDomainAccess}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? t('dashboardPages.domains.saving') : t('dashboardPages.domains.saveDomain')}
+            </button>
+          </>
+        )}
       </div>
 
       <UnsavedChangesBanner

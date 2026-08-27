@@ -2,6 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { fetchOnboardingState } from '@/lib/onboarding';
+import { DashboardSubscriptionProvider } from '@/contexts/DashboardSubscriptionContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -458,7 +459,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex">
+    <DashboardSubscriptionProvider>
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex">
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex fixed h-full z-10 shadow-sm">
         <div className="h-16 flex items-center px-6 border-b border-slate-200">
@@ -707,5 +709,6 @@ export default function DashboardLayout({
         </div>
       </main>
     </div>
+    </DashboardSubscriptionProvider>
   );
 }

@@ -3,6 +3,7 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import React, { Fragment } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useDashboardSubscription } from '@/contexts/DashboardSubscriptionContext';
 import { ProductDescriptionEditor } from '@/components/product/ProductDescription';
 import { updateOnboardingStep } from '@/lib/onboarding';
 import { getHubProductHref } from '@/lib/product-links';
@@ -547,6 +548,7 @@ export default function ProductsPage() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('general');
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const { limits } = useDashboardSubscription();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // View Mode & Selection
