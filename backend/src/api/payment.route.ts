@@ -212,9 +212,9 @@ router.post(
 router.post(
   '/webhook/flouci',
   asyncHandler(async (req: Request, res: Response) => {
-    // Verify HMAC signature (skip in development if no secret configured)
+    // Verify HMAC signature
     const signatureValid = verifyFlouciSignature(req);
-    if (!signatureValid && config.env === 'production') {
+    if (!signatureValid) {
       logger.warn({ ip: req.ip }, 'Flouci webhook signature verification failed');
       res.status(401).json({ error: { message: 'Invalid signature' } });
       return;
@@ -243,9 +243,9 @@ router.post(
 router.post(
   '/webhook/konnect',
   asyncHandler(async (req: Request, res: Response) => {
-    // Verify HMAC signature (skip in development if no secret configured)
+    // Verify HMAC signature
     const signatureValid = verifyKonnectSignature(req);
-    if (!signatureValid && config.env === 'production') {
+    if (!signatureValid) {
       logger.warn({ ip: req.ip }, 'Konnect webhook signature verification failed');
       res.status(401).json({ error: { message: 'Invalid signature' } });
       return;
