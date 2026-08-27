@@ -675,6 +675,7 @@ router.put(
     const updatedKeys = await platformConfigService.updateSettings(
       req.body as Partial<Record<PlatformSettingKey, PlatformSettingValue>>,
       req.user!.id,
+      req.user?.role,
     );
 
     logger.info({ admin_id: req.user!.id, keys: updatedKeys }, 'Admin updated platform settings');
@@ -738,6 +739,7 @@ router.put(
         parsed,
         req.user!.id,
         expectedVersion,
+        req.user?.role,
       );
     } catch (error) {
       if (error instanceof PdConflictError && error.code === PdErrorCode.SETTINGS_CONFLICT) {

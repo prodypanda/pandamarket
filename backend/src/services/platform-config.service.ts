@@ -2,7 +2,8 @@ import type { PoolClient } from 'pg';
 import { query, transaction } from '../db/pool';
 import { getRedis, withRedisTimeout } from '../db/redis';
 import { logger } from '../utils/logger';
-import { PdConflictError, PdErrorCode } from '../errors';
+import { PdConflictError, PdErrorCode, PdForbiddenError } from '../errors';
+import { UserRole } from '@pandamarket/types';
 
 export type PlatformSettingValue = string | number | boolean;
 export type PlatformSettingSection = 'marketplace' | 'core_pages' | 'algorithm' | 'commerce' | 'finance' | 'shipping' | 'security' | 'operations' | 'integrations';
@@ -620,6 +621,10 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'mandat_recipient_name',
     'mandat_recipient_cin',
     'mandat_recipient_city',
+    'mandat_bank_name',
+    'mandat_bank_rib',
+    'mandat_bank_iban',
+    'mandat_recipient_phone',
     'mandat_proof_email',
   ],
   shipping: [
@@ -1049,10 +1054,24 @@ class PlatformConfigService {
     return publicSettings;
   }
 
-  async updateSettings(input: Partial<Record<PlatformSettingKey, PlatformSettingValue>>, adminId: string) {
+  async updateSettings(
+    input: Partial<Record<PlatformSettingKey, PlatformSettingValue>>,
+    adminId: string,
+    userRole?: UserRole | string,
+  ) {
     const entries = Object.entries(input).filter(
       (entry): entry is [PlatformSettingKey, PlatformSettingValue] => isPlatformSettingKey(entry[0]) && entry[1] !== undefined,
     );
+
+    // Privileged Section Authorization Guard (P0-06)
+    const restrictedSections: PlatformSettingSection[] = ['finance', 'security'];
+    const touchedSections = sectionsForKeys(entries.map(([key]) => key));
+    if (touchedSections.some((s) => restrictedSections.includes(s)) && userRole !== UserRole.SuperAdmin) {
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        'SuperAdmin privilege required to update finance or security platform settings',
+      );
+    }
 
     await transaction(async (client) => {
       for (const section of sectionsForKeys(entries.map(([key]) => key))) {
@@ -1080,7 +1099,14 @@ class PlatformConfigService {
     input: Partial<Record<PlatformSettingKey, PlatformSettingValue>>,
     adminId: string,
     expectedVersion?: string | null,
+    userRole?: UserRole | string,
   ) {
+    if (['finance', 'security'].includes(section) && userRole !== UserRole.SuperAdmin) {
+      throw new PdForbiddenError(
+        PdErrorCode.PERM_FORBIDDEN,
+        `Modifying ${section} settings requires SuperAdmin privileges`,
+      );
+    }
     const allowedKeys = new Set<PlatformSettingKey>(PLATFORM_SETTING_SECTION_KEYS[section]);
     const sectionInput: Partial<Record<PlatformSettingKey, PlatformSettingValue>> = {};
     for (const [key, value] of Object.entries(input)) {
