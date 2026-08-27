@@ -28,24 +28,31 @@ function getKey(): Buffer {
 }
 
 /**
- * AES-256-GCM encryption. Output format (base64):
+ * AES-256-GCM encryption with optional AAD (Additional Authenticated Data).
+ * Output format (base64):
  *   <iv:12><tag:16><ciphertext:N>
  */
-export function encrypt(plaintext: string): string {
+export function encrypt(plaintext: string, aad?: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGO, getKey(), iv);
+  if (aad) {
+    cipher.setAAD(Buffer.from(aad, 'utf8'));
+  }
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, encrypted]).toString('base64');
 }
 
-export function decrypt(payload: string): string {
+export function decrypt(payload: string, aad?: string): string {
   const buf = Buffer.from(payload, 'base64');
   const iv = buf.subarray(0, IV_LENGTH);
   const tag = buf.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
   const ciphertext = buf.subarray(IV_LENGTH + TAG_LENGTH);
   const decipher = crypto.createDecipheriv(ALGO, getKey(), iv);
   decipher.setAuthTag(tag);
+  if (aad) {
+    decipher.setAAD(Buffer.from(aad, 'utf8'));
+  }
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 }
 
