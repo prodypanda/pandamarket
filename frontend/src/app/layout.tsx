@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, Poppins, Montserrat, Lora, Space_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -138,8 +139,12 @@ export default async function RootLayout({
     ...(marketplaceSettings.marketplace_secondary_color ? { '--brand-secondary': marketplaceSettings.marketplace_secondary_color } : {}),
   } as React.CSSProperties;
 
+  const cookieStore = await cookies();
+  const locale = cookieStore.get('pd_locale')?.value || 'fr';
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <html lang="fr" className={`${inter.variable} ${playfair.variable} ${poppins.variable} ${montserrat.variable} ${lora.variable} ${spaceGrotesk.variable} h-full antialiased`} style={brandStyles}>
+    <html lang={locale} dir={dir} className={`${inter.variable} ${playfair.variable} ${poppins.variable} ${montserrat.variable} ${lora.variable} ${spaceGrotesk.variable} h-full antialiased`} style={brandStyles}>
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         {gtmContainerId && (
           <noscript>
