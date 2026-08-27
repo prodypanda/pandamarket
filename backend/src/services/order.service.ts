@@ -2007,6 +2007,16 @@ export class OrderService {
         }
       }
 
+      // 3b. Restock product inventory for store items in this refunded order
+      await c.query(
+        `UPDATE pd_product p
+         SET inventory_quantity = p.inventory_quantity + oi.quantity,
+             updated_at = NOW()
+         FROM pd_order_item oi
+         WHERE oi.order_id = $1 AND oi.store_id = $2 AND oi.product_id = p.id`,
+        [refund.order_id, refund.store_id],
+      );
+
       // 4. Emit events
       eventBus.emit(PdEvent.ORDER_REFUNDED, {
         order_id: refund.order_id,
