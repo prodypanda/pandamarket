@@ -1,8 +1,5 @@
-import { query } from '../../db/pool';
-import { PdErrorCode, PdNotFoundError } from '../../errors';
 import { asyncHandler, validate } from '../../middlewares';
 import { reportService } from '../../services/report.service';
-import { logger } from '../../utils/logger';
 import { ReportSource, ReportMessageVisibility, ReportPriority, ReportStatus, ReportTargetType } from '@pandamarket/types';
 import { Request, Response, Router } from 'express';
 import { z } from 'zod';
@@ -177,49 +174,4 @@ router.put(
   }),
 );
 
-const buyerEnforcementSchema = z.object({
-  reason: z.string().max(500).optional(),
-});
-
-router.put(
-  '/buyers/:id/suspend',
-  validate(buyerEnforcementSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { rows } = await query<{ id: string; email: string; role: string; is_active: boolean }>(
-      `UPDATE pd_user
-       SET is_active = false,
-           updated_at = NOW()
-       WHERE id = $1 AND role = $2
-       RETURNING id, email, role, is_active`,
-      [req.params.id, 'customer'],
-    );
-    if (!rows[0]) {
-      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
-    }
-    logger.warn(
-      { buyer_id: req.params.id, admin_id: req.user!.id, reason: req.body.reason },
-      'Admin suspended buyer',
-    );
-    res.status(200).json({ success: true, user: rows[0] });
-  }),
-);
-
-router.put(
-  '/buyers/:id/reactivate',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { rows } = await query<{ id: string; email: string; role: string; is_active: boolean }>(
-      `UPDATE pd_user
-       SET is_active = true,
-           updated_at = NOW()
-       WHERE id = $1 AND role = $2
-       RETURNING id, email, role, is_active`,
-      [req.params.id, 'customer'],
-    );
-    if (!rows[0]) {
-      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Buyer not found');
-    }
-    logger.info({ buyer_id: req.params.id, admin_id: req.user!.id }, 'Admin reactivated buyer');
-    res.status(200).json({ success: true, user: rows[0] });
-  }),
-);
 export default router;
