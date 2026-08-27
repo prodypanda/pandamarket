@@ -93,7 +93,16 @@ export const config = {
   // Redis
   redisUrl: required('PD_REDIS_URL', 'redis://localhost:6379'),
 
-  // S3
+  // S3 & Cloudflare R2 Object Storage
+  storage: {
+    r2AccountId: optional('PD_R2_ACCOUNT_ID', '')!,
+    r2AccessKeyId: optional('PD_R2_ACCESS_KEY_ID', '')!,
+    r2SecretAccessKey: optional('PD_R2_SECRET_ACCESS_KEY', '')!,
+    r2Bucket: optional('PD_R2_BUCKET', 'pandamarket')!,
+    cdnBaseUrl: optional('PD_CDN_BASE_URL', 'https://cdn.pandamarket.tn')!,
+    s3Endpoint: optional('PD_S3_ENDPOINT', '')!,
+    s3Region: optional('PD_S3_REGION', 'auto')!,
+  },
   s3: {
     endpoint: optional('PD_S3_ENDPOINT', 'http://localhost:9100')!,
     forcePathStyle: asBool('PD_S3_FORCE_PATH_STYLE', true),
