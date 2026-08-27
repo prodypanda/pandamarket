@@ -34,8 +34,14 @@ router.post('/public/events', adsEventRateLimit, optionalAuth, validate(eventSch
   if (!agent || /(bot|crawler|spider|headless|preview|facebookexternalhit|slurp)/.test(agent)) {
     res.status(202).json({ recorded:false, bot_filtered:true }); return;
   }
-  const ip=String(req.ip||'');
-  const ipHash=crypto.createHash('sha256').update(`${config.jwt.secret}:${ip}`).digest('hex');
+  const forwardedFor = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim();
+  const rawClientIp = (req.headers['cf-connecting-ip'] as string | undefined)
+    || (req.headers['x-real-ip'] as string | undefined)
+    || forwardedFor
+    || req.ip
+    || '';
+  const ip = String(rawClientIp).trim();
+  const ipHash = crypto.createHash('sha256').update(`${config.jwt.secret}:${ip}`).digest('hex');
   res.status(202).json(await adsService.recordEvent({ token:req.body.token,eventType:req.body.event_type,eventKey:req.body.event_key,sessionHash:req.body.session_hash,ipHash,viewerStoreId:req.user?.store_id }));
 }));
 router.post('/webhooks/flouci',asyncHandler(async(req:Request,res:Response)=>{

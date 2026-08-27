@@ -632,7 +632,12 @@ export class AdsService {
     const token = this.verifyDeliveryToken(input.token);
     const settings=await platformConfigService.getSettings();
     return transaction(async (c) => {
-      const blocked = await c.query('SELECT 1 FROM pd_ads_blocked_ip WHERE ip_hash=$1', [input.ipHash || '']);
+      const blocked = await c.query(
+        `SELECT 1 FROM pd_ads_blocked_ip
+         WHERE ip_hash = $1
+           AND blocked_at > NOW() - INTERVAL '24 hours'`,
+        [input.ipHash || ''],
+      );
       if (blocked.rows[0]) return { recorded: false, fraud_blocked: true };
 
       if (input.ipHash && input.eventType === 'click') {
@@ -642,7 +647,9 @@ export class AdsService {
         );
         if (Number(rapidClicks.rows[0].count) >= 6) {
           await c.query(
-            `INSERT INTO pd_ads_blocked_ip (ip_hash, reason) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            `INSERT INTO pd_ads_blocked_ip (ip_hash, reason, blocked_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (ip_hash) DO UPDATE SET blocked_at = NOW(), reason = EXCLUDED.reason`,
             [input.ipHash, 'Automated detection: Click rate exceeded 6 clicks/min']
           );
           return { recorded: false, fraud_blocked: true };
