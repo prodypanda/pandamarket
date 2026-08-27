@@ -183,6 +183,21 @@ export class SmsService {
   }
 
   /**
+   * Send a general SMS / WhatsApp notification message to a recipient.
+   */
+  async sendSms(to: string, message: string): Promise<boolean> {
+    const normalised = normalisePhone(to);
+    const settings = await platformConfigService.getSettings();
+    if (!settings.notifications_sms_enabled) {
+      logger.info('SMS notifications disabled in platform settings');
+      return false;
+    }
+    const provider = configuredSmsProvider(settings);
+    const sender = configuredSmsSender(settings);
+    return this.dispatchSms(normalised, message, provider, sender);
+  }
+
+  /**
    * Dispatch SMS via the configured provider.
    */
   private async dispatchSms(to: string, message: string, provider: SmsProvider, sender: string): Promise<boolean> {
