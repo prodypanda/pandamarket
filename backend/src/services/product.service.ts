@@ -2284,13 +2284,13 @@ export class ProductService {
               s.name AS store_name, s.subdomain AS store_subdomain,
               s.custom_domain AS store_custom_domain, s.seller_type AS store_seller_type,
               COALESCE(s.is_verified, false) AS store_is_verified,
-              COALESCE(img.images, '[]'::json) AS images
+              COALESCE(img.images, '[]'::jsonb) AS images
        FROM pd_product p
        JOIN pd_product_bundle_item bi ON bi.bundle_product_id = p.id
        JOIN pd_store s ON s.id = p.store_id
        LEFT JOIN LATERAL (
-         SELECT json_agg(
-           json_build_object(
+         SELECT jsonb_agg(
+           jsonb_build_object(
              'id', pi.id,
              'url', pi.url,
              'alt_text', pi.alt_text,
