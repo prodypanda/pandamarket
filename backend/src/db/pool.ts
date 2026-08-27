@@ -15,7 +15,12 @@ export function getPool(): Pool {
     pool = new Pool({
       connectionString: config.databaseUrl,
       max: config.databasePoolSize,
-      ssl: config.databaseSsl ? { rejectUnauthorized: false } : false,
+      ssl: config.databaseSsl
+        ? {
+            rejectUnauthorized: config.databaseSslRejectUnauthorized,
+            ...(config.databaseCaCert ? { ca: config.databaseCaCert } : {}),
+          }
+        : false,
       // TCP keepalive detects half-open connections that the Supabase pooler / NAT
       // silently drops; without it, reusing such a connection hangs the query forever.
       keepAlive: true,

@@ -54,10 +54,14 @@ export async function initSentry(): Promise<void> {
         'PdQuotaExceededError',
       ],
       beforeSend(event: any) {
-        if (event.request?.headers) {
-          delete event.request.headers['authorization'];
-          delete event.request.headers['cookie'];
-          delete event.request.headers['x-pd-api-key'];
+        if (event.request) {
+          delete event.request.data;
+          delete event.request.cookies;
+          if (event.request.headers) {
+            delete event.request.headers['authorization'];
+            delete event.request.headers['cookie'];
+            delete event.request.headers['x-pd-api-key'];
+          }
         }
         return event;
       },
