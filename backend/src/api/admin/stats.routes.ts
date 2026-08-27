@@ -101,10 +101,8 @@ router.post(
   validate(createPlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = req.body.plan_id;
-    const commissionRate =
-      Number(req.body.commission_rate) > 1
-        ? Number(req.body.commission_rate) / 100
-        : Number(req.body.commission_rate);
+    // Wire format is explicitly percentage (0-100), stored as fraction (0.00-1.00)
+    const commissionRate = Math.max(0, Math.min(100, Number(req.body.commission_rate))) / 100;
     const { rows } = await query(
       `INSERT INTO pd_subscription_limits (
          plan_id,
@@ -155,10 +153,8 @@ router.put(
   validate(updatePlanSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const planId = normalizePlanId(req.params.planId);
-    const commissionRate =
-      Number(req.body.commission_rate) > 1
-        ? Number(req.body.commission_rate) / 100
-        : Number(req.body.commission_rate);
+    // Wire format is explicitly percentage (0-100), stored as fraction (0.00-1.00)
+    const commissionRate = Math.max(0, Math.min(100, Number(req.body.commission_rate))) / 100;
     const { rows } = await query(
       `UPDATE pd_subscription_limits
        SET max_products = $2,
