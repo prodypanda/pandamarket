@@ -108,8 +108,25 @@ function escapeAttr(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
-function isUnsafeUrl(value: string, allowDataImage = false): boolean {
-  const compact = [...value.trim()]
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+export function isUnsafeUrl(value: string, allowDataImage = false): boolean {
+  let decoded = decodeHtmlEntities(value);
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    // Keep decoded
+  }
+  const compact = [...decoded.trim()]
     .filter((char) => {
       const code = char.charCodeAt(0);
       return code > 31 && code !== 127 && !/\s/.test(char);
@@ -369,7 +386,7 @@ function sanitizeInlineStyles(html: string): string {
   );
 }
 
-function sanitizeHtmlInitial(html: string): string {
+export function sanitizeHtmlInitial(html: string): string {
   if (!html) return '';
   let clean = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   clean = clean.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
