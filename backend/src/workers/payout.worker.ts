@@ -91,10 +91,12 @@ async function handleAutoPayout(): Promise<void> {
   for (const row of rows) {
     const amount = parseFloat(row.balance);
     try {
+      const today = new Date().toISOString().slice(0, 10);
       await walletService.withdraw({
         store_id: row.store_id,
         amount,
         notes: 'Automatic payout',
+        idempotency_key: `auto_payout_${row.store_id}_${today}`,
       });
       eventBus.emit(PdEvent.WALLET_PAYOUT_COMPLETED, {
         store_id: row.store_id,

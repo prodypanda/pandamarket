@@ -202,6 +202,7 @@ export const withdrawSchema = z.object({
   amount: z.number().min(1),
   bank_iban: z.string().max(34).optional(),
   notes: z.string().max(500).optional(),
+  idempotency_key: z.string().max(160).optional(),
 });
 
 export const updatePayoutModeSchema = z.object({

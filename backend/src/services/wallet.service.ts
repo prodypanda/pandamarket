@@ -188,6 +188,7 @@ export class WalletService {
     store_id: string;
     amount: number;
     notes?: string;
+    idempotency_key?: string;
   }): Promise<IVendorWallet> {
     const amount = roundTnd(opts.amount);
     if (amount < config.minWithdrawalTnd) {
@@ -202,6 +203,19 @@ export class WalletService {
     }
 
     return transaction(async (c) => {
+      if (opts.idempotency_key) {
+        const existingTx = await c.query<WalletRow>(
+          `SELECT w.* FROM pd_wallet_transaction tx
+           JOIN pd_vendor_wallet w ON w.id = tx.wallet_id
+           WHERE tx.metadata->>'idempotency_key' = $1`,
+          [opts.idempotency_key],
+        );
+        if (existingTx.rows.length > 0) {
+          logger.info({ idempotency_key: opts.idempotency_key }, 'Withdrawal already processed for idempotency key');
+          return rowToWallet(existingTx.rows[0]);
+        }
+      }
+
       const { rows } = await c.query<WalletRow>(
         'SELECT * FROM pd_vendor_wallet WHERE store_id = $1 FOR UPDATE',
         [opts.store_id],
@@ -226,9 +240,16 @@ export class WalletService {
       );
       await c.query(
         `INSERT INTO pd_wallet_transaction
-           (id, wallet_id, type, amount, balance_after, description)
-         VALUES ($1, $2, 'payout', $3, $4, $5)`,
-        [pdId('wtx'), wallet.id, -amount, newBalance, opts.notes ?? 'Vendor withdrawal'],
+           (id, wallet_id, type, amount, balance_after, description, metadata)
+         VALUES ($1, $2, 'payout', $3, $4, $5, $6)`,
+        [
+          pdId('wtx'),
+          wallet.id,
+          -amount,
+          newBalance,
+          opts.notes ?? 'Vendor withdrawal',
+          JSON.stringify({ ...(opts.idempotency_key ? { idempotency_key: opts.idempotency_key } : {}) }),
+        ],
       );
       const refreshed = await c.query<WalletRow>(
         'SELECT * FROM pd_vendor_wallet WHERE id = $1',

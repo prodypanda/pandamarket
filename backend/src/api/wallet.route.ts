@@ -51,10 +51,12 @@ router.post(
   requireStore,
   validate(withdrawSchema),
   asyncHandler(async (req: Request, res: Response) => {
+    const idempotencyKey = (req.headers['idempotency-key'] as string | undefined) || req.body.idempotency_key;
     const wallet = await walletService.withdraw({
       store_id: req.user!.store_id!,
       amount: req.body.amount,
       notes: req.body.notes,
+      idempotency_key: idempotencyKey,
     });
     res.status(200).json({ wallet });
   }),

@@ -3,6 +3,7 @@ import { asyncHandler, validate } from '../../middlewares';
 import { platformConfigService } from '../../services/platform-config.service';
 import { walletService } from '../../services/wallet.service';
 import { Request, Response, Router } from 'express';
+import { PdNotFoundError, PdErrorCode } from '../../errors';
 import { z } from 'zod';
 
 /** Withdrawal / Payout Queue — extracted from admin.route.ts (E15 split). */
@@ -108,4 +109,51 @@ router.post(
     res.status(200).json({ synced_wallets: rowCount ?? 0, retention_days: retentionDays });
   }),
 );
+
+/**
+ * PUT /api/pd/admin/withdrawals/:id/status
+ * Mark a withdrawal payout as approved or rejected with bank transfer reference.
+ */
+router.put(
+  '/withdrawals/:id/status',
+  validate(
+    z.object({
+      status: z.enum(['approved', 'rejected', 'completed']),
+      reference: z.string().optional(),
+      reason: z.string().optional(),
+    }),
+  ),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status, reference, reason } = req.body;
+
+    const { rows } = await query(
+      `UPDATE pd_wallet_transaction
+       SET metadata = jsonb_set(
+         jsonb_set(
+           coalesce(metadata, '{}'::jsonb),
+           '{payout_status}',
+           to_jsonb($1::text)
+         ),
+         '{payout_review}',
+         jsonb_build_object(
+           'reviewed_by', $2::text,
+           'reviewed_at', NOW(),
+           'reference', $3::text,
+           'reason', $4::text
+         )
+       )
+       WHERE id = $5 AND type = 'payout'
+       RETURNING *`,
+      [status, req.user!.id, reference || '', reason || '', id],
+    );
+
+    if (!rows[0]) {
+      throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Withdrawal transaction not found');
+    }
+
+    res.status(200).json({ success: true, transaction: rows[0] });
+  }),
+);
+
 export default router;
