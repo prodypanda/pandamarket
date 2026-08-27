@@ -171,7 +171,7 @@ export class DomainVerificationService {
         const rootTxtRecords = await dns.promises.resolveTxt(domain.hostname).catch(() => []);
         const allTxt = [...txtRecords, ...rootTxtRecords].flat();
 
-        if (mockToken) {
+        if (mockToken && config.env === 'test') {
           const expectedHash = crypto.createHash('sha256').update(mockToken).digest('hex');
           if (expectedHash === domain.verification_token_hash) {
             verified = true;
@@ -302,12 +302,16 @@ export class DomainVerificationService {
 
     if (rows.length > 0) return true;
 
-    // Legacy fallback check in pd_store
-    const legacyStore = await query<{ id: string }>(
-      'SELECT id FROM pd_store WHERE custom_domain = $1',
+    // Legacy fallback check in pd_store: only if store is active and on an authorized paid plan
+    const legacyStore = await query<{ id: string; subscription_plan: string }>(
+      'SELECT id, subscription_plan FROM pd_store WHERE custom_domain = $1 AND is_active = true',
       [norm],
     );
-    return Boolean(legacyStore.rowCount && legacyStore.rowCount > 0);
+    if (legacyStore.rows[0]) {
+      const limits = await subscriptionService.getLimits(legacyStore.rows[0].subscription_plan);
+      return Boolean(limits.has_custom_domain);
+    }
+    return false;
   }
 }
 

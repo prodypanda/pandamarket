@@ -1230,10 +1230,11 @@ router.post(
   requireAuth,
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
+    const mockToken = config.env === 'test' ? req.body.mock_token : undefined;
     const domain = await domainVerificationService.verifyDomain(
       req.user!.store_id!,
       req.params.id,
-      req.body.mock_token,
+      mockToken,
     );
     res.status(200).json({ domain });
   }),

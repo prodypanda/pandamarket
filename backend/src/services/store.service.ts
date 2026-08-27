@@ -910,6 +910,8 @@ export class StoreService {
   async updateCustomDomain(storeId: string, domain: string | null): Promise<StoreRow> {
     const normalizedDomain = domain ? normalizeCustomDomain(domain) : null;
     if (normalizedDomain) {
+      const store = await this.getById(storeId);
+      await subscriptionService.assertCanUseCustomDomain(store.subscription_plan);
       const settings = await platformConfigService.getSettings();
       assertCustomDomainPolicy(normalizedDomain, settings);
       const taken = await query<{ id: string }>(
@@ -922,6 +924,14 @@ export class StoreService {
           'This domain is already configured for another store',
           { domain: normalizedDomain },
         );
+      }
+
+      const { rows: verifiedRows } = await query<{ id: string }>(
+        `SELECT id FROM pd_store_domain WHERE store_id = $1 AND hostname = $2 AND verification_status = 'verified' LIMIT 1`,
+        [storeId, normalizedDomain],
+      );
+      if (verifiedRows.length === 0) {
+        throw new PdValidationError('Custom domain must be added and DNS-verified before assigning it to the store');
       }
     }
     const { rows } = await query<StoreRow>(
