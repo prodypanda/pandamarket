@@ -9,6 +9,7 @@ import { type MarketplaceCategory, type MarketplaceStoreProduct, MarketplaceSell
 import { selectLogoForSurface } from '../../../../lib/public-assets';
 import { STORE_DATA_REVALIDATE_SECONDS, storeHostTag } from '@/lib/store-cache';
 import { renderStorefrontTheme } from '../../../../components/themes/ThemeWrapper';
+import { StorefrontMaintenancePage } from '../../../../components/store/StorefrontMaintenancePage';
 import { CatalogControls, type CatalogPaginationMeta } from '../../../../components/store/CatalogControls';
 import {
   getStorefrontCanonicalUrl,
@@ -172,6 +173,37 @@ export default async function StoreProductsPage({
   if (!store) notFound();
 
   if (store.status === 'suspended') notFound();
+
+  const previewToken = Array.isArray(resolvedSearchParams.preview)
+    ? resolvedSearchParams.preview[0]
+    : resolvedSearchParams.preview;
+
+  if (!isPublicStore(store) && !previewToken) {
+    const marketplaceSettings = await getMarketplaceSettings();
+    const themeCustomization = (store.settings?.themeCustomization || {}) as ThemeCustomization;
+    const activeTheme = themes[store.theme_id] || themes.classic;
+    const resolvedColors = resolveThemeColors(activeTheme, themeCustomization);
+    const pColor = store.settings?.colors?.primary || themeCustomization?.customColors?.primary || resolvedColors.primary;
+    return (
+      <StorefrontMaintenancePage
+        storeName={store.name}
+        logoUrl={selectLogoForSurface({
+          logo_url: store.settings?.logo_url as string | undefined,
+          logo_dark_url: store.settings?.logo_dark_url as string | undefined,
+          logo_light_url: store.settings?.logo_light_url as string | undefined,
+        }, 'light')}
+        primaryColor={pColor}
+        maintenanceMessage={store.settings?.maintenance_message as string | undefined}
+        social={store.settings?.social}
+        contactEmail={store.settings?.contact_email}
+        contactPhone={store.settings?.contact_phone}
+        marketplaceName={marketplaceSettings.marketplace_name}
+        marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+        marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+        marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+      />
+    );
+  }
 
   const { isMarketplaceStoreRoute, storePathBase } = await getStoreRouteContext(storeHost);
   const { products, meta } = await getStoreProducts(store.id, resolvedSearchParams);
