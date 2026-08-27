@@ -721,6 +721,15 @@ const NUMBER_SETTING_KEYS = [
   'chat_max_images_per_message',
   'chat_max_image_size_mb',
   'chat_max_message_length',
+  'image_size_thumbnail_w',
+  'image_size_thumbnail_h',
+  'image_size_small_w',
+  'image_size_small_h',
+  'image_size_medium_w',
+  'image_size_medium_h',
+  'image_size_large_w',
+  'image_size_large_h',
+  'image_quality_webp',
   'security_login_max_attempts',
   'security_login_lockout_minutes',
   'security_password_min_length',
@@ -1048,6 +1057,19 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'chat_max_images_per_message',
     'chat_max_image_size_mb',
     'chat_max_message_length',
+    'image_size_thumbnail_w',
+    'image_size_thumbnail_h',
+    'image_size_thumbnail_crop',
+    'image_size_small_w',
+    'image_size_small_h',
+    'image_size_small_crop',
+    'image_size_medium_w',
+    'image_size_medium_h',
+    'image_size_medium_crop',
+    'image_size_large_w',
+    'image_size_large_h',
+    'image_size_large_crop',
+    'image_quality_webp',
     'notifications_in_app_enabled',
     'notifications_realtime_enabled',
     'notifications_email_enabled',
@@ -1361,6 +1383,10 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
     .filter(Boolean)
     .join(',');
   payload.chat_bubble_position = payload.chat_bubble_position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
+  payload.image_size_thumbnail_crop = payload.image_size_thumbnail_crop === 'inside' ? 'inside' : 'cover';
+  payload.image_size_small_crop = payload.image_size_small_crop === 'cover' ? 'cover' : 'inside';
+  payload.image_size_medium_crop = payload.image_size_medium_crop === 'cover' ? 'cover' : 'inside';
+  payload.image_size_large_crop = payload.image_size_large_crop === 'cover' ? 'cover' : 'inside';
   payload.default_currency = String(payload.default_currency || DEFAULT_SETTINGS.default_currency).trim().toUpperCase();
 
   if (!tab) return payload;
