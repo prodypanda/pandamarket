@@ -56,6 +56,7 @@ export default function CartPage() {
     couponCode,
     discountAmount,
     combinedShippingSavings,
+    shippingTotal: serverShippingTotal,
     applyCoupon,
     removeCoupon,
   } = useCart();
@@ -73,10 +74,10 @@ export default function CartPage() {
     return `${price.toFixed(3)} ${t('common.currency')}`;
   }
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputCoupon.trim()) return;
-    const res = applyCoupon(inputCoupon.trim());
+    const res = await applyCoupon(inputCoupon.trim());
     if (res.success) {
       setCouponFeedback({ message: res.message });
       setInputCoupon('');
@@ -89,7 +90,9 @@ export default function CartPage() {
   const storeIds = Object.keys(storeGroups);
   const subtotal = getCartTotal();
   const rawShippingTotal = getShippingTotalForItems(items, SHIPPING_PER_VENDOR);
-  const finalShippingTotal = Math.max(0, rawShippingTotal - (couponCode === 'LIVRAISON_ZERO' ? rawShippingTotal : combinedShippingSavings));
+  const finalShippingTotal = serverShippingTotal !== undefined && serverShippingTotal >= 0 && items.length > 0
+    ? serverShippingTotal
+    : Math.max(0, rawShippingTotal - (couponCode === 'LIVRAISON_ZERO' ? rawShippingTotal : combinedShippingSavings));
   const finalTotal = Math.max(0, subtotal - (couponCode === 'LIVRAISON_ZERO' ? 0 : discountAmount)) + finalShippingTotal;
 
   if (items.length === 0) {

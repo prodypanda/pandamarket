@@ -7,6 +7,8 @@ import { query } from '../db/pool';
 import { PdValidationError } from '../errors';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { roundTnd } from '../utils/money';
+import { platformConfigService } from './platform-config.service';
 
 export interface CartItemData {
   id: string;
@@ -100,17 +102,31 @@ export class CartService {
       storeMap.get(item.store_id)!.items.push(item);
     }
 
+    // Read authoritative shipping rates & thresholds from platform settings
+    const settings = await platformConfigService.getSettings().catch(() => null);
+    const standardShippingRate = settings?.shipping_domestic_zone_rate_tnd
+      ? Number(settings.shipping_domestic_zone_rate_tnd)
+      : 7.000;
+    const combinedShippingRebate = 3.000;
+
     // Calculate Multi-Vendor Shipping & Combined Shipping Discounts
     const storeCount = storeMap.size;
-    const standardShipping = storeCount * 7.000;
+    const standardShipping = roundTnd(storeCount * standardShippingRate);
     let combinedDiscount = 0;
 
-    // If buyer purchases from 2+ stores, offer a 3.000 DT combined shipping rebate
     if (storeCount >= 2) {
-      combinedDiscount = (storeCount - 1) * 3.000;
+      combinedDiscount = roundTnd((storeCount - 1) * combinedShippingRebate);
     }
 
-    let shippingTotal = Math.max(0, standardShipping - combinedDiscount);
+    let shippingTotal = Math.max(0, roundTnd(standardShipping - combinedDiscount));
+
+    // Evaluate Free Shipping threshold from Platform Settings
+    const freeShippingThreshold = settings?.shipping_free_shipping_threshold_tnd
+      ? Number(settings.shipping_free_shipping_threshold_tnd)
+      : null;
+    if (freeShippingThreshold && freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) {
+      shippingTotal = 0;
+    }
 
     // Evaluate Promo Coupon Code
     let discountAmount = 0;

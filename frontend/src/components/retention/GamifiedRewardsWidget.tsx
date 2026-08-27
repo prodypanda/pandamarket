@@ -346,9 +346,9 @@ export function GamifiedRewardsWidget({ storeId }: { storeId?: string }) {
     } catch {}
   };
 
-  const handleApplyToCart = () => {
+  const handleApplyToCart = async () => {
     if (!wonPrize) return;
-    const res = applyCoupon(wonPrize.code);
+    const res = await applyCoupon(wonPrize.code);
     if (res.success) {
       setAppliedFeedback('✅ Code promo activé avec succès dans votre panier !');
     } else {

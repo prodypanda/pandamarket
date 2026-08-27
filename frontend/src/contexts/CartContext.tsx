@@ -21,13 +21,14 @@ interface CartContextType {
   couponCode: string | null;
   discountAmount: number;
   combinedShippingSavings: number;
+  shippingTotal: number;
   sessionToken: string;
   addToCart: (item: Omit<CartItem, 'id'>) => void;
   removeFromCart: (id: string) => void;
   removeStoreItems: (storeId: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
-  applyCoupon: (code: string) => { success: boolean; message: string; discount?: number };
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string; discount?: number }>;
   removeCoupon: () => void;
   getCartTotal: () => number;
   getItemCount: () => number;
@@ -57,11 +58,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [combinedShippingSavings, setCombinedShippingSavings] = useState<number>(0);
+  const [shippingTotal, setShippingTotal] = useState<number>(0);
   const [sessionToken, setSessionToken] = useState<string>('sess_init');
   const [isHydrated, setIsHydrated] = useState(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Local calculation of combined shipping and coupons
+  // Local estimate of combined shipping and coupons (updated authoritatively by server sync)
   const recalculateDiscounts = useCallback((currentItems: CartItem[], coupon: string | null) => {
     const subtotal = _getCartTotal(currentItems);
     const storeMap = _getItemsByStore(currentItems);
@@ -73,6 +75,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       shippingSavings = (storeCount - 1) * 3.000;
     }
     setCombinedShippingSavings(shippingSavings);
+    const estimatedShipping = Math.max(0, storeCount * 7.000 - shippingSavings);
+    setShippingTotal(estimatedShipping);
 
     // Coupon discount logic
     let disc = 0;
@@ -81,8 +85,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (cleanCoupon === 'CHANCE5DT') {
       disc = Math.min(subtotal, 5.000);
     } else if (cleanCoupon === 'LIVRAISON_ZERO') {
-      const baseShipping = Math.max(0, storeCount * 7.000 - shippingSavings);
-      disc = baseShipping;
+      disc = estimatedShipping;
+      setShippingTotal(0);
     } else if (cleanCoupon === 'PANDA10') {
       disc = Math.round(subtotal * 0.1 * 1000) / 1000;
     } else if (cleanCoupon === 'SUPER15') {
@@ -96,11 +100,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setDiscountAmount(disc);
   }, []);
 
-  // Server sync
+  // Server sync with authoritative discount & shipping calculations
   const syncToServer = useCallback(async (email?: string, phone?: string) => {
     try {
       const token = getOrGenerateSessionToken();
-      await fetchWithCsrf('/api/pd/cart/sync', {
+      const res = await fetchWithCsrf('/api/pd/cart/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -112,6 +116,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           customer_phone: phone,
         }),
       });
+      if (res.ok) {
+        const json = await res.json();
+        const data = json?.data;
+        if (data) {
+          if (typeof data.discount_amount === 'number') setDiscountAmount(data.discount_amount);
+          if (typeof data.combined_shipping_savings === 'number') setCombinedShippingSavings(data.combined_shipping_savings);
+          if (typeof data.shipping_total === 'number') setShippingTotal(data.shipping_total);
+        }
+      }
     } catch {
       // ignore sync errors silently
     }
@@ -176,11 +189,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCouponCode(null);
     setDiscountAmount(0);
     setCombinedShippingSavings(0);
+    setShippingTotal(0);
   }, []);
 
-  const applyCoupon = useCallback((code: string) => {
+  const applyCoupon = useCallback(async (code: string) => {
     const clean = (code || '').trim().toUpperCase();
+    if (!clean) return { success: false, message: 'Veuillez saisir un code promo.' };
     const subtotal = _getCartTotal(items);
+
+    try {
+      const token = getOrGenerateSessionToken();
+      const res = await fetchWithCsrf('/api/pd/cart/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          session_token: token,
+          items,
+          coupon_code: clean,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const data = json?.data;
+        if (data && data.discount_amount > 0) {
+          setCouponCode(clean);
+          setDiscountAmount(data.discount_amount);
+          if (typeof data.combined_shipping_savings === 'number') setCombinedShippingSavings(data.combined_shipping_savings);
+          if (typeof data.shipping_total === 'number') setShippingTotal(data.shipping_total);
+          return {
+            success: true,
+            message: `🎉 ${data.discount_amount.toFixed(3)} DT de remise appliqués !`,
+            discount: data.discount_amount,
+          };
+        } else if (clean === 'LIVRAISON_ZERO' && data && data.shipping_total === 0) {
+          setCouponCode(clean);
+          setShippingTotal(0);
+          return { success: true, message: '🚚 Frais de livraison offerts !' };
+        }
+      }
+    } catch {
+      // fallback to offline logic below
+    }
 
     if (clean === 'CHANCE5DT') {
       setCouponCode(clean);
@@ -208,7 +259,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const removeCoupon = useCallback(() => {
     setCouponCode(null);
     setDiscountAmount(0);
-  }, []);
+    recalculateDiscounts(items, null);
+  }, [items, recalculateDiscounts]);
 
   const getCartTotal = useCallback(() => _getCartTotal(items), [items]);
   const getItemCount = useCallback(() => _getItemCount(items), [items]);
@@ -220,6 +272,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       couponCode,
       discountAmount,
       combinedShippingSavings,
+      shippingTotal,
       sessionToken,
       addToCart,
       removeFromCart,
@@ -239,6 +292,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       couponCode,
       discountAmount,
       combinedShippingSavings,
+      shippingTotal,
       sessionToken,
       addToCart,
       removeFromCart,
