@@ -587,6 +587,7 @@ export class StorefrontAuthService {
       sub: customer.id,
       role: UserRole.Customer,
       store_id: customer.store_id,
+      token_type: 'storefront_customer',
     });
   }
 }

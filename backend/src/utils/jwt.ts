@@ -13,6 +13,7 @@ export interface AccessTokenPayload extends JwtPayload {
   role: UserRole;
   store_id: string | null;
   session_id?: string | null;
+  token_type?: 'marketplace_user' | 'storefront_customer';
 }
 
 export interface RefreshTokenPayload extends JwtPayload {

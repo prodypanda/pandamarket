@@ -89,6 +89,11 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
   }
   try {
     const payload = verifyAccessToken(token);
+    if ((payload as any).token_type === 'storefront_customer' || (payload as any).role === 'storefront_customer') {
+      return next(
+        new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Storefront customer token cannot access marketplace APIs'),
+      );
+    }
     req.user = {
       id: payload.sub,
       role: payload.role,
@@ -111,6 +116,9 @@ export const optionalAuth: RequestHandler = (req, _res, next) => {
   if (!token) return next();
   try {
     const payload = verifyAccessToken(token);
+    if ((payload as any).token_type === 'storefront_customer' || (payload as any).role === 'storefront_customer') {
+      return next();
+    }
     req.user = { id: payload.sub, role: payload.role, store_id: payload.store_id, session_id: payload.session_id ?? null };
   } catch {
     // ignore — anonymous request

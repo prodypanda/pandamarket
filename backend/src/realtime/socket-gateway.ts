@@ -39,6 +39,7 @@ class SocketGateway {
         socket.data.user_id = payload.sub;
         socket.data.role = payload.role;
         socket.data.store_id = payload.store_id;
+        socket.data.token_type = (payload as any).token_type;
         next();
       } catch (err) {
         next(err as Error);
@@ -51,7 +52,9 @@ class SocketGateway {
       const role = socket.data.role as UserRole;
 
       socket.join(`user:${userId}`);
-      if (storeId) socket.join(`store:${storeId}`);
+      if (storeId && socket.data.token_type !== 'storefront_customer') {
+        socket.join(`store:${storeId}`);
+      }
       if (role === UserRole.Admin || role === UserRole.SuperAdmin) socket.join('admin');
 
       logger.debug({ user_id: userId, role }, 'Socket connected');
