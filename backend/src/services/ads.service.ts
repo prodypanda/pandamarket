@@ -766,12 +766,8 @@ export class AdsService {
 
   async processLifecycle() {
     return transaction(async(c)=>{
-      const campaignsToRelease = await c.query<{ id: string; store_id: string; reserved_amount: string }>(
-        `SELECT id, store_id, reserved_amount FROM pd_ads_campaign WHERE reserved_amount > 0 FOR UPDATE`
-      );
-      for (const campaign of campaignsToRelease.rows) {
-        await this.releaseFunds(c, campaign.store_id, campaign.id, Number(campaign.reserved_amount));
-      }
+      // Distributed advisory lock prevents duplicate concurrent lifecycle sweeps across workers
+      await c.query('SELECT pg_advisory_xact_lock(74291836)');
 
       const activated=await c.query(`UPDATE pd_ads_campaign SET status='active',updated_at=NOW()
         WHERE status='scheduled' AND starts_at<=NOW() AND (ends_at IS NULL OR ends_at>NOW()) RETURNING id`);
@@ -779,6 +775,15 @@ export class AdsService {
         WHERE status IN ('active','scheduled','paused') AND ends_at IS NOT NULL AND ends_at<=NOW() RETURNING id`);
       const exhausted=await c.query(`UPDATE pd_ads_campaign SET status='exhausted',updated_at=NOW()
         WHERE status='active' AND spent_amount>=total_budget RETURNING id`);
+
+      // Release reservations only for campaigns that are no longer active (avoid 5-min full release/re-reserve churn)
+      const inactiveWithReservations = await c.query<{ id: string; store_id: string; reserved_amount: string }>(
+        `SELECT id, store_id, reserved_amount FROM pd_ads_campaign
+         WHERE status NOT IN ('active', 'scheduled') AND reserved_amount > 0 FOR UPDATE`
+      );
+      for (const campaign of inactiveWithReservations.rows) {
+        await this.releaseFunds(c, campaign.store_id, campaign.id, Number(campaign.reserved_amount));
+      }
       const anonymized=await c.query(`UPDATE pd_ads_event SET ip_hash=NULL,session_hash=NULL
         WHERE created_at<NOW()-INTERVAL '30 days' AND (ip_hash IS NOT NULL OR session_hash IS NOT NULL) RETURNING id`);
       const purged=await c.query(`DELETE FROM pd_ads_event WHERE created_at<NOW()-INTERVAL '90 days' RETURNING id`);
