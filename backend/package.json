@@ -45,6 +45,7 @@
     "jsonwebtoken": "^9.0.2",
     "meilisearch": "^0.41.0",
     "nanoid": "^5.0.7",
+    "nodemailer": "^8.0.7",
     "pg": "^8.12.0",
     "pino": "^9.3.2",
     "pino-pretty": "^11.2.2",
