@@ -194,7 +194,7 @@ interface PlatformSettings {
   notifications_realtime_enabled: boolean;
   notifications_email_enabled: boolean;
   notifications_sms_enabled: boolean;
-  notifications_sms_provider: 'environment' | 'console' | 'twilio' | 'infobip';
+  notifications_sms_provider: 'environment' | 'console' | 'twilio' | 'infobip' | 'whatsapp_gateway';
   notifications_sms_sender_name: string;
   security_login_max_attempts: number;
   security_login_lockout_minutes: number;
@@ -1359,7 +1359,9 @@ function buildSettingsPayload(current: PlatformSettings, tab?: PlatformSettingsT
       ? 'twilio'
       : payload.notifications_sms_provider === 'infobip'
         ? 'infobip'
-        : 'environment';
+        : payload.notifications_sms_provider === 'whatsapp_gateway'
+          ? 'whatsapp_gateway'
+          : 'environment';
   payload.notifications_sms_sender_name = payload.notifications_sms_sender_name || DEFAULT_SETTINGS.notifications_sms_sender_name;
   payload.analytics_ga4_measurement_id = /^G-[A-Z0-9]{4,20}$/.test(payload.analytics_ga4_measurement_id) ? payload.analytics_ga4_measurement_id : '';
   payload.analytics_gtm_container_id = /^GTM-[A-Z0-9]{4,20}$/.test(payload.analytics_gtm_container_id) ? payload.analytics_gtm_container_id : '';
@@ -5872,6 +5874,7 @@ export default function SuperAdminSettingsPage() {
               <option value="console">Console/log fallback</option>
               <option value="twilio">Twilio</option>
               <option value="infobip">Infobip</option>
+              <option value="whatsapp_gateway">WhatsApp Gateway (Evolution API)</option>
             </select>
           </div>
           {renderTextInput('notifications_sms_sender_name', 'SMS Sender Name', 'PandaMarket')}

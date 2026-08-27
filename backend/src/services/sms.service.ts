@@ -70,11 +70,11 @@ function normalisePhone(phone: string): string {
   return cleaned;
 }
 
-type SmsProvider = 'twilio' | 'infobip' | 'console';
+type SmsProvider = 'twilio' | 'infobip' | 'whatsapp_gateway' | 'console';
 
 function configuredSmsProvider(settings: PlatformSettings): SmsProvider {
   const provider = String(settings.notifications_sms_provider || 'environment');
-  if (provider === 'twilio' || provider === 'infobip' || provider === 'console') return provider;
+  if (provider === 'twilio' || provider === 'infobip' || provider === 'whatsapp_gateway' || provider === 'console') return provider;
   return config.sms.provider;
 }
 
@@ -187,15 +187,21 @@ export class SmsService {
    */
   private async dispatchSms(to: string, message: string, provider: SmsProvider, sender: string): Promise<boolean> {
     switch (provider) {
+      case 'whatsapp_gateway':
+        return this.sendViaWhatsAppGateway(to, message);
       case 'twilio':
         return this.sendViaTwilio(to, message);
       case 'infobip':
         return this.sendViaInfobip(to, message, sender);
       case 'console':
       default:
-        // Development fallback — log to console
-        logger.info({ to, message }, '[SMS DEV] Would send SMS');
-        return false; // Return false to indicate it wasn't actually sent
+        // Development fallback — sanitize phone and never leak plain OTP to production logs
+        if (config.env === 'production') {
+          logger.info({ to: to.slice(0, 7) + '****' }, '[SMS] Dispatched OTP via console stub in production mode');
+        } else {
+          logger.info({ to: to.slice(0, 7) + '****' }, '[SMS DEV] Would send SMS (suppressed OTP logging)');
+        }
+        return false;
     }
   }
 
@@ -258,6 +264,45 @@ export class SmsService {
       return true;
     } catch (err) {
       logger.error({ err }, 'Infobip SMS send failed');
+      return false;
+    }
+  }
+
+  /**
+   * Send WhatsApp message via Evolution API gateway.
+   */
+  private async sendViaWhatsAppGateway(to: string, message: string): Promise<boolean> {
+    const gatewayUrl = config.sms.whatsappGatewayUrl;
+    const token = config.sms.whatsappGatewayToken;
+    if (!gatewayUrl || !token) {
+      logger.warn('WhatsApp gateway credentials not configured (PD_WHATSAPP_GATEWAY_URL or PD_WHATSAPP_GATEWAY_TOKEN missing)');
+      return false;
+    }
+
+    try {
+      // Format number without + (e.g. 216XXXXXXXX)
+      const recipientNumber = to.replace(/\+/g, '').trim();
+      const response = await axios.post(
+        `${gatewayUrl.replace(/\/+$/, '')}/message/sendText/default`,
+        {
+          number: recipientNumber,
+          text: message,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: token,
+          },
+          timeout: 10_000,
+        },
+      );
+
+      return response.status >= 200 && response.status < 300;
+    } catch (err: any) {
+      logger.error(
+        { error: err?.message, to: to.slice(0, 7) + '****' },
+        'Failed to send message via WhatsApp gateway',
+      );
       return false;
     }
   }

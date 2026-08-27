@@ -293,7 +293,7 @@ const globalSettingsSchema = z.object({
   notifications_realtime_enabled: z.boolean().optional(),
   notifications_email_enabled: z.boolean().optional(),
   notifications_sms_enabled: z.boolean().optional(),
-  notifications_sms_provider: z.enum(['environment', 'console', 'twilio', 'infobip']).optional(),
+  notifications_sms_provider: z.enum(['environment', 'console', 'twilio', 'infobip', 'whatsapp_gateway']).optional(),
   notifications_sms_sender_name: z.coerce.string().trim().min(1).max(30).optional(),
   security_login_max_attempts: z.coerce.number().int().min(3).max(20).optional(),
   security_login_lockout_minutes: z.coerce.number().int().min(1).max(1440).optional(),
