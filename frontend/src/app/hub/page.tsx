@@ -11,6 +11,7 @@ import { SponsoredAdsRail } from '../../components/hub/SponsoredAdsRail';
 import { getMarketplaceSettings, type MarketplaceSettings } from '../../lib/marketplace-settings';
 import { resolveMarketplaceTheme } from '../../lib/marketplace-theme';
 import { selectLogoForSurface } from '../../lib/public-assets';
+import { JsonLd } from '../../components/seo/JsonLd';
 
 export async function generateMetadata(): Promise<Metadata> {
   const marketplaceSettings = await getMarketplaceSettings();
@@ -360,14 +361,8 @@ export default async function HubHomepage({
 
   return (
     <div className={`min-h-screen ${marketplaceTheme === 'aliexpress2' ? 'bg-[#09090b]' : 'bg-white dark:bg-[#0F0F23]'}`}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
-      />
+      <JsonLd data={organizationSchema} />
+      <JsonLd data={itemListSchema} />
       <style
         dangerouslySetInnerHTML={{
           __html: `:root { --pd-primary: ${marketplaceSettings.marketplace_primary_color || '#16C784'}; --pd-secondary: ${marketplaceSettings.marketplace_secondary_color || '#0f9f6e'}; }`,
