@@ -7,6 +7,7 @@ import { incrementBusinessMetric } from '../utils/metrics';
 import { query } from '../db/pool';
 import { PdAuthenticationError, PdErrorCode } from '../errors';
 import { accountSecurityService } from '../services/account-security.service';
+import { smsService } from '../services/sms.service';
 import { signAccessToken } from '../utils/jwt';
 
 const router = Router();
@@ -245,6 +246,43 @@ async function registerAndRespond(req: Request, res: Response, forcedRole?: User
 router.get('/csrf', (_req: Request, res: Response) => {
   res.status(200).json({ success: true });
 });
+
+/**
+ * POST /api/pd/auth/send-phone-otp
+ * Fast checkout guest phone OTP request
+ */
+router.post(
+  '/send-phone-otp',
+  authRateLimit,
+  validate(z.object({ phone: z.string().min(8) })),
+  asyncHandler(async (req: Request, res: Response) => {
+    const result = await smsService.sendOtp(req.body.phone);
+    res.status(200).json(result);
+  }),
+);
+
+/**
+ * POST /api/pd/auth/verify-phone-otp
+ * Validate phone OTP and return verification status
+ */
+router.post(
+  '/verify-phone-otp',
+  authRateLimit,
+  validate(z.object({ phone: z.string().min(8), otp: z.string().min(4).max(8) })),
+  asyncHandler(async (req: Request, res: Response) => {
+    const valid = await smsService.verifyOtp(req.body.phone, req.body.otp);
+    if (!valid) {
+      res.status(400).json({ error: { code: 'PD_INVALID_OTP', message: 'Code de vérification invalide' } });
+      return;
+    }
+    res.status(200).json({
+      verified: true,
+      phone: req.body.phone,
+      verified_at: new Date().toISOString(),
+      message: 'Numéro de téléphone vérifié avec succès',
+    });
+  }),
+);
 
 router.post(
   '/register',
