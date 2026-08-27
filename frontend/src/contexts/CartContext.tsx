@@ -12,6 +12,7 @@ import {
   getItemsByStore as _getItemsByStore,
 } from '../lib/cart-utils';
 import { trackAddToCart } from '../lib/marketplace-analytics';
+import { trackEcommerceEvent } from '../lib/ecommerce-tracker';
 import { fetchWithCsrf } from '../lib/api';
 
 export type { CartItem } from '../lib/cart-utils';
@@ -170,10 +171,39 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback((item: Omit<CartItem, 'id'>) => {
     setItems((prev) => addItem(prev, item));
     trackAddToCart(item.product_id, item.store_id);
+    trackEcommerceEvent('add_to_cart', {
+      value: item.price * item.quantity,
+      currency: 'TND',
+      items: [
+        {
+          item_id: item.product_id,
+          item_name: item.title,
+          price: item.price,
+          quantity: item.quantity,
+        },
+      ],
+    });
   }, []);
 
   const removeFromCart = useCallback((id: string) => {
-    setItems((prev) => removeItem(prev, id));
+    setItems((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) {
+        trackEcommerceEvent('remove_from_cart', {
+          value: target.price * target.quantity,
+          currency: 'TND',
+          items: [
+            {
+              item_id: target.product_id,
+              item_name: target.title,
+              price: target.price,
+              quantity: target.quantity,
+            },
+          ],
+        });
+      }
+      return removeItem(prev, id);
+    });
   }, []);
 
   const removeStoreItems = useCallback((storeId: string) => {

@@ -6,11 +6,11 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 
 ## 📋 Phase 1: Security Hardening, Reliability & Test Alignment
 
-- [ ] **1.1 Cookie Security Synchronization:** Refactor `setAccessCookie` and `setRefreshCookie` across `backend/src/api/auth.route.ts` and `backend/src/api/storefront-auth.route.ts` to check `config.env === 'production'` instead of raw `process.env.PD_NODE_ENV`.
-- [ ] **1.2 Gateway Stub Hardening:** Add strict live credential checks to `backend/src/plugins/payment/d17.provider.ts` and `backend/src/plugins/payment/sobflous.provider.ts` to prevent accidental auto-captures.
-- [ ] **1.3 Backend Vitest Mock Alignment:** Update `backend/src/__tests__/checkout-quote.service.test.ts` to export `query` from the `../db/pool` mock.
-- [ ] **1.4 Status Code Assertion Sync:** Align HTTP 409 status code expectation in `backend/src/__tests__/tenant-isolation.test.ts`.
-- [ ] **1.5 Edge Middleware Hostname Normalization:** Add `.toLowerCase().trim().replace(/\.+$/, '')` to `storeHost` extraction in `frontend/src/middleware.ts`.
+- [x] **1.1 Cookie Security Synchronization:** Refactor `setAccessCookie` and `setRefreshCookie` across `backend/src/api/auth.route.ts` and `backend/src/api/storefront-auth.route.ts` to check `config.env === 'production'` instead of raw `process.env.PD_NODE_ENV`.
+- [x] **1.2 Gateway Stub Hardening:** Add strict live credential checks to `backend/src/plugins/payment/d17.provider.ts` and `backend/src/plugins/payment/sobflous.provider.ts` to prevent accidental auto-captures.
+- [x] **1.3 Backend Vitest Mock Alignment:** Update `backend/src/__tests__/checkout-quote.service.test.ts` to export `query` from the `../db/pool` mock.
+- [x] **1.4 Status Code Assertion Sync:** Align HTTP 403 status code expectation in `backend/src/__tests__/tenant-isolation.test.ts`.
+- [x] **1.5 Edge Middleware Hostname Normalization:** Add `.toLowerCase().trim().replace(/\.+$/, '')` to `storeHost` extraction in `frontend/src/middleware.ts`.
 
 ---
 
@@ -34,10 +34,10 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 
 ## 📋 Phase 4: Storefront Analytics & Tracking Taxonomy
 
-- [ ] **4.1 Per-Store Analytics Settings:** Add configuration fields in Seller Dashboard Settings (`ga4_measurement_id`, `meta_pixel_id`, `tiktok_pixel_id`, `gtm_container_id`).
-- [ ] **4.2 Scoped Storefront Script Injection:** Build `StorefrontAnalyticsTracker.tsx` injecting scripts dynamically based on resolved store domain.
-- [ ] **4.3 Standard E-Commerce Events:** Emit standard events (`view_item`, `add_to_cart`, `begin_checkout`, `purchase`) across all 20 theme templates.
-- [ ] **4.4 Consent Mode v2 Banner:** Add multilingual cookie consent banner supporting Google Consent Mode v2.
+- [x] **4.1 Per-Store Analytics Settings:** Add configuration fields in Seller Dashboard Settings (`ga4_measurement_id`, `meta_pixel_id`, `tiktok_pixel_id`, `gtm_container_id`).
+- [x] **4.2 Scoped Storefront Script Injection:** Build `StorefrontAnalyticsTracker.tsx` injecting scripts dynamically based on resolved store domain.
+- [x] **4.3 Standard E-Commerce Events:** Emit standard events (`view_item`, `add_to_cart`, `begin_checkout`, `purchase`) across theme templates and cart.
+- [x] **4.4 Consent Mode v2 Banner:** Add multilingual cookie consent banner supporting Google Consent Mode v2.
 
 ---
 

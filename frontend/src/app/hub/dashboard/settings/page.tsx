@@ -4,7 +4,7 @@ import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail, Lock, RefreshCw, Trash2, Plus, Star } from 'lucide-react';
+import { Settings, Palette, Globe, Truck, Save, CheckCircle, AlertCircle, Sparkles, ImageIcon, UploadCloud, X, Clock3, ShieldCheck, Link2, MapPin, Share2, Construction, AlertTriangle, Mail, Lock, RefreshCw, Trash2, Plus, Star, BarChart3 } from 'lucide-react';
 import { themes, type ThemeId, type ThemeCustomization } from '../../../../lib/themes';
 import { ThemeCustomizer } from '../../../../components/dashboard/ThemeCustomizer';
 import { AccountSecurityActivityPanel } from '../../../../components/AccountSecurityActivityPanel';
@@ -20,9 +20,9 @@ import {
 } from '../../../../lib/storefront-product-loading';
 import type { StorefrontProductLoadingMode } from '@pandamarket/types';
 
-type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments';
+type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments' | 'analytics';
 
-const settingsTabIds: Tab[] = ['store', 'security', 'theme', 'domain', 'shipping', 'emails', 'payments'];
+const settingsTabIds: Tab[] = ['store', 'security', 'theme', 'domain', 'shipping', 'emails', 'payments', 'analytics'];
 
 type SocialPlatform = 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube' | 'linkedin' | 'whatsapp' | 'telegram' | 'pinterest' | 'snapchat';
 
@@ -127,6 +127,12 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHeaderImage, setUploadingHeaderImage] = useState(false);
 
+  // Analytics & Tracking Pixels
+  const [ga4MeasurementId, setGa4MeasurementId] = useState('');
+  const [metaPixelId, setMetaPixelId] = useState('');
+  const [tiktokPixelId, setTiktokPixelId] = useState('');
+  const [gtmContainerId, setGtmContainerId] = useState('');
+
   // Maintenance mode
   const [storeStatus, setStoreStatus] = useState('verified');
   const [storeIsVerified, setStoreIsVerified] = useState(false);
@@ -202,6 +208,11 @@ export default function SettingsPage() {
         setStoreStatus(store.status || 'verified');
         setStoreIsVerified(Boolean(store.is_verified));
         setMaintenanceMessage(store.settings?.maintenance_message || '');
+        const analytics = store.settings?.analytics || {};
+        setGa4MeasurementId(analytics.ga4_measurement_id || '');
+        setMetaPixelId(analytics.meta_pixel_id || '');
+        setTiktokPixelId(analytics.tiktok_pixel_id || '');
+        setGtmContainerId(analytics.gtm_container_id || '');
       } else {
         setError(await getErrorMessage(res, t('dashboardPages.settings.loadError')));
       }
@@ -359,6 +370,12 @@ export default function SettingsPage() {
             returns_policy: returnsPolicy,
             payment_policy: paymentPolicy,
             storefront_product_loading_mode: storefrontProductLoadingMode,
+            analytics: {
+              ga4_measurement_id: ga4MeasurementId.trim() || null,
+              meta_pixel_id: metaPixelId.trim() || null,
+              tiktok_pixel_id: tiktokPixelId.trim() || null,
+              gtm_container_id: gtmContainerId.trim() || null,
+            },
           },
         }),
       });
@@ -788,6 +805,7 @@ export default function SettingsPage() {
     { id: 'theme', label: 'Thème', icon: Palette },
     { id: 'domain', label: t('dashboardPages.settings.domainTab'), icon: Globe },
     { id: 'shipping', label: t('dashboardPages.settings.shippingTab'), icon: Truck },
+    { id: 'analytics', label: 'Analytics & Pixels', icon: BarChart3 },
     { id: 'emails', label: 'Emails', icon: Mail },
   ];
   const hasPendingSellerTypeRequest = pendingSellerTypeRequest?.status === 'pending' && Boolean(pendingSellerTypeRequest.requested_type);
@@ -1703,6 +1721,107 @@ export default function SettingsPage() {
               <Save className="w-4 h-4" />
               {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.save')}
             </button>
+          </div>
+        )}
+
+        {/* Analytics & Tracking Pixels Tab */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="border-b pb-4">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600" />
+                Analytics & Pixels de Suivi
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Configurez vos identifiants Google Analytics 4, Meta Pixel, Google Tag Manager et TikTok Pixel pour suivre les conversions et optimiser vos campagnes publicitaires sur votre boutique.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Google Analytics 4 */}
+              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-900">Google Analytics 4 (GA4)</label>
+                  <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 font-semibold rounded-full">Mesure</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Identifiant de mesure commençant par <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">G-</code> pour suivre les pages vues, le panier et les commandes.
+                </p>
+                <input
+                  type="text"
+                  value={ga4MeasurementId}
+                  onChange={(e) => setGa4MeasurementId(e.target.value)}
+                  placeholder="G-XXXXXXXXXX"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                />
+              </div>
+
+              {/* Meta Pixel (Facebook / Instagram) */}
+              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-900">Meta Pixel (Facebook / IG)</label>
+                  <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 font-semibold rounded-full">Ads & Retargeting</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Identifiant numérique Meta Pixel (15-16 chiffres) pour suivre les événements <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">AddToCart</code> et <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">Purchase</code>.
+                </p>
+                <input
+                  type="text"
+                  value={metaPixelId}
+                  onChange={(e) => setMetaPixelId(e.target.value)}
+                  placeholder="123456789012345"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                />
+              </div>
+
+              {/* Google Tag Manager (GTM) */}
+              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-900">Google Tag Manager (GTM)</label>
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 font-semibold rounded-full">Conteneur</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Identifiant conteneur commençant par <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">GTM-</code> pour gérer vos balises personnalisées.
+                </p>
+                <input
+                  type="text"
+                  value={gtmContainerId}
+                  onChange={(e) => setGtmContainerId(e.target.value)}
+                  placeholder="GTM-XXXXXXX"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                />
+              </div>
+
+              {/* TikTok Pixel */}
+              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-900">TikTok Pixel</label>
+                  <span className="text-xs px-2 py-0.5 bg-pink-100 text-pink-700 font-semibold rounded-full">TikTok Ads</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Identifiant TikTok Pixel pour mesurer le rendement de vos campagnes TikTok et le trafic vers votre boutique.
+                </p>
+                <input
+                  type="text"
+                  value={tiktokPixelId}
+                  onChange={(e) => setTiktokPixelId(e.target.value)}
+                  placeholder="CXXXXXXXXXXXXXX"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t">
+              <button
+                type="button"
+                onClick={saveStoreSettings}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#B91C1C] hover:bg-[#991B1B] text-white font-bold rounded-xl shadow-md transition disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? t('dashboardPages.settings.saving') : 'Sauvegarder les pixels & analytics'}
+              </button>
+            </div>
           </div>
         )}
 
