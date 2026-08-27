@@ -8,6 +8,7 @@ import { config } from '../config';
 import { platformConfigService } from './platform-config.service';
 import { notificationService } from './notification.service';
 import { emailQueue } from '../queues/email-queue';
+import { logger } from '../utils/logger';
 
 export type AdsCampaignStatus = 'draft' | 'pending_review' | 'approved' | 'scheduled' | 'active' | 'paused' | 'completed' | 'rejected' | 'cancelled' | 'exhausted';
 
@@ -180,25 +181,11 @@ export class AdsService {
     );
     const account = res.rows[0];
     if (account && account.auto_refill_enabled && Number(account.balance) < Number(account.auto_refill_threshold)) {
-      const amount = Number(account.auto_refill_amount);
-      if (amount > 0) {
-        const updated = await client.query(
-          `UPDATE pd_ads_account SET balance = balance + $2, updated_at = NOW() WHERE id = $1 RETURNING balance`,
-          [accountId, amount]
-        );
-        const refId = pdId('adrfl');
-        await client.query(
-          `INSERT INTO pd_ads_refill_intent (id, account_id, store_id, gateway, amount, status, captured_at)
-           VALUES ($1,$2,$3,'auto_refill',$4,'captured',NOW())`,
-          [refId, accountId, storeId, amount]
-        );
-        await client.query(
-          `INSERT INTO pd_ads_transaction (id, account_id, type, amount, balance_after, payment_reference, description)
-           VALUES ($1,$2,'refill',$3,$4,$5,$6)`,
-          [pdId('adtx'), accountId, amount, updated.rows[0].balance, refId, 'Automatic account auto-refill']
-        );
-        await this.allocateReservations(storeId, client);
-      }
+      logger.warn(
+        { accountId, storeId, balance: account.balance, threshold: account.auto_refill_threshold },
+        '[AdsService] Auto-refill requested but automated payment card charging is not configured. Balance update skipped to prevent unauthorized minting.',
+      );
+      // Automated card charging is disabled until payment gateway tokenization is available.
     }
   }
 

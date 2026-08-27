@@ -109,7 +109,9 @@ router.get('/account', requireStore, asyncHandler(async (req: Request, res: Resp
   });
 }));
 const autoRefillSettingsSchema = z.object({
-  enabled: z.boolean(),
+  enabled: z.boolean().refine(val => val !== true, {
+    message: 'Automated card auto-refill is currently disabled pending payment provider tokenization',
+  }),
   threshold: z.number().min(0).max(100000),
   amount: z.number().positive().max(100000),
 });
