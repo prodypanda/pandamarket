@@ -206,7 +206,17 @@ router.get(
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const status = req.query.status as ProductStatus;
-    const result = await productService.listByStore(req.user!.store_id!, { page, limit, status });
+    const type = req.query.type as ProductType;
+    const categoryId = (req.query.category_id || req.query.marketplace_category_id || req.query.storefront_category_id) as string;
+    const search = (req.query.q || req.query.search) as string;
+    const result = await productService.listByStore(req.user!.store_id!, {
+      page,
+      limit,
+      status,
+      type,
+      categoryId,
+      search,
+    });
     res.status(200).json(result);
   }),
 );
@@ -216,11 +226,21 @@ router.get(
   '/export',
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
-    const result = await productService.listByStore(req.user!.store_id!, { limit: 1000 });
+    const status = req.query.status as ProductStatus;
+    const type = req.query.type as ProductType;
+    const categoryId = (req.query.category_id || req.query.marketplace_category_id || req.query.storefront_category_id) as string;
+    const search = (req.query.q || req.query.search) as string;
+    const result = await productService.listByStore(req.user!.store_id!, {
+      limit: 10000,
+      status,
+      type,
+      categoryId,
+      search,
+    });
     const products = result.data;
 
     const csvHeader =
-      'id,title,description,category,price,inventory_quantity,weight_grams,status,tags\n';
+      'id,title,description,type,category,price,inventory_quantity,weight_grams,status,tags\n';
     const csvRows = products
       .map((p) =>
         [

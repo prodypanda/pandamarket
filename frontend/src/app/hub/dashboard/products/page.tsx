@@ -910,6 +910,12 @@ export default function ProductsPage() {
       if (statusFilter && statusFilter !== 'all') {
         queryParams.set('status', statusFilter);
       }
+      if (typeFilter && typeFilter !== 'all') {
+        queryParams.set('type', typeFilter);
+      }
+      if (categoryFilter && categoryFilter !== 'all') {
+        queryParams.set('category_id', categoryFilter);
+      }
       if (search.trim()) {
         queryParams.set('search', search.trim());
       }
@@ -950,11 +956,11 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, search]);
+  }, [page, limit, statusFilter, typeFilter, categoryFilter, search]);
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, search, limit]);
+  }, [statusFilter, typeFilter, categoryFilter, search, limit]);
 
   useEffect(() => {
     fetchProducts();

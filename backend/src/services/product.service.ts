@@ -1396,10 +1396,10 @@ export class ProductService {
    */
   async listByStore(
     storeId: string,
-    opts: { status?: ProductStatus | string; search?: string; page?: number; limit?: number } = {},
+    opts: { status?: ProductStatus | string; type?: ProductType | string; categoryId?: string; search?: string; page?: number; limit?: number } = {},
   ) {
     const page = Math.max(1, opts.page ?? 1);
-    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
+    const limit = Math.min(10000, Math.max(1, opts.limit ?? 20));
     const offset = (page - 1) * limit;
     const params: unknown[] = [storeId];
     let where = 'p.store_id = $1';
@@ -1411,6 +1411,16 @@ export class ProductService {
         params.push(opts.status);
         where += ` AND p.status = $${params.length}`;
       }
+    }
+
+    if (opts.type && (opts.type as string) !== 'all') {
+      params.push(opts.type);
+      where += ` AND p.type = $${params.length}`;
+    }
+
+    if (opts.categoryId && opts.categoryId !== 'all') {
+      params.push(opts.categoryId);
+      where += ` AND (p.marketplace_category_id = $${params.length} OR p.storefront_category_id = $${params.length})`;
     }
 
     if (opts.search && opts.search.trim()) {
