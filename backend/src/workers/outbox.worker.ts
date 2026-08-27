@@ -28,7 +28,7 @@ export class OutboxWorker {
   }
 
   /**
-   * Fetch and process batch of pending outbox events.
+   * Fetch and process batch of pending outbox events with atomic claim and lease reaper.
    */
   async processPendingEvents(): Promise<number> {
     if (this.isProcessing) return 0;
@@ -36,14 +36,28 @@ export class OutboxWorker {
 
     let processedCount = 0;
     try {
-      const { rows: pendingEvents } = await query<OutboxEventRow>(
-        `SELECT * FROM pd_outbox_event
-         WHERE status = 'pending' AND next_attempt_at <= NOW()
-         ORDER BY created_at ASC
-         LIMIT 10`,
+      // 1. Recover stale claimed events (lease reaper: stuck processing for > 5 minutes)
+      await query(
+        `UPDATE pd_outbox_event
+         SET status = 'pending', updated_at = NOW()
+         WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '5 minutes'`,
       );
 
-      for (const event of pendingEvents) {
+      // 2. Atomically claim up to 10 pending events with SKIP LOCKED
+      const { rows: claimedEvents } = await query<OutboxEventRow>(
+        `UPDATE pd_outbox_event
+         SET status = 'processing', attempts = attempts + 1, updated_at = NOW()
+         WHERE id = ANY (
+           SELECT id FROM pd_outbox_event
+           WHERE status = 'pending' AND next_attempt_at <= NOW()
+           ORDER BY created_at ASC
+           LIMIT 10
+           FOR UPDATE SKIP LOCKED
+         )
+         RETURNING *`,
+      );
+
+      for (const event of claimedEvents) {
         await this.processSingleEvent(event);
         processedCount++;
       }
@@ -57,15 +71,9 @@ export class OutboxWorker {
   }
 
   /**
-   * Process a single outbox event atomically.
+   * Process a single already-claimed outbox event.
    */
   async processSingleEvent(event: OutboxEventRow): Promise<void> {
-    // 1. Mark as processing
-    await query(
-      `UPDATE pd_outbox_event SET status = 'processing', attempts = attempts + 1 WHERE id = $1`,
-      [event.id],
-    );
-
     try {
       const storeId = event.aggregate_id;
 
@@ -102,7 +110,7 @@ export class OutboxWorker {
       // 6. Mark completed
       await query(
         `UPDATE pd_outbox_event
-         SET status = 'completed', processed_at = NOW(), error = NULL
+         SET status = 'completed', processed_at = NOW(), error = NULL, updated_at = NOW()
          WHERE id = $1`,
         [event.id],
       );
@@ -119,7 +127,7 @@ export class OutboxWorker {
 
       await query(
         `UPDATE pd_outbox_event
-         SET status = $1, error = $2, next_attempt_at = NOW() + INTERVAL '${backoffSec} seconds'
+         SET status = $1, error = $2, next_attempt_at = NOW() + INTERVAL '${backoffSec} seconds', updated_at = NOW()
          WHERE id = $3`,
         [status, errorMsg, event.id],
       );
