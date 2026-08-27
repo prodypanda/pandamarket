@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import type { FetchResult } from '@/lib/fetch-result';
 import { cookies, headers } from 'next/headers';
 import { HubNavbar } from '@/components/hub/HubNavbar';
 import { HubFooter } from '@/components/hub/HubFooter';
@@ -92,20 +93,22 @@ const DEMO_SIMILAR_PRODUCTS: SingleProductData[] = [
   },
 ];
 
-async function getProduct(id: string): Promise<SingleProductData | null> {
+async function getProduct(id: string): Promise<FetchResult<SingleProductData>> {
   if (id === 'demo') {
-    return DEMO_PRODUCT;
+    return { status: 'ok', data: DEMO_PRODUCT };
   }
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/products/${id}`, {
       next: { revalidate: 60 },
     });
-    if (!res.ok) return null;
+    if (res.status === 404) return { status: 'not_found' };
+    if (!res.ok) return { status: 'error', error: `Upstream product service returned ${res.status}`, statusCode: res.status };
     const data = await res.json();
-    return data.product;
-  } catch {
-    return null;
+    if (!data.product) return { status: 'not_found' };
+    return { status: 'ok', data: data.product };
+  } catch (err: any) {
+    return { status: 'error', error: err?.message || 'Network error fetching product' };
   }
 }
 
@@ -164,14 +167,15 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProduct(id);
+  const productRes = await getProduct(id);
 
-  if (!product) {
+  if (productRes.status !== 'ok') {
     if (id === 'demo') {
       return { title: 'Aperçu Démo — Fiche Produit PandaMarket' };
     }
-    return { title: 'Produit introuvable' };
+    return { title: 'Produit introuvable', robots: { index: false } };
   }
+  const product = productRes.data;
 
   const imageUrl = getImageUrl(product.images?.[0]) || product.thumbnail;
   const formattedPrice = formatPrice(product.price);
@@ -214,15 +218,24 @@ export default async function ProductDetailPage({
   const requestHost = (await headers()).get('host');
   const requestedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   const locale = isValidLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
-  let product = await getProduct(id);
+  const productRes = await getProduct(id);
+  let product: SingleProductData;
 
   // If preview is requested or id is demo, fallback to DEMO_PRODUCT instead of 404
-  if (!product) {
+  if (productRes.status === 'not_found') {
     if (id === 'demo' || Boolean(resolvedSearchParams.preview_version)) {
       product = DEMO_PRODUCT;
     } else {
       notFound();
     }
+  } else if (productRes.status === 'error') {
+    if (id === 'demo' || Boolean(resolvedSearchParams.preview_version)) {
+      product = DEMO_PRODUCT;
+    } else {
+      throw new Error(`Failed to fetch product ${id}: ${productRes.error}`);
+    }
+  } else {
+    product = productRes.data;
   }
 
   const [similarProducts, ratingData, marketplaceSettings] = await Promise.all([

@@ -1,5 +1,6 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
+import type { FetchResult } from '@/lib/fetch-result';
 import { Metadata } from 'next';
 // Audit P1-5: render through the DOMPurify-based renderer used by the store
 // page builder — never raw dangerouslySetInnerHTML for CMS content.
@@ -12,21 +13,19 @@ interface HubCmsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-async function getPageBySlug(slug: string) {
+async function getPageBySlug(slug: string): Promise<FetchResult<any>> {
   try {
-    // Audit P1-3: this page previously used NEXT_PUBLIC_API_URL (unset in
-    // production) with a localhost:3001 fallback, so every fetch failed and the
-    // catch swallowed it into a 404. Server components must use BACKEND_URL,
-    // like every other hub server page.
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(`${backendUrl}/api/pd/marketplace/cms/slug/${slug}`, {
       next: { revalidate: 60 }
     });
-    if (!res.ok) return null;
+    if (res.status === 404) return { status: 'not_found' };
+    if (!res.ok) return { status: 'error', error: `Upstream CMS service returned ${res.status}`, statusCode: res.status };
     const json = await res.json();
-    return json.data;
-  } catch (e) {
-    return null;
+    if (!json.data) return { status: 'not_found' };
+    return { status: 'ok', data: json.data };
+  } catch (e: any) {
+    return { status: 'error', error: e?.message || 'Network error fetching CMS page' };
   }
 }
 
@@ -34,27 +33,30 @@ async function getPageBySlug(slug: string) {
  * Audit P1-6: resolve draft/unpublished content via a short-lived signed
  * preview token minted by POST /marketplace/cms/:id/preview.
  */
-async function getPageBySlugForPreview(slug: string, token: string) {
+async function getPageBySlugForPreview(slug: string, token: string): Promise<FetchResult<any>> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/marketplace/cms/slug/${slug}/preview?pb_preview=${encodeURIComponent(token)}`,
       { cache: 'no-store' }
     );
-    if (!res.ok) return null;
+    if (res.status === 404) return { status: 'not_found' };
+    if (!res.ok) return { status: 'error', error: `Upstream preview returned ${res.status}`, statusCode: res.status };
     const json = await res.json();
-    return json.data;
-  } catch (e) {
-    return null;
+    if (!json.data) return { status: 'not_found' };
+    return { status: 'ok', data: json.data };
+  } catch (e: any) {
+    return { status: 'error', error: e?.message || 'Network error fetching preview' };
   }
 }
 
 export async function generateMetadata({ params }: HubCmsPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const page = await getPageBySlug(slug);
-  if (!page || !page.is_published) {
-    return { title: 'Page Not Found' };
+  const pageRes = await getPageBySlug(slug);
+  if (pageRes.status !== 'ok' || !pageRes.data?.is_published) {
+    return { title: 'Page Not Found', robots: { index: false } };
   }
+  const page = pageRes.data;
   const settings = page.settings || {};
   return {
     title: settings.seo_title || page.title,
@@ -75,11 +77,15 @@ export default async function HubCmsPage({ params, searchParams }: HubCmsPagePro
 
   let page = null;
   if (previewToken) {
-    page = await getPageBySlugForPreview(slug, previewToken);
-    if (!page) notFound();
+    const pageRes = await getPageBySlugForPreview(slug, previewToken);
+    if (pageRes.status === 'not_found') notFound();
+    if (pageRes.status === 'error') throw new Error(`Failed to load preview for CMS page ${slug}: ${pageRes.error}`);
+    page = pageRes.data;
   } else {
-    page = await getPageBySlug(slug);
-    if (!page || !page.is_published) notFound();
+    const pageRes = await getPageBySlug(slug);
+    if (pageRes.status === 'not_found' || (pageRes.status === 'ok' && !pageRes.data?.is_published)) notFound();
+    if (pageRes.status === 'error') throw new Error(`Failed to load CMS page ${slug}: ${pageRes.error}`);
+    page = pageRes.data;
   }
 
   // Same rendering logic as Vendor PageBuilder pages — sanitized on write

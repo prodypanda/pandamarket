@@ -2,6 +2,8 @@ import { getResizedImageUrl } from '@/lib/image-url';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import type { FetchResult } from '@/lib/fetch-result';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../../components/hub/HubFooter';
 import {
@@ -179,17 +181,19 @@ async function getCategoryProducts(
   slug: string,
   page: number = 1,
   locale: string = 'fr',
-): Promise<CategoryResponse | null> {
+): Promise<FetchResult<CategoryResponse>> {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:9000';
     const res = await fetch(
       `${backendUrl}/api/pd/categories/${encodeURIComponent(slug)}?page=${page}&limit=20&locale=${encodeURIComponent(locale)}`,
       { cache: 'no-store' },
     );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
+    if (res.status === 404) return { status: 'not_found' };
+    if (!res.ok) return { status: 'error', error: `Upstream category service returned ${res.status}`, statusCode: res.status };
+    const data = await res.json();
+    return { status: 'ok', data };
+  } catch (err: any) {
+    return { status: 'error', error: err?.message || 'Network error fetching category' };
   }
 }
 
@@ -247,7 +251,16 @@ export default async function CategoryPage({
   const isRtl = activeLocale === 'ar';
   const i18n = TRANSLATIONS[activeLocale as keyof typeof TRANSLATIONS] || TRANSLATIONS.fr;
 
-  const result = await getCategoryProducts(slug, page, activeLocale);
+  const catRes = await getCategoryProducts(slug, page, activeLocale);
+
+  if (catRes.status === 'not_found') {
+    notFound();
+  }
+  if (catRes.status === 'error') {
+    throw new Error(`Failed to fetch category ${slug}: ${catRes.error}`);
+  }
+
+  const result = catRes.data;
 
   const isAliExpress = isAliExpressTheme(marketplaceSettings.marketplace_theme);
   const isAliExpress2 = marketplaceSettings.marketplace_theme === 'aliexpress2';
@@ -255,35 +268,7 @@ export default async function CategoryPage({
   const accentBg = 'bg-[#ff6a00]';
   const accentHoverBg = 'hover:bg-orange-600';
 
-  if (!result) {
-    return (
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-[#F5F7FA]">
-        <HubNavbar
-          marketplaceName={marketplaceSettings.marketplace_name}
-          marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-          marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-          marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-          marketplaceTheme={marketplaceSettings.marketplace_theme}
-        />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-orange-50 text-[#ff6a00] border border-orange-100 shadow-md">
-            <Layers className="h-10 w-10" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-3">{i18n.notFoundTitle}</h1>
-          <p className="text-slate-500 max-w-md mx-auto mb-8 font-medium text-sm leading-relaxed">
-            {i18n.notFoundDesc(slug)}
-          </p>
-          <Link
-            href="/hub"
-            className={`inline-flex items-center gap-2 px-8 py-3.5 ${accentBg} text-white font-extrabold rounded-full ${accentHoverBg} transition-all shadow-lg hover:shadow-orange-950/20`}
-          >
-            {i18n.backToHub}
-          </Link>
-        </main>
-        <HubFooter {...marketplaceSettings} />
-      </div>
-    );
-  }
+
 
   const { category, data: products, meta } = result;
   const CategoryIconComp = getCategoryIconComponent(category);
