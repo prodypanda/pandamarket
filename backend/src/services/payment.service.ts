@@ -23,6 +23,7 @@ import { pdId, sha256 } from '../utils/crypto';
 import { PdConflictError, PdError, PdErrorCode, PdValidationError } from '../errors';
 import { platformConfigService } from './platform-config.service';
 import { adsService } from './ads.service';
+import { eventBus, PdEvent } from '../events/event-bus';
 import { toMinorUnits } from '../utils/money';
 import { paymentCapabilityService } from './payment-capability.service';
 import {
@@ -990,6 +991,13 @@ export class PaymentService {
       // payment/order state transition succeeds.
       try {
         await adsService.recognizeOrderConversion(boundOrderId);
+        await eventBus.emit(PdEvent.PAYMENT_CAPTURED, {
+          order_id: boundOrderId,
+          gateway: opts.gateway,
+          amount: verifyResult.amount,
+          currency: 'TND',
+          source: 'webhook',
+        });
         await query(
           `UPDATE pd_payment_event SET status = 'processed', amount = $2, processed_at = NOW() WHERE id = $1`,
           [eventId, verifyResult.amount ?? null],

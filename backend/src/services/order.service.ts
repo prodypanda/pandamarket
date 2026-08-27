@@ -28,6 +28,7 @@ import { logger } from '../utils/logger';
 import { platformConfigService, type PlatformSettings } from './platform-config.service';
 import { shippingService } from './shipping.service';
 import { adsService } from './ads.service';
+import { eventBus, PdEvent } from '../events/event-bus';
 import { buyerInterestService } from './buyer-interest.service';
 import { checkoutQuoteService } from './checkout-quote.service';
 import { paymentCapabilityService } from './payment-capability.service';
@@ -1749,6 +1750,16 @@ export class OrderService {
     });
     // COD is considered paid only after every store fulfillment is delivered.
     await adsService.recognizeOrderConversion(opts.order_id);
+    const deliveredOrder = await this.getById(opts.order_id);
+    if (deliveredOrder && deliveredOrder.payment_gateway === PaymentGateway.Cod && deliveredOrder.payment_status === 'captured') {
+      await eventBus.emit(PdEvent.PAYMENT_CAPTURED, {
+        order_id: opts.order_id,
+        gateway: PaymentGateway.Cod,
+        amount: parseFloat(deliveredOrder.total),
+        currency: 'TND',
+        source: 'cod_delivery',
+      });
+    }
     logger.info(opts, 'Fulfillment delivered');
   }
 

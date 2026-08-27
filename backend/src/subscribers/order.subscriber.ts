@@ -148,6 +148,16 @@ async function onOrderPlaced(orderId: string): Promise<void> {
 async function onPaymentCaptured(orderId: string, gateway?: string): Promise<void> {
   await assignSerialLicenseKeys(orderId);
 
+  // Idempotency check: skip duplicate credit if wallet transaction already exists
+  const { rows: existingTx } = await query<{ id: string }>(
+    `SELECT id FROM pd_wallet_transaction WHERE order_id = $1 AND type = 'sale' LIMIT 1`,
+    [orderId],
+  );
+  if (existingTx.length > 0) {
+    logger.warn({ orderId }, '[onPaymentCaptured] Wallet already credited for order, skipping duplicate credit');
+    return;
+  }
+
   // Resolve per-payment-method retention days from platform config
   let retentionDays: number | undefined;
   const retentionKey = gatewayToRetentionKey(gateway);

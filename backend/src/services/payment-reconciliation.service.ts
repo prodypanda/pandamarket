@@ -10,6 +10,7 @@ import {
   enqueuePaymentReconciliation,
 } from '../queues/payment-reconciliation-queue';
 import { storeService } from './store.service';
+import { eventBus, PdEvent } from '../events/event-bus';
 
 type AttemptState = 'initialization_unknown' | 'initialized';
 
@@ -349,6 +350,13 @@ export class PaymentReconciliationService {
       return 'manual_review';
     }
     logger.info({ attempt_id: attempt.id, order_id: attempt.order_id, amount }, 'Payment reconciliation captured attempt');
+    await eventBus.emit(PdEvent.PAYMENT_CAPTURED, {
+      order_id: attempt.order_id,
+      gateway: attempt.gateway,
+      amount,
+      currency: 'TND',
+      source: 'reconciliation',
+    });
     return 'captured';
   }
 
