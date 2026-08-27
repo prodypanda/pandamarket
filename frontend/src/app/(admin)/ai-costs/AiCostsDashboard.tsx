@@ -56,6 +56,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 // ==========================================
 // TYPES & DATA STRUCTURES
@@ -3077,7 +3078,7 @@ export default function AiCostsDashboard() {
                           <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Aperçu Description HTML :</span>
                           <div
                             className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 prose prose-xs dark:prose-invert max-w-none text-slate-800 dark:text-slate-200"
-                            dangerouslySetInnerHTML={{ __html: (selectedJob.output as any).description_html }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize((selectedJob.output as any).description_html || '') }}
                           />
                         </div>
                       )}

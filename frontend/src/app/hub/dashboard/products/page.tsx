@@ -69,6 +69,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale } from '../../../../contexts/LocaleContext';
+import DOMPurify from 'dompurify';
 
 // =========================================================================
 // TYPES & DATA STRUCTURES
@@ -6920,7 +6921,7 @@ export default function ProductsPage() {
                     </div>
                     <div
                       className="p-3.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-purple-100 dark:border-slate-700 max-h-48 overflow-y-auto leading-relaxed prose prose-sm dark:prose-invert"
-                      dangerouslySetInnerHTML={{ __html: smartFillSuggestions.suggested_description }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(smartFillSuggestions.suggested_description) }}
                     />
                   </div>
 
