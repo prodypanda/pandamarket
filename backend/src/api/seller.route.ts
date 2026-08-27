@@ -12,6 +12,7 @@ import { Router, Request, Response } from 'express';
 import { requireAuth, requireStore, asyncHandler } from '../middlewares';
 import { sellerBroadcastService } from '../services/seller-broadcast.service';
 import { orderService } from '../services/order.service';
+import { pdfInvoiceService } from '../services/pdf-invoice.service';
 import { PdValidationError } from '../errors';
 import { query } from '../db/pool';
 
@@ -250,4 +251,41 @@ sellerRouter.patch(
     });
   })
 );
+
+/**
+ * GET /api/pd/seller/orders/:id/invoice.pdf
+ * Download Tunisian sales invoice PDF
+ */
+sellerRouter.get(
+  '/orders/:id/invoice.pdf',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const pdfBuffer = await pdfInvoiceService.generateInvoicePdf(req.params.id, storeId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="facture-${req.params.id}.pdf"`);
+    res.status(200).send(pdfBuffer);
+  })
+);
+
+/**
+ * GET /api/pd/seller/orders/:id/packing-slip.pdf
+ * Download Tunisian delivery slip / packing slip PDF
+ */
+sellerRouter.get(
+  '/orders/:id/packing-slip.pdf',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const pdfBuffer = await pdfInvoiceService.generatePackingSlipPdf(req.params.id, storeId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="bon-livraison-${req.params.id}.pdf"`);
+    res.status(200).send(pdfBuffer);
+  })
+);
+
 
