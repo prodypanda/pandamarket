@@ -678,26 +678,32 @@ export default function DashboardLayout({
 
         {setupPercentage < 100 && (
           <div className="sticky top-16 z-20 border-b border-amber-100 bg-white/95 px-4 sm:px-8 py-3 backdrop-blur">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3 text-sm">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#B91C1C]/10 text-[#B91C1C]">
                   <CheckCircle2 className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="font-black text-slate-900">Store setup progress</p>
+                  <p className="font-black text-slate-900">Progression de configuration</p>
                   <p className="text-xs font-semibold text-slate-500">
-                    {setupProgress.completed} of {setupProgress.total} launch steps completed
+                    {setupProgress.completed} sur {setupProgress.total} étapes de lancement validées
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 lg:w-80">
+              <div className="flex items-center gap-3 lg:w-96">
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-[#B91C1C]"
+                    className="h-full rounded-full bg-[#B91C1C] transition-all duration-500"
                     style={{ width: `${setupPercentage}%` }}
                   />
                 </div>
                 <span className="text-xs font-black text-[#B91C1C]">{setupPercentage}%</span>
+                <Link
+                  href="/hub/dashboard/onboarding"
+                  className="ms-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] text-white text-xs font-bold rounded-lg hover:bg-[#991B1B] transition shadow-sm flex-shrink-0"
+                >
+                  <span>Continuer</span>
+                </Link>
               </div>
             </div>
           </div>
