@@ -11,6 +11,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth, requireStore, asyncHandler } from '../middlewares';
 import { sellerBroadcastService } from '../services/seller-broadcast.service';
+import { orderService } from '../services/order.service';
 import { PdValidationError } from '../errors';
 import { query } from '../db/pool';
 
@@ -174,3 +175,79 @@ sellerRouter.get(
     res.status(200).send(csvContent);
   })
 );
+
+/**
+ * GET /api/pd/seller/orders
+ * List paginated orders for the authenticated seller's store.
+ */
+sellerRouter.get(
+  '/orders',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const status = req.query.status as any;
+    const dateFrom = req.query.date_from as string | undefined;
+    const dateTo = req.query.date_to as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const result = await orderService.listByStore(storeId, {
+      page,
+      limit,
+      status,
+      dateFrom,
+      dateTo,
+      search,
+    });
+
+    res.status(200).json(result);
+  })
+);
+
+/**
+ * GET /api/pd/seller/orders/:id
+ * Retrieve full order details including shipping address and items for the seller.
+ */
+sellerRouter.get(
+  '/orders/:id',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const order = await orderService.getStoreOrderDetail(req.params.id, storeId);
+    res.status(200).json(order);
+  })
+);
+
+/**
+ * PATCH /api/pd/seller/orders/:id/fulfill
+ * Mark seller order fulfillment as shipped with tracking and carrier information.
+ */
+sellerRouter.patch(
+  '/orders/:id/fulfill',
+  requireAuth,
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const storeId = await resolveSellerStoreId(req);
+    const { tracking_number, carrier_name } = req.body;
+
+    await orderService.fulfill({
+      order_id: req.params.id,
+      store_id: storeId,
+      tracking_number: tracking_number || undefined,
+      carrier: carrier_name || undefined,
+    });
+
+    res.status(200).json({
+      success: true,
+      order_id: req.params.id,
+      store_id: storeId,
+      status: 'fulfilled',
+      tracking_number: tracking_number || null,
+      carrier_name: carrier_name || null,
+    });
+  })
+);
+
