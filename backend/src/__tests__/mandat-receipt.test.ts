@@ -3,10 +3,14 @@ import express from 'express';
 import request from 'supertest';
 import { PaymentGateway, UserRole } from '@pandamarket/types';
 
+const { mockQuery } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+}));
+
 vi.mock('../db/pool', () => ({
-  query: vi.fn(),
+  query: mockQuery,
   transaction: vi.fn((cb: any) => cb({
-    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+    query: mockQuery,
   })),
 }));
 
@@ -217,13 +221,14 @@ describe('Storefront Mandat Minute Receipt Uploads & Review (GAP-P1-005)', () =>
         rows: [{ id: 'rcpt_123', order_id: 'ord_mandat_1', store_id: 'store_A', status: 'pending_review' }],
         rowCount: 1,
       });
-      // 2. Update receipt status
-      responseQueue.push({ rows: [], rowCount: 1 });
-      // 3. Update order payment_status = captured
-      responseQueue.push({ rows: [], rowCount: 1 });
-      // 4. Return updated receipt
+      // 2. Update receipt status (RETURNING *)
       responseQueue.push({
         rows: [{ id: 'rcpt_123', order_id: 'ord_mandat_1', store_id: 'store_A', status: 'approved' }],
+        rowCount: 1,
+      });
+      // 3. Update order payment_status via markPaidInTransaction (RETURNING *)
+      responseQueue.push({
+        rows: [{ id: 'ord_mandat_1', total: '150.000', payment_status: 'captured', payment_gateway: 'manual_mandat' }],
         rowCount: 1,
       });
 

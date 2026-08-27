@@ -8,7 +8,8 @@ import { asyncHandler, requireAuth, requireStorefrontCustomer, validate } from '
 import { PaymentGateway, MandatUploader, UserRole } from '@pandamarket/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
-import { query as dbQuery } from '../db/pool';
+import { query as dbQuery, transaction } from '../db/pool';
+import { eventBus, PdEvent } from '../events/event-bus';
 import { PdValidationError } from '../errors';
 
 const router = Router();
@@ -496,38 +497,60 @@ router.post(
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    await dbQuery(
-      `UPDATE pd_payment_receipt
-       SET status = $1, review_notes = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW()
-       WHERE id = $4`,
-      [newStatus, notes ?? null, req.user!.id, receiptId],
-    );
+    const { updatedReceipt, orderToEmit } = await transaction(async (client) => {
+      const { rows } = await client.query(
+        `UPDATE pd_payment_receipt
+         SET status = $1, review_notes = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW()
+         WHERE id = $4
+         RETURNING *`,
+        [newStatus, notes ?? null, req.user!.id, receiptId],
+      );
 
-    if (action === 'approve') {
-      // Mark order as paid / captured
-      await dbQuery(
-        `UPDATE pd_order
-         SET payment_status = 'captured', status = 'processing', updated_at = NOW()
-         WHERE id = $1`,
-        [receipt.order_id],
-      );
-      logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt approved — payment captured');
-    } else {
-      await dbQuery(
-        `UPDATE pd_order
-         SET payment_status = 'failed', updated_at = NOW()
-         WHERE id = $1`,
-        [receipt.order_id],
-      );
-      logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt rejected');
+      let orderSummary: { id: string; total: string; payment_gateway: string } | null = null;
+
+      if (action === 'approve') {
+        const order = await orderService.markPaidInTransaction(
+          client,
+          receipt.order_id,
+          PaymentGateway.ManualMandat,
+          receiptId,
+        );
+        if (order) {
+          orderSummary = {
+            id: order.id,
+            total: order.total,
+            payment_gateway: order.payment_gateway,
+          };
+        }
+        logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt approved — payment captured');
+      } else {
+        await client.query(
+          `UPDATE pd_order
+           SET payment_status = 'payment_required', updated_at = NOW()
+           WHERE id = $1 AND payment_status != 'captured'`,
+          [receipt.order_id],
+        );
+        logger.info({ receipt_id: receiptId, order_id: receipt.order_id, reviewer: req.user!.id }, 'Mandat receipt rejected — re-upload allowed');
+      }
+
+      return { updatedReceipt: rows[0], orderToEmit: orderSummary };
+    });
+
+    if (action === 'approve' && orderToEmit) {
+      await eventBus.emit(PdEvent.PAYMENT_CAPTURED, {
+        order_id: orderToEmit.id,
+        gateway: PaymentGateway.ManualMandat,
+        amount: parseFloat(orderToEmit.total || '0'),
+        currency: 'TND',
+        source: 'mandat_review',
+      });
     }
 
-    const { rows: updatedRows } = await dbQuery(
-      'SELECT * FROM pd_payment_receipt WHERE id = $1',
-      [receiptId],
-    );
+    const finalReceipt = updatedReceipt || (
+      await dbQuery('SELECT * FROM pd_payment_receipt WHERE id = $1', [receiptId])
+    ).rows[0];
 
-    res.status(200).json({ receipt: updatedRows[0], data: updatedRows[0] });
+    res.status(200).json({ receipt: finalReceipt, data: finalReceipt });
   }),
 );
 
