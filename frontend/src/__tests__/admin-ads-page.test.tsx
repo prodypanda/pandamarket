@@ -107,7 +107,7 @@ describe('AdminAdsPage', () => {
     });
 
     await waitFor(() => {
-      expect(fetchWithCsrf).toHaveBeenCalledWith('/api/pd/admin/ads/fraud/blocked-ips', expect.objectContaining({
+      expect(fetchWithCsrf).toHaveBeenCalledWith('/api/pd/admin/ads/fraud/block-ip', expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ ip_hash: 'hash_456', reason: 'Bot traffic' })
       }));
