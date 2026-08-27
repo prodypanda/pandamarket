@@ -209,6 +209,10 @@ export interface PlatformSettings {
   mandat_recipient_name: string;
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
+  mandat_bank_name: string;
+  mandat_bank_rib: string;
+  mandat_bank_iban: string;
+  mandat_recipient_phone: string;
   mandat_proof_email: string;
   watermark_enabled: boolean;
   watermark_type: 'text' | 'image' | 'both';
@@ -451,6 +455,10 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   mandat_recipient_name: 'PandaMarket SARL',
   mandat_recipient_cin: '01234567',
   mandat_recipient_city: 'Tunis',
+  mandat_bank_name: 'STB (Société Tunisienne de Banque)',
+  mandat_bank_rib: '10 000 0000000000000 00',
+  mandat_bank_iban: 'TN59 1000 0000 0000 0000 0000',
+  mandat_recipient_phone: '+216 71 000 000',
   mandat_proof_email: 'billing@pandamarket.tn',
   platform_commission_rate: 15,
   default_currency: 'TND',

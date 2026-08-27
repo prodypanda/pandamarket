@@ -236,6 +236,10 @@ interface PlatformSettings {
   mandat_recipient_name: string;
   mandat_recipient_cin: string;
   mandat_recipient_city: string;
+  mandat_bank_name: string;
+  mandat_bank_rib: string;
+  mandat_bank_iban: string;
+  mandat_recipient_phone: string;
   mandat_proof_email: string;
   watermark_enabled: boolean;
   watermark_type: 'text' | 'image' | 'both';
@@ -478,6 +482,10 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   mandat_recipient_name: 'PandaMarket SARL',
   mandat_recipient_cin: '01234567',
   mandat_recipient_city: 'Tunis',
+  mandat_bank_name: 'STB (Société Tunisienne de Banque)',
+  mandat_bank_rib: '10 000 0000000000000 00',
+  mandat_bank_iban: 'TN59 1000 0000 0000 0000 0000',
+  mandat_recipient_phone: '+216 71 000 000',
   mandat_proof_email: 'billing@pandamarket.tn',
   platform_commission_rate: 15,
   default_currency: 'TND',
@@ -675,6 +683,10 @@ const TEXT_SETTING_KEYS = [
   'mandat_recipient_name',
   'mandat_recipient_cin',
   'mandat_recipient_city',
+  'mandat_bank_name',
+  'mandat_bank_rib',
+  'mandat_bank_iban',
+  'mandat_recipient_phone',
   'mandat_proof_email',
   'notifications_sms_sender_name',
   'security_2fa_required_roles',
@@ -989,6 +1001,10 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'mandat_recipient_name',
     'mandat_recipient_cin',
     'mandat_recipient_city',
+    'mandat_bank_name',
+    'mandat_bank_rib',
+    'mandat_bank_iban',
+    'mandat_recipient_phone',
     'mandat_proof_email',
   ],
   shipping: [
@@ -5624,6 +5640,10 @@ export default function SuperAdminSettingsPage() {
           <div className="md:col-span-2">{renderTextInput('mandat_recipient_name', 'Recipient Name')}</div>
           {renderTextInput('mandat_recipient_cin', 'Identifiant Number (CIN / MF)')}
           {renderTextInput('mandat_recipient_city', 'City')}
+          {renderTextInput('mandat_recipient_phone', 'Recipient Phone Number')}
+          {renderTextInput('mandat_bank_name', 'Bank / Post Name (e.g. STB, La Poste)')}
+          {renderTextInput('mandat_bank_rib', 'RIB (20 digits)')}
+          {renderTextInput('mandat_bank_iban', 'IBAN (TN59...)')}
           <div className="md:col-span-2">{renderTextInput('mandat_proof_email', 'Proof of Payment Email Address', 'e.g. billing@pandamarket.tn')}</div>
         </div>
 
@@ -5637,10 +5657,14 @@ export default function SuperAdminSettingsPage() {
               1-Click Copy
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <CopyableField label="Recipient Name" value={settings.mandat_recipient_name} />
             <CopyableField label="CIN / Tax ID" value={settings.mandat_recipient_cin} />
             <CopyableField label="City" value={settings.mandat_recipient_city} />
+            <CopyableField label="Phone" value={settings.mandat_recipient_phone} />
+            <CopyableField label="Bank / Post" value={settings.mandat_bank_name} />
+            <CopyableField label="RIB" value={settings.mandat_bank_rib} />
+            <CopyableField label="IBAN" value={settings.mandat_bank_iban} />
             <CopyableField label="Proof Email" value={settings.mandat_proof_email} />
           </div>
           <CopyableField
@@ -5649,6 +5673,10 @@ export default function SuperAdminSettingsPage() {
               settings.mandat_recipient_name ? `Bénéficiaire: ${settings.mandat_recipient_name}` : '',
               settings.mandat_recipient_cin ? `CIN/MF: ${settings.mandat_recipient_cin}` : '',
               settings.mandat_recipient_city ? `Ville: ${settings.mandat_recipient_city}` : '',
+              settings.mandat_bank_name ? `Banque: ${settings.mandat_bank_name}` : '',
+              settings.mandat_bank_rib ? `RIB: ${settings.mandat_bank_rib}` : '',
+              settings.mandat_bank_iban ? `IBAN: ${settings.mandat_bank_iban}` : '',
+              settings.mandat_recipient_phone ? `Tél: ${settings.mandat_recipient_phone}` : '',
               settings.mandat_proof_email ? `Email preuve: ${settings.mandat_proof_email}` : '',
             ].filter(Boolean).join(' | ')}
           />
