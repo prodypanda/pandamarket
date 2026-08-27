@@ -87,7 +87,7 @@ export const config = {
   databaseUrl: required('PD_DATABASE_URL'),
   databasePoolSize: asInt('PD_DATABASE_POOL_SIZE', 20),
   databaseSsl: asBool('PD_DATABASE_SSL', process.env.NODE_ENV === 'production' || process.env.PD_NODE_ENV === 'production' || (process.env.PD_DATABASE_URL ?? '').includes('supabase')),
-  databaseSslRejectUnauthorized: asBool('PD_DATABASE_SSL_REJECT_UNAUTHORIZED', process.env.NODE_ENV === 'production' && !process.env.PD_ALLOW_INSECURE_DB_TLS),
+  databaseSslRejectUnauthorized: asBool('PD_DATABASE_SSL_REJECT_UNAUTHORIZED', Boolean(process.env.PD_DATABASE_CA_CERT) || asBool('PD_DATABASE_SSL_STRICT', false)),
   databaseCaCert: optional('PD_DATABASE_CA_CERT', ''),
 
   // Redis

@@ -6,8 +6,8 @@
   "main": "dist/backend/src/main.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/src/main.js || node dist/backend/src/main.js",
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs'),path=require('path'),src=path.join(__dirname,'dist','backend','src'),tgt=path.join(__dirname,'dist','src');if(fs.existsSync(src)&&!fs.existsSync(tgt)){fs.cpSync(src,tgt,{recursive:true})}\"",
+    "start": "node dist/backend/src/main.js",
     "migrate": "tsx src/migrations/run.ts",
     "migrate:rollback": "tsx src/migrations/rollback.ts",
     "seed": "tsx data/seed.ts",
