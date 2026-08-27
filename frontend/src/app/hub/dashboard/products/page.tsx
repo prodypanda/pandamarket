@@ -2545,7 +2545,7 @@ export default function ProductsPage() {
 
   const saveProductImage = async (productId: string, thumbnail: string) => {
     if (!thumbnail.trim()) return;
-    await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
+    const res = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -2555,13 +2555,17 @@ export default function ProductsPage() {
         is_thumbnail: true,
       }),
     });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || errData.message || "Impossible d'enregistrer l'image principale du produit.");
+    }
   };
 
   const saveGalleryImages = async (productId: string) => {
     const existingUrls = new Set((editingProduct?.images || []).filter((image) => !image.is_thumbnail).map((image) => image.url));
     const newUrls = form.gallery_images.filter((url) => url.trim() && !existingUrls.has(url.trim()));
     for (const url of newUrls) {
-      await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2571,6 +2575,10 @@ export default function ProductsPage() {
           is_thumbnail: false,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || errData.message || "Limite d'images par produit atteinte pour votre forfait.");
+      }
     }
   };
 
