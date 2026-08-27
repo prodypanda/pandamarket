@@ -259,7 +259,8 @@ function isStoreMaintenancePath(pathname: string) {
 
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
-  const hostname = req.headers.get('host') || 'pandamarket.local:3000';
+  const rawHostname = req.headers.get('host') || 'pandamarket.local:3000';
+  const hostname = rawHostname.trim().toLowerCase().replace(/\.+$/, '');
 
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ''}`;

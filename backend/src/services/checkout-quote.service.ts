@@ -11,7 +11,7 @@ import { couponService } from './coupon.service';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { transaction } from '../db/pool';
 import { pdId, sha256 } from '../utils/crypto';
-import { PdConflictError, PdErrorCode, PdNotFoundError, PdValidationError } from '../errors';
+import { PdConflictError, PdErrorCode, PdForbiddenError, PdNotFoundError, PdValidationError } from '../errors';
 import {
   IAddress,
   ProductStatus,
@@ -371,7 +371,7 @@ export class CheckoutQuoteService {
         throw new PdValidationError('Product is not available', { product_id: input.product_id });
       }
       if (storeId && product.store_id !== storeId) {
-        throw new PdValidationError('Product does not belong to this storefront', { product_id: input.product_id, store_id: storeId });
+        throw new PdForbiddenError(PdErrorCode.PERM_FORBIDDEN, 'Product does not belong to this storefront', { product_id: input.product_id, store_id: storeId });
       }
 
       if (product.type === ProductType.Bundle) {

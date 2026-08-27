@@ -91,25 +91,31 @@ describe('Storefront Tenant Isolation (GAP-P1-001)', () => {
       query: vi.fn(),
     };
 
-    // 1. Lock query
-    mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'prod_storeB_1' }] });
-    // 2. Select product (product belongs to store_B)
-    mockClient.query.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 'prod_storeB_1',
-          store_id: 'store_B',
-          title: 'Store B Exclusive Product',
-          price: '100.000',
-          inventory_quantity: 10,
-          status: ProductStatus.Published,
-          type: ProductType.Physical,
-          metadata: {},
-          seller_type: 'retailer',
-          store_status: StoreStatus.Verified,
-          store_is_verified: true,
-        },
-      ],
+    mockClient.query.mockImplementation(async (sql: string) => {
+      if (typeof sql === 'string' && sql.includes('pd_product') && sql.includes('pd_store')) {
+        return {
+          rows: [
+            {
+              id: 'prod_storeB_1',
+              store_id: 'store_B',
+              title: 'Store B Exclusive Product',
+              price: '100.000',
+              inventory_quantity: 10,
+              status: ProductStatus.Published,
+              type: ProductType.Physical,
+              metadata: {},
+              seller_type: 'retailer',
+              store_status: StoreStatus.Verified,
+              store_is_verified: true,
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      if (typeof sql === 'string' && sql.includes('FOR UPDATE')) {
+        return { rows: [{ id: 'prod_storeB_1' }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
     });
 
     mockedTransaction.mockImplementationOnce(async (cb: any) => cb(mockClient));

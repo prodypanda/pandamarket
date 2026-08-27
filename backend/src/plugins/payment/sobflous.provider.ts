@@ -13,11 +13,19 @@ import {
 import { PaymentGateway } from '@pandamarket/types';
 import { logger } from '../../utils/logger';
 import { pdId, sha256 } from '../../utils/crypto';
+import { PdServiceUnavailableError } from '../../errors';
 
 export class SobflousPaymentProvider implements PaymentProvider {
   readonly gateway: PaymentGateway = 'flouci' as PaymentGateway; // Or Sobflous alias
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
+    const isConfigured = Boolean(process.env.PD_SOBFLOUS_MERCHANT_KEY);
+    if (!isConfigured && process.env.NODE_ENV === 'production') {
+      throw new PdServiceUnavailableError(
+        'Sobflous gateway is pending live merchant credentials.',
+      );
+    }
+
     const reference = `SOB_${pdId('sob')}`;
     const amountTnd = ctx.amount.toFixed(3);
     const signature = sha256(`${ctx.order_id}:${amountTnd}:${reference}`);
@@ -40,6 +48,13 @@ export class SobflousPaymentProvider implements PaymentProvider {
   }
 
   async verify(reference: string): Promise<PaymentVerifyResult> {
+    const isConfigured = Boolean(process.env.PD_SOBFLOUS_MERCHANT_KEY);
+    if (!isConfigured) {
+      throw new PdServiceUnavailableError(
+        'Sobflous gateway verification is pending live merchant credentials.',
+      );
+    }
+
     logger.info({ reference }, 'Verifying Sobflous payment transaction');
 
     return {

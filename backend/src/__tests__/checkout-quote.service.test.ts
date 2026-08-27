@@ -4,12 +4,13 @@ import { ProductStatus, ProductType, SellerType, StoreStatus } from '@pandamarke
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   clientQuery: vi.fn(),
+  poolQuery: vi.fn(),
   getSettings: vi.fn(),
   pdId: vi.fn(() => 'pd_quote_test'),
   sha256: vi.fn((value: string) => `hash:${value}`),
 }));
 
-vi.mock('../db/pool', () => ({ transaction: mocks.transaction }));
+vi.mock('../db/pool', () => ({ transaction: mocks.transaction, query: mocks.poolQuery }));
 vi.mock('../utils/crypto', () => ({ pdId: mocks.pdId, sha256: mocks.sha256 }));
 vi.mock('../services/platform-config.service', () => ({
   platformConfigService: { getSettings: mocks.getSettings },
@@ -88,6 +89,44 @@ describe('CheckoutQuoteService', () => {
     vi.clearAllMocks();
     mocks.getSettings.mockResolvedValue(settings);
     mocks.transaction.mockImplementation(async (callback: (client: unknown) => Promise<unknown>) => callback({ query: mocks.clientQuery }));
+    mocks.poolQuery.mockImplementation(async (sql: string, params?: any[]) => {
+      if (sql.includes('FROM pd_coupon')) {
+        const code = params?.[0];
+        if (code === 'PANDA10') {
+          return {
+            rows: [{
+              id: 'coupon_1',
+              code: 'PANDA10',
+              discount_type: 'fixed_amount',
+              discount_value: '10.000',
+              is_active: true,
+              min_order_amount: '0',
+              starts_at: null,
+              expires_at: null,
+              usage_limit: null,
+              usage_count: 0,
+            }],
+          };
+        }
+        if (code === 'SUPER15') {
+          return {
+            rows: [{
+              id: 'coupon_2',
+              code: 'SUPER15',
+              discount_type: 'percentage',
+              discount_value: '15.000',
+              is_active: true,
+              min_order_amount: '100.000',
+              starts_at: null,
+              expires_at: null,
+              usage_limit: null,
+              usage_count: 0,
+            }],
+          };
+        }
+      }
+      return { rows: [] };
+    });
   });
 
   it('calculates server shipping, coupon, and per-line discount breakdowns', async () => {

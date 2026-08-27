@@ -591,7 +591,7 @@ export default async function StorePage({
         store={store as StorefrontSeoStore}
         canonicalUrl={getStorefrontCanonicalUrl(decodedHost, store, '/')}
       />
-      <StorefrontAnalyticsTracker storeId={store.id} />
+      <StorefrontAnalyticsTracker storeId={store.id} analytics={store.settings?.analytics} />
       <StorefrontProductLoadingProvider
         storeId={store.id}
         initialProducts={products}

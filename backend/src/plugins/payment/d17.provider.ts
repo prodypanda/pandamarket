@@ -13,11 +13,19 @@ import {
 import { PaymentGateway } from '@pandamarket/types';
 import { logger } from '../../utils/logger';
 import { pdId } from '../../utils/crypto';
+import { PdServiceUnavailableError } from '../../errors';
 
 export class D17PaymentProvider implements PaymentProvider {
   readonly gateway: PaymentGateway = 'manual_mandat' as PaymentGateway; // Or D17 alias
 
   async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
+    const isConfigured = Boolean(process.env.PD_D17_MERCHANT_KEY);
+    if (!isConfigured && process.env.NODE_ENV === 'production') {
+      throw new PdServiceUnavailableError(
+        'D17 Poste Tunisienne gateway is pending live merchant credentials.',
+      );
+    }
+
     const reference = `D17_${pdId('d17')}`;
     const amountTnd = ctx.amount.toFixed(3);
 
@@ -39,6 +47,13 @@ export class D17PaymentProvider implements PaymentProvider {
   }
 
   async verify(reference: string): Promise<PaymentVerifyResult> {
+    const isConfigured = Boolean(process.env.PD_D17_MERCHANT_KEY);
+    if (!isConfigured) {
+      throw new PdServiceUnavailableError(
+        'D17 Poste Tunisienne gateway verification is pending live merchant credentials.',
+      );
+    }
+
     logger.info({ reference }, 'Verifying D17 payment reference');
 
     // In production, queries Poste Tunisienne SOAP/REST verification API with merchant signature

@@ -9,6 +9,7 @@ import { PdAuthenticationError, PdErrorCode } from '../errors';
 import { accountSecurityService } from '../services/account-security.service';
 import { smsService } from '../services/sms.service';
 import { signAccessToken } from '../utils/jwt';
+import { config } from '../config';
 
 const router = Router();
 const SELECTED_STORE_COOKIE = 'pd_selected_store_id';
@@ -118,7 +119,7 @@ function publicUser<T extends {
 function setAccessCookie(res: Response, accessToken: string) {
   res.cookie('pd_at', accessToken, {
     httpOnly: true,
-    secure: process.env.PD_NODE_ENV === 'production',
+    secure: config.env === 'production',
     sameSite: 'lax',
     maxAge: 15 * 60 * 1000,
   });
@@ -129,7 +130,7 @@ const REFRESH_COOKIE = 'pd_rt';
 function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
-    secure: process.env.PD_NODE_ENV === 'production',
+    secure: config.env === 'production',
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/api/pd/auth',

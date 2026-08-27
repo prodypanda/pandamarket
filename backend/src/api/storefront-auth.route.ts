@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { storefrontAuthService } from '../services/storefront-auth.service';
 import { asyncHandler, authRateLimit, requireStorefrontCustomer, validate } from '../middlewares';
+import { config } from '../config';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ const storefrontRefreshSchema = z.object({
 function setStorefrontCookies(res: Response, accessToken: string, refreshToken?: string) {
   res.cookie('pd_storefront_at', accessToken, {
     httpOnly: true,
-    secure: process.env.PD_NODE_ENV === 'production',
+    secure: config.env === 'production',
     sameSite: 'lax',
     maxAge: 15 * 60 * 1000, // 15 mins
   });
@@ -56,7 +57,7 @@ function setStorefrontCookies(res: Response, accessToken: string, refreshToken?:
   if (refreshToken) {
     res.cookie('pd_storefront_rt', refreshToken, {
       httpOnly: true,
-      secure: process.env.PD_NODE_ENV === 'production',
+      secure: config.env === 'production',
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
