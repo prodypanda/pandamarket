@@ -325,6 +325,19 @@ router.post(
   }),
 );
 
+
+router.post(
+  '/store/:id/refunds/:refundId/process',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const refund = await orderService.processStoreRefund({
+      refund_id: req.params.refundId,
+      reviewed_by: req.user!.id,
+    });
+    res.status(200).json({ refund });
+  }),
+);
+
 router.post(
   '/store/:id/shipments',
   requireStore,

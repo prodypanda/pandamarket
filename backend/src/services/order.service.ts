@@ -32,6 +32,7 @@ import { eventBus, PdEvent } from '../events/event-bus';
 import { buyerInterestService } from './buyer-interest.service';
 import { checkoutQuoteService } from './checkout-quote.service';
 import { paymentCapabilityService } from './payment-capability.service';
+import { walletService } from './wallet.service';
 
 interface CartLine {
   product_id: string;
@@ -1919,6 +1920,111 @@ export class OrderService {
         ],
       );
       return rows[0];
+    });
+  }
+
+
+  /**
+   * Process and execute a requested refund in an atomic transaction.
+   * Transitions refund status from 'requested' -> 'processed'.
+   * 1. Debits merchant wallet via walletService.debitRefund
+   * 2. Checks cumulative refunds vs order total to update order/payment status
+   * 3. Emits PdEvent.ORDER_REFUNDED and PAYMENT_REFUNDED
+   */
+  async processStoreRefund(opts: {
+    refund_id: string;
+    reviewed_by?: string;
+    transaction_reference?: string;
+  }): Promise<StoreOrderRefundRow> {
+    return transaction(async (c) => {
+      const { rows: refundRows } = await c.query<StoreOrderRefundRow>(
+        'SELECT * FROM pd_store_order_refund WHERE id = $1 FOR UPDATE',
+        [opts.refund_id],
+      );
+      const refund = refundRows[0];
+      if (!refund) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Refund request not found');
+
+      if (refund.status === 'processed') {
+        return refund;
+      }
+      if (refund.status === 'rejected') {
+        throw new PdValidationError('Cannot process a rejected refund request');
+      }
+
+      const refundAmount = roundTnd(parseFloat(String(refund.amount)));
+
+      // 1. Update refund status
+      const currentMeta = typeof refund.metadata === 'object' && refund.metadata ? refund.metadata : {};
+      const updatedMetadata = {
+        ...currentMeta,
+        processed_at: new Date().toISOString(),
+        processed_by: opts.reviewed_by || 'system',
+        transaction_reference: opts.transaction_reference || null,
+      };
+
+      const { rows: updatedRefundRows } = await c.query<StoreOrderRefundRow>(
+        `UPDATE pd_store_order_refund
+         SET status = 'processed',
+             metadata = $2::jsonb,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [refund.id, JSON.stringify(updatedMetadata)],
+      );
+
+      // 2. Debit vendor wallet
+      await walletService.debitRefund({
+        store_id: refund.store_id,
+        amount: refundAmount,
+        order_id: refund.order_id,
+        description: `Refund for order ${refund.order_id}`,
+        client: c,
+      });
+
+      // 3. Check order total vs cumulative processed refunds
+      const { rows: totals } = await c.query<{ total: string; refunded: string }>(
+        `SELECT o.total::text,
+                COALESCE(SUM(r.amount), 0)::text AS refunded
+         FROM pd_order o
+         LEFT JOIN pd_store_order_refund r ON r.order_id = o.id AND r.status = 'processed'
+         WHERE o.id = $1
+         GROUP BY o.id`,
+        [refund.order_id],
+      );
+
+      if (totals[0]) {
+        const orderTotal = roundTnd(parseFloat(totals[0].total));
+        const totalRefunded = roundTnd(parseFloat(totals[0].refunded));
+        if (totalRefunded >= orderTotal) {
+          await c.query(
+            `UPDATE pd_order
+             SET status = 'refunded',
+                 payment_status = 'refunded',
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [refund.order_id],
+          );
+        }
+      }
+
+      // 4. Emit events
+      eventBus.emit(PdEvent.ORDER_REFUNDED, {
+        order_id: refund.order_id,
+        refund_id: refund.id,
+        store_id: refund.store_id,
+        amount: refundAmount,
+      });
+      eventBus.emit(PdEvent.PAYMENT_REFUNDED, {
+        order_id: refund.order_id,
+        amount: refundAmount,
+      });
+
+      logger.info(
+        { refund_id: refund.id, order_id: refund.order_id, amount: refundAmount },
+        'Refund processed successfully',
+      );
+
+      return updatedRefundRows[0];
     });
   }
 

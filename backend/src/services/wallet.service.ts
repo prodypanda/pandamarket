@@ -260,6 +260,86 @@ export class WalletService {
     });
   }
 
+
+  /**
+   * Debit vendor wallet for an order refund.
+   * If funds are still in pending_balance, deduct from pending_balance and total_earned.
+   * Otherwise deduct from available balance and total_earned.
+   */
+  async debitRefund(opts: {
+    store_id: string;
+    amount: number;
+    order_id: string;
+    description?: string;
+    client?: PoolClient;
+  }): Promise<void> {
+    const amount = roundTnd(opts.amount);
+    if (amount <= 0) {
+      throw new PdValidationError('Amount must be positive');
+    }
+    const exec = opts.client ?? null;
+    const inner = async (c: PoolClient) => {
+      const { rows } = await c.query<WalletRow>(
+        'SELECT * FROM pd_vendor_wallet WHERE store_id = $1 FOR UPDATE',
+        [opts.store_id],
+      );
+      const wallet = rows[0];
+      if (!wallet) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Wallet not found');
+
+      const pendingBal = parseFloat(wallet.pending_balance);
+      const availBal = parseFloat(wallet.balance);
+
+      // Check if original sale transaction is still pending release
+      const { rows: saleTxRows } = await c.query<{ id: string; amount: string }>(
+        `SELECT id, amount FROM pd_wallet_transaction
+         WHERE wallet_id = $1 AND order_id = $2 AND type = 'sale' AND metadata->>'released' IS NULL
+         LIMIT 1`,
+        [wallet.id, opts.order_id],
+      );
+
+      let newPending = pendingBal;
+      let newAvail = availBal;
+
+      if (saleTxRows.length > 0 && pendingBal >= amount) {
+        newPending = roundTnd(pendingBal - amount);
+        await c.query(
+          `UPDATE pd_vendor_wallet
+           SET pending_balance = $2,
+               total_earned    = total_earned - $3
+           WHERE id = $1`,
+          [wallet.id, newPending, amount],
+        );
+      } else {
+        newAvail = roundTnd(availBal - amount);
+        await c.query(
+          `UPDATE pd_vendor_wallet
+           SET balance      = $2,
+               total_earned = total_earned - $3
+           WHERE id = $1`,
+          [wallet.id, newAvail, amount],
+        );
+      }
+
+      await c.query(
+        `INSERT INTO pd_wallet_transaction
+          (id, wallet_id, type, amount, balance_after, order_id, description, metadata)
+         VALUES ($1, $2, 'refund', $3, $4, $5, $6, $7)`,
+        [
+          pdId('wtx'),
+          wallet.id,
+          -amount,
+          newAvail,
+          opts.order_id,
+          opts.description ?? 'Order refund reversal',
+          JSON.stringify({ refund_order_id: opts.order_id }),
+        ],
+      );
+    };
+
+    if (exec) await inner(exec);
+    else await transaction(inner);
+  }
+
   async setPayoutMode(storeId: string, mode: PayoutMode): Promise<IVendorWallet> {
     const { rows } = await query<WalletRow>(
       'UPDATE pd_vendor_wallet SET payout_mode = $2 WHERE store_id = $1 RETURNING *',

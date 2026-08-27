@@ -42,6 +42,7 @@ export const PdEvent = {
   ORDER_FULFILLED: 'pd.order.fulfilled',
   ORDER_CANCELLED: 'pd.order.cancelled',
   ORDER_DELIVERED: 'pd.order.delivered',
+  ORDER_REFUNDED: 'pd.order.refunded',
 
   // Payment
   PAYMENT_CAPTURED: 'pd.payment.captured',
