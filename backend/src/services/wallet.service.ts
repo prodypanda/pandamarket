@@ -34,6 +34,17 @@ export interface WalletRow {
   currency: string;
 }
 
+export interface WalletTransactionRow {
+  id: string;
+  wallet_id: string;
+  type: WalletTransactionType | string;
+  amount: string;
+  balance_after: string;
+  description: string | null;
+  metadata?: any;
+  created_at: Date;
+}
+
 function rowToWallet(r: WalletRow): IVendorWallet {
   return {
     id: r.id,
@@ -248,7 +259,10 @@ export class WalletService {
           -amount,
           newBalance,
           opts.notes ?? 'Vendor withdrawal',
-          JSON.stringify({ ...(opts.idempotency_key ? { idempotency_key: opts.idempotency_key } : {}) }),
+          JSON.stringify({
+            payout_status: 'pending',
+            ...(opts.idempotency_key ? { idempotency_key: opts.idempotency_key } : {}),
+          }),
         ],
       );
       const refreshed = await c.query<WalletRow>(
@@ -370,6 +384,136 @@ export class WalletService {
       data: rows,
       meta: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };
+  }
+
+
+  /**
+   * Approve a vendor payout withdrawal request.
+   */
+  async approveWithdrawal(transactionId: string, adminId: string) {
+    return transaction(async (c) => {
+      const { rows } = await c.query(
+        `UPDATE pd_wallet_transaction
+         SET metadata = jsonb_set(
+           jsonb_set(
+             coalesce(metadata, '{}'::jsonb),
+             '{payout_status}',
+             to_jsonb('approved'::text)
+           ),
+           '{payout_review}',
+           jsonb_build_object(
+             'reviewed_by', $2::text,
+             'reviewed_at', NOW()
+           )
+         )
+         WHERE id = $1 AND type = 'payout'
+         RETURNING *`,
+        [transactionId, adminId],
+      );
+
+      if (!rows[0]) {
+        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Withdrawal transaction not found');
+      }
+      return rows[0];
+    });
+  }
+
+  /**
+   * Reject a vendor payout withdrawal request and reverse funds to available wallet balance.
+   */
+  async rejectWithdrawal(transactionId: string, adminId: string, reason?: string) {
+    return transaction(async (c) => {
+      const txRes = await c.query<WalletTransactionRow>(
+        `SELECT * FROM pd_wallet_transaction WHERE id = $1 AND type = 'payout' FOR UPDATE`,
+        [transactionId],
+      );
+      const tx = txRes.rows[0];
+      if (!tx) {
+        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Withdrawal transaction not found');
+      }
+
+      const meta = typeof tx.metadata === 'string' ? JSON.parse(tx.metadata || '{}') : (tx.metadata || {});
+      if (meta.payout_status === 'rejected') {
+        throw new PdValidationError('Withdrawal is already rejected');
+      }
+
+      const refundAmount = Math.abs(parseFloat(tx.amount));
+      const walletRes = await c.query<WalletRow>(
+        `SELECT * FROM pd_vendor_wallet WHERE id = $1 FOR UPDATE`,
+        [tx.wallet_id],
+      );
+      const wallet = walletRes.rows[0];
+      if (!wallet) {
+        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Wallet not found');
+      }
+
+      const newBalance = roundTnd(parseFloat(wallet.balance) + refundAmount);
+      const newTotalWithdrawn = Math.max(0, roundTnd(parseFloat(wallet.total_withdrawn) - refundAmount));
+
+      await c.query(
+        `UPDATE pd_vendor_wallet
+         SET balance = $2,
+             total_withdrawn = $3,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [wallet.id, newBalance, newTotalWithdrawn],
+      );
+
+      const { rows } = await c.query(
+        `UPDATE pd_wallet_transaction
+         SET metadata = jsonb_set(
+           jsonb_set(
+             coalesce(metadata, '{}'::jsonb),
+             '{payout_status}',
+             to_jsonb('rejected'::text)
+           ),
+           '{payout_review}',
+           jsonb_build_object(
+             'reviewed_by', $2::text,
+             'reviewed_at', NOW(),
+             'reason', $3::text
+           )
+         )
+         WHERE id = $1
+         RETURNING *`,
+        [transactionId, adminId, reason || 'Rejected by administrator'],
+      );
+
+      logger.info({ transactionId, walletId: wallet.id, refundAmount }, 'Withdrawal rejected and funds reversed to wallet');
+      return rows[0];
+    });
+  }
+
+  /**
+   * Complete a vendor payout with bank transfer slip reference.
+   */
+  async completeWithdrawal(transactionId: string, adminId: string, bankReference: string) {
+    return transaction(async (c) => {
+      const { rows } = await c.query(
+        `UPDATE pd_wallet_transaction
+         SET metadata = jsonb_set(
+           jsonb_set(
+             coalesce(metadata, '{}'::jsonb),
+             '{payout_status}',
+             to_jsonb('completed'::text)
+           ),
+           '{payout_review}',
+           jsonb_build_object(
+             'reviewed_by', $2::text,
+             'reviewed_at', NOW(),
+             'bank_reference', $3::text
+           )
+         )
+         WHERE id = $1 AND type = 'payout'
+         RETURNING *`,
+        [transactionId, adminId, bankReference],
+      );
+
+      if (!rows[0]) {
+        throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Withdrawal transaction not found');
+      }
+      return rows[0];
+    });
   }
 }
 

@@ -156,4 +156,48 @@ router.put(
   }),
 );
 
+
+/**
+ * POST /api/pd/admin/withdrawals/:id/approve
+ * Transition withdrawal status to approved.
+ */
+router.post(
+  '/withdrawals/:id/approve',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const tx = await walletService.approveWithdrawal(id, req.user!.id);
+    res.status(200).json({ success: true, transaction: tx });
+  }),
+);
+
+/**
+ * POST /api/pd/admin/withdrawals/:id/reject
+ * Reject withdrawal and reverse funds back to vendor wallet available balance.
+ */
+router.post(
+  '/withdrawals/:id/reject',
+  validate(z.object({ reason: z.string().optional() })),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const tx = await walletService.rejectWithdrawal(id, req.user!.id, reason);
+    res.status(200).json({ success: true, transaction: tx });
+  }),
+);
+
+/**
+ * POST /api/pd/admin/withdrawals/:id/complete
+ * Complete withdrawal payout with bank transfer slip reference.
+ */
+router.post(
+  '/withdrawals/:id/complete',
+  validate(z.object({ bank_reference: z.string().min(2) })),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { bank_reference } = req.body;
+    const tx = await walletService.completeWithdrawal(id, req.user!.id, bank_reference);
+    res.status(200).json({ success: true, transaction: tx });
+  }),
+);
+
 export default router;
