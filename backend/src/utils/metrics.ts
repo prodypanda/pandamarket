@@ -248,10 +248,17 @@ function serialiseMetrics(): string {
 export function metricsRouter(): Router {
   const router = Router();
 
-  router.get('/metrics', (_req: Request, res: Response) => {
+  router.get('/metrics', (req: Request, res: Response) => {
     if (!config.metricsEnabled) {
       res.status(404).json({ error: 'Metrics not enabled' });
       return;
+    }
+    if (config.metricsSecret) {
+      const auth = req.headers.authorization;
+      if (!auth || auth !== `Bearer ${config.metricsSecret}`) {
+        res.status(401).json({ error: 'Unauthorized metrics access' });
+        return;
+      }
     }
     res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
     res.send(serialiseMetrics());

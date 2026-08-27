@@ -5,7 +5,6 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middlewares';
-import { storeService } from '../services/store.service';
 import { domainVerificationService } from '../services/domain-verification.service';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -41,9 +40,8 @@ router.get(
     // Check if this is a verified custom domain
     const isAllowed = await domainVerificationService.isDomainTlsAllowed(domain);
     if (isAllowed) {
-      const store = await storeService.getByCustomDomain(domain);
-      logger.info({ domain, store_id: store?.id }, 'TLS allowed for verified custom domain');
-      res.status(200).json({ allowed: true, store_id: store?.id });
+      logger.info({ domain }, 'TLS allowed for verified custom domain');
+      res.status(200).json({ allowed: true });
       return;
     }
 

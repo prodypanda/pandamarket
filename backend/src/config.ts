@@ -188,6 +188,7 @@ export const config = {
   // Observability
   sentryDsn: optional('PD_SENTRY_DSN', ''),
   metricsEnabled: asBool('PD_METRICS_ENABLED', false),
+  metricsSecret: optional('PD_METRICS_SECRET', ''),
 
   // Misc
   defaultRetentionDays: asInt('PD_DEFAULT_RETENTION_DAYS', 7),
