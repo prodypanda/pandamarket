@@ -53,7 +53,7 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 ## 📋 Phase 6: Support SLA Engine, RMA & Return Workflow
 
 - [x] **6.1 Support SLA Breach Engine:** Implement BullMQ cron monitoring ticket response times and auto-escalating overdue tickets to Superadmin.
-- [ ] **6.2 Real-time Thread Updates:** Connect Socket.IO gateway to support ticket discussion threads for live updates.
+- [x] **6.2 Real-time Thread Updates:** Connect Socket.IO gateway to support ticket discussion threads for live updates.
 - [x] **6.3 Customer Return / RMA Flow:** Create buyer return request interface (`pd_store_order_refund`) with photo upload, seller review, atomic wallet refund debit, and courier return pickup dispatch.
 - [ ] **6.4 Multi-Warehouse Inventory:** Add multi-location stock tracking with low-stock email triggers.
 

@@ -2,6 +2,7 @@ import { query, transaction } from '../db/pool';
 import { PdForbiddenError, PdNotFoundError, PdValidationError } from '../errors';
 import { pdId } from '../utils/crypto';
 import { notificationService } from './notification.service';
+import { socketGateway } from '../realtime/socket-gateway';
 
 export type SupportTicketStatus = 'open' | 'in_progress' | 'waiting_seller' | 'waiting_admin' | 'resolved' | 'closed';
 export type SupportTicketPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -239,6 +240,19 @@ export class SupportTicketService {
       });
     }
 
+    try {
+      socketGateway.emitToAdmins('support:ticket_message', {
+        ticket_id: input.ticket_id,
+        store_id: input.store_id,
+        message_id: messageId,
+        author_id: input.user_id,
+        body,
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // non-blocking socket emission
+    }
+
     return this.getSellerTicket(input.ticket_id, input.store_id, input.user_id);
   }
 
@@ -335,6 +349,32 @@ export class SupportTicketService {
         message: `Ticket ${updateResult.rows[0].ticket_number} has a new admin response.`,
         data: { ticket_id: input.ticket_id },
       });
+
+      try {
+        socketGateway.emitToUser(updateResult.rows[0].created_by, 'support:ticket_message', {
+          ticket_id: input.ticket_id,
+          message_id: messageId,
+          author_id: input.admin_id,
+          body,
+          is_internal: false,
+          created_at: new Date().toISOString(),
+        });
+      } catch {
+        // non-blocking socket emission
+      }
+    }
+
+    try {
+      socketGateway.emitToAdmins('support:ticket_message', {
+        ticket_id: input.ticket_id,
+        message_id: messageId,
+        author_id: input.admin_id,
+        body,
+        is_internal: Boolean(input.is_internal),
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // non-blocking socket emission
     }
 
     return this.getAdminTicket(input.ticket_id);
