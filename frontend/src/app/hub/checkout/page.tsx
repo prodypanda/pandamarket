@@ -257,7 +257,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Step 3: Initialize payment for Flouci/Konnect
+      // Step 3: Initialize payment for Flouci/Konnect/PayPal
       const paymentRes = await fetchWithCsrf('/api/pd/payments/init', {
         method: 'POST',
         headers: {
@@ -268,6 +268,9 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           order_id: orderId,
           gateway: selectedGateway,
+          // Redirect back to the marketplace origin the buyer actually used,
+          // never to a config-default domain.
+          return_origin: window.location.origin,
         }),
       });
 
@@ -639,21 +642,23 @@ export default function CheckoutPage() {
                     );
                     return (
                       <li key={item.id} className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                          {item.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={item.image_url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-gray-300">
-                              <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                            </div>
-                          )}
-                          <span className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-900 px-1 text-[10px] font-black text-white">
+                        <div className="relative h-12 w-12 shrink-0">
+                          <div className="h-full w-full overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                            {item.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.image_url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-gray-300">
+                                <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                              </div>
+                            )}
+                          </div>
+                          <span className="absolute -end-1.5 -top-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-900 px-1 text-[10px] font-black text-white ring-2 ring-white">
                             {item.quantity}
                           </span>
                         </div>

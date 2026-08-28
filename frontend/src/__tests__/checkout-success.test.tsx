@@ -98,4 +98,33 @@ describe('PLAN-B-10: Checkout Success Payment Verification & Working CTA', () =>
     expect(ctaLink).not.toBeNull();
     expect(ctaLink?.getAttribute('href')).toBe('/hub/orders?highlight=ord_test123');
   });
+
+  it('renders order-not-found view when the order id is unknown (never success)', async () => {
+    mockFetchWithCsrf.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { message: 'Order not found' } }),
+    });
+
+    render(<CheckoutSuccessPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Commande introuvable')).toBeDefined();
+    });
+
+    expect(screen.queryByText('Paiement Confirmé !')).toBeNull();
+    const ordersLink = screen.getByText('Mes commandes').closest('a');
+    expect(ordersLink?.getAttribute('href')).toBe('/hub/orders');
+  });
+
+  it('renders order-not-found view when the fetch rejects (never success)', async () => {
+    mockFetchWithCsrf.mockRejectedValueOnce(new Error('network down'));
+
+    render(<CheckoutSuccessPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Commande introuvable')).toBeDefined();
+    });
+    expect(screen.queryByText('Paiement Confirmé !')).toBeNull();
+  });
 });

@@ -161,6 +161,7 @@ export class PaymentService {
     customerEmail: string,
     returnOrigin?: string,
     idempotencyKey?: string,
+    opts?: { scope?: 'hub' | 'storefront' },
   ): Promise<PaymentInitResult> {
     const provider = getPaymentProvider(gateway);
     const normalizedKey = idempotencyKey?.trim() || `legacy_${order.id}_${gateway}`;
@@ -472,13 +473,18 @@ export class PaymentService {
       ? config.hubDomain
       : `https://${config.hubDomain}`;
 
+    // Hub-originated payments must redirect back to the /hub/... checkout
+    // flow, while storefront payments return to the tenant store origin.
+    const isHubScope = opts?.scope === 'hub';
     const baseOrigin = normalizedReturnOrigin;
     const successUrl = baseOrigin
-      ? `${baseOrigin}/checkout/success?order=${order.id}`
+      ? `${baseOrigin}${isHubScope ? '/hub' : ''}/checkout/success?order=${order.id}`
       : `${hubDomain}/hub/checkout/success?order=${order.id}`;
-    const failUrl = baseOrigin
-      ? `${baseOrigin}/checkout/status?status=failed&order=${order.id}`
-      : `${hubDomain}/hub/checkout?order=${order.id}&status=failed`;
+    const failUrl = isHubScope
+      ? `${baseOrigin || hubDomain}/hub/checkout?order=${order.id}&status=failed`
+      : baseOrigin
+        ? `${baseOrigin}/checkout/status?status=failed&order=${order.id}`
+        : `${hubDomain}/hub/checkout?order=${order.id}&status=failed`;
 
     let result: PaymentInitResult;
     try {

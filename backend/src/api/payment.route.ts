@@ -131,6 +131,7 @@ router.post(
       customerEmail,
       return_origin,
       idempotencyKey,
+      { scope: 'hub' },
     );
 
     res.status(200).json({

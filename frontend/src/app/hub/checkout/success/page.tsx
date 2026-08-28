@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { CheckCircle, ArrowRight, Loader2, Package, Clock, XCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2, Package, Clock, XCircle, SearchX } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { HubNavbar } from '../../../../components/hub/HubNavbar';
@@ -24,10 +24,12 @@ function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
   const orderId = searchParams.get('order_id') || searchParams.get('order');
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [loading, setLoading] = useState(Boolean(orderId));
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
       setLoading(false);
+      setNotFound(true);
       return;
     }
 
@@ -40,12 +42,15 @@ function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
       })
       .then((ord) => {
         if (isMounted) {
+          // An unresolvable order id must never render a success screen.
+          setNotFound(!ord);
           setOrder(ord);
           setLoading(false);
         }
       })
       .catch(() => {
         if (isMounted) {
+          setNotFound(true);
           setLoading(false);
         }
       });
@@ -60,6 +65,37 @@ function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
       <div className={`${classes.panel} max-w-2xl mx-auto mt-20 p-12 text-center flex flex-col items-center justify-center space-y-4`}>
         <Loader2 className={`w-10 h-10 animate-spin ${classes.primaryText}`} />
         <p className="text-gray-600 font-medium text-base">Vérification du statut du paiement...</p>
+      </div>
+    );
+  }
+
+  // Case 0: Order not found / invalid order id
+  if (notFound || !order) {
+    return (
+      <div className={`${classes.panel} max-w-2xl mx-auto mt-20 relative overflow-hidden p-10 text-center lg:p-16`}>
+        <div className="w-20 h-20 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center mx-auto mb-8 border border-gray-100 shadow-sm">
+          <SearchX className="w-10 h-10" />
+        </div>
+        <h1 className="text-3xl font-black text-gray-900 mb-4">Commande introuvable</h1>
+        <p className="text-lg text-gray-500 mb-8 max-w-md mx-auto">
+          {orderId
+            ? <>La commande <strong className="text-gray-900">{orderId}</strong> n&apos;a pas été trouvée ou n&apos;est pas accessible depuis ce compte.</>
+            : 'Aucune référence de commande fournie.'}
+        </p>
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <Link
+            href="/hub"
+            className={`px-8 py-3.5 font-black rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg ${classes.primaryGradient}`}
+          >
+            Retour à l&apos;accueil
+          </Link>
+          <Link
+            href="/hub/orders"
+            className="px-8 py-3.5 bg-white text-gray-900 font-bold rounded-full border border-gray-200 hover:bg-gray-50 transition-colors flex justify-center items-center"
+          >
+            Mes commandes <ArrowRight className="w-4 h-4 ml-2" />
+          </Link>
+        </div>
       </div>
     );
   }
