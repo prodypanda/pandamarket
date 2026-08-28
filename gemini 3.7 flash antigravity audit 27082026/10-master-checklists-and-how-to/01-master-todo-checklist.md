@@ -28,7 +28,7 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 - [x] **3.1 Social Accounts Schema:** Create SQL migration adding `pd_social_account` (storing encrypted OAuth tokens) and `pd_social_post` (scheduling ledger).
 - [ ] **3.2 OAuth Handshake Integrations:** Implement OAuth 2.0 connection routes for Facebook Pages, Instagram Business, TikTok, and LinkedIn.
 - [x] **3.3 AI Social Post Composer:** Add Gemini-powered social caption generator in the Seller Dashboard with hashtag recommendations in French and Arabic.
-- [ ] **3.4 Auto-Publishing Worker:** Create `social-post.worker.ts` with BullMQ to auto-publish new product listings to connected social channels.
+- [x] **3.4 Auto-Publishing Worker:** Create `social-post.worker.ts` with BullMQ to auto-publish new product listings to connected social channels.
 
 ---
 
