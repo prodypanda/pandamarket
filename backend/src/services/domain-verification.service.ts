@@ -303,8 +303,9 @@ export class DomainVerificationService {
     if (rows.length > 0) return true;
 
     // Legacy fallback check in pd_store: only if store is active and on an authorized paid plan
+    // (pd_store has no is_active column — active means not suspended)
     const legacyStore = await query<{ id: string; subscription_plan: string }>(
-      'SELECT id, subscription_plan FROM pd_store WHERE custom_domain = $1 AND is_active = true',
+      "SELECT id, subscription_plan FROM pd_store WHERE custom_domain = $1 AND status <> 'suspended'",
       [norm],
     );
     if (legacyStore.rows[0]) {
