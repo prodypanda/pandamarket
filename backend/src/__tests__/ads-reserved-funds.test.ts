@@ -80,7 +80,7 @@ describe('Ads Reserved Funds & Auto-Refill', () => {
     );
   });
 
-  it('triggers auto-refill when available balance falls below threshold', async () => {
+  it('does NOT mint balance on auto-refill trigger (P0-05): logs and skips', async () => {
     const payload = { campaign_id: 'cmp_1', creative_id: 'crt_1', placement_id: 'pl_1', exp: Date.now() + 60000 };
     const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const crypto = await import('crypto');
@@ -91,20 +91,15 @@ describe('Ads Reserved Funds & Auto-Refill', () => {
 
     const client = {
       query: vi.fn()
-        .mockResolvedValueOnce(result([])) // blocked IP check (ipHash is undefined, queries with '')
+        .mockResolvedValueOnce(result([])) // blocked IP check
         .mockResolvedValueOnce(result([])) // duplicate check
         .mockResolvedValueOnce(result([campaign])) // campaign and account fetch
         .mockResolvedValueOnce(result([])) // insert ad event
         .mockResolvedValueOnce(result([])) // insert daily aggregation
-        .mockResolvedValueOnce(result([{ balance: '1.000' }])) // debit account reserved balance RETURNING balance
+        .mockResolvedValueOnce(result([{ balance: '0.900' }])) // debit reserved balance RETURNING balance
         .mockResolvedValueOnce(result([{ spent_amount: '0.100' }])) // update campaign spent_amount & reserved_amount
         .mockResolvedValueOnce(result([])) // insert ledger transaction
-        .mockResolvedValueOnce(result([account])) // auto-refill check SELECT auto_refill_enabled FROM pd_ads_account
-        .mockResolvedValueOnce(result([{ balance: '21.000' }])) // auto-refill updatedAccount balance
-        .mockResolvedValueOnce(result([])) // auto-refill insert intent
-        .mockResolvedValueOnce(result([])) // auto-refill insert transaction
-        .mockResolvedValueOnce(result([account])) // allocateReservations getOrCreateAccount
-        .mockResolvedValueOnce(result([])), // allocateReservations activeCampaigns check
+        .mockResolvedValueOnce(result([account])), // auto-refill threshold check SELECT (warn-only)
     };
 
     mockTransaction.mockImplementation(async (fn: any) => fn(client));
@@ -118,10 +113,17 @@ describe('Ads Reserved Funds & Auto-Refill', () => {
     expect(response.recorded).toBe(true);
     expect(response.cost).toBe(0.1);
 
-    // Verify auto refill query was called
+    // Auto-refill threshold check ran...
     expect(client.query).toHaveBeenCalledWith(
-      expect.stringContaining("UPDATE pd_ads_account SET balance = balance + $2"),
-      ['acct_1', 20]
+      expect.stringContaining('SELECT auto_refill_enabled, auto_refill_threshold, auto_refill_amount, balance'),
+      ['acct_1']
     );
+    // ...but NO balance minting, refill intent, or refill transaction may ever execute (P0-05)
+    const allCalls = (client.query as ReturnType<typeof vi.fn>).mock.calls as unknown as [string, unknown[]][];
+    for (const [sql] of allCalls) {
+      expect(String(sql)).not.toMatch(/UPDATE\s+pd_ads_account\s+SET\s+balance\s*=\s*balance\s*\+/i);
+    }
+    const executedSql = allCalls.map(([sql]) => String(sql)).join('\n---\n');
+    expect(executedSql).not.toContain('pd_ads_refill_intent');
   });
 });

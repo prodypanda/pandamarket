@@ -2,7 +2,7 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CreditCard, Banknote, Truck, AlertCircle } from 'lucide-react';
+import { CreditCard, Banknote, Truck, AlertCircle, ShieldCheck, Lock, Package, ArrowLeft, Check, Image as ImageIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../../contexts/CartContext';
 import { useLocale } from '../../../contexts/LocaleContext';
@@ -87,9 +87,11 @@ export default function CheckoutPage() {
     : hasShippableItems && !normalizedAddress
       ? '—'
       : quoteLoading
-        ? 'Calculating...'
+        ? t('checkout.calculatingTotal')
         : '—';
   const inputClass = `w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-4 outline-none transition ${classes.focus}`;
+  const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const distinctStoreIds = useMemo(() => new Set(items.map((item) => item.store_id)), [items]);
 
   const addressErrorMessage = (field: CheckoutAddressField): string => {
     if (addressErrors[field] === 'invalid' && field === 'phone') return 'Enter a valid phone number.';
@@ -326,6 +328,12 @@ export default function CheckoutPage() {
     );
   }
 
+  const trustBadges = [
+    { icon: ShieldCheck, label: t('checkout.buyerProtection') },
+    { icon: Lock, label: t('checkout.securePayment') },
+    { icon: Package, label: t('checkout.groupedShipping') },
+  ];
+
   return (
     <div className={`min-h-screen ${classes.pageSoft}`}>
       <HubNavbar
@@ -333,17 +341,18 @@ export default function CheckoutPage() {
         marketplaceLogoUrl={settings.marketplace_logo_url}
         marketplaceTheme={settings.marketplace_theme}
       />
-      <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <div className={`relative mb-8 overflow-hidden rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
           <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-wide text-white/80">
-                Protected checkout
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black uppercase tracking-wide text-white/80">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('checkout.protectedBadge')}
               </div>
               <h1 id="hub_checkout_title" className="text-3xl font-black tracking-tight sm:text-4xl">{t('checkout.title')}</h1>
               <p className="mt-2 max-w-xl text-sm text-white/75">
-                Secure payment, vendor grouped delivery, and marketplace buyer protection.
+                {t('checkout.secureDescription')}
               </p>
             </div>
             <div className="rounded-2xl bg-white/15 px-5 py-4 backdrop-blur">
@@ -369,238 +378,358 @@ export default function CheckoutPage() {
           }}
         >
 
-        {/* Order Summary */}
-        <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
-          <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('cart.title')}</h2>
-          {items.map((item) => {
-            const line = quote?.items.find(
-              (quoteLine) => quoteLine.product_id === item.product_id
-                && quoteLine.variant_id === (item.variant_id || null),
-            );
-            return (
-              <div key={item.id} className="flex justify-between items-center gap-4 mb-3">
-                <span className="min-w-0 break-words text-gray-600">
-                  {item.title} x{item.quantity}
-                </span>
-                <span className="shrink-0 font-medium">{line ? formatPrice(line.subtotal) : '—'}</span>
-              </div>
-            );
-          })}
-          <div className="flex justify-between items-center gap-4 mb-3">
-            <span className="text-gray-600">Merchandise subtotal</span>
-            <span className="shrink-0 font-medium">{quote ? formatPrice(quote.subtotal) : '—'}</span>
-          </div>
-          {quoteProductDiscount > 0 && (
-            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
-              <span>Product discount{quote?.coupon_code ? ` (${quote.coupon_code})` : ''}</span>
-              <span className="shrink-0 font-medium">−{formatPrice(quoteProductDiscount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-600">{t('cart.shipping')} ({shippableStoreCount})</span>
-            <span className="font-medium">{quote ? formatPrice(quote.shipping_total) : '—'}</span>
-          </div>
-          {quoteShippingSavings > 0 && (
-            <div className="flex justify-between items-center gap-4 mb-3 text-emerald-700">
-              <span>Shipping savings</span>
-              <span className="shrink-0 font-medium">−{formatPrice(quoteShippingSavings)}</span>
-            </div>
-          )}
-          {quote && quote.tax_total > 0 && (
-            <div className="flex justify-between items-center gap-4 mb-3">
-              <span className="text-gray-600">Tax</span>
-              <span className="shrink-0 font-medium">{formatPrice(quote.tax_total)}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-            <span className="text-lg font-bold text-gray-900">{t('cart.total')}</span>
-            <span className={`text-2xl font-black ${classes.primaryText}`} aria-live="polite">{quoteTotalLabel}</span>
-          </div>
-          {!quote && hasShippableItems && !normalizedAddress && (
-            <p className="mt-4 text-sm text-gray-500">Complete the delivery address to calculate the authoritative total.</p>
-          )}
-          {quoteLoading && (
-            <p className="mt-4 text-sm text-gray-500" aria-live="polite">Calculating the latest price, discounts, shipping, and tax...</p>
-          )}
-        </div>
+        {/* Step indicator */}
+        <ol className="mb-8 flex items-center gap-2 sm:gap-3" aria-label={t('checkout.title')}>
+          {[
+            { key: 'address', label: t('checkout.steps.address') },
+            { key: 'payment', label: t('checkout.steps.payment') },
+            { key: 'confirmation', label: t('checkout.steps.confirmation') },
+          ].map((step, index) => (
+            <li key={step.key} className="flex flex-1 items-center gap-2" aria-current={index === 0 ? 'step' : undefined}>
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                index === 0
+                  ? `${isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]'} text-white`
+                  : 'bg-gray-200 text-gray-500'
+              }`}>
+                {index + 1}
+              </span>
+              <span className={`hidden text-sm font-bold sm:inline ${index === 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                {step.label}
+              </span>
+              {index < 2 && <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />}
+            </li>
+          ))}
+        </ol>
 
-        {hasShippableItems ? (
-          <fieldset className={`${classes.panel} p-6 sm:p-8 mb-8`}>
-            <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.address.title')}</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label htmlFor="hub_checkout_full_name" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
-                <input
-                  id="hub_checkout_full_name"
-                  name="full_name"
-                  type="text"
-                  value={address.full_name}
-                  onChange={(e) => setAddressField('full_name', e.target.value)}
-                  ref={(node) => { addressRefs.current.full_name = node; }}
-                  onInvalid={handleNativeInvalid}
-                  aria-invalid={addressErrors.full_name ? 'true' : 'false'}
-                  aria-describedby={addressErrors.full_name ? 'hub_checkout_full_name_error' : undefined}
-                  className={inputClass}
-                  autoComplete="name"
-                  required
-                />
-                {addressErrors.full_name && <p id="hub_checkout_full_name_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('full_name')}</p>}
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="hub_checkout_address_line" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
-                <input
-                  id="hub_checkout_address_line"
-                  name="address_line"
-                  type="text"
-                  value={address.address_line}
-                  onChange={(e) => setAddressField('address_line', e.target.value)}
-                  ref={(node) => { addressRefs.current.address_line = node; }}
-                  onInvalid={handleNativeInvalid}
-                  aria-invalid={addressErrors.address_line ? 'true' : 'false'}
-                  aria-describedby={addressErrors.address_line ? 'hub_checkout_address_line_error' : undefined}
-                  className={inputClass}
-                  autoComplete="street-address"
-                  required
-                />
-                {addressErrors.address_line && <p id="hub_checkout_address_line_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('address_line')}</p>}
-              </div>
-              <div>
-                <label htmlFor="hub_checkout_city" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
-                <input
-                  id="hub_checkout_city"
-                  name="city"
-                  type="text"
-                  value={address.city}
-                  onChange={(e) => setAddressField('city', e.target.value)}
-                  ref={(node) => { addressRefs.current.city = node; }}
-                  onInvalid={handleNativeInvalid}
-                  aria-invalid={addressErrors.city ? 'true' : 'false'}
-                  aria-describedby={addressErrors.city ? 'hub_checkout_city_error' : undefined}
-                  className={inputClass}
-                  autoComplete="address-level2"
-                  required
-                />
-                {addressErrors.city && <p id="hub_checkout_city_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('city')}</p>}
-              </div>
-              <div>
-                <label htmlFor="hub_checkout_postal_code" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
-                <input
-                  id="hub_checkout_postal_code"
-                  name="postal_code"
-                  type="text"
-                  value={address.postal_code}
-                  onChange={(e) => setAddressField('postal_code', e.target.value)}
-                  ref={(node) => { addressRefs.current.postal_code = node; }}
-                  onInvalid={handleNativeInvalid}
-                  aria-invalid={addressErrors.postal_code ? 'true' : 'false'}
-                  aria-describedby={addressErrors.postal_code ? 'hub_checkout_postal_code_error' : undefined}
-                  className={inputClass}
-                  autoComplete="postal-code"
-                  inputMode="numeric"
-                  required
-                />
-                {addressErrors.postal_code && <p id="hub_checkout_postal_code_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('postal_code')}</p>}
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="hub_checkout_phone" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
-                <input
-                  id="hub_checkout_phone"
-                  name="phone"
-                  type="tel"
-                  value={address.phone}
-                  onChange={(e) => setAddressField('phone', e.target.value)}
-                  ref={(node) => { addressRefs.current.phone = node; }}
-                  onInvalid={handleNativeInvalid}
-                  aria-invalid={addressErrors.phone ? 'true' : 'false'}
-                  aria-describedby={addressErrors.phone ? 'hub_checkout_phone_error' : undefined}
-                  className={inputClass}
-                  autoComplete="tel"
-                  inputMode="tel"
-                  required
-                />
-                {addressErrors.phone && <p id="hub_checkout_phone_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('phone')}</p>}
-              </div>
-            </div>
-          </fieldset>
-        ) : (
-          <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Digital delivery</h2>
-            <p className="text-sm text-gray-500">No shipping address is required for this cart.</p>
-          </div>
-        )}
-
-        {/* Payment Method */}
-        <fieldset className={`${classes.panel} p-6 sm:p-8`}>
-          <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{t('checkout.payment.title')}</legend>
-
-          <div
-            ref={paymentGroupRef}
-            className="space-y-4"
-            role="radiogroup"
-            aria-label={t('checkout.payment.title')}
-            aria-invalid={paymentHasError ? 'true' : 'false'}
-            aria-describedby={paymentHasError ? 'hub_checkout_payment_error' : undefined}
-            tabIndex={-1}
-          >
-            {paymentOptions.map((g) => {
-              const isAvailable = g.capability?.available === true;
-              const descriptionId = `hub_payment_gateway_${g.id}_description`;
-              return (
-              <label
-                key={g.id}
-                htmlFor={`hub_payment_gateway_${g.id}`}
-                className={`relative flex items-start p-4 rounded-xl border-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${
-                  selectedGateway === g.id 
-                    ? `${classes.primaryBorder} ${classes.primarySoft}` 
-                    : isAliExpress ? 'border-gray-200 hover:border-orange-200 bg-white hover:bg-orange-50/40' : 'border-gray-200 hover:border-[#16C784]/50 bg-white'
-                }`}
-              >
-                <input
-                  id={`hub_payment_gateway_${g.id}`}
-                  name="payment_gateway"
-                  type="radio"
-                  value={g.id}
-                  checked={selectedGateway === g.id}
-                  disabled={!isAvailable}
-                  aria-describedby={descriptionId}
-                  onChange={() => setSelectedGateway(g.id)}
-                  className="sr-only peer"
-                />
-                <div className="flex items-center h-5" aria-hidden="true">
-                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    selectedGateway === g.id ? classes.primaryBorder : 'border-gray-300'
-                  }`}>
-                    {selectedGateway === g.id && <div className={`w-2.5 h-2.5 rounded-full ${isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]'}`}></div>}
+        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 xl:gap-10">
+          {/* Main flow: address + payment */}
+          <div className="min-w-0">
+            {hasShippableItems ? (
+              <fieldset className={`${classes.panel} p-6 sm:p-8 mb-8`}>
+                <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                  {t('checkout.address.title')}
+                </legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label htmlFor="hub_checkout_full_name" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.firstName')}</label>
+                    <input
+                      id="hub_checkout_full_name"
+                      name="full_name"
+                      type="text"
+                      value={address.full_name}
+                      onChange={(e) => setAddressField('full_name', e.target.value)}
+                      ref={(node) => { addressRefs.current.full_name = node; }}
+                      onInvalid={handleNativeInvalid}
+                      aria-invalid={addressErrors.full_name ? 'true' : 'false'}
+                      aria-describedby={addressErrors.full_name ? 'hub_checkout_full_name_error' : undefined}
+                      className={inputClass}
+                      autoComplete="name"
+                      required
+                    />
+                    {addressErrors.full_name && <p id="hub_checkout_full_name_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('full_name')}</p>}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="hub_checkout_address_line" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.address')}</label>
+                    <input
+                      id="hub_checkout_address_line"
+                      name="address_line"
+                      type="text"
+                      value={address.address_line}
+                      onChange={(e) => setAddressField('address_line', e.target.value)}
+                      ref={(node) => { addressRefs.current.address_line = node; }}
+                      onInvalid={handleNativeInvalid}
+                      aria-invalid={addressErrors.address_line ? 'true' : 'false'}
+                      aria-describedby={addressErrors.address_line ? 'hub_checkout_address_line_error' : undefined}
+                      className={inputClass}
+                      autoComplete="street-address"
+                      required
+                    />
+                    {addressErrors.address_line && <p id="hub_checkout_address_line_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('address_line')}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="hub_checkout_city" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.city')}</label>
+                    <input
+                      id="hub_checkout_city"
+                      name="city"
+                      type="text"
+                      value={address.city}
+                      onChange={(e) => setAddressField('city', e.target.value)}
+                      ref={(node) => { addressRefs.current.city = node; }}
+                      onInvalid={handleNativeInvalid}
+                      aria-invalid={addressErrors.city ? 'true' : 'false'}
+                      aria-describedby={addressErrors.city ? 'hub_checkout_city_error' : undefined}
+                      className={inputClass}
+                      autoComplete="address-level2"
+                      required
+                    />
+                    {addressErrors.city && <p id="hub_checkout_city_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('city')}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="hub_checkout_postal_code" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.postalCode')}</label>
+                    <input
+                      id="hub_checkout_postal_code"
+                      name="postal_code"
+                      type="text"
+                      value={address.postal_code}
+                      onChange={(e) => setAddressField('postal_code', e.target.value)}
+                      ref={(node) => { addressRefs.current.postal_code = node; }}
+                      onInvalid={handleNativeInvalid}
+                      aria-invalid={addressErrors.postal_code ? 'true' : 'false'}
+                      aria-describedby={addressErrors.postal_code ? 'hub_checkout_postal_code_error' : undefined}
+                      className={inputClass}
+                      autoComplete="postal-code"
+                      inputMode="numeric"
+                      required
+                    />
+                    {addressErrors.postal_code && <p id="hub_checkout_postal_code_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('postal_code')}</p>}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="hub_checkout_phone" className="block text-sm font-medium text-gray-700 mb-1">{t('checkout.address.phone')}</label>
+                    <input
+                      id="hub_checkout_phone"
+                      name="phone"
+                      type="tel"
+                      value={address.phone}
+                      onChange={(e) => setAddressField('phone', e.target.value)}
+                      ref={(node) => { addressRefs.current.phone = node; }}
+                      onInvalid={handleNativeInvalid}
+                      aria-invalid={addressErrors.phone ? 'true' : 'false'}
+                      aria-describedby={addressErrors.phone ? 'hub_checkout_phone_error' : undefined}
+                      className={inputClass}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      required
+                    />
+                    {addressErrors.phone && <p id="hub_checkout_phone_error" className="mt-1 text-sm text-red-700">{addressErrorMessage('phone')}</p>}
                   </div>
                 </div>
-                <div className="ml-4 flex-1">
-                  <div className="flex items-center">
-                    <g.icon className={`w-5 h-5 mr-2 ${selectedGateway === g.id ? classes.primaryText : 'text-gray-400'}`} />
-                    <h3 className="font-bold text-gray-900">{g.name}</h3>
-                  </div>
-                  <p id={descriptionId} className="mt-1 text-sm text-gray-500">
-                    {isAvailable ? g.desc : g.capability?.buyer_message || 'Availability is being checked.'}
+                {distinctStoreIds.size > 1 && (
+                  <p className="mt-4 flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-xs text-gray-600">
+                    <Package className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+                    {t('checkout.vendorGroupedNote', { stores: distinctStoreIds.size })}
                   </p>
-                </div>
-              </label>
-              );
-            })}
+                )}
+              </fieldset>
+            ) : (
+              <div className={`${classes.panel} p-6 sm:p-8 mb-8`}>
+                <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                  {t('checkout.digitalDeliveryTitle')}
+                </h2>
+                <p className="text-sm text-gray-500">{t('checkout.digitalDeliveryDesc')}</p>
+              </div>
+            )}
+
+            {/* Payment Method */}
+            <fieldset className={`${classes.panel} p-6 sm:p-8`}>
+              <legend className="w-full text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                {t('checkout.payment.title')}
+              </legend>
+
+              <div
+                ref={paymentGroupRef}
+                className="space-y-4"
+                role="radiogroup"
+                aria-label={t('checkout.payment.title')}
+                aria-invalid={paymentHasError ? 'true' : 'false'}
+                aria-describedby={paymentHasError ? 'hub_checkout_payment_error' : undefined}
+                tabIndex={-1}
+              >
+                {paymentOptions.map((g) => {
+                  const isAvailable = g.capability?.available === true;
+                  const descriptionId = `hub_payment_gateway_${g.id}_description`;
+                  return (
+                  <label
+                    key={g.id}
+                    htmlFor={`hub_payment_gateway_${g.id}`}
+                    className={`relative flex items-start p-4 rounded-xl border-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2 ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${
+                      selectedGateway === g.id 
+                        ? `${classes.primaryBorder} ${classes.primarySoft}` 
+                        : isAliExpress ? 'border-gray-200 hover:border-orange-200 bg-white hover:bg-orange-50/40' : 'border-gray-200 hover:border-[#16C784]/50 bg-white'
+                    }`}
+                  >
+                    <input
+                      id={`hub_payment_gateway_${g.id}`}
+                      name="payment_gateway"
+                      type="radio"
+                      value={g.id}
+                      checked={selectedGateway === g.id}
+                      disabled={!isAvailable}
+                      aria-describedby={descriptionId}
+                      onChange={() => setSelectedGateway(g.id)}
+                      className="sr-only peer"
+                    />
+                    <div className="flex items-center h-5" aria-hidden="true">
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                        selectedGateway === g.id ? classes.primaryBorder : 'border-gray-300'
+                      }`}>
+                        {selectedGateway === g.id && <div className={`w-2.5 h-2.5 rounded-full ${isAliExpress ? 'bg-[#ff4747]' : 'bg-[#16C784]'}`}></div>}
+                      </div>
+                    </div>
+                    <div className="ms-4 flex-1">
+                      <div className="flex items-center">
+                        <g.icon className={`w-5 h-5 me-2 ${selectedGateway === g.id ? classes.primaryText : 'text-gray-400'}`} />
+                        <h3 className="font-bold text-gray-900">{g.name}</h3>
+                        {isAvailable && selectedGateway === g.id && (
+                          <span className="ms-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                            <Check className="h-3 w-3" aria-hidden="true" />
+                            OK
+                          </span>
+                        )}
+                      </div>
+                      <p id={descriptionId} className="mt-1 text-sm text-gray-500">
+                        {isAvailable ? g.desc : g.capability?.buyer_message || 'Availability is being checked.'}
+                      </p>
+                    </div>
+                  </label>
+                  );
+                })}
+              </div>
+
+              {(paymentError || (quote && !hasAvailableGateway)) && (
+                <p id="hub_checkout_payment_error" role="alert" className="mt-4 text-sm font-medium text-red-700">
+                  {paymentError || 'No payment method is available for this order. Review the delivery details or try again later.'}
+                </p>
+              )}
+
+              {/* Mobile total strip — keeps the price visible next to the CTA */}
+              <div className="mt-6 flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 lg:hidden">
+                <span className="text-sm font-bold text-gray-700">{t('cart.total')}</span>
+                <span className={`text-xl font-black ${classes.primaryText}`} aria-live="polite">{quoteTotalLabel}</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isProcessing || quoteLoading || !selectedGateway || !hasAvailableGateway}
+                className={`w-full mt-4 text-white font-black text-lg py-4 rounded-full shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center gap-2 ${classes.primaryGradient}`}
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                {isProcessing ? t('checkout.processing') : quoteLoading ? t('checkout.calculatingTotal') : t('checkout.confirm')}
+              </button>
+            </fieldset>
           </div>
 
-          {(paymentError || (quote && !hasAvailableGateway)) && (
-            <p id="hub_checkout_payment_error" role="alert" className="mt-4 text-sm font-medium text-red-700">
-              {paymentError || 'No payment method is available for this order. Review the delivery details or try again later.'}
-            </p>
-          )}
+          {/* Sticky order summary */}
+          <aside className="mt-8 lg:mt-0">
+            <div className="lg:sticky lg:top-6">
+              <div className={`${classes.panel} p-6 sm:p-7`}>
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <h2 className="text-lg font-bold text-gray-900">{t('checkout.orderSummary')}</h2>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/hub/cart')}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 transition hover:text-gray-900"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
+                    {t('checkout.backToCart')}
+                  </button>
+                </div>
+                <p className="mb-5 text-xs font-semibold text-gray-400">
+                  {t('checkout.itemsCount', { count: totalItemCount, stores: distinctStoreIds.size })}
+                </p>
 
-          <button 
-            type="submit"
-            disabled={isProcessing || quoteLoading || !selectedGateway || !hasAvailableGateway}
-            className={`w-full mt-8 text-white font-black text-lg py-4 rounded-full shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 flex justify-center items-center ${classes.primaryGradient}`}
-          >
-            {isProcessing ? t('checkout.processing') : quoteLoading ? 'Calculating total...' : t('checkout.confirm')}
-          </button>
-        </fieldset>
+                {/* Item lines with thumbnails */}
+                <ul className="mb-5 max-h-72 space-y-3 overflow-y-auto pe-1" role="list">
+                  {items.map((item) => {
+                    const line = quote?.items.find(
+                      (quoteLine) => quoteLine.product_id === item.product_id
+                        && quoteLine.variant_id === (item.variant_id || null),
+                    );
+                    return (
+                      <li key={item.id} className="flex items-center gap-3">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                          {item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-gray-300">
+                              <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                            </div>
+                          )}
+                          <span className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-900 px-1 text-[10px] font-black text-white">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-800">{item.title}</p>
+                          <p className="truncate text-xs text-gray-400">
+                            {item.variant ? `${item.variant} · ` : ''}{item.store_name}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-sm font-bold text-gray-700">
+                          {line ? formatPrice(line.subtotal) : '—'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="space-y-2.5 border-t border-gray-100 pt-4">
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-sm text-gray-600">{t('checkout.merchandiseSubtotal')}</span>
+                    <span className="shrink-0 text-sm font-medium">{quote ? formatPrice(quote.subtotal) : '—'}</span>
+                  </div>
+                  {quoteProductDiscount > 0 && (
+                    <div className="flex justify-between items-center gap-4 text-emerald-700">
+                      <span className="text-sm">
+                        {t('checkout.productDiscount', { code: quote?.coupon_code ? ` (${quote.coupon_code})` : '' })}
+                      </span>
+                      <span className="shrink-0 text-sm font-medium">−{formatPrice(quoteProductDiscount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-sm text-gray-600">{t('cart.shipping')} ({shippableStoreCount})</span>
+                    <span className="text-sm font-medium">{quote ? formatPrice(quote.shipping_total) : '—'}</span>
+                  </div>
+                  {quoteShippingSavings > 0 && (
+                    <div className="flex justify-between items-center gap-4 text-emerald-700">
+                      <span className="text-sm">{t('checkout.shippingSavings')}</span>
+                      <span className="shrink-0 text-sm font-medium">−{formatPrice(quoteShippingSavings)}</span>
+                    </div>
+                  )}
+                  {quote && quote.tax_total > 0 && (
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-sm text-gray-600">{t('checkout.tax')}</span>
+                      <span className="shrink-0 text-sm font-medium">{formatPrice(quote.tax_total)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center gap-4 border-t border-gray-100 pt-3">
+                    <span className="text-base font-bold text-gray-900">{t('cart.total')}</span>
+                    <span className={`text-xl font-black ${classes.primaryText}`} aria-live="polite">{quoteTotalLabel}</span>
+                  </div>
+                </div>
+
+                {!quote && hasShippableItems && !normalizedAddress && (
+                  <p className="mt-4 text-sm text-gray-500">{t('checkout.completeAddressForTotal')}</p>
+                )}
+                {quoteLoading && (
+                  <p className="mt-4 text-sm text-gray-500" aria-live="polite">{t('checkout.calculatingLatest')}</p>
+                )}
+              </div>
+
+              {/* Trust badges */}
+              <div className="mt-4 grid grid-cols-3 gap-2" role="list" aria-label={t('checkout.buyerProtection')}>
+                {trustBadges.map((badge) => (
+                  <div
+                    key={badge.label}
+                    className="flex flex-col items-center gap-1.5 rounded-2xl border border-gray-100 bg-white px-2 py-3 text-center"
+                    role="listitem"
+                  >
+                    <badge.icon className={`h-5 w-5 ${classes.primaryText}`} aria-hidden="true" />
+                    <span className="text-[10px] font-bold leading-tight text-gray-600">{badge.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
         </form>
       </div>
       <HubFooter {...settings} />

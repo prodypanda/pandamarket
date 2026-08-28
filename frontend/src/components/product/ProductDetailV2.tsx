@@ -106,8 +106,12 @@ export const ProductDetailV2: React.FC<ProductDetailV2Props> = ({
   const accentText = classes.primaryText;
   const accentBgSoft = classes.primarySoft;
 
-  const avgRating = ratingData?.average_rating ?? 0;
-  const reviewCount = ratingData?.review_count ?? 0;
+  // Defensive coercion: rating API may return numerics as strings (pg driver),
+  // and `avgRating.toFixed()` would crash SSR otherwise.
+  const parsedAvgRating = Number(ratingData?.average_rating ?? 0);
+  const avgRating = Number.isFinite(parsedAvgRating) ? parsedAvgRating : 0;
+  const parsedReviewCount = Number(ratingData?.review_count ?? 0);
+  const reviewCount = Number.isFinite(parsedReviewCount) ? parsedReviewCount : 0;
 
   const mainImage = product.thumbnail || getImageUrl(product.images?.[0]);
   const numericPrice = toNumber(product.price);

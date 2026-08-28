@@ -59,6 +59,19 @@ export interface ProductRatingRow {
   rating_5: number;
 }
 
+/**
+ * pg returns NUMERIC columns as strings (e.g. average_rating "5.00").
+ * Consumers (hub product page, batch ratings API) expect numbers, so coerce
+ * defensively — a string reaching `avgRating.toFixed()` crashes SSR.
+ */
+function normalizeRatingRow(row: ProductRatingRow): ProductRatingRow {
+  const average = Number(row.average_rating);
+  return {
+    ...row,
+    average_rating: Number.isFinite(average) ? average : 0,
+  };
+}
+
 export class ReviewService {
   // ─── Create ────────────────────────────────────────────────────────
 
@@ -313,7 +326,7 @@ export class ReviewService {
       'SELECT * FROM pd_product_rating WHERE product_id = $1',
       [product_id],
     );
-    return rows[0] ?? null;
+    return rows[0] ? normalizeRatingRow(rows[0]) : null;
   }
 
   async getProductRatings(product_ids: string[]): Promise<Map<string, ProductRatingRow>> {
@@ -324,7 +337,7 @@ export class ReviewService {
       product_ids,
     );
     const map = new Map<string, ProductRatingRow>();
-    for (const row of rows) map.set(row.product_id, row);
+    for (const row of rows) map.set(row.product_id, normalizeRatingRow(row));
     return map;
   }
 

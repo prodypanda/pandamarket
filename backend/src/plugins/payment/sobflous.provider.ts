@@ -1,7 +1,13 @@
 /**
  * Sobflous Payment Provider Adapter — PLAN-T4-03
  *
- * Implements mobile payment flow for Sobflous wallet, recharge vouchers, and bank cards.
+ * SAFETY (deploy-pipeline audit 2026-08-28): this provider has NO real
+ * gateway integration. The previous implementation fabricated a redirect
+ * URL and verify() unconditionally returned `captured`, which would credit
+ * vendor wallets for any order once the merchant key env var was set.
+ * It is now fail-closed in ALL environments: init() and verify() always
+ * throw. Re-enable only by implementing real Sobflous API calls (init
+ * session + server-side verification) inside this class.
  */
 
 import {
@@ -11,59 +17,24 @@ import {
   PaymentVerifyResult,
 } from './payment-provider.interface';
 import { PaymentGateway } from '@pandamarket/types';
-import { logger } from '../../utils/logger';
-import { pdId, sha256 } from '../../utils/crypto';
 import { PdServiceUnavailableError } from '../../errors';
 
+const NOT_IMPLEMENTED =
+  'Sobflous gateway is not integrated yet — payments cannot be initialized.';
+
 export class SobflousPaymentProvider implements PaymentProvider {
-  readonly gateway: PaymentGateway = 'flouci' as PaymentGateway; // Or Sobflous alias
+  readonly gateway: PaymentGateway = 'flouci' as PaymentGateway;
 
-  async init(ctx: PaymentInitContext): Promise<PaymentInitResult> {
-    const isConfigured = Boolean(process.env.PD_SOBFLOUS_MERCHANT_KEY);
-    if (!isConfigured && process.env.NODE_ENV === 'production') {
-      throw new PdServiceUnavailableError(
-        'Sobflous gateway is pending live merchant credentials.',
-      );
-    }
-
-    const reference = `SOB_${pdId('sob')}`;
-    const amountTnd = ctx.amount.toFixed(3);
-    const signature = sha256(`${ctx.order_id}:${amountTnd}:${reference}`);
-
-    logger.info({ orderId: ctx.order_id, amountTnd, reference }, 'Initialized Sobflous payment');
-
-    const redirectUrl = `https://www.sobflous.tn/payment/checkout?token=${reference}&amount=${amountTnd}&order_id=${ctx.order_id}&sig=${signature}&callback=${encodeURIComponent(
-      ctx.success_url,
-    )}`;
-
-    return {
-      redirect_url: redirectUrl,
-      gateway_reference: reference,
-      metadata: {
-        provider: 'sobflous',
-        amount: ctx.amount,
-        signature,
-      },
-    };
+  async init(_ctx: PaymentInitContext): Promise<PaymentInitResult> {
+    throw new PdServiceUnavailableError(NOT_IMPLEMENTED);
   }
 
-  async verify(reference: string): Promise<PaymentVerifyResult> {
-    const isConfigured = Boolean(process.env.PD_SOBFLOUS_MERCHANT_KEY);
-    if (!isConfigured && process.env.NODE_ENV === 'production') {
-      throw new PdServiceUnavailableError(
-        'Sobflous gateway verification is pending live merchant credentials.',
-      );
-    }
-
-    logger.info({ reference }, 'Verifying Sobflous payment transaction');
-
-    return {
-      status: 'captured',
-      metadata: {
-        reference,
-        verified_at: new Date().toISOString(),
-      },
-    };
+  async verify(_reference: string): Promise<PaymentVerifyResult> {
+    // Never trust client-side claims: without a real verification API call
+    // this gateway MUST NOT report a payment as captured.
+    throw new PdServiceUnavailableError(
+      'Sobflous gateway is not integrated yet — payment verification unavailable.',
+    );
   }
 }
 

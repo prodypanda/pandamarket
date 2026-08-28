@@ -1,57 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-vi.mock('../utils/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+import { describe, it, expect } from 'vitest';
 
 import { d17PaymentProvider } from '../plugins/payment/d17.provider';
 import { sobflousPaymentProvider } from '../plugins/payment/sobflous.provider';
 
-describe('PLAN-T4-03: Tunisian Mobile Payment Gateways Expansion (D17 & Sobflous)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+const initCtx = {
+  order_id: 'ord_12345678',
+  amount: 45.5,
+  currency: 'TND',
+  customer_email: 'client@example.tn',
+  success_url: 'https://pandamarket.tn/checkout/success',
+  fail_url: 'https://pandamarket.tn/checkout/fail',
+};
+
+describe('PLAN-T4-03: Tunisian Mobile Payment Gateways (D17 & Sobflous) — neutralized stubs', () => {
+  it('D17 init() is fail-closed: no payment session can be created', async () => {
+    await expect(d17PaymentProvider.init(initCtx)).rejects.toThrow(/not integrated/i);
   });
 
-  it('initializes D17 Poste Tunisienne mobile payment session', async () => {
-    const res = await d17PaymentProvider.init({
-      order_id: 'ord_12345678',
-      amount: 45.5,
-      currency: 'TND',
-      customer_email: 'client@example.tn',
-      success_url: 'https://pandamarket.tn/checkout/success',
-      fail_url: 'https://pandamarket.tn/checkout/fail',
-    });
-
-    expect(res.redirect_url).toContain('https://d17.poste.tn/pay');
-    expect(res.redirect_url).toContain('amount=45.500');
-    expect(res.redirect_url).toContain('order=ord_12345678');
-    expect(res.gateway_reference).toContain('D17_');
-
-    const verify = await d17PaymentProvider.verify(res.gateway_reference);
-    expect(verify.status).toBe('captured');
+  it('D17 verify() never reports captured without a real gateway call', async () => {
+    await expect(d17PaymentProvider.verify('D17_test_ref')).rejects.toThrow(/not integrated/i);
   });
 
-  it('initializes Sobflous checkout session with signature verification', async () => {
-    const res = await sobflousPaymentProvider.init({
-      order_id: 'ord_12345678',
-      amount: 60.0,
-      currency: 'TND',
-      customer_email: 'client@example.tn',
-      success_url: 'https://pandamarket.tn/checkout/success',
-      fail_url: 'https://pandamarket.tn/checkout/fail',
-    });
+  it('Sobflous init() is fail-closed: no payment session can be created', async () => {
+    await expect(sobflousPaymentProvider.init(initCtx)).rejects.toThrow(/not integrated/i);
+  });
 
-    expect(res.redirect_url).toContain('https://www.sobflous.tn/payment/checkout');
-    expect(res.redirect_url).toContain('amount=60.000');
-    expect(res.redirect_url).toContain('sig=');
-    expect(res.gateway_reference).toContain('SOB_');
-
-    const verify = await sobflousPaymentProvider.verify(res.gateway_reference);
-    expect(verify.status).toBe('captured');
+  it('Sobflous verify() never reports captured without a real gateway call', async () => {
+    await expect(sobflousPaymentProvider.verify('SOB_test_ref')).rejects.toThrow(/not integrated/i);
   });
 });
