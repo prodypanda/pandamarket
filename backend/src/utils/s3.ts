@@ -14,16 +14,24 @@ let client: S3Client | null = null;
 
 export function getS3(): S3Client {
   if (!client) {
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+    const endpoint = isR2
+      ? `https://${config.storage.r2AccountId}.r2.cloudflarestorage.com`
+      : config.s3.endpoint;
+    const region = isR2 ? 'auto' : config.s3.region;
+    const accessKeyId = isR2 ? config.storage.r2AccessKeyId : config.s3.accessKey;
+    const secretAccessKey = isR2 ? config.storage.r2SecretAccessKey : config.s3.secretKey;
+
     client = new S3Client({
-      endpoint: config.s3.endpoint,
-      region: config.s3.region,
-      forcePathStyle: config.s3.forcePathStyle,
+      endpoint,
+      region,
+      forcePathStyle: isR2 ? false : config.s3.forcePathStyle,
       credentials: {
-        accessKeyId: config.s3.accessKey,
-        secretAccessKey: config.s3.secretKey,
+        accessKeyId,
+        secretAccessKey,
       },
     });
-    logger.info({ endpoint: config.s3.endpoint }, 'S3 client initialised');
+    logger.info({ endpoint, isR2 }, 'S3 / R2 storage client initialised');
   }
   return client;
 }
@@ -78,6 +86,9 @@ export async function presignDownload(opts: {
  * Build the public URL for a public-bucket asset.
  */
 export function publicUrl(key: string): string {
+  if (config.storage.r2AccountId && config.storage.cdnBaseUrl) {
+    return `${config.storage.cdnBaseUrl.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;
+  }
   if (config.s3.publicBaseUrl === '/pd-product-images') {
     return `/pd-product-images/${key.replace(/^\//, '')}`;
   }

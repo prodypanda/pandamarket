@@ -61,7 +61,7 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 
 ## 📋 Phase 7: Cloudflare R2 Migration & Search Optimization
 
-- [ ] **7.1 Cloudflare R2 Provisioning:** Configure R2 production bucket and custom CDN domain `cdn.pandamarket.tn`.
-- [ ] **7.2 Zero-Egress Switch:** Set `PD_R2_ACCOUNT_ID`, `PD_R2_ACCESS_KEY_ID`, and `PD_R2_BUCKET` in production environment secrets.
+- [x] **7.1 Cloudflare R2 Provisioning:** Configure R2 production bucket and custom CDN domain `cdn.pandamarket.tn`.
+- [x] **7.2 Zero-Egress Switch:** Set `PD_R2_ACCOUNT_ID`, `PD_R2_ACCESS_KEY_ID`, and `PD_R2_BUCKET` in production environment secrets and update storage client.
 - [ ] **7.3 Meilisearch Index Activation:** Provision Meilisearch instance with Tunisian Derja / French / Arabic synonym dictionaries and vector embeddings.
 - [x] **7.4 COD Fraud Radar & Verification:** Secure constant-time OTP generation and verification flow with rate limiting and automated delivery handshake.
