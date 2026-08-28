@@ -8,6 +8,7 @@
 import { query, transaction } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { slugify } from '../utils/subdomain';
+import { publicUrl } from '../utils/s3';
 import {
   PdConflictError,
   PdForbiddenError,
@@ -1995,7 +1996,7 @@ export class ProductService {
         [bucket, newKey, rows[0].content_type || 'image/jpeg', rows[0].data],
       );
 
-      const newUrl = `/${bucket}/${newKey}`;
+      const newUrl = publicUrl(newKey);
 
       await fileAssetService.registerAsset({
         scope: 'store',

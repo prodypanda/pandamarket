@@ -10,6 +10,7 @@ import { smtpConfigService } from '../../services/smtp-config.service';
 import { pdId } from '../../utils/crypto';
 import { resolveDataPath } from '../../utils/data-dir';
 import { logger } from '../../utils/logger';
+import { publicUrl } from '../../utils/s3';
 import { Request, Response, Router } from 'express';
 import { z } from 'zod';
 
@@ -266,7 +267,7 @@ router.patch(
       `INSERT INTO pd_file_asset (id, scope, purpose, url, file_key, bucket, filename, content_type, file_size)
        VALUES ($1, 'platform', 'marketplace_asset', $2, $3, 'pd-product-images', $4, $5, 0)
        ON CONFLICT (file_key) DO UPDATE SET filename = EXCLUDED.filename, updated_at = NOW()`,
-      [pdId('asset'), `/pd-product-images/${key}`, key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
+      [pdId('asset'), publicUrl(key), key, cleanName, findResult.rows[0].content_type || 'image/jpeg'],
     );
 
     logger.info(

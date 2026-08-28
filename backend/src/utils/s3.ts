@@ -86,11 +86,16 @@ export async function presignDownload(opts: {
  * Build the public URL for a public-bucket asset.
  */
 export function publicUrl(key: string): string {
+  if (!key) return '';
+  if (key.startsWith('http://') || key.startsWith('https://')) {
+    return key;
+  }
+  const cleanKey = key.replace(/^\/?(pd-product-images\/)?/, '');
   if (config.storage.r2AccountId && config.storage.cdnBaseUrl) {
-    return `${config.storage.cdnBaseUrl.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;
+    return `${config.storage.cdnBaseUrl.replace(/\/$/, '')}/${cleanKey}`;
   }
   if (config.s3.publicBaseUrl === '/pd-product-images') {
-    return `/pd-product-images/${key.replace(/^\//, '')}`;
+    return `/pd-product-images/${cleanKey}`;
   }
-  return `${config.s3.publicBaseUrl.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;
+  return `${config.s3.publicBaseUrl.replace(/\/$/, '')}/${cleanKey}`;
 }

@@ -231,14 +231,16 @@ router.post(
 
     const fileKey = `${keyPrefix}/${safeFilename}`;
 
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+    const targetBucket = isR2 ? (config.storage.r2Bucket || 'pandamarket') : bucket;
     const isS3Local =
-      config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+      !isR2 && (config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1'));
     const host = req.get('host');
     const protocol = req.protocol;
 
     const uploadToken = signMockFileToken({
       type: 'mock_file_upload',
-      bucket,
+      bucket: targetBucket,
       key: fileKey,
       owner_id: req.user!.id,
       store_id: req.user!.store_id ?? null,
@@ -248,19 +250,21 @@ router.post(
     });
 
     const uploadUrl = isS3Local
-      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}?token=${uploadToken}`
+      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${targetBucket}/${fileKey}?token=${uploadToken}`
       : await presignUpload({
-          bucket,
+          bucket: targetBucket,
           key: fileKey,
           contentType: content_type,
           expiresInSeconds: 900, // 15 minutes
         });
 
     // For public bucket, also return the public URL
-    const isPublic = bucket === config.s3.bucketPublic;
+    const isPublic = isR2
+      ? ['product_image', 'store_asset', 'theme_asset', 'marketplace_asset'].includes(purpose)
+      : bucket === config.s3.bucketPublic;
 
     logger.info(
-      { purpose, bucket, key: fileKey, user_id: req.user!.id },
+      { purpose, bucket: targetBucket, key: fileKey, user_id: req.user!.id, isR2 },
       'Presigned upload URL generated',
     );
 
@@ -330,14 +334,16 @@ router.post(
     const safeFilename = `${uniqueId}.${ext}`;
     const fileKey = `${keyPrefix}/${safeFilename}`;
 
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+    const targetBucket = isR2 ? (config.storage.r2Bucket || 'pandamarket') : bucket;
     const isS3Local =
-      config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1');
+      !isR2 && (config.s3.endpoint.includes('localhost') || config.s3.endpoint.includes('127.0.0.1'));
     const host = req.get('host');
     const protocol = req.protocol;
 
     const uploadToken = signMockFileToken({
       type: 'mock_file_upload',
-      bucket,
+      bucket: targetBucket,
       key: fileKey,
       owner_id: req.storefrontCustomer!.id,
       store_id: req.storefrontCustomer!.store_id,
@@ -347,16 +353,16 @@ router.post(
     });
 
     const uploadUrl = isS3Local
-      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${bucket}/${fileKey}?token=${uploadToken}`
+      ? `${protocol}://${host}/api/pd/files/upload-s3-mock/${targetBucket}/${fileKey}?token=${uploadToken}`
       : await presignUpload({
-          bucket,
+          bucket: targetBucket,
           key: fileKey,
           contentType: content_type,
           expiresInSeconds: 900,
         });
 
     logger.info(
-      { purpose, bucket, key: fileKey, storefront_customer_id: req.storefrontCustomer!.id },
+      { purpose, bucket: targetBucket, key: fileKey, storefront_customer_id: req.storefrontCustomer!.id, isR2 },
       'Storefront presigned upload URL generated',
     );
 

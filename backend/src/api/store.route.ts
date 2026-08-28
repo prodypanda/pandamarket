@@ -23,6 +23,7 @@ import { domainVerificationService } from '../services/domain-verification.servi
 import { outboxService } from '../services/outbox.service';
 import { storeSubscriptionService } from '../services/store-subscription.service';
 import { calculateSellerTrustScore } from '../services/seller-trust.service';
+import { publicUrl } from '../utils/s3';
 
 const router = Router();
 
@@ -667,7 +668,7 @@ router.get(
         folder = pathParts[2] as any;
       }
 
-      const url = `/${row.bucket}/${cleanKey}`;
+      const url = publicUrl(cleanKey);
       const prodInfo = productMap.get(url) || productMap.get(cleanKey) || productMap.get(rawKey);
 
       // Extract width & height directly from asset metadata without re-reading bytea buffer
@@ -808,7 +809,7 @@ router.patch(
       `INSERT INTO pd_file_asset (id, scope, purpose, url, file_key, bucket, filename, content_type, file_size, store_id, owner_user_id)
        VALUES ($1, 'store', 'product_image', $2, $3, 'pd-product-images', $4, $5, 0, $6, $7)
        ON CONFLICT (file_key) DO UPDATE SET filename = EXCLUDED.filename, updated_at = NOW()`,
-      [pdId('asset'), `/pd-product-images/${key}`, key, cleanName, findResult.rows[0]?.content_type || 'image/jpeg', storeId, req.user!.id],
+      [pdId('asset'), publicUrl(key), key, cleanName, findResult.rows[0]?.content_type || 'image/jpeg', storeId, req.user!.id],
     );
 
     await query(

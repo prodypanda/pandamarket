@@ -38,8 +38,15 @@ export function getResizedImageUrl(
     return trimmed;
   }
 
-  // Only apply suffix to local / proxied product images or backend storage
-  const isBackendImage = trimmed.includes('/pd-product-images/') || trimmed.includes('/api/files/') || trimmed.includes('/uploads/');
+  // Only apply suffix to local / proxied product images, CDN, or backend storage
+  const isBackendImage =
+    trimmed.includes('/pd-product-images/') ||
+    trimmed.includes('/api/files/') ||
+    trimmed.includes('/uploads/') ||
+    trimmed.includes('cdn.garbage.team') ||
+    trimmed.includes('cdn.pandamarket.tn') ||
+    trimmed.includes('.r2.cloudflarestorage.com') ||
+    trimmed.includes('.r2.dev');
   if (!isBackendImage && !trimmed.startsWith('data:')) {
     // Return static assets (e.g. /logo.png) and external URLs as-is
     return trimmed;
