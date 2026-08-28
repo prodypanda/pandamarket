@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { jsonToCsv } from '../lib/csv-export';
+import { jsonToCsv, parseCsv } from '../lib/csv-export';
 
 describe('CSV Export Utility', () => {
   const sampleData = [
@@ -75,5 +75,29 @@ describe('CSV Export Utility', () => {
     const data = [{ created: date }];
     const csv = jsonToCsv(data);
     expect(csv).toContain('2026-05-03');
+  });
+
+  describe('parseCsv', () => {
+    it('parses comma-separated CSV with headers', () => {
+      const csv = 'title,price,stock\nChaussures,85.000,10\nSac à main,120.000,5';
+      const rows = parseCsv(csv);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toEqual({ title: 'Chaussures', price: '85.000', stock: '10' });
+      expect(rows[1]).toEqual({ title: 'Sac à main', price: '120.000', stock: '5' });
+    });
+
+    it('parses semicolon-delimited CSV with quoted strings', () => {
+      const csv = 'title;description;price\n"Robe, Soirée";"Superbe robe; taille M";95.000';
+      const rows = parseCsv(csv);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].title).toBe('Robe, Soirée');
+      expect(rows[0].description).toBe('Superbe robe; taille M');
+      expect(rows[0].price).toBe('95.000');
+    });
+
+    it('returns empty array for empty input', () => {
+      expect(parseCsv('')).toEqual([]);
+      expect(parseCsv('   \n  ')).toEqual([]);
+    });
   });
 });

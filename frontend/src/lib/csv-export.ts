@@ -96,3 +96,63 @@ function formatValue(value: unknown): string {
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
+
+/**
+ * Parse a CSV/TSV string into an array of objects.
+ */
+export function parseCsv(csvText: string): Record<string, string>[] {
+  const trimmed = csvText.trim();
+  if (!trimmed) return [];
+
+  // Determine delimiter: comma, semicolon, or tab
+  const firstLine = trimmed.split(/\r?\n/)[0] || '';
+  let delimiter = ',';
+  if (firstLine.includes(';') && (firstLine.match(/;/g)?.length || 0) > (firstLine.match(/,/g)?.length || 0)) {
+    delimiter = ';';
+  } else if (firstLine.includes('\t')) {
+    delimiter = '\t';
+  }
+
+  const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return [];
+
+  const headers = splitCsvLine(lines[0], delimiter).map((h) => h.trim().toLowerCase());
+  const results: Record<string, string>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = splitCsvLine(lines[i], delimiter);
+    const row: Record<string, string> = {};
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[j]?.trim() ?? '';
+    }
+    results.push(row);
+  }
+
+  return results;
+}
+
+function splitCsvLine(line: string, delimiter: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (insideQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === delimiter && !insideQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+

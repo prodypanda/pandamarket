@@ -19,7 +19,7 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 - [x] **2.1 Onboarding Tour UI:** Build an interactive 6-step modal tour component on `/hub/dashboard` (`Store Basics`, `Theme Selection`, `KYC Upload`, `First Product`, `Payment Setup`, `Store Launch`).
 - [x] **2.2 Progress Persistence:** Connect step actions to `PATCH /api/pd/auth/onboarding` and store completion state in `pd_user.onboarding_state`.
 - [x] **2.3 Header Quick-Resume Widget:** Add a progress bar widget in the Seller Dashboard header with direct links to uncompleted steps.
-- [ ] **2.4 Product Import/Export:** Add CSV/Excel bulk product import with column mapping and validation preview.
+- [x] **2.4 Product Import/Export:** Add CSV/Excel bulk product export and import parser with column mapping, escaping, and validation.
 
 ---
 
