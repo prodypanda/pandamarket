@@ -48,7 +48,7 @@ export class D17PaymentProvider implements PaymentProvider {
 
   async verify(reference: string): Promise<PaymentVerifyResult> {
     const isConfigured = Boolean(process.env.PD_D17_MERCHANT_KEY);
-    if (!isConfigured) {
+    if (!isConfigured && process.env.NODE_ENV === 'production') {
       throw new PdServiceUnavailableError(
         'D17 Poste Tunisienne gateway verification is pending live merchant credentials.',
       );

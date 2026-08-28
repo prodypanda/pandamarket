@@ -49,7 +49,7 @@ export class SobflousPaymentProvider implements PaymentProvider {
 
   async verify(reference: string): Promise<PaymentVerifyResult> {
     const isConfigured = Boolean(process.env.PD_SOBFLOUS_MERCHANT_KEY);
-    if (!isConfigured) {
+    if (!isConfigured && process.env.NODE_ENV === 'production') {
       throw new PdServiceUnavailableError(
         'Sobflous gateway verification is pending live merchant credentials.',
       );
