@@ -25,7 +25,7 @@ export function getS3(): S3Client {
     client = new S3Client({
       endpoint,
       region,
-      forcePathStyle: isR2 ? false : config.s3.forcePathStyle,
+      forcePathStyle: true,
       credentials: {
         accessKeyId,
         secretAccessKey,
