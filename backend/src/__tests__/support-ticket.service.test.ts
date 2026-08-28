@@ -216,4 +216,38 @@ describe('SupportTicketService', () => {
     expect(String(updateSqlCalls[0][0])).toContain('resolved_at = COALESCE(resolved_at, NOW())');
     expect(String(updateSqlCalls[1][0])).toContain('closed_at = COALESCE(closed_at, NOW())');
   });
+
+  it('checkAndEscalateSlaBreaches finds overdue tickets, escalates priority, and notifies admins', async () => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (typeof sql === 'string' && sql.includes("FROM pd_support_ticket") && sql.includes("status IN ('open', 'waiting_admin')")) {
+        return {
+          rows: [
+            {
+              id: 't_breached_1',
+              ticket_number: 'PM-999',
+              store_id: 'store_1',
+              subject: 'Urgent payment bug',
+              priority: 'high',
+              status: 'open',
+              created_at: new Date(Date.now() - 3600 * 8 * 1000).toISOString(),
+              assigned_admin_id: null,
+            },
+          ],
+          rowCount: 1,
+        } as any;
+      }
+      if (typeof sql === 'string' && sql.includes("UPDATE pd_support_ticket")) {
+        return { rowCount: 1, rows: [] } as any;
+      }
+      if (typeof sql === 'string' && sql.includes("SELECT id FROM pd_user WHERE role IN ('admin', 'super_admin')")) {
+        return { rows: [{ id: 'admin_1' }], rowCount: 1 } as any;
+      }
+      return { rows: [], rowCount: 0 } as any;
+    });
+
+    const result = await service.checkAndEscalateSlaBreaches();
+    expect(result.checked).toBe(1);
+    expect(result.breached).toBe(1);
+    expect(result.escalated).toBe(1);
+  });
 });

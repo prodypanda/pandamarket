@@ -447,6 +447,75 @@ export class SupportTicketService {
     return this.getSellerTicket(input.ticket_id, input.store_id, input.user_id);
   }
 
+  /**
+   * Scans open tickets exceeding SLA response targets and auto-escalates them with Superadmin notifications.
+   */
+  async checkAndEscalateSlaBreaches(): Promise<{ checked: number; breached: number; escalated: number }> {
+    const { rows: overdueTickets } = await query<{
+      id: string;
+      ticket_number: string;
+      store_id: string;
+      subject: string;
+      priority: SupportTicketPriority;
+      status: SupportTicketStatus;
+      created_at: string;
+      assigned_admin_id: string | null;
+    }>(
+      `SELECT id, ticket_number, store_id, subject, priority, status, created_at, assigned_admin_id
+       FROM pd_support_ticket
+       WHERE status IN ('open', 'waiting_admin')
+         AND (
+           (priority = 'urgent' AND created_at < NOW() - INTERVAL '2 hours') OR
+           (priority = 'high' AND created_at < NOW() - INTERVAL '6 hours') OR
+           (priority = 'normal' AND created_at < NOW() - INTERVAL '24 hours') OR
+           (priority = 'low' AND created_at < NOW() - INTERVAL '48 hours')
+         )
+         AND (metadata->>'is_sla_breached' IS NULL OR metadata->>'is_sla_breached' = 'false')`,
+    );
+
+    let breached = 0;
+    let escalated = 0;
+
+    for (const ticket of overdueTickets) {
+      breached++;
+      const nextPriority: SupportTicketPriority =
+        ticket.priority === 'low' ? 'normal' : ticket.priority === 'normal' ? 'high' : 'urgent';
+      if (nextPriority !== ticket.priority) {
+        escalated++;
+      }
+
+      await query(
+        `UPDATE pd_support_ticket
+         SET priority = $1,
+             metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{is_sla_breached}', 'true'::jsonb),
+             updated_at = NOW()
+         WHERE id = $2`,
+        [nextPriority, ticket.id],
+      );
+
+      // Alert superadmins and assigned admin
+      const adminTargets = ticket.assigned_admin_id
+        ? [ticket.assigned_admin_id]
+        : (await query<{ id: string }>("SELECT id FROM pd_user WHERE role IN ('admin', 'super_admin') AND is_active = true")).rows.map((r) => r.id);
+
+      for (const adminId of adminTargets) {
+        void notificationService.create({
+          user_id: adminId,
+          type: 'support_ticket_sla_breach',
+          title: `⚠️ SLA Breach: Ticket #${ticket.ticket_number}`,
+          message: `Ticket #${ticket.ticket_number} ("${ticket.subject}") has exceeded response SLA. Priority escalated to ${nextPriority}.`,
+          data: { ticket_id: ticket.id, store_id: ticket.store_id, priority: nextPriority },
+        });
+      }
+    }
+
+    return {
+      checked: overdueTickets.length,
+      breached,
+      escalated,
+    };
+  }
+
 }
 
 export const supportTicketService = new SupportTicketService();
