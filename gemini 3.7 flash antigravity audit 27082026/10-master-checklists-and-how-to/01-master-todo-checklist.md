@@ -46,7 +46,7 @@ This is the comprehensive, phase-by-phase master execution checklist for PandaMa
 - [x] **5.1 Amazon-Style Department Mega-Menu:** Build multi-level department hover flyout menu listing all 24 parent categories and subcategories.
 - [x] **5.2 Top Utility Bar:** Add localized delivery selector, currency/language toggle, and quick orders shortcut.
 - [x] **5.3 Recently Viewed Rail:** Build horizontal product carousel synced via client localStorage with standard GA4/Meta view_item events.
-- [ ] **5.4 Wholesale B2B Template:** Add volume tier price tables and Request for Quotation (RFQ) modal for wholesale sellers.
+- [x] **5.4 Wholesale B2B Template:** Add volume tier price tables and Request for Quotation (RFQ) modal for wholesale sellers.
 
 ---
 
