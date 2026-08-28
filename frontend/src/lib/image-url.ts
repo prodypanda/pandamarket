@@ -27,27 +27,32 @@ export function getResizedImageUrl(
     return trimmed;
   }
 
-  // Do not resize SVGs or GIFs or branding logos
+  // Do not resize SVGs or GIFs or branding logos or data URLs
   if (
     trimmed.toLowerCase().endsWith('.svg') || 
     trimmed.toLowerCase().endsWith('.gif') || 
     trimmed.toLowerCase().endsWith('.ico') ||
     trimmed.includes('/branding/') ||
-    trimmed.includes('logo')
+    trimmed.includes('logo') ||
+    trimmed.startsWith('data:')
   ) {
     return trimmed;
   }
 
-  // Only apply suffix to local / proxied product images, CDN, or backend storage
-  const isBackendImage =
-    trimmed.includes('/pd-product-images/') ||
-    trimmed.includes('/api/files/') ||
-    trimmed.includes('/uploads/') ||
+  // Remote CDN and Cloudflare R2 URLs: serve original URL directly (prevents 404 on static object storage)
+  if (
     trimmed.includes('cdn.garbage.team') ||
     trimmed.includes('cdn.pandamarket.tn') ||
     trimmed.includes('.r2.cloudflarestorage.com') ||
-    trimmed.includes('.r2.dev');
-  if (!isBackendImage && !trimmed.startsWith('data:')) {
+    trimmed.includes('.r2.dev') ||
+    (trimmed.startsWith('https://') && !trimmed.includes('/pd-product-images/'))
+  ) {
+    return trimmed;
+  }
+
+  // Only apply suffix to local / proxied product images (/pd-product-images/)
+  const isLocalBackendImage = trimmed.includes('/pd-product-images/') || trimmed.includes('/api/files/') || trimmed.includes('/uploads/');
+  if (!isLocalBackendImage) {
     // Return static assets (e.g. /logo.png) and external URLs as-is
     return trimmed;
   }
