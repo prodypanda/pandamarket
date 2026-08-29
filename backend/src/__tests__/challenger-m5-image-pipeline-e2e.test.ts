@@ -154,7 +154,7 @@ describe('Milestone 5 Challenger: End-to-End Image Pipeline & Concurrency Verifi
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('1. Sharp 4 WebP Variants Generation & Metadata Inspection', () => {
@@ -416,14 +416,14 @@ describe('Milestone 5 Challenger: End-to-End Image Pipeline & Concurrency Verifi
 
       mockQuery.mockImplementation(async (sql: string, params: any[]) => {
         if (typeof sql !== 'string') return { rows: [] };
-        if (sql.includes('SELECT data, content_type FROM pd_file_blobs WHERE key = ANY')) {
-          return { rows: [] }; // variant not in DB
-        }
-        if (sql.includes('SELECT data FROM pd_file_blobs WHERE key = ANY')) {
-          return { rows: [{ data: originalBuffer2400 }] }; // original master found in DB
-        }
-        if (sql.includes('SELECT data, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2')) {
+        if (sql.includes('content_type')) {
+          if (sql.includes('key = ANY')) {
+            return { rows: [] }; // variant not in DB
+          }
           return { rows: [{ data: sampleVariantBuf, content_type: 'image/webp' }] };
+        }
+        if (sql.includes('SELECT data FROM pd_file_blobs')) {
+          return { rows: [{ data: originalBuffer2400 }] }; // original master found in DB
         }
         return { rows: [], rowCount: 1 };
       });
@@ -444,15 +444,15 @@ describe('Milestone 5 Challenger: End-to-End Image Pipeline & Concurrency Verifi
 
       mockQuery.mockImplementation(async (sql: string) => {
         if (typeof sql !== 'string') return { rows: [] };
-        if (sql.includes('SELECT data, content_type FROM pd_file_blobs WHERE key = ANY')) {
-          return { rows: [] };
+        if (sql.includes('content_type')) {
+          if (sql.includes('key = ANY')) {
+            return { rows: [] };
+          }
+          return { rows: [{ data: sampleVariantBuf, content_type: 'image/webp' }] };
         }
-        if (sql.includes('SELECT data FROM pd_file_blobs WHERE key = ANY')) {
+        if (sql.includes('SELECT data FROM pd_file_blobs')) {
           masterQueryCount++;
           return { rows: [{ data: originalBuffer2400 }] };
-        }
-        if (sql.includes('SELECT data, content_type FROM pd_file_blobs WHERE key = $1 OR key = $2')) {
-          return { rows: [{ data: sampleVariantBuf, content_type: 'image/webp' }] };
         }
         return { rows: [], rowCount: 1 };
       });

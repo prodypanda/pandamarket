@@ -671,3 +671,144 @@ describe('Payment Provider Registry', () => {
     expect(decryptVendorConfig('corrupted_data')).toBeNull();
   });
 });
+
+// =====================================================================
+// 6. PAYPAL PROVIDER
+// =====================================================================
+
+describe('PayPalProvider', () => {
+  let paypalProvider: any;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    (query as any).mockResolvedValue({ rows: [] });
+    const { platformConfigService } = await import('../services/platform-config.service');
+    vi.spyOn(platformConfigService, 'getSettings').mockResolvedValue({
+      payment_paypal_mode: 'sandbox',
+      payment_paypal_sandbox_client_id: 'sb_client_123',
+      payment_paypal_sandbox_client_secret: 'sb_secret_456',
+      payment_paypal_sandbox_webhook_id: 'WH-123',
+      payment_paypal_currency: 'EUR',
+      payment_paypal_fx_rate_tnd_to_target: '0.30',
+    } as any);
+
+    const mod = await import('../plugins/payment/paypal.provider');
+    paypalProvider = mod.paypalProvider;
+  });
+
+  it('should have gateway set to PayPal', () => {
+    expect(paypalProvider.gateway).toBe(PaymentGateway.PayPal);
+  });
+
+  it('should initialize PayPal order with EUR conversion and approve link', async () => {
+    mockAxios.post
+      .mockResolvedValueOnce({ data: { access_token: 'test_token' } })
+      .mockResolvedValueOnce({
+        data: {
+          id: '5O190127TN364715T',
+          links: [
+            { rel: 'approve', href: 'https://sandbox.paypal.com/checkout?token=5O190127TN364715T' },
+          ],
+        },
+      });
+
+    const result = await paypalProvider.init(baseCtx);
+
+    expect(result.redirect_url).toBe('https://sandbox.paypal.com/checkout?token=5O190127TN364715T');
+    expect(result.gateway_reference).toBe('5O190127TN364715T');
+    expect(result.metadata.currency).toBe('EUR');
+  });
+
+  it('should verify COMPLETED order and return captured status', async () => {
+    mockAxios.post.mockResolvedValueOnce({ data: { access_token: 'test_token' } });
+    mockAxios.get.mockResolvedValueOnce({
+      data: {
+        status: 'COMPLETED',
+        purchase_units: [{ amount: { value: '30.00', currency_code: 'EUR' } }],
+      },
+    });
+
+    const result = await paypalProvider.verify('5O190127TN364715T');
+    expect(result.status).toBe('captured');
+    expect(result.amount).toBe(30);
+  });
+
+  it('should capture APPROVED order and return captured status', async () => {
+    mockAxios.post
+      .mockResolvedValueOnce({ data: { access_token: 'test_token' } })
+      .mockResolvedValueOnce({
+        data: {
+          status: 'COMPLETED',
+          purchase_units: [
+            {
+              payments: {
+                captures: [{ id: 'cap_123', status: 'COMPLETED', amount: { value: '30.00', currency_code: 'EUR' } }],
+              },
+            },
+          ],
+        },
+      });
+
+    mockAxios.get.mockResolvedValueOnce({
+      data: {
+        status: 'APPROVED',
+        purchase_units: [{ amount: { value: '30.00', currency_code: 'EUR' } }],
+      },
+    });
+
+    const result = await paypalProvider.verify('5O190127TN364715T');
+    expect(result.status).toBe('captured');
+    expect(result.amount).toBe(30);
+  });
+
+  it('should recover when order is already captured (ORDER_ALREADY_CAPTURED)', async () => {
+    mockAxios.post
+      .mockResolvedValueOnce({ data: { access_token: 'test_token' } })
+      .mockRejectedValueOnce({
+        response: {
+          data: {
+            details: [{ issue: 'ORDER_ALREADY_CAPTURED' }],
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { access_token: 'test_token' } });
+
+    mockAxios.get
+      .mockResolvedValueOnce({
+        data: {
+          status: 'APPROVED',
+          purchase_units: [{ amount: { value: '30.00', currency_code: 'EUR' } }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: 'COMPLETED',
+          purchase_units: [{ amount: { value: '30.00', currency_code: 'EUR' } }],
+        },
+      });
+
+    const result = await paypalProvider.verify('5O190127TN364715T');
+    expect(result.status).toBe('captured');
+    expect(result.amount).toBe(30);
+  });
+
+  it('should verify webhook signature when SUCCESS returned by PayPal', async () => {
+    mockAxios.post
+      .mockResolvedValueOnce({ data: { access_token: 'test_token' } })
+      .mockResolvedValueOnce({ data: { verification_status: 'SUCCESS' } });
+
+    const result = await paypalProvider.verifyWebhookSignature(
+      {
+        'paypal-auth-algo': 'SHA256withRSA',
+        'paypal-cert-url': 'https://api.sandbox.paypal.com/cert',
+        'paypal-transmission-id': 'trans_123',
+        'paypal-transmission-sig': 'sig_123',
+        'paypal-transmission-time': '2026-08-29T10:00:00Z',
+      },
+      { id: 'WH-123' },
+    );
+
+    expect(result.valid).toBe(true);
+  });
+});
+

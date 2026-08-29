@@ -275,34 +275,64 @@ router.post(
 router.post(
   '/webhook/paypal',
   asyncHandler(async (req: Request, res: Response) => {
-    const { resource } = req.body || {};
-    // For PAYMENT.CAPTURE.* events `resource.id` is the capture id, not the
-    // order id. The related order id lives under supplementary_data.related_ids.
+    const body = req.body || {};
+    const { resource, event_type } = body;
+    logger.info({ event_type, id: body.id, resource_id: resource?.id }, 'Incoming PayPal Webhook received');
+
+    // Extract PayPal Order ID from different PayPal event formats:
     const paypalOrderId =
       resource?.supplementary_data?.related_ids?.order_id ||
+      resource?.order_id ||
+      (resource?.intent === 'CAPTURE' || resource?.intent === 'AUTHORIZE' ? resource?.id : null) ||
       resource?.id ||
-      req.body.paypal_order_id;
-    const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
+      body.paypal_order_id;
+
+    const orderId =
+      resource?.purchase_units?.[0]?.reference_id ||
+      resource?.custom_id ||
+      resource?.custom ||
+      (typeof req.query.order_id === 'string' ? req.query.order_id : undefined) ||
+      body.order_id;
 
     if (!paypalOrderId) {
+      logger.warn({ body }, 'Missing paypal_order_id in webhook payload');
       res.status(400).json({ error: { message: 'Missing paypal_order_id' } });
       return;
     }
 
     const { paypalProvider } = await import('../plugins/payment');
-    const signatureValid = await paypalProvider.verifyWebhookSignature(req.headers as Record<string, string>, req.body);
+    const rawVerification = await paypalProvider.verifyWebhookSignature(
+      req.headers as Record<string, string>,
+      body,
+    );
+    const signatureValid = typeof rawVerification === 'boolean'
+      ? rawVerification
+      : Boolean(rawVerification?.valid);
+    const mode = typeof rawVerification === 'object' && rawVerification?.mode
+      ? rawVerification.mode
+      : 'live';
+    const reason = typeof rawVerification === 'object' ? rawVerification?.reason : undefined;
 
     if (!signatureValid) {
-      logger.warn({ ip: req.ip }, 'PayPal webhook signature verification failed');
-      res.status(401).json({ error: { message: 'Invalid signature' } });
-      return;
+      if (mode === 'live' || reason !== 'missing_webhook_id') {
+        logger.warn({ ip: req.ip, reason }, 'PayPal webhook signature verification failed');
+        res.status(401).json({ error: { message: 'Invalid signature' } });
+        return;
+      }
+      logger.info(
+        { reason, mode, paypalOrderId },
+        'PayPal webhook signature check skipped — verifying order authenticity directly via PayPal OAuth2 REST API',
+      );
     }
+
+    const eventId = String(body.id || `wh_${paypalOrderId}_${Date.now()}`);
 
     await paymentService.processPaymentWebhook({
       gateway: PaymentGateway.PayPal,
-      gatewayEventId: String(paypalOrderId),
+      gatewayEventId: eventId,
+      gatewayReference: String(paypalOrderId),
       orderId: orderId ? String(orderId) : undefined,
-      rawPayload: req.body,
+      rawPayload: body,
       sourceIp: req.ip ?? undefined,
       signatureValid,
     });
