@@ -26,7 +26,7 @@ export class StorageService {
     const region = opts?.s3Region ?? config.storage?.s3Region ?? (r2AccountId ? 'auto' : config.s3?.region ?? 'us-east-1');
 
     this.bucket = opts?.r2Bucket ?? config.storage?.r2Bucket ?? config.s3?.bucketPublic ?? 'pandamarket';
-    this.cdnBaseUrl = opts?.cdnBaseUrl ?? config.storage?.cdnBaseUrl ?? 'https://cdn.pandamarket.tn';
+    this.cdnBaseUrl = opts?.cdnBaseUrl ?? process.env.PD_CDN_BASE_URL ?? config.storage?.cdnBaseUrl ?? 'https://cdn.garbage.team';
 
     if (accessKeyId && secretAccessKey && (customEndpoint || r2AccountId)) {
       this.s3 = new S3Client({
@@ -55,7 +55,7 @@ export class StorageService {
       throw new Error('Cloud storage (S3/R2) is not configured');
     }
 
-    const cleanKey = key.replace(/^\/+/, '');
+    const cleanKey = key.replace(/^\/+/, '').replace(/^pd-product-images\//, '');
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: cleanKey,
@@ -68,19 +68,28 @@ export class StorageService {
   async uploadBuffer(
     key: string,
     data: Buffer,
-    contentType: string,
+    contentType: string = 'image/webp',
+    cacheControl?: string,
   ): Promise<{ success: boolean; url: string; key: string }> {
     if (!this.s3) {
       throw new Error('Cloud storage (S3/R2) is not configured');
     }
 
-    const cleanKey = key.replace(/^\/+/, '');
+    const cleanKey = key.replace(/^\/+/, '').replace(/^pd-product-images\//, '');
+    const isWebp = contentType === 'image/webp' || cleanKey.endsWith('.webp');
+    const finalContentType = contentType || (isWebp ? 'image/webp' : 'application/octet-stream');
+    const defaultCacheControl = isWebp || cleanKey.includes('_')
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=86400';
+    const finalCacheControl = cacheControl || defaultCacheControl;
+
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: cleanKey,
         Body: data,
-        ContentType: contentType,
+        ContentType: finalContentType,
+        CacheControl: finalCacheControl,
       }),
     );
 
@@ -91,12 +100,28 @@ export class StorageService {
     };
   }
 
+  async upload(opts: {
+    file: Buffer;
+    key: string;
+    mimeType?: string;
+    contentType?: string;
+    acl?: string;
+    cacheControl?: string;
+  }): Promise<{ success: boolean; url: string; key: string }> {
+    return this.uploadBuffer(
+      opts.key,
+      opts.file,
+      opts.contentType || opts.mimeType || 'image/webp',
+      opts.cacheControl,
+    );
+  }
+
   async deleteObject(key: string): Promise<boolean> {
     if (!this.s3) {
       return false;
     }
 
-    const cleanKey = key.replace(/^\/+/, '');
+    const cleanKey = key.replace(/^\/+/, '').replace(/^pd-product-images\//, '');
     await this.s3.send(
       new DeleteObjectCommand({
         Bucket: this.bucket,
@@ -107,7 +132,7 @@ export class StorageService {
   }
 
   getPublicUrl(key: string): string {
-    const cleanKey = key.replace(/^\/+/, '');
+    const cleanKey = key.replace(/^\/+/, '').replace(/^pd-product-images\//, '');
     return `${this.cdnBaseUrl.replace(/\/+$/, '')}/${cleanKey}`;
   }
 }

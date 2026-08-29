@@ -19,6 +19,7 @@ import { startNotificationBatchWorker } from './workers/notification-batch.worke
 import { startDailyDigestWorker, scheduleDailyDigestCron } from './workers/daily-digest.worker';
 import { startPaymentReconciliationWorker } from './workers/payment-reconciliation.worker';
 import { startShipmentReconciliationWorker } from './workers/shipment-reconciliation.worker';
+import { startImageWorker } from './workers/image.worker';
 import { outboxWorker } from './workers/outbox.worker';
 import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
@@ -63,12 +64,13 @@ async function bootstrapWorker() {
     startDailyDigestWorker(),
     startPaymentReconciliationWorker(),
     startShipmentReconciliationWorker(),
-  ];
+    startImageWorker(),
+  ].filter(Boolean);
 
   // Start Transactional Outbox Poller
   outboxWorker.start();
 
-  logger.info('🤖 All 10 BullMQ workers + Outbox poller active in dedicated worker process.');
+  logger.info('🤖 All 11 BullMQ workers + Outbox poller active in dedicated worker process.');
 
   // Schedule Recurring Jobs
   try {
@@ -88,7 +90,7 @@ async function bootstrapWorker() {
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down background workers gracefully...');
     outboxWorker.stop();
-    await Promise.all(workers.map((w) => w.close().catch(() => {})));
+    await Promise.all(workers.map((w) => w?.close().catch(() => {})));
     logger.info('Worker process shutdown complete.');
     process.exit(0);
   };

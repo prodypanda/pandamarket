@@ -38,11 +38,13 @@ describe('PLAN-T3-05: Database Bytea Blob to Cloudflare R2 Migration Pipeline', 
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
-          id: 'blob_1',
-          asset_id: 'asset_1',
+          key: 'pd-product-images/products/store_1/cover.jpg',
+          bucket: 'pd-product-images',
           data: Buffer.from('fake-image-bytes'),
-          mime_type: 'image/jpeg',
-          file_name: 'cover.jpg',
+          content_type: 'image/jpeg',
+          asset_id: 'asset_1',
+          file_key: 'products/store_1/cover.jpg',
+          filename: 'cover.jpg',
         },
       ],
     });
@@ -63,11 +65,13 @@ describe('PLAN-T3-05: Database Bytea Blob to Cloudflare R2 Migration Pipeline', 
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
-          id: 'blob_1',
-          asset_id: 'asset_1',
+          key: 'pd-product-images/products/store_1/photo.webp',
+          bucket: 'pd-product-images',
           data: Buffer.from('fake-image-bytes'),
-          mime_type: 'image/webp',
-          file_name: 'photo.webp',
+          content_type: 'image/webp',
+          asset_id: 'asset_1',
+          file_key: 'products/store_1/photo.webp',
+          filename: 'photo.webp',
         },
       ],
     });
@@ -79,7 +83,7 @@ describe('PLAN-T3-05: Database Bytea Blob to Cloudflare R2 Migration Pipeline', 
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
     mockUpload.mockResolvedValueOnce({
-      url: 'https://cdn.pandamarket.tn/migrated/asset_1/photo.webp',
+      url: 'https://cdn.pandamarket.tn/products/store_1/photo.webp',
     });
 
     const result = await runBlobMigrationToR2({ dryRun: false });
@@ -88,7 +92,7 @@ describe('PLAN-T3-05: Database Bytea Blob to Cloudflare R2 Migration Pipeline', 
 
     expect(mockUpload).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: 'migrated/asset_1/photo.webp',
+        key: 'products/store_1/photo.webp',
         mimeType: 'image/webp',
       }),
     );

@@ -40,16 +40,19 @@ export async function runBlobMigrationToR2(options: { dryRun?: boolean; batchSiz
 
   while (true) {
     const { rows: batch } = await query<{
-      id: string;
-      asset_id: string;
+      key: string;
+      bucket: string;
       data: Buffer;
-      mime_type: string;
-      file_name: string;
+      content_type: string;
+      asset_id: string | null;
+      file_key: string | null;
+      filename: string | null;
     }>(
-      `SELECT b.id, b.asset_id, b.data, COALESCE(b.mime_type, 'image/jpeg') AS mime_type, COALESCE(a.file_name, 'asset.jpg') AS file_name
+      `SELECT b.key, b.bucket, b.data, COALESCE(b.content_type, 'image/jpeg') AS content_type,
+              a.id AS asset_id, a.file_key, COALESCE(a.filename, 'asset.jpg') AS filename
        FROM pd_file_blobs b
-       LEFT JOIN pd_file_asset a ON a.id = b.asset_id
-       ORDER BY b.id ASC
+       LEFT JOIN pd_file_asset a ON (a.file_key = b.key OR a.file_key = REPLACE(b.key, b.bucket || '/', '') OR a.url LIKE '%' || b.key)
+       ORDER BY b.key ASC
        LIMIT $1`,
       [batchSize],
     );
@@ -61,38 +64,39 @@ export async function runBlobMigrationToR2(options: { dryRun?: boolean; batchSiz
       try {
         const fileBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
         const checksum = crypto.createHash('md5').update(fileBuffer).digest('hex');
-        const key = `migrated/${row.asset_id || row.id}/${row.file_name}`;
+        const cleanKey = row.key.replace(/^(pd-product-images|pd-private-files|pd-themes|pandamarket)\//, '');
+        const targetKey = row.file_key || cleanKey || `migrated/${row.asset_id || checksum}/${row.filename}`;
 
         if (!dryRun) {
           // Upload to R2
           const uploadResult = await storageService.upload({
             file: fileBuffer,
-            key,
-            mimeType: row.mime_type,
+            key: targetKey,
+            mimeType: row.content_type,
+            contentType: row.content_type,
             acl: 'public-read',
           });
 
           // Update asset record
-          if (row.asset_id) {
+          if (row.asset_id || row.file_key) {
             await query(
               `UPDATE pd_file_asset
                SET url = $1,
-                   storage_provider = 'r2',
                    updated_at = NOW()
-               WHERE id = $2`,
-              [uploadResult.url, row.asset_id],
+               WHERE id = $2 OR file_key = $3`,
+              [uploadResult.url, row.asset_id, row.file_key || targetKey],
             );
           }
 
           // Purge migrated blob row
-          await query(`DELETE FROM pd_file_blobs WHERE id = $1`, [row.id]);
+          await query(`DELETE FROM pd_file_blobs WHERE key = $1`, [row.key]);
         }
 
         totalMigrated++;
-        logger.debug({ id: row.id, asset_id: row.asset_id, checksum }, 'Migrated blob to R2');
+        logger.debug({ key: row.key, asset_id: row.asset_id, checksum }, 'Migrated blob to R2');
       } catch (err) {
         totalErrors++;
-        logger.error({ err, id: row.id }, 'Failed to migrate blob row');
+        logger.error({ err, key: row.key }, 'Failed to migrate blob row');
       }
     }
 

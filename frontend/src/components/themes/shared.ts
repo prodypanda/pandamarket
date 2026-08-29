@@ -18,6 +18,7 @@ import {
 } from '../../lib/themes';
 import { selectLogoForSurface, type LogoSurface } from '../../lib/public-assets';
 import type { StorefrontProductLoadingMode } from '@pandamarket/types';
+import { getResizedImageUrl, ImageVariantSize } from '@/lib/image-url';
 
 export interface StoreProduct {
   id: string;
@@ -43,9 +44,7 @@ export function formatStorePrice(productOrPrice: StoreProduct | StoreProduct['pr
   return `${Number.isFinite(amount) ? amount.toFixed(3) : '0.000'} TND`;
 }
 
-import { getResizedImageUrl, ImageVariantSize } from '@/lib/image-url';
-
-export function getStoreProductImage(product: StoreProduct, size: ImageVariantSize = 'original'): string {
+export function getStoreProductImage(product: StoreProduct, size: ImageVariantSize = 'small'): string {
   let url = product.thumbnail || '';
   const first = product.images?.[0];
   if (typeof first === 'string') {
@@ -56,7 +55,6 @@ export function getStoreProductImage(product: StoreProduct, size: ImageVariantSi
   
   return getResizedImageUrl(url, size);
 }
-
 
 function slugSegment(value?: string | null): string {
   return (value || 'non-categorized-products')
@@ -242,4 +240,3 @@ export function colorVars(colors: ResolvedColors): React.CSSProperties {
     '--tc-footer-bg': colors.footerBg,
   } as React.CSSProperties;
 }
-

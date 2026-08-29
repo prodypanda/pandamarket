@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import crypto from 'crypto';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { getDataDir } from './utils/data-dir';
@@ -71,6 +72,7 @@ import { startNotificationBatchWorker } from './workers/notification-batch.worke
 import { startDailyDigestWorker, scheduleDailyDigestCron } from './workers/daily-digest.worker';
 import { startPaymentReconciliationWorker } from './workers/payment-reconciliation.worker';
 import { startShipmentReconciliationWorker } from './workers/shipment-reconciliation.worker';
+import { startImageWorker } from './workers/image.worker';
 import { outboxWorker } from './workers/outbox.worker';
 import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
@@ -256,14 +258,32 @@ async function bootstrap() {
     res.redirect(`/${bucket}/${fileKey}`);
   });
 
+  const sendImageBufferWithHeaders = (
+    req: express.Request,
+    res: express.Response,
+    buffer: Buffer,
+    contentType: string,
+  ) => {
+    const etag = `"${crypto.createHash('md5').update(buffer).digest('hex')}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('ETag', etag);
+    res.status(200).send(buffer);
+  };
+
   app.use('/pd-product-images', express.static(path.join(getDataDir(), 'pd-product-images')));
   app.use('/pd-themes', express.static(path.join(getDataDir(), 'pd-themes')));
+  app.use('/pandamarket', express.static(path.join(getDataDir(), 'pandamarket')));
 
   // Restore static image files from Supabase PostgreSQL database pd_file_blobs if missing on disk after a deploy,
   // or generate multi-size variants on-the-fly if requested variant is missing.
-  app.use(['/pd-product-images', '/pd-themes'], async (req, res, next) => {
+  app.use(['/pd-product-images', '/pd-themes', '/pandamarket'], async (req, res, next) => {
     try {
-      const bucket = req.baseUrl.replace(/^\//, '');
+      const bucket = req.baseUrl.replace(/^\//, '') || 'pd-product-images';
       let cleanKey = req.path.replace(/^\//, '');
       if (cleanKey.startsWith(`${bucket}/`)) {
         cleanKey = cleanKey.substring(bucket.length + 1);
@@ -277,24 +297,36 @@ async function bootstrap() {
         [key1, key2],
       );
 
-      if (rows.length > 0) {
-        const filePath = path.join(getDataDir(), bucket, cleanKey);
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-        await fs.promises.writeFile(filePath, rows[0].data);
-        res.setHeader('Content-Type', rows[0].content_type || 'image/jpeg');
-        res.send(rows[0].data);
+      if (rows.length > 0 && rows[0].data && rows[0].data.length > 0) {
+        try {
+          const filePath = path.join(getDataDir(), bucket, cleanKey);
+          await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.promises.writeFile(filePath, rows[0].data);
+        } catch {
+          // Ignore disk cache write failure
+        }
+        sendImageBufferWithHeaders(req, res, rows[0].data, rows[0].content_type || 'image/jpeg');
         return;
       }
 
       // 2. Try on-the-fly size variant generation if a preset suffix was requested
-      const generated = await imageVariantService.getOrGenerateVariantOnTheFly(bucket, cleanKey);
-      if (generated) {
-        res.setHeader('Content-Type', generated.contentType);
-        res.send(generated.buffer);
-        return;
+      const isVariant = /_(thumbnail|small|medium|large)\.webp$/i.test(cleanKey);
+      if (isVariant) {
+        const generated = await imageVariantService.getOrGenerateVariantOnTheFly(bucket, cleanKey);
+        if (generated && generated.buffer && generated.buffer.length > 0) {
+          try {
+            const filePath = path.join(getDataDir(), bucket, cleanKey);
+            await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+            await fs.promises.writeFile(filePath, generated.buffer);
+          } catch {
+            // Ignore disk cache write failure
+          }
+          sendImageBufferWithHeaders(req, res, generated.buffer, generated.contentType || 'image/webp');
+          return;
+        }
       }
-    } catch {
-      // Pass to next middleware / 404 handler
+    } catch (err) {
+      logger.warn({ err, path: req.path }, 'Error in static image fallback handler');
     }
     next();
   });
@@ -553,12 +585,13 @@ async function bootstrap() {
         startDailyDigestWorker(),
         startPaymentReconciliationWorker(),
         startShipmentReconciliationWorker(),
-      ];
+        startImageWorker(),
+      ].filter(Boolean);
 
       const shutdownWorkers = async () => {
         logger.info('Shutting down in-process background workers...');
         outboxWorker.stop();
-        await Promise.all(workers.map((w) => w.close().catch(() => {})));
+        await Promise.all(workers.map((w) => w?.close().catch(() => {})));
       };
 
       // Audit P1-11: the outbox worker was fully built and tested but never
@@ -571,7 +604,7 @@ async function bootstrap() {
       process.on('SIGINT', async () => {
         await shutdownWorkers();
       });
-      logger.info('🤖 All background workers successfully started in-process (10 BullMQ workers + outbox poller).');
+      logger.info('🤖 All background workers successfully started in-process (11 BullMQ workers + outbox poller).');
 
       // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
       // Non-blocking: don't let Redis queue scheduling hang the bootstrap.

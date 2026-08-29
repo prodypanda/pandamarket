@@ -33,10 +33,10 @@ PandaMarket uses a multi-tier, high-performance image processing, storage, and d
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Multi-Size WebP Variant Generation & Cloudflare R2 Sync | Core Sharp WebP generation (4 presets), R2 upload with WebP content-type & immutable cache-control headers, platform settings integration (`image_quality_webp`), DB persistence (`pd_file_blobs`, `pd_file_asset`). | none | PLANNED |
-| M2 | Asynchronous Post-Upload Trigger & BullMQ Worker | `pd_image_queue`, `image.worker.ts`, integration into `main.ts` and `worker.ts`, post-upload endpoint `/api/pd/files/process-variants`, and product image update hooks. | M1 | PLANNED |
-| M3 | Dynamic On-The-Fly Generation & Edge Fallback Handler | Express static fallback middleware in `main.ts`, `imageVariantService.getOrGenerateVariantOnTheFly`, single-flight promise deduplication for concurrent requests, zero 404 guarantee. | M1 | PLANNED |
-| M4 | Frontend Multi-Size WebP Integration & Storefront Parity | `frontend/src/lib/image-url.ts`, `frontend/src/components/themes/shared.ts` (18 themes), product cards, gallery, hero banners, cart, and dashboard views. | M1, M3 | PLANNED |
+| M1 | Multi-Size WebP Variant Generation & Cloudflare R2 Sync | Core Sharp WebP generation (4 presets), R2 upload with WebP content-type & immutable cache-control headers, platform settings integration (`image_quality_webp`), DB persistence (`pd_file_blobs`, `pd_file_asset`). | none | DONE |
+| M2 | Asynchronous Post-Upload Trigger & BullMQ Worker | `pd_image_queue`, `image.worker.ts`, integration into `main.ts` and `worker.ts`, post-upload endpoint `/api/pd/files/process-variants`, and product image update hooks. | M1 | DONE |
+| M3 | Dynamic On-The-Fly Generation & Edge Fallback Handler | Express static fallback middleware in `main.ts`, `imageVariantService.getOrGenerateVariantOnTheFly`, single-flight promise deduplication for concurrent requests, zero 404 guarantee. | M1 | DONE |
+| M4 | Frontend Multi-Size WebP Integration & Storefront Parity | `frontend/src/lib/image-url.ts`, `frontend/src/components/themes/shared.ts` (18 themes), product cards, gallery, hero banners, cart, and dashboard views. | M1, M3 | DONE |
 | M5 | Comprehensive Test Verification, Challenger Testing & Forensic Audit | Backend Vitest suite, frontend Vitest suite, Challenger stress testing, and Forensic integrity audit. | M1, M2, M3, M4 | PLANNED |
 
 ---
@@ -84,7 +84,7 @@ export interface ImageProcessingJobData {
 }
 
 export const imageQueue: Queue<ImageProcessingJobData>;
-export function enqueueImageVariantGeneration(data: ImageProcessingJobData): Promise<Job<ImageProcessingJobData>>;
+export function enqueueImageVariantGeneration(data: ImageProcessingJobData): Promise<Job<ImageProcessingJobData> | null>;
 ```
 
 ### 3. Post-Upload API Contract (`POST /api/pd/files/process-variants`)
@@ -93,13 +93,15 @@ export function enqueueImageVariantGeneration(data: ImageProcessingJobData): Pro
   ```json
   {
     "file_key": "products/store_123/file_abc.jpg",
-    "bucket": "pandamarket"
+    "bucket": "pandamarket",
+    "async": true
   }
   ```
 - **Response (200 OK)**:
   ```json
   {
     "ok": true,
+    "success": true,
     "enqueued": true,
     "file_key": "products/store_123/file_abc.jpg",
     "variants": [
@@ -125,27 +127,28 @@ export function getResizedImageUrl(
 ---
 
 ## Code Layout & Write Ownership
-- **Milestone 1**:
+- **Milestone 1** (DONE):
   - `backend/src/services/image-variant.service.ts`
   - `backend/src/services/storage.service.ts`
   - `backend/src/services/platform-config.service.ts`
   - `backend/src/api/admin/settings.routes.ts`
-- **Milestone 2**:
+- **Milestone 2** (DONE):
   - `backend/src/queues/image-queue.ts`
   - `backend/src/workers/image.worker.ts`
   - `backend/src/main.ts`
   - `backend/src/worker.ts`
   - `backend/src/api/files.route.ts`
-  - `backend/src/services/product.service.ts`
-- **Milestone 3**:
-  - `backend/src/services/image-variant.service.ts` (concurrency deduplication & on-the-fly generation)
+  - `backend/src/__tests__/image-queue.test.ts`
+- **Milestone 3** (DONE):
+  - `backend/src/services/image-variant.service.ts` (concurrency single-flight deduplication & on-the-fly generation)
   - `backend/src/main.ts` (express dynamic fallback middleware)
-- **Milestone 4**:
+  - `backend/src/__tests__/image-fallback.test.ts`
+- **Milestone 4** (DONE):
   - `frontend/src/lib/image-url.ts`
   - `frontend/src/components/themes/shared.ts`
   - `frontend/src/components/store/ProductCard.tsx`
   - `frontend/src/components/product/ProductGallery.tsx`
-- **Milestone 5**:
-  - `backend/src/__tests__/image-variant.service.test.ts`
-  - `backend/src/__tests__/image-queue.test.ts`
   - `frontend/src/__tests__/image-url.test.ts`
+  - `frontend/src/__tests__/challenger-m4-adversarial.test.tsx`
+- **Milestone 5**:
+  - Full backend and frontend verification & regression suites

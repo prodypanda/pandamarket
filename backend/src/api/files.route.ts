@@ -20,6 +20,7 @@ import { logger } from '../utils/logger';
 import { PdValidationError, PdErrorCode, PdForbiddenError, PdAuthenticationError } from '../errors';
 import { fileAssetService } from '../services/file-asset.service';
 import { imageVariantService } from '../services/image-variant.service';
+import { enqueueImageVariantGeneration } from '../queues/image-queue';
 import { resolveDataPath } from '../utils/data-dir';
 import { reportService } from '../services/report.service';
 import { chatService } from '../services/chat.service';
@@ -298,6 +299,7 @@ router.post(
 const processVariantsSchema = z.object({
   file_key: z.string().min(1).max(1024),
   bucket: z.string().max(255).optional(),
+  async: z.boolean().optional(),
 });
 
 /**
@@ -310,18 +312,73 @@ router.post(
   requireAuth,
   validate(processVariantsSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { file_key, bucket } = req.body;
+    const { file_key, bucket, async: isAsync } = req.body;
     const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
-    const targetBucket = bucket || (isR2 ? (config.storage.r2Bucket || 'pandamarket') : config.s3.bucketPublic);
+    const targetBucket =
+      bucket || (isR2 ? (config.storage.r2Bucket || 'pandamarket') : config.s3.bucketPublic);
 
-    logger.info({ file_key, targetBucket, user_id: req.user!.id }, 'Processing multi-size WebP variants');
+    const cdnBase = (
+      process.env.PD_CDN_BASE_URL ||
+      config.storage.cdnBaseUrl ||
+      'https://cdn.garbage.team'
+    ).replace(/\/+$/, '');
+    const { baseKeyWithoutExt } = imageVariantService.getBaseKeyAndExtension(file_key, targetBucket);
+
+    const expectedVariants = (['thumbnail', 'small', 'medium', 'large'] as const).map((preset) => {
+      const key = imageVariantService.getVariantKey(baseKeyWithoutExt, preset);
+      return {
+        name: preset,
+        key,
+        url: `${cdnBase}/${key}`,
+      };
+    });
+
+    // If async is not explicitly false, enqueue to BullMQ imageQueue
+    if (isAsync !== false) {
+      logger.info(
+        { file_key, targetBucket, user_id: req.user!.id },
+        'Enqueuing multi-size WebP variants generation',
+      );
+
+      const job = await enqueueImageVariantGeneration({
+        fileKey: file_key,
+        bucket: targetBucket,
+        userId: req.user!.id,
+        storeId: req.user!.store_id ?? undefined,
+      });
+
+      if (job) {
+        res.status(200).json({
+          ok: true,
+          success: true,
+          enqueued: true,
+          file_key,
+          variants: expectedVariants,
+        });
+        return;
+      }
+
+      logger.warn(
+        { file_key, targetBucket },
+        'Queue dispatch failed or Redis unavailable; falling back to synchronous variant generation',
+      );
+    }
+
+    // Synchronous generation (or fallback if queue dispatch returned null)
+    logger.info(
+      { file_key, targetBucket, user_id: req.user!.id },
+      'Processing multi-size WebP variants synchronously',
+    );
 
     const summary = await imageVariantService.generateVariantsForFileKey(file_key, targetBucket);
 
     res.status(200).json({
+      ok: summary.success,
       success: summary.success,
+      enqueued: false,
       file_key: summary.base_key,
-      variants: summary.variants_generated,
+      variants: expectedVariants,
+      variants_generated: summary.variants_generated,
     });
   }),
 );

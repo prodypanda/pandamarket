@@ -3,8 +3,8 @@ import { getResizedImageUrl } from '../image-url';
 
 describe('getResizedImageUrl', () => {
   it('returns fallback when url is empty or null', () => {
-    expect(getResizedImageUrl(null)).toBe('/placeholder-product.png');
-    expect(getResizedImageUrl('')).toBe('/placeholder-product.png');
+    expect(getResizedImageUrl(null)).toBe('/placeholder.svg');
+    expect(getResizedImageUrl('')).toBe('/placeholder.svg');
     expect(getResizedImageUrl('   ', 'large', '/custom-fallback.png')).toBe('/custom-fallback.png');
   });
 
