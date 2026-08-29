@@ -234,22 +234,19 @@ export default function SellerMediaPage() {
         throw new Error(t('dashboardPages.media.errorUploadFailed'));
       }
 
-      // Auto-optimize to WebP in background if JPEG/PNG
-      if (presignData.file_key && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+      // Auto-generate multi-size WebP variants and sync to R2 in background
+      if (presignData.file_key) {
         try {
-          await fetchWithCsrf('/api/pd/stores/me/media/optimize', {
+          await fetchWithCsrf('/api/pd/files/process-variants', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              key: presignData.file_key,
-              quality: 82,
-              maxWidth: 1600,
-              format: 'webp',
+              file_key: presignData.file_key,
             }),
           });
         } catch {
-          // Non-blocking optimization
+          // Non-blocking variant generation
         }
       }
 

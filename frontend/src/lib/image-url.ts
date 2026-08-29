@@ -39,21 +39,18 @@ export function getResizedImageUrl(
     return trimmed;
   }
 
-  // Remote CDN and Cloudflare R2 URLs: serve original URL directly (prevents 404 on static object storage)
-  if (
+  // Only apply suffix to local / proxied product images, CDN, or Cloudflare R2 storage
+  const isBackendOrCdnImage =
+    trimmed.includes('/pd-product-images/') ||
+    trimmed.includes('/api/files/') ||
+    trimmed.includes('/uploads/') ||
     trimmed.includes('cdn.garbage.team') ||
     trimmed.includes('cdn.pandamarket.tn') ||
     trimmed.includes('.r2.cloudflarestorage.com') ||
-    trimmed.includes('.r2.dev') ||
-    (trimmed.startsWith('https://') && !trimmed.includes('/pd-product-images/'))
-  ) {
-    return trimmed;
-  }
+    trimmed.includes('.r2.dev');
 
-  // Only apply suffix to local / proxied product images (/pd-product-images/)
-  const isLocalBackendImage = trimmed.includes('/pd-product-images/') || trimmed.includes('/api/files/') || trimmed.includes('/uploads/');
-  if (!isLocalBackendImage) {
-    // Return static assets (e.g. /logo.png) and external URLs as-is
+  if (!isBackendOrCdnImage) {
+    // Return external static assets (e.g. Unsplash, Pexels) as-is
     return trimmed;
   }
 

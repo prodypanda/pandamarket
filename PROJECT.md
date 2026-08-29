@@ -1,109 +1,151 @@
-# Project: PandaMarket Superadmin Marketplace Products Management & Tagging Hub
+# Project: PandaMarket Automated Image Compression & Multi-Size WebP Cloudflare R2 Pipeline
 
 ## Architecture
-- **Backend API Layer**: Express.js router at `backend/src/api/admin.route.ts` protected by `requireAuth` and `requireAdmin` middlewares. Exposes `GET /api/pd/admin/products` and `PATCH /api/pd/admin/products/:id/tags`.
-- **Database Layer**: PostgreSQL database containing `pd_product`, `pd_store`, `pd_marketplace_category`, `pd_storefront_category`, `pd_product_image`, `pd_product_variant`, and `pd_audit_log`. Uses parameterized queries, `LEFT JOIN LATERAL` with `json_agg` for complete relational graphs, and GIN indexed tag searches.
-- **Frontend UI Layer**: Next.js 15 App Router page at `frontend/src/app/(admin)/products/page.tsx`. Built with Tailwind CSS, Lucide icons, responsive dual-view (Administrative Data Table & Visual Grid Cards), multi-faceted filter & search controls, and slide-out Product Inspection & AI Tagging Drawer.
-- **Navigation & I18n Layer**: Admin sidebar in `frontend/src/app/(admin)/layout.tsx` under CATALOG & CONTENT with active route highlighting, flyout menus, and synchronized multilingual strings across English (`en.json`), French (`fr.json`), and Arabic (`ar.json`) with full RTL layout support.
+PandaMarket uses a multi-tier, high-performance image processing, storage, and distribution architecture:
+1. **Master Upload Layer**: Direct browser-to-Cloudflare R2 presigned upload (`/api/pd/files/presign`) or local S3 mock endpoint (`/api/pd/files/upload-s3-mock/:bucket/*`), registering asset records in `pd_file_asset`.
+2. **Asynchronous Processing Layer**: BullMQ queue (`pd_image_queue`) and worker (`backend/src/workers/image.worker.ts`), triggered post-upload (`/api/pd/files/process-variants`) or on product save/update.
+3. **Sharp Processing Engine (`backend/src/services/image-variant.service.ts`)**: Generates 4 WebP variants (`thumbnail` 150x150 cover, `small` 300x300 fit, `medium` 600x600 fit, `large` 1200x1200 fit) with dynamic quality from `image_quality_webp` platform settings.
+4. **Multi-Tier Persistence & Distribution Layer**:
+   - Cloudflare R2 Object Storage (`pandamarket` bucket) with `ContentType: image/webp` and `Cache-Control: public, max-age=31536000, immutable`.
+   - CDN Edge (`https://cdn.garbage.team` / `https://cdn.pandamarket.tn`).
+   - Database Blobs fallback (`pd_file_blobs`).
+   - Local disk cache (`resolveDataPath`).
+5. **Dynamic On-The-Fly & Edge Fallback**: `imageVariantService.getOrGenerateVariantOnTheFly` with single-flight request deduplication prevents 404s when ungenerated variants are requested.
+6. **Frontend & Storefront Distribution**: `frontend/src/lib/image-url.ts` resolves CDN/R2 WebP variants (`_thumbnail.webp`, `_small.webp`, `_medium.webp`, `_large.webp`), powering 18 theme storefronts, product galleries, hero banners, and dashboard components.
+
+---
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Superadmin Auth & Role Enforcement | Require JWT session with Superadmin/Admin role (HTTP 401/403 for unauthorized). | M1 | ORIGINAL_REQUEST §R1 |
-| 2 | Product Catalog Query & Pagination | `GET /api/pd/admin/products` with `page` (default 1) and `limit` (default 20, max 100), total count, and total pages. | M1 | ORIGINAL_REQUEST §R1 |
-| 3 | Multi-axis Product Sorting | Sort by `created_at` (newest/oldest), `price` (asc/desc), `title` (asc/desc), `inventory_quantity` (asc/desc), `store_name` (asc/desc). | M1 | ORIGINAL_REQUEST §R1 |
-| 4 | Universal Text Search | Parameterized text search matching product title, description, SKU, vendor tags, AI interest tags, and store name. | M1 | ORIGINAL_REQUEST §R1 |
-| 5 | Multi-faceted Filtering | Filter by `status`, `marketplace_category_id`, `store_id`, `product_type` (physical/digital/service), `stock_status` (all/in_stock/low_stock/out_of_stock), `ai_tagged`. | M1 | ORIGINAL_REQUEST §R1 |
-| 6 | Comprehensive Entity Hydration | Return images array, variants array, full store object, marketplace & storefront category objects, vendor tags (`tags` JSONB), AI interest tags (`interest_tags` text[]). | M1 | ORIGINAL_REQUEST §R1 |
-| 7 | Summary Metrics Aggregation | Return platform metrics header: `total_products`, `published_count`, `pending_count`, `draft_count`, `rejected_count`, `archived_count`, `out_of_stock_count`, `low_stock_count`, `ai_tagged_count`. | M1 | ORIGINAL_REQUEST §R1 |
-| 8 | Product Tag Management API | `PATCH /api/pd/admin/products/:id/tags` to update vendor `tags` and AI `interest_tags` with Zod validation, normalization, and audit logging. | M1 | ORIGINAL_REQUEST §R1 |
-| 9 | Dual View Modes (Table vs Grid) | Seamless switch between high-density Administrative Data Table and visual Grid Cards view, preserving filter/pagination state. | M2 | ORIGINAL_REQUEST §R2 |
-| 10 | Product Visual Details & Badges | Thumbnail with fallback icon and hover zoom, gallery counter badge, title, slug/ID copy button, product type badge, category path accent badge, status pills. | M2 | ORIGINAL_REQUEST §R2 |
-| 11 | Storefront Identity & Live Links | Store name, verified merchant badge, and 1-click external link to live store domain (`https://${store}.garbage.team/products/${slug}`). | M2 | ORIGINAL_REQUEST §R2 |
-| 12 | Price & Stock Level Indicators | TND currency formatting (3 decimal places) and color-coded stock level badges (green for in stock, amber for low stock <= 5, red for out of stock). | M2 | ORIGINAL_REQUEST §R2 |
-| 13 | Interactive Product Inspection Drawer | Slide-out drawer displaying 6 tabbed panels: Overview & Images, Variants Breakdown Table, Attributes & Specs, SEO & Taxonomy, Store Info, and AI Tag Studio. | M2 | ORIGINAL_REQUEST §R2 |
-| 14 | In-Drawer AI & Vendor Tag Studio | In-drawer tag manager allowing administrators to view, add, remove, and persist vendor tags and AI interest tags via PATCH API. | M2 | ORIGINAL_REQUEST §R2 |
-| 15 | Universal Search & Filter Bar | Debounced text search, category dropdown, store dropdown, status tabs, stock filter, product type filter, sort selector, and pagination controls. | M2 | ORIGINAL_REQUEST §R2 |
-| 16 | Admin Sidebar Navigation Link | Register "Marketplace Products" (`/products`) under CATALOG & CONTENT in `frontend/src/app/(admin)/layout.tsx` with `Package` icon, active highlight, and flyout support. | M2 | ORIGINAL_REQUEST §R3 |
-| 17 | Multilingual Localization (EN, FR, AR) | Complete translation keys for `admin.sidebar.marketplaceProducts` and `admin.products.*` across `en.json`, `fr.json`, and `ar.json` with RTL layout support. | M2 | ORIGINAL_REQUEST §R3 |
-| 18 | Automated Test Suite (Unit/Integration) | Backend Vitest tests for admin routes and Frontend Vitest tests for products page components and tag editing interactions. | M3 | ORIGINAL_REQUEST §Acceptance Criteria |
-| 19 | E2E & Forensic Verification | Playwright E2E test suite + Forensic Integrity Audit verifying zero cheating, real database interaction, and correct functionality. | M3 | ORIGINAL_REQUEST §Acceptance Criteria |
+| 1 | Multi-Size WebP Variant Generation | Sharp generates 4 WebP variants (`thumbnail` 150x150 cover, `small` 300x300 inside, `medium` 600x600 inside, `large` 1200x1200 inside) adhering to platform settings (`image_quality_webp`, dimensions, crop modes). | M1 | ORIGINAL_REQUEST §R1 |
+| 2 | Direct Cloudflare R2 Sync | Upload generated WebP variants directly to Cloudflare R2 (`pandamarket`) with `ContentType: image/webp`, `Cache-Control: public, max-age=31536000, immutable`, and CDN URLs (`https://cdn.garbage.team/...`). | M1 | ORIGINAL_REQUEST §R1 |
+| 3 | Metadata & DB Persistence | Persist variants and metadata into `pd_file_blobs` and `pd_file_asset` JSONB metadata. | M1 | ORIGINAL_REQUEST §R1, R2 |
+| 4 | BullMQ Async Processing Queue & Worker | Create `pd_image_queue` (`imageQueue`) and `image.worker.ts` with exponential backoff and dual runtime support (`main.ts` & `worker.ts`). | M2 | ORIGINAL_REQUEST §R2 |
+| 5 | Post-Upload Processing Triggers | Automatic trigger on presigned upload completion (`POST /api/pd/files/process-variants`) and product save/update hooks. | M2 | ORIGINAL_REQUEST §R2 |
+| 6 | Dynamic On-The-Fly Generation & Edge Fallback | Dynamic handler (`getOrGenerateVariantOnTheFly`) and single-flight concurrency lock in Express middleware to serve requested variants with HTTP 200 without 404s. | M3 | ORIGINAL_REQUEST §R3 |
+| 7 | Frontend Multi-Size WebP URL Resolution | Update `getResizedImageUrl` in `frontend/src/lib/image-url.ts` to generate CDN/R2 WebP variants while preserving non-resizable asset exclusions. | M4 | ORIGINAL_REQUEST §R4 |
+| 8 | Storefront Themes & UI Component Integration | Update `frontend/src/components/themes/shared.ts` (18 themes) and storefront/dashboard image consumers to render exact WebP variant sizes. | M4 | ORIGINAL_REQUEST §R4 |
+| 9 | Comprehensive Test Suite & Regression Safety | Unit, integration, and E2E test suites for backend image pipeline, BullMQ workers, R2 uploads, frontend URL resolution, and regression protection. | M5 | ORIGINAL_REQUEST §Acceptance Criteria |
+
+---
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | M1: Superadmin Products Backend API | Implement `GET /api/pd/admin/products` and `PATCH /api/pd/admin/products/:id/tags` in `backend/src/api/admin.route.ts` with Zod validation, multi-axis search/filter/sort, metrics, and audit logging. | none | IN_PROGRESS |
-| 2 | M2: Admin Products UI, Navigation & I18n | Implement `frontend/src/app/(admin)/products/page.tsx`, dual Table/Grid views, inspection drawer, tag studio, sidebar navigation in `layout.tsx`, and EN/FR/AR translations. | M1 | PLANNED |
-| 3 | M3: E2E Verification & Adversarial Hardening | Comprehensive automated test execution (Vitest backend, Vitest frontend, Playwright E2E), multi-tier validation, and Forensic Integrity Audit. | M1, M2 | PLANNED |
+| M1 | Multi-Size WebP Variant Generation & Cloudflare R2 Sync | Core Sharp WebP generation (4 presets), R2 upload with WebP content-type & immutable cache-control headers, platform settings integration (`image_quality_webp`), DB persistence (`pd_file_blobs`, `pd_file_asset`). | none | PLANNED |
+| M2 | Asynchronous Post-Upload Trigger & BullMQ Worker | `pd_image_queue`, `image.worker.ts`, integration into `main.ts` and `worker.ts`, post-upload endpoint `/api/pd/files/process-variants`, and product image update hooks. | M1 | PLANNED |
+| M3 | Dynamic On-The-Fly Generation & Edge Fallback Handler | Express static fallback middleware in `main.ts`, `imageVariantService.getOrGenerateVariantOnTheFly`, single-flight promise deduplication for concurrent requests, zero 404 guarantee. | M1 | PLANNED |
+| M4 | Frontend Multi-Size WebP Integration & Storefront Parity | `frontend/src/lib/image-url.ts`, `frontend/src/components/themes/shared.ts` (18 themes), product cards, gallery, hero banners, cart, and dashboard views. | M1, M3 | PLANNED |
+| M5 | Comprehensive Test Verification, Challenger Testing & Forensic Audit | Backend Vitest suite, frontend Vitest suite, Challenger stress testing, and Forensic integrity audit. | M1, M2, M3, M4 | PLANNED |
+
+---
 
 ## Interface Contracts
-### Backend ↔ Frontend API Contract
-#### `GET /api/pd/admin/products`
-- **Query Parameters**:
-  - `page`: integer (min: 1, default: 1)
-  - `limit`: integer (min: 1, max: 100, default: 20)
-  - `search`: string (optional, searches title, description, SKU, tags, interest_tags, store name)
-  - `status`: enum (`all`, `published`, `draft`, `pending_approval`, `rejected`, `archived`)
-  - `marketplace_category_id`: string UUID (optional)
-  - `store_id`: string UUID (optional)
-  - `product_type`: enum (`all`, `physical`, `digital`, `service`)
-  - `stock_status`: enum (`all`, `in_stock`, `low_stock`, `out_of_stock`)
-  - `ai_tagged`: enum (`all`, `tagged`, `untagged`)
-  - `sort_by`: enum (`created_at`, `price`, `title`, `inventory_quantity`, `store_name`)
-  - `sort_order`: enum (`asc`, `desc`)
-- **Response Format** (`HTTP 200 OK`):
-  ```typescript
-  {
-    success: true,
-    data: AdminProductRecord[],
-    pagination: {
-      page: number,
-      limit: number,
-      total: number,
-      total_pages: number
-    },
-    metrics: {
-      total_products: number,
-      published_count: number,
-      pending_count: number,
-      draft_count: number,
-      rejected_count: number,
-      archived_count: number,
-      out_of_stock_count: number,
-      low_stock_count: number,
-      ai_tagged_count: number
-    }
-  }
-  ```
 
-#### `PATCH /api/pd/admin/products/:id/tags`
-- **Path Parameter**: `id` (product UUID)
+### 1. `ImageVariantService` Interface (`backend/src/services/image-variant.service.ts`)
+```typescript
+export interface ImageVariantPreset {
+  name: 'thumbnail' | 'small' | 'medium' | 'large';
+  width: number;
+  height: number;
+  crop: 'cover' | 'inside';
+  quality?: number;
+}
+
+export interface GeneratedVariant {
+  name: 'thumbnail' | 'small' | 'medium' | 'large';
+  key: string;
+  url: string;
+  width: number;
+  height: number;
+  size: number;
+  format: 'webp';
+  buffer?: Buffer;
+}
+
+export interface ImageVariantService {
+  getPresetConfigs(): Promise<Record<string, ImageVariantPreset>>;
+  generateVariantsForBuffer(buffer: Buffer, bucket: string, rawKey: string): Promise<GeneratedVariant[]>;
+  generateVariantsFromR2(bucket: string, fileKey: string): Promise<GeneratedVariant[]>;
+  generateVariantsForFileKey(rawKey: string, bucket?: string): Promise<GeneratedVariant[]>;
+  getOrGenerateVariantOnTheFly(bucket: string, requestedKey: string): Promise<{ buffer: Buffer; contentType: string } | null>;
+}
+```
+
+### 2. BullMQ Image Queue Interface (`backend/src/queues/image-queue.ts`)
+```typescript
+export interface ImageProcessingJobData {
+  fileKey: string;
+  bucket?: string;
+  storeId?: string;
+  userId?: string;
+  purpose?: string;
+}
+
+export const imageQueue: Queue<ImageProcessingJobData>;
+export function enqueueImageVariantGeneration(data: ImageProcessingJobData): Promise<Job<ImageProcessingJobData>>;
+```
+
+### 3. Post-Upload API Contract (`POST /api/pd/files/process-variants`)
+- **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
 - **Request Body**:
-  ```typescript
+  ```json
   {
-    tags?: string[],
-    interest_tags?: string[]
+    "file_key": "products/store_123/file_abc.jpg",
+    "bucket": "pandamarket"
   }
   ```
-- **Response Format** (`HTTP 200 OK`):
-  ```typescript
+- **Response (200 OK)**:
+  ```json
   {
-    success: true,
-    data: {
-      id: string,
-      tags: string[],
-      interest_tags: string[],
-      interest_tags_synced_at: string
-    },
-    message: string
+    "ok": true,
+    "enqueued": true,
+    "file_key": "products/store_123/file_abc.jpg",
+    "variants": [
+      { "name": "thumbnail", "key": "products/store_123/file_abc_thumbnail.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_thumbnail.webp" },
+      { "name": "small", "key": "products/store_123/file_abc_small.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_small.webp" },
+      { "name": "medium", "key": "products/store_123/file_abc_medium.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_medium.webp" },
+      { "name": "large", "key": "products/store_123/file_abc_large.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_large.webp" }
+    ]
   }
   ```
 
-## Code Layout
-- Backend routes: `backend/src/api/admin.route.ts`
-- Backend tests: `backend/src/__tests__/admin-products.route.test.ts`
-- Frontend page: `frontend/src/app/(admin)/products/page.tsx`
-- Frontend layout & sidebar: `frontend/src/app/(admin)/layout.tsx`
-- Frontend translations: `frontend/src/i18n/messages/en.json`, `fr.json`, `ar.json`
-- Frontend tests: `frontend/src/__tests__/admin-products-page.test.tsx`
-- E2E tests: `frontend/e2e/admin-marketplace-products.spec.ts`
+### 4. Frontend Image URL Helper Contract (`frontend/src/lib/image-url.ts`)
+```typescript
+export type ImageVariantSize = 'thumbnail' | 'small' | 'medium' | 'large' | 'original';
+
+export function getResizedImageUrl(
+  url: string | null | undefined,
+  size: ImageVariantSize = 'medium',
+  fallback: string = '/placeholder.svg'
+): string;
+```
+
+---
+
+## Code Layout & Write Ownership
+- **Milestone 1**:
+  - `backend/src/services/image-variant.service.ts`
+  - `backend/src/services/storage.service.ts`
+  - `backend/src/services/platform-config.service.ts`
+  - `backend/src/api/admin/settings.routes.ts`
+- **Milestone 2**:
+  - `backend/src/queues/image-queue.ts`
+  - `backend/src/workers/image.worker.ts`
+  - `backend/src/main.ts`
+  - `backend/src/worker.ts`
+  - `backend/src/api/files.route.ts`
+  - `backend/src/services/product.service.ts`
+- **Milestone 3**:
+  - `backend/src/services/image-variant.service.ts` (concurrency deduplication & on-the-fly generation)
+  - `backend/src/main.ts` (express dynamic fallback middleware)
+- **Milestone 4**:
+  - `frontend/src/lib/image-url.ts`
+  - `frontend/src/components/themes/shared.ts`
+  - `frontend/src/components/store/ProductCard.tsx`
+  - `frontend/src/components/product/ProductGallery.tsx`
+- **Milestone 5**:
+  - `backend/src/__tests__/image-variant.service.test.ts`
+  - `backend/src/__tests__/image-queue.test.ts`
+  - `frontend/src/__tests__/image-url.test.ts`

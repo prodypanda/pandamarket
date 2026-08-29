@@ -2495,6 +2495,7 @@ export default function ProductsPage() {
     const data = await presignRes.json();
     const uploadUrl = data.upload_url as string | undefined;
     const publicUrl = data.public_url as string | undefined;
+    const fileKey = data.file_key as string | undefined;
 
     if (!uploadUrl || !publicUrl) throw new Error("URL de téléversement manquante");
 
@@ -2505,6 +2506,17 @@ export default function ProductsPage() {
     });
 
     if (!uploadRes.ok) throw new Error("Échec de l'envoi de l'image.");
+
+    // Trigger Sharp WebP multi-size variant generation and Cloudflare R2 sync immediately
+    if (fileKey) {
+      void fetchWithCsrf('/api/pd/files/process-variants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ file_key: fileKey }),
+      }).catch(() => null);
+    }
+
     return publicUrl;
   };
 

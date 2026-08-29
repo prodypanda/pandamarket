@@ -12,10 +12,13 @@
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { query } from '../db/pool';
 import { resolveDataPath } from '../utils/data-dir';
 import { platformConfigService } from './platform-config.service';
 import { logger } from '../utils/logger';
+import { config } from '../config';
+import { getS3 } from '../utils/s3';
 
 export type ImageSizePreset = 'thumbnail' | 'small' | 'medium' | 'large';
 
@@ -124,23 +127,23 @@ export class ImageVariantService {
       }
 
       for (const preset of ['thumbnail', 'small', 'medium', 'large'] as ImageSizePreset[]) {
-        const config = presetConfigs[preset];
+        const presetConf = presetConfigs[preset];
         const variantKey = this.getVariantKey(baseKeyWithoutExt, preset);
         const blobKey = `${bucket}/${variantKey}`;
 
         let pipeline = sharp(buffer);
 
-        if (config.crop === 'cover') {
+        if (presetConf.crop === 'cover') {
           pipeline = pipeline.resize({
-            width: config.width,
-            height: config.height,
+            width: presetConf.width,
+            height: presetConf.height,
             fit: 'cover',
             position: 'center',
           });
         } else {
           pipeline = pipeline.resize({
-            width: config.width,
-            height: config.height,
+            width: presetConf.width,
+            height: presetConf.height,
             fit: 'inside',
             withoutEnlargement: true,
           });
@@ -172,6 +175,24 @@ export class ImageVariantService {
         } catch (dbErr) {
           logger.error({ err: dbErr, blobKey }, 'Failed persisting image variant to DB');
         }
+
+        // 3. Upload variant directly to Cloudflare R2 / S3 storage
+        const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+        const targetBucket = isR2 ? (config.storage.r2Bucket || 'pandamarket') : bucket;
+        try {
+          const s3 = getS3();
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: targetBucket,
+              Key: variantKey,
+              ContentType: 'image/webp',
+              Body: variantBuffer,
+              CacheControl: 'public, max-age=31536000, immutable',
+            }),
+          );
+        } catch (s3Err) {
+          logger.warn({ err: s3Err, variantKey, targetBucket }, 'Failed uploading image variant to S3/R2');
+        }
       }
 
       logger.info(
@@ -183,6 +204,77 @@ export class ImageVariantService {
       logger.error({ err, rawKey }, 'Error generating image variants');
       return { success: false, base_key: rawKey, variants_generated: [] };
     }
+  }
+
+  /**
+   * Fetches master original image from R2/S3 storage and generates all 4 WebP variants.
+   */
+  async generateVariantsFromR2(bucket: string, fileKey: string): Promise<GenerationSummary> {
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+    const targetBucket = isR2 ? (config.storage.r2Bucket || 'pandamarket') : bucket;
+    const cleanKey = fileKey.replace(/^\/+/, '');
+
+    try {
+      const s3 = getS3();
+      const getRes = await s3.send(
+        new GetObjectCommand({
+          Bucket: targetBucket,
+          Key: cleanKey,
+        }),
+      );
+
+      if (!getRes.Body) {
+        logger.warn({ targetBucket, cleanKey }, 'No body returned when fetching master image from S3/R2');
+        return { success: false, base_key: cleanKey, variants_generated: [] };
+      }
+
+      const bytes = await getRes.Body.transformToByteArray();
+      const buffer = Buffer.from(bytes);
+      return await this.generateVariantsForBuffer(buffer, bucket, cleanKey);
+    } catch (err) {
+      logger.error({ err, targetBucket, cleanKey }, 'Failed to fetch and generate variants from S3/R2');
+      return { success: false, base_key: cleanKey, variants_generated: [] };
+    }
+  }
+
+  /**
+   * Universal variant generation helper for a given file key.
+   * Checks Cloudflare R2, DB blobs, and disk to find original and generate variants.
+   */
+  async generateVariantsForFileKey(rawKey: string, bucket: string = 'pd-product-images'): Promise<GenerationSummary> {
+    const cleanKey = rawKey.replace(/^\/+/, '').replace(/^pd-product-images\//, '');
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+
+    // 1. If R2 is active, try fetching directly from R2
+    if (isR2) {
+      const r2Summary = await this.generateVariantsFromR2(bucket, cleanKey);
+      if (r2Summary.success && r2Summary.variants_generated.length > 0) {
+        return r2Summary;
+      }
+    }
+
+    // 2. Check PostgreSQL pd_file_blobs
+    const { rows } = await query<{ data: Buffer; bucket: string }>(
+      `SELECT data, bucket FROM pd_file_blobs WHERE key = $1 OR key = $2 ORDER BY created_at DESC LIMIT 1`,
+      [cleanKey, `${bucket}/${cleanKey}`],
+    );
+
+    if (rows.length > 0 && rows[0].data) {
+      return await this.generateVariantsForBuffer(rows[0].data, rows[0].bucket || bucket, cleanKey);
+    }
+
+    // 3. Check local disk
+    try {
+      const filePath = resolveDataPath(bucket, cleanKey);
+      if (fs.existsSync(filePath)) {
+        const diskBuffer = await fs.promises.readFile(filePath);
+        return await this.generateVariantsForBuffer(diskBuffer, bucket, cleanKey);
+      }
+    } catch {
+      // Local disk fallback ignored
+    }
+
+    return { success: false, base_key: cleanKey, variants_generated: [] };
   }
 
   /**
@@ -224,7 +316,37 @@ export class ImageVariantService {
       [candidateKeys],
     );
 
-    if (rows.length === 0 || !rows[0].data) {
+    let originalBuffer: Buffer | null = null;
+
+    if (rows.length > 0 && rows[0].data) {
+      originalBuffer = rows[0].data;
+    } else {
+      // Try finding original master in Cloudflare R2 / S3
+      const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+      const targetBucket = isR2 ? (config.storage.r2Bucket || 'pandamarket') : bucket;
+      const s3 = getS3();
+
+      for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
+        try {
+          const r2Key = `${cleanBase}.${ext}`;
+          const getRes = await s3.send(
+            new GetObjectCommand({
+              Bucket: targetBucket,
+              Key: r2Key,
+            }),
+          );
+          if (getRes.Body) {
+            const bytes = await getRes.Body.transformToByteArray();
+            originalBuffer = Buffer.from(bytes);
+            break;
+          }
+        } catch {
+          // Continue trying other candidate extensions
+        }
+      }
+    }
+
+    if (!originalBuffer || originalBuffer.length === 0) {
       return null;
     }
 
@@ -233,7 +355,6 @@ export class ImageVariantService {
       cleanRequestedKey = cleanRequestedKey.substring(bucket.length + 1);
     }
 
-    const originalBuffer = rows[0].data;
     const summary = await this.generateVariantsForBuffer(originalBuffer, bucket, cleanRequestedKey);
 
     if (!summary.success) {

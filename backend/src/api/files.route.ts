@@ -295,6 +295,37 @@ router.post(
   }),
 );
 
+const processVariantsSchema = z.object({
+  file_key: z.string().min(1).max(1024),
+  bucket: z.string().max(255).optional(),
+});
+
+/**
+ * POST /api/pd/files/process-variants
+ * Generates all 4 WebP multi-size variants (thumbnail, small, medium, large)
+ * and syncs them to Cloudflare R2 and PostgreSQL blobs.
+ */
+router.post(
+  '/process-variants',
+  requireAuth,
+  validate(processVariantsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { file_key, bucket } = req.body;
+    const isR2 = Boolean(config.storage.r2AccountId && config.storage.r2AccessKeyId);
+    const targetBucket = bucket || (isR2 ? (config.storage.r2Bucket || 'pandamarket') : config.s3.bucketPublic);
+
+    logger.info({ file_key, targetBucket, user_id: req.user!.id }, 'Processing multi-size WebP variants');
+
+    const summary = await imageVariantService.generateVariantsForFileKey(file_key, targetBucket);
+
+    res.status(200).json({
+      success: summary.success,
+      file_key: summary.base_key,
+      variants: summary.variants_generated,
+    });
+  }),
+);
+
 router.post(
   '/storefront/presign',
   requireStorefrontCustomer,

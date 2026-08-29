@@ -576,6 +576,7 @@ export class ProductService {
 
     if (input.thumbnail) {
       input.thumbnail = await this.duplicateImageToProductFolder(input.store_id, input.thumbnail);
+      void imageVariantService.generateVariantsForFileKey(input.thumbnail).catch(() => null);
     }
 
     const productId = await transaction(async (c) => {
@@ -789,6 +790,7 @@ export class ProductService {
       current = await this.getById(id);
       if (patch.thumbnail) {
         patch.thumbnail = await this.duplicateImageToProductFolder(current.store_id, patch.thumbnail);
+        void imageVariantService.generateVariantsForFileKey(patch.thumbnail).catch(() => null);
       }
       const nextType = patch.type ?? current.type;
       const nextStatus = patch.status ?? current.status;
@@ -2039,6 +2041,7 @@ export class ProductService {
     );
     const storeId = pRows[0]?.store_id;
     const finalUrl = storeId ? await this.duplicateImageToProductFolder(storeId, opts.url) : opts.url;
+    void imageVariantService.generateVariantsForFileKey(finalUrl).catch(() => null);
 
     return transaction(async (c) => {
       const { rows: posRows } = await c.query<{ next_pos: number }>(
