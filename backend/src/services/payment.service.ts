@@ -788,6 +788,7 @@ export class PaymentService {
   async processPaymentWebhook(opts: {
     gateway: PaymentGateway;
     gatewayEventId: string;
+    gatewayReference?: string;
     orderId?: string;
     rawPayload?: Record<string, unknown>;
     sourceIp?: string;
@@ -802,6 +803,7 @@ export class PaymentService {
     }
 
     // 1. Resolve payment attempt strictly by (gateway, gateway_reference)
+    const referenceToMatch = opts.gatewayReference || opts.gatewayEventId;
     const { rows: attemptRows } = await query<{
       id: string;
       order_id: string;
@@ -818,18 +820,18 @@ export class PaymentService {
               provider_expected_amount_minor, provider_expected_currency, merchant_account_id, status
        FROM pd_payment_attempt
        WHERE gateway = $1 AND gateway_reference = $2`,
-      [opts.gateway, opts.gatewayEventId],
+      [opts.gateway, referenceToMatch],
     );
 
     const attempt = attemptRows[0];
     if (!attempt) {
       logger.error(
-        { gateway: opts.gateway, reference: opts.gatewayEventId },
+        { gateway: opts.gateway, reference: referenceToMatch },
         'Payment attempt not found for gateway reference',
       );
       throw new PdValidationError('Payment attempt not found for reference', {
         gateway: opts.gateway,
-        reference: opts.gatewayEventId,
+        reference: referenceToMatch,
       });
     }
 
@@ -1035,6 +1037,66 @@ export class PaymentService {
       [eventId, verifyResult.status === 'pending' ? 'received' : 'failed'],
     );
     return false;
+  }
+
+  /**
+   * Synchronously re-verify (and capture) the active payment for an order
+   * the buyer just returned from (PayPal / Flouci / Konnect). Reuses the
+   * hardened webhook pipeline with a `return_`-prefixed event id so a later
+   * real webhook can still be processed independently (double-credit is
+   * prevented by the attempt status guard). Called from the checkout
+   * success page so the buyer sees the real payment state even when
+   * webhooks are not configured (e.g. PayPal sandbox) or arrive late.
+   */
+  async syncOrderPayment(orderId: string): Promise<{ captured: boolean; payment_status: string }> {
+    const order = await orderService.getById(orderId);
+    if (order.payment_status === 'captured') {
+      return { captured: true, payment_status: 'captured' };
+    }
+
+    const SYNCABLE_GATEWAYS = new Set<PaymentGateway>([
+      PaymentGateway.PayPal,
+      PaymentGateway.Flouci,
+      PaymentGateway.Konnect,
+    ]);
+
+    const { rows } = await query<{ gateway: PaymentGateway; gateway_reference: string }>(
+      `SELECT gateway, gateway_reference
+       FROM pd_payment_attempt
+       WHERE order_id = $1
+         AND status IN ('initialized', 'initialization_unknown')
+         AND gateway_reference IS NOT NULL
+         AND gateway_reference <> ''
+       ORDER BY initialized_at DESC NULLS LAST, updated_at DESC
+       LIMIT 1`,
+      [orderId],
+    );
+    const attempt = rows[0];
+    if (!attempt || !SYNCABLE_GATEWAYS.has(attempt.gateway)) {
+      return { captured: false, payment_status: order.payment_status };
+    }
+
+    let captured = false;
+    try {
+      captured = await this.processPaymentWebhook({
+        gateway: attempt.gateway,
+        gatewayEventId: `return_${attempt.gateway_reference}_${Date.now()}`,
+        gatewayReference: attempt.gateway_reference,
+        orderId,
+        rawPayload: { source: 'buyer_return_sync', order_id: orderId },
+      });
+    } catch (err) {
+      logger.warn(
+        { err: (err as Error).message, order_id: orderId, gateway: attempt.gateway },
+        'Buyer-return payment sync failed',
+      );
+    }
+
+    const refreshed = await orderService.getById(orderId);
+    return {
+      captured: captured || refreshed.payment_status === 'captured',
+      payment_status: refreshed.payment_status,
+    };
   }
 
   // ----------------------------------------------------------------

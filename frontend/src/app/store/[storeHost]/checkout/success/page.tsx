@@ -46,6 +46,8 @@ interface StoreData {
   };
 }
 
+const SYNCABLE_PAYMENT_GATEWAYS = new Set(['paypal', 'flouci', 'konnect']);
+
 function formatPrice(amount: string | number, currency = 'TND') {
   const num = typeof amount === 'number' ? amount : parseFloat(amount || '0');
   return `${num.toFixed(2)} ${currency}`;
@@ -285,7 +287,33 @@ function SuccessContent() {
 
         if (orderRes.ok) {
           const orderData = await orderRes.json();
-          setOrder(orderData.data || orderData.order || orderData);
+          const loadedOrder = orderData.data || orderData.order || orderData;
+          setOrder(loadedOrder);
+
+          // If the payment is still pending for a redirect-based gateway (PayPal / Flouci / Konnect),
+          // ask the backend to synchronously verify/capture it.
+          const gateway = String(loadedOrder?.payment_gateway || '').toLowerCase();
+          const pendingStatus =
+            loadedOrder?.payment_status === 'payment_required' ||
+            loadedOrder?.payment_status === 'pending';
+          if (pendingStatus && SYNCABLE_PAYMENT_GATEWAYS.has(gateway)) {
+            try {
+              await fetchWithCsrf('/api/pd/payments/storefront/verify-return', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId }),
+              });
+              const refreshedRes = await fetchWithCsrf(
+                `/api/pd/orders/storefront/${encodeURIComponent(orderId)}`,
+              );
+              if (refreshedRes.ok) {
+                const refreshedData = await refreshedRes.json();
+                setOrder(refreshedData.data || refreshedData.order || refreshedData);
+              }
+            } catch {
+              // Keep the current order state if verification fails.
+            }
+          }
         } else {
           setError('Commande introuvable ou vous n’avez pas l’autorisation de la consulter.');
         }
@@ -336,7 +364,7 @@ function SuccessContent() {
     );
   }
 
-  const isPaid = order.payment_status === 'paid' || order.status === 'completed' || order.status === 'paid';
+  const isPaid = order.payment_status === 'captured' || order.payment_status === 'paid' || order.status === 'completed' || order.status === 'paid';
   const isCod = order.payment_gateway === 'cod';
   const isMandat = order.payment_gateway === 'manual_mandat';
 

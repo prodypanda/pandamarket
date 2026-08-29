@@ -21,7 +21,7 @@ import 'grapesjs/dist/css/grapes.min.css';
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo, type ChangeEvent, type DragEvent } from 'react';
-import { Save, Eye, EyeOff, ArrowLeft, Loader2, Monitor, Tablet, Smartphone, AlertCircle, AlertTriangle, CheckCircle2, ImageIcon, ExternalLink, History, RotateCcw, Plus, Store, ShoppingBag, Tags, Megaphone, HelpCircle, Star, ShieldCheck, Phone, Undo2, Redo2, Clock3, Sparkles, Download, Upload, Palette, Share2, Accessibility, ClipboardCheck, FileJson, Lock, Trash2, Wand2, type LucideIcon } from 'lucide-react';
+import { Save, Eye, EyeOff, ArrowLeft, Loader2, Monitor, Tablet, Smartphone, AlertCircle, AlertTriangle, CheckCircle2, ImageIcon, ExternalLink, History, RotateCcw, Plus, Store, ShoppingBag, Tags, Megaphone, HelpCircle, Star, ShieldCheck, Phone, Undo2, Redo2, Clock3, Sparkles, Download, Upload, Palette, Share2, Accessibility, ClipboardCheck, FileJson, Lock, Trash2, Wand2, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react';
 import {
   renderPageBuilderDynamicBlocks,
   type PageBuilderDynamicContext,
@@ -43,7 +43,11 @@ interface GrapesJSEditor {
   DomComponents: { clear: () => void };
   AssetManager: GrapesJSAssetManager;
   UndoManager?: GrapesJSUndoManager;
-  Canvas?: { getFrameEl?: () => HTMLIFrameElement | null };
+  Canvas?: {
+    getFrameEl?: () => HTMLIFrameElement | null;
+    getZoom?: () => number;
+    setZoom?: (value: number | string) => unknown;
+  };
   setStyle: (css: string) => void;
   setDevice: (device: string) => void;
   runCommand?: (command: string) => unknown;
@@ -1088,6 +1092,7 @@ export function PageBuilderEditorCore({
   const [assetUploading, setAssetUploading] = useState(false);
   const [activeDevice, setActiveDevice] = useState('Desktop');
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
+  const [canvasZoom, setCanvasZoom] = useState(100);
   const [componentsVisible, setComponentsVisible] = useState(true);
   const [activeSectionFilter, setActiveSectionFilter] = useState<TemplateSection | 'all'>('all');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -2422,6 +2427,26 @@ export function PageBuilderEditorCore({
     }
   };
 
+  const applyCanvasZoom = useCallback((nextZoom: number) => {
+    const canvas = editorRef.current?.Canvas;
+    if (!canvas?.setZoom) return;
+    const clamped = Math.min(100, Math.max(30, Math.round(nextZoom)));
+    canvas.setZoom(clamped);
+    setCanvasZoom(clamped);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    const current = editorRef.current?.Canvas?.getZoom?.() ?? canvasZoom;
+    applyCanvasZoom(current + 10);
+  }, [applyCanvasZoom, canvasZoom]);
+
+  const handleZoomOut = useCallback(() => {
+    const current = editorRef.current?.Canvas?.getZoom?.() ?? canvasZoom;
+    applyCanvasZoom(current - 10);
+  }, [applyCanvasZoom, canvasZoom]);
+
+  const handleZoomReset = useCallback(() => applyCanvasZoom(100), [applyCanvasZoom]);
+
   const handleToggleComponentsVisible = () => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -2693,13 +2718,46 @@ export function PageBuilderEditorCore({
           font-weight: 700;
         }
 
+        /* Solid brand chrome only for small UI overlays (toolbar, badges). */
         .gjs-editor-shell .gjs-toolbar,
         .gjs-editor-shell .gjs-badge,
-        .gjs-editor-shell .gjs-placeholder,
-        .gjs-editor-shell .gjs-highlighter,
-        .gjs-editor-shell .gjs-resizer-h {
+        .gjs-editor-shell .gjs-com-badge {
           border-color: #D6B779;
           background: #1A1A2E;
+          color: #FFFFFF;
+        }
+
+        /*
+         * Hover/selection highlighter and drag placeholder are full-size
+         * overlays drawn on top of the hovered component. They MUST stay
+         * transparent — a solid fill here would paint the element navy and
+         * hide its content on hover. Only the outline/border marks the
+         * hovered element.
+         */
+        .gjs-editor-shell .gjs-highlighter,
+        .gjs-editor-shell .gjs-highlighter-sel {
+          background: transparent !important;
+          outline-color: #D6B779;
+        }
+
+        .gjs-editor-shell .gjs-highlighter-sel {
+          outline-color: #16C784;
+        }
+
+        .gjs-editor-shell .gjs-placeholder,
+        .gjs-editor-shell .gjs-placeholder-int {
+          background: transparent !important;
+          border-color: #D6B779;
+        }
+
+        .gjs-editor-shell .gjs-placeholder-int {
+          background-color: rgba(214, 183, 121, 0.18) !important;
+        }
+
+        /* Resize handles: white squares with the brand gold border. */
+        .gjs-editor-shell .gjs-resizer-h {
+          border-color: #D6B779;
+          background: #FFFFFF;
           color: #FFFFFF;
         }
 
@@ -3198,6 +3256,35 @@ export function PageBuilderEditorCore({
                 })}
               </div>
             )}
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-full border border-[#E4D8C6] bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              disabled={!editorReady}
+              title={t('dashboardPages.pageBuilder.editor.zoomOut')}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-[#F4EDE2] hover:text-[#1A1A2E] disabled:opacity-40"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomReset}
+              disabled={!editorReady}
+              title={t('dashboardPages.pageBuilder.editor.zoomReset')}
+              className="min-w-[3rem] rounded-full px-1 text-center text-[11px] font-bold text-[#4B5563] transition-colors hover:bg-[#F4EDE2] hover:text-[#1A1A2E] disabled:opacity-40"
+            >
+              {canvasZoom}%
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={!editorReady}
+              title={t('dashboardPages.pageBuilder.editor.zoomIn')}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[#4B5563] transition-colors hover:bg-[#F4EDE2] hover:text-[#1A1A2E] disabled:opacity-40"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
           </div>
           <button
             type="button"

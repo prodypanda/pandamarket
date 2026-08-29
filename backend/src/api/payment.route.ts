@@ -276,7 +276,12 @@ router.post(
   '/webhook/paypal',
   asyncHandler(async (req: Request, res: Response) => {
     const { resource } = req.body || {};
-    const paypalOrderId = resource?.id || req.body.paypal_order_id;
+    // For PAYMENT.CAPTURE.* events `resource.id` is the capture id, not the
+    // order id. The related order id lives under supplementary_data.related_ids.
+    const paypalOrderId =
+      resource?.supplementary_data?.related_ids?.order_id ||
+      resource?.id ||
+      req.body.paypal_order_id;
     const orderId = resource?.purchase_units?.[0]?.reference_id || req.query.order_id || req.body.order_id;
 
     if (!paypalOrderId) {
@@ -303,6 +308,45 @@ router.post(
     });
 
     res.status(200).send('OK');
+  }),
+);
+
+// Buyer returned from an off-site gateway (PayPal / Flouci / Konnect) — synchronously verify/capture.
+const syncPaymentSchema = z.object({
+  order_id: z.string().min(1),
+});
+
+router.post(
+  '/verify-return',
+  requireAuth,
+  validate(syncPaymentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { order_id } = req.body;
+    const order = await orderService.getById(order_id);
+    if (order.customer_id !== req.user!.id) {
+      res.status(403).json({ error: { message: 'Forbidden' } });
+      return;
+    }
+    const result = await paymentService.syncOrderPayment(order_id);
+    res.status(200).json(result);
+  }),
+);
+
+router.post(
+  '/storefront/verify-return',
+  requireStorefrontCustomer,
+  validate(syncPaymentSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { order_id } = req.body;
+    const order = await orderService.getById(order_id);
+    const isCustomer = order.storefront_customer_id === req.storefrontCustomer!.id;
+    const isStoreOrder = await orderService.hasStoreItems(order_id, req.storefrontCustomer!.store_id);
+    if (!isCustomer || !isStoreOrder) {
+      res.status(403).json({ error: { message: 'Forbidden' } });
+      return;
+    }
+    const result = await paymentService.syncOrderPayment(order_id);
+    res.status(200).json(result);
   }),
 );
 

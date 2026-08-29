@@ -11,6 +11,8 @@ import { fetchWithCsrf } from '@/lib/api';
 
 type MarketplaceThemeClasses = ReturnType<typeof useMarketplaceTheme>['classes'];
 
+const SYNCABLE_PAYMENT_GATEWAYS = new Set(['paypal', 'flouci', 'konnect']);
+
 interface OrderSummary {
   id: string;
   payment_status: 'paid' | 'captured' | 'authorized' | 'payment_required' | 'pending' | 'failed' | string;
@@ -34,19 +36,42 @@ function SuccessContent({ classes }: { classes: MarketplaceThemeClasses }) {
     }
 
     let isMounted = true;
-    fetchWithCsrf(`/api/pd/orders/${encodeURIComponent(orderId)}`)
-      .then(async (res) => {
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data?.order || data?.data || null;
-      })
+
+    const fetchOrder = () =>
+      fetchWithCsrf(`/api/pd/orders/${encodeURIComponent(orderId)}`)
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const data = await res.json();
+          return data?.order || data?.data || null;
+        });
+
+    const syncPaymentIfNeeded = async (ord: OrderSummary | null) => {
+      if (!ord) return;
+      const gateway = String(ord.payment_gateway || '').toLowerCase();
+      const pendingStatus = ord.payment_status === 'payment_required' || ord.payment_status === 'pending';
+      if (!pendingStatus || !SYNCABLE_PAYMENT_GATEWAYS.has(gateway)) return;
+      try {
+        await fetchWithCsrf('/api/pd/payments/verify-return', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId }),
+        });
+        if (!isMounted) return;
+        const refreshed = await fetchOrder();
+        if (isMounted && refreshed) setOrder(refreshed);
+      } catch {
+        // Verification failed — the current order state is still shown.
+      }
+    };
+
+    fetchOrder()
       .then((ord) => {
-        if (isMounted) {
-          // An unresolvable order id must never render a success screen.
-          setNotFound(!ord);
-          setOrder(ord);
-          setLoading(false);
-        }
+        if (!isMounted) return;
+        // An unresolvable order id must never render a success screen.
+        setNotFound(!ord);
+        setOrder(ord);
+        setLoading(false);
+        return syncPaymentIfNeeded(ord);
       })
       .catch(() => {
         if (isMounted) {
