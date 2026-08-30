@@ -19,10 +19,13 @@
 import { query, transaction } from '../db/pool';
 import { pdId } from '../utils/crypto';
 import { logger } from '../utils/logger';
-import { IAddress } from '@pandamarket/types';
+import { IAddress, ProductType } from '@pandamarket/types';
 import { randomInt } from 'node:crypto';
 import { config } from '../config';
 import { PdErrorCode, PdNotFoundError, PdValidationError } from '../errors';
+import { eventBus, PdEvent } from '../events/event-bus';
+import { adsService } from './ads.service';
+import { syncOrderStatusFromFulfillments, restoreOrderItemStock } from './order-fulfillment-shared';
 import {
   CarrierAdapter,
   CarrierAdapterError,
@@ -640,55 +643,82 @@ export class ShippingService {
     };
 
     try {
-      await query(
-        `INSERT INTO pd_shipment
-          (id, order_id, fulfillment_id, store_id, provider, provider_reference,
-           tracking_number, label_url, status, estimated_delivery, next_sync_at, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [
-          id,
-          req.order_id,
-          req.fulfillment_id,
-          req.store_id,
-          carrierId,
-          carrierResult.provider_reference || null,
-          carrierResult.tracking_number,
-          carrierResult.label_url || (source === 'configured_carrier' ? null : `/api/pd/shipping/labels/${carrierResult.tracking_number}`),
-          status,
-          estimatedDelivery,
-          nextSyncAt,
-          JSON.stringify(metadata),
-        ],
-      );
+      let wasPending = false;
+      await transaction(async (c) => {
+        // Lock + read the previous status so ORDER_FULFILLED is emitted only
+        // on a genuine pending -> shipped transition (exactly once per fulfillment).
+        const { rows: prevRows } = await c.query<{ status: string }>(
+          'SELECT status FROM pd_fulfillment WHERE id = $1 AND store_id = $2 FOR UPDATE',
+          [req.fulfillment_id, req.store_id],
+        );
+        wasPending = prevRows[0]?.status === 'pending';
 
-      await query(
-        `UPDATE pd_fulfillment
-         SET tracking_number = $2, carrier = $3, status = 'shipped', shipped_at = COALESCE(shipped_at, NOW()), updated_at = NOW()
-         WHERE id = $1 AND store_id = $4`,
-        [req.fulfillment_id, carrierResult.tracking_number, carrier.name, req.store_id],
-      );
-
-      if (req.cod_amount && req.cod_amount > 0) {
-        await query(
-          `INSERT INTO pd_courier_settlement
-            (id, store_id, order_id, carrier, tracking_number, collected_amount, courier_fee, net_payout, status, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
-           ON CONFLICT (order_id, store_id) DO UPDATE
-           SET carrier = EXCLUDED.carrier,
-               tracking_number = EXCLUDED.tracking_number,
-               collected_amount = EXCLUDED.collected_amount,
-               updated_at = NOW()`,
+        await c.query(
+          `INSERT INTO pd_shipment
+            (id, order_id, fulfillment_id, store_id, provider, provider_reference,
+             tracking_number, label_url, status, estimated_delivery, next_sync_at, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
-            pdId('cstl'),
-            req.store_id,
+            id,
             req.order_id,
+            req.fulfillment_id,
+            req.store_id,
             carrierId,
+            carrierResult.provider_reference || null,
             carrierResult.tracking_number,
-            req.cod_amount,
-            carrier.base_rate_tnd,
-            Math.max(0, req.cod_amount - carrier.base_rate_tnd),
+            carrierResult.label_url || (source === 'configured_carrier' ? null : `/api/pd/shipping/labels/${carrierResult.tracking_number}`),
+            status,
+            estimatedDelivery,
+            nextSyncAt,
+            JSON.stringify(metadata),
           ],
         );
+
+        await c.query(
+          `UPDATE pd_fulfillment
+           SET tracking_number = $2, carrier = $3, status = 'shipped', shipped_at = COALESCE(shipped_at, NOW()), updated_at = NOW()
+           WHERE id = $1 AND store_id = $4`,
+          [req.fulfillment_id, carrierResult.tracking_number, carrier.name, req.store_id],
+        );
+
+        // Propagate the fulfillment change to the order aggregate (canonical rules)
+        await syncOrderStatusFromFulfillments(c, req.order_id);
+
+        if (req.cod_amount && req.cod_amount > 0) {
+          await c.query(
+            `INSERT INTO pd_courier_settlement
+              (id, store_id, order_id, carrier, tracking_number, collected_amount, courier_fee, net_payout, status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
+             ON CONFLICT (order_id, store_id) DO UPDATE
+             SET carrier = EXCLUDED.carrier,
+                 tracking_number = EXCLUDED.tracking_number,
+                 collected_amount = EXCLUDED.collected_amount,
+                 updated_at = NOW()`,
+            [
+              pdId('cstl'),
+              req.store_id,
+              req.order_id,
+              carrierId,
+              carrierResult.tracking_number,
+              req.cod_amount,
+              carrier.base_rate_tnd,
+              Math.max(0, req.cod_amount - carrier.base_rate_tnd),
+            ],
+          );
+        }
+      });
+      // Post-commit: notify the buyer when the label generation actually
+      // transitioned this store's fulfillment to shipped.
+      if (wasPending) {
+        try {
+          eventBus.emit(PdEvent.ORDER_FULFILLED, {
+            order_id: req.order_id,
+            carrier: carrier.name,
+            tracking_number: carrierResult.tracking_number,
+          });
+        } catch (err) {
+          logger.error({ err, order_id: req.order_id }, 'ORDER_FULFILLED emission failed');
+        }
       }
     } catch (error) {
       if (adapter && source === 'configured_carrier') {
@@ -845,6 +875,11 @@ export class ShippingService {
     source: 'configured_carrier' | 'simulation',
   ): Promise<void> {
     const nextSyncAt = nextSyncForStatus(result.status);
+    const mappedStatus = mapTrackingStatus(result.status);
+    let codCapturedOrderId: string | null = null;
+    let notifyShippedOrderId: string | null = null;
+    let notifyShippedCarrier: string | null = null;
+    let notifyShippedTracking: string | null = null;
     await transaction(async (client) => {
       for (const [index, event] of result.events.entries()) {
         const providerEventId = event.provider_event_id || `${source}-${result.tracking_number}-${index}-${event.timestamp}`;
@@ -877,8 +912,16 @@ export class ShippingService {
              last_sync_error = NULL,
              updated_at = NOW()
          WHERE id = $1`,
-        [shipmentId, mapTrackingStatus(result.status), result.estimated_delivery ? safeDate(result.estimated_delivery) : null, nextSyncAt],
+        [shipmentId, mappedStatus, result.estimated_delivery ? safeDate(result.estimated_delivery) : null, nextSyncAt],
       );
+      // Capture the pre-update fulfillment status to detect a genuine
+      // pending -> shipped transition (exactly-once ORDER_FULFILLED emission).
+      const { rows: prevFulfillmentRows } = await client.query<{ status: string }>(
+        `SELECT f.status FROM pd_fulfillment f
+         WHERE f.id = (SELECT fulfillment_id FROM pd_shipment WHERE id = $1)`,
+        [shipmentId],
+      );
+      const prevFulfillmentStatus = prevFulfillmentRows[0]?.status ?? null;
       await client.query(
         `UPDATE pd_fulfillment
          SET status = CASE
@@ -891,9 +934,102 @@ export class ShippingService {
              delivered_at = CASE WHEN $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
              updated_at = NOW()
          WHERE id = (SELECT fulfillment_id FROM pd_shipment WHERE id = $1)`,
-        [shipmentId, mapTrackingStatus(result.status)],
+        [shipmentId, mappedStatus],
       );
+
+      // Propagate the fulfillment change to the order aggregate (canonical rules)
+      const { rows: shipmentRows } = await client.query<{ order_id: string; store_id: string; provider: string }>(
+        'SELECT order_id, store_id, provider FROM pd_shipment WHERE id = $1',
+        [shipmentId],
+      );
+      const shipment = shipmentRows[0];
+      if (shipment) {
+        if (mappedStatus === 'delivered') {
+          await syncOrderStatusFromFulfillments(client, shipment.order_id);
+          // COD is considered paid only after every store fulfillment is delivered.
+          const { rowCount } = await client.query(
+            `UPDATE pd_order SET payment_status = 'captured', updated_at = NOW()
+             WHERE id = $1 AND payment_gateway = 'cod' AND payment_status != 'captured'
+               AND status NOT IN ('cancelled','refunded')
+               AND EXISTS (SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND status = 'delivered')
+               AND NOT EXISTS (SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND status IN ('pending','shipped'))`,
+            [shipment.order_id],
+          );
+          if (rowCount) codCapturedOrderId = shipment.order_id;
+        } else if (mappedStatus === 'cancelled' || mappedStatus === 'returned') {
+          // Carrier-side cancellation/return: restock this store's items and
+          // flag the courier settlement for reconciliation, then recompute.
+          const { rows: items } = await client.query<{
+            product_id: string;
+            variant_id: string | null;
+            quantity: number;
+            product_type: ProductType;
+          }>(
+            `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+             FROM pd_order_item i
+             JOIN pd_product p ON p.id = i.product_id
+             WHERE i.order_id = $1 AND i.store_id = $2`,
+            [shipment.order_id, shipment.store_id],
+          );
+          for (const item of items) {
+            await restoreOrderItemStock(client, item);
+          }
+          await client.query(
+            `UPDATE pd_courier_settlement
+             SET status = 'disputed', updated_at = NOW()
+             WHERE order_id = $1 AND store_id = $2`,
+            [shipment.order_id, shipment.store_id],
+          );
+          await syncOrderStatusFromFulfillments(client, shipment.order_id, {
+            cancelReason: `carrier_${mappedStatus}`,
+          });
+        } else {
+          await syncOrderStatusFromFulfillments(client, shipment.order_id);
+        }
+        // A genuine pending -> shipped transition via carrier sync also
+        // notifies the buyer (exactly once per fulfillment).
+        if (
+          prevFulfillmentStatus === 'pending'
+          && mappedStatus !== 'delivered'
+          && mappedStatus !== 'cancelled'
+          && mappedStatus !== 'returned'
+        ) {
+          notifyShippedOrderId = shipment.order_id;
+          notifyShippedCarrier = shipment.provider;
+          notifyShippedTracking = result.tracking_number;
+        }
+      }
     });
+    // Post-commit: run the same COD capture side effects as the manual delivery path
+    if (codCapturedOrderId) {
+      await adsService.recognizeOrderConversion(codCapturedOrderId);
+      const { rows: capturedRows } = await query<{ total: string }>(
+        'SELECT total::text FROM pd_order WHERE id = $1',
+        [codCapturedOrderId],
+      );
+      if (capturedRows[0]) {
+        await eventBus.emit(PdEvent.PAYMENT_CAPTURED, {
+          order_id: codCapturedOrderId,
+          gateway: 'cod',
+          amount: parseFloat(capturedRows[0].total),
+          currency: 'TND',
+          source: 'cod_carrier_delivery',
+        });
+      }
+    }
+    // Post-commit: notify the buyer of the shipment when carrier sync
+    // transitioned the fulfillment pending -> shipped.
+    if (notifyShippedOrderId) {
+      try {
+        eventBus.emit(PdEvent.ORDER_FULFILLED, {
+          order_id: notifyShippedOrderId,
+          carrier: notifyShippedCarrier,
+          tracking_number: notifyShippedTracking,
+        });
+      } catch (err) {
+        logger.error({ err, order_id: notifyShippedOrderId }, 'ORDER_FULFILLED emission failed');
+      }
+    }
   }
 
   async cancelShipment(shipmentId: string, reason?: string, storeId?: string): Promise<ShipmentResult> {
@@ -941,6 +1077,10 @@ export class ShippingService {
           `UPDATE pd_fulfillment SET status = 'cancelled', updated_at = NOW() WHERE id = $1 AND status <> 'delivered'`,
           [shipment.fulfillment_id],
         );
+        // Propagate the fulfillment cancellation to the order aggregate
+        await syncOrderStatusFromFulfillments(client, shipment.order_id, {
+          cancelReason: reason || 'shipment_cancelled',
+        });
       }
     });
 

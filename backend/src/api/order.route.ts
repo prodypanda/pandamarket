@@ -4,8 +4,23 @@ import { orderService } from '../services/order.service';
 import { asyncHandler, validate, requireAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
 import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
 import { PdValidationError } from '../errors';
+import { eventBus, PdEvent } from '../events/event-bus';
+import { logger } from '../utils/logger';
 
 const router = Router();
+
+/**
+ * Emit pd.order.placed after a freshly committed checkout.
+ * The order is already committed, a notification failure must not fail the
+ * HTTP response. Replays (idempotency) never re-notify.
+ */
+function emitOrderPlaced(orderId: string): void {
+  try {
+    eventBus.emit(PdEvent.ORDER_PLACED, { order_id: orderId });
+  } catch (err) {
+    logger.error({ err, order_id: orderId }, 'ORDER_PLACED emission failed');
+  }
+}
 
 function readIdempotencyKey(req: Request): string | undefined {
   const key = (
@@ -162,6 +177,7 @@ router.post(
       idempotency_key: idempotencyKey,
       ...req.body,
     });
+    if (!result.replayed) emitOrderPlaced(result.order.id);
     res.status(result.replayed ? 200 : 201).json({ order: result.order });
   }),
 );
@@ -212,6 +228,7 @@ router.post(
       idempotency_key: idempotencyKey,
       ...req.body,
     });
+    if (!result.replayed) emitOrderPlaced(result.order.id);
     res.status(result.replayed ? 200 : 201).json({ order: result.order });
   }),
 );

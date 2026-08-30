@@ -33,6 +33,7 @@ import { buyerInterestService } from './buyer-interest.service';
 import { checkoutQuoteService } from './checkout-quote.service';
 import { paymentCapabilityService } from './payment-capability.service';
 import { walletService } from './wallet.service';
+import { syncOrderStatusFromFulfillments, restoreOrderItemStock } from './order-fulfillment-shared';
 
 interface CartLine {
   product_id: string;
@@ -284,51 +285,6 @@ export function configuredShippingRate(settings: PlatformSettings, destinationCi
 
 export function usesInventory(type: ProductType): boolean {
   return type === ProductType.Physical;
-}
-
-async function restoreOrderItemStock(
-  c: PoolClient,
-  item: { product_id: string; variant_id: string | null; quantity: number; product_type?: ProductType },
-): Promise<void> {
-  const type = item.product_type ?? (await (async () => {
-    const { rows } = await c.query<{ type: ProductType }>('SELECT type FROM pd_product WHERE id = $1', [item.product_id]);
-    return rows[0]?.type;
-  })());
-
-  if (type === ProductType.Bundle) {
-    const { rows: bundleItems } = await c.query<{
-      product_id: string;
-      variant_id: string | null;
-      quantity: number;
-    }>(
-      'SELECT product_id, variant_id, quantity FROM pd_product_bundle_item WHERE bundle_product_id = $1',
-      [item.product_id],
-    );
-    for (const bi of bundleItems) {
-      const qtyToRestore = bi.quantity * item.quantity;
-      await c.query(
-        'UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
-        [bi.product_id, qtyToRestore],
-      );
-      if (bi.variant_id) {
-        await c.query(
-          'UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
-          [bi.variant_id, qtyToRestore],
-        );
-      }
-    }
-  } else if (type && usesInventory(type)) {
-    await c.query(
-      'UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
-      [item.product_id, item.quantity],
-    );
-    if (item.variant_id) {
-      await c.query(
-        'UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1',
-        [item.variant_id, item.quantity],
-      );
-    }
-  }
 }
 
 export function isWholesaleCapableSeller(sellerType?: SellerType | null): boolean {
@@ -1610,6 +1566,26 @@ export class OrderService {
   }
 
   /**
+   * Recompute pd_order.status from the fulfillment aggregate.
+   * MUST run inside the caller's transaction. Idempotent.
+   * Canonical rules (implemented in order-status-sync.ts, shared with the
+   * shipping layer):
+   *  - cancelled/refunded orders are never touched
+   *  - zero pending, >=1 delivered, rest terminal   -> 'delivered'
+   *  - zero pending, >=1 shipped                    -> 'fulfilled'
+   *  - zero pending/shipped/delivered (all canc.)   -> 'cancelled' (reason passed in)
+   *  - otherwise (any pending)                      -> leave the order alone
+   * Digital-only orders have zero fulfillments -> the sub-select returns no row -> untouched.
+   */
+  async syncOrderStatusFromFulfillments(
+    c: Pick<PoolClient, 'query'>,
+    orderId: string,
+    opts: { cancelReason?: string } = {},
+  ): Promise<void> {
+    await syncOrderStatusFromFulfillments(c, orderId, opts);
+  }
+
+  /**
    * Mark a fulfillment (this store's portion of an order) as shipped.
    */
   async fulfill(opts: {
@@ -1618,29 +1594,43 @@ export class OrderService {
     carrier?: string;
     tracking_number?: string;
   }): Promise<void> {
-    const { rowCount } = await query(
-      `UPDATE pd_fulfillment
-       SET status = 'shipped', carrier = $3, tracking_number = $4, shipped_at = NOW()
-       WHERE order_id = $1 AND store_id = $2 AND status = 'pending'`,
-      [opts.order_id, opts.store_id, opts.carrier ?? null, opts.tracking_number ?? null],
-    );
-    if (!rowCount) {
-      throw new PdConflictError(
-        PdErrorCode.ORDER_ALREADY_FULFILLED,
-        'Fulfillment not found or already shipped',
+    let shippedCarrier: string | null = null;
+    let shippedTracking: string | null = null;
+    await transaction(async (c) => {
+      const { rows: shippedRows, rowCount } = await c.query<{
+        carrier: string | null;
+        tracking_number: string | null;
+      }>(
+        `UPDATE pd_fulfillment
+         SET status = 'shipped',
+             carrier = COALESCE($3, carrier),
+             tracking_number = COALESCE($4, tracking_number),
+             shipped_at = NOW()
+         WHERE order_id = $1 AND store_id = $2 AND status = 'pending'
+         RETURNING carrier, tracking_number`,
+        [opts.order_id, opts.store_id, opts.carrier ?? null, opts.tracking_number ?? null],
       );
-    }
-    // If all fulfillments for this order are shipped, mark the order as fulfilled
-    const { rows } = await query<{ pending: string }>(
-      `SELECT COUNT(*)::text AS pending
-       FROM pd_fulfillment WHERE order_id = $1 AND status = 'pending'`,
-      [opts.order_id],
-    );
-    if (rows[0].pending === '0') {
-      await query(
-        `UPDATE pd_order SET status = 'fulfilled' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-        [opts.order_id],
-      );
+      if (!rowCount) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          'Fulfillment not found or already shipped',
+        );
+      }
+      shippedCarrier = shippedRows[0]?.carrier ?? null;
+      shippedTracking = shippedRows[0]?.tracking_number ?? null;
+      // Recompute the order aggregate from all fulfillments (same transaction)
+      await this.syncOrderStatusFromFulfillments(c, opts.order_id);
+    });
+    // Post-commit: notify the buyer that their package is on the way.
+    // The guarded UPDATE above guarantees exactly one emission per fulfillment.
+    try {
+      eventBus.emit(PdEvent.ORDER_FULFILLED, {
+        order_id: opts.order_id,
+        carrier: shippedCarrier,
+        tracking_number: shippedTracking,
+      });
+    } catch (err) {
+      logger.error({ err, ...opts }, 'ORDER_FULFILLED emission failed');
     }
     logger.info(opts, 'Fulfillment shipped');
   }
@@ -1732,22 +1722,18 @@ export class OrderService {
         );
       }
 
-      const { rows } = await c.query<{ active: string; delivered: string }>(
-        `SELECT
-           COUNT(*) FILTER (WHERE status IN ('pending', 'shipped'))::text AS active,
-           COUNT(*) FILTER (WHERE status = 'delivered')::text AS delivered
-         FROM pd_fulfillment
-         WHERE order_id = $1`,
-        [opts.order_id],
+      // Recompute the order aggregate from all fulfillments (same transaction)
+      await this.syncOrderStatusFromFulfillments(c, opts.order_id);
+      // COD is considered paid only after every store fulfillment is delivered.
+      await c.query(
+        `UPDATE pd_order SET payment_status='captured',
+            updated_at=NOW()
+         WHERE id = $1 AND payment_gateway=$2 AND payment_status != 'captured'
+           AND status NOT IN ('cancelled','refunded')
+           AND EXISTS (SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND status = 'delivered')
+           AND NOT EXISTS (SELECT 1 FROM pd_fulfillment WHERE order_id = $1 AND status IN ('pending','shipped'))`,
+        [opts.order_id, PaymentGateway.Cod],
       );
-      if (rows[0].active === '0' && rows[0].delivered !== '0') {
-        await c.query(
-          `UPDATE pd_order SET status = 'delivered',
-             payment_status=CASE WHEN payment_gateway=$2 THEN 'captured' ELSE payment_status END,
-             updated_at=NOW() WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-          [opts.order_id,PaymentGateway.Cod],
-        );
-      }
     });
     // COD is considered paid only after every store fulfillment is delivered.
     await adsService.recognizeOrderConversion(opts.order_id);
@@ -1800,42 +1786,8 @@ export class OrderService {
         await restoreOrderItemStock(c, it);
       }
 
-      const { rows } = await c.query<{
-        pending: string;
-        shipped: string;
-        delivered: string;
-        active: string;
-      }>(
-        `SELECT
-           COUNT(*) FILTER (WHERE status = 'pending')::text AS pending,
-           COUNT(*) FILTER (WHERE status = 'shipped')::text AS shipped,
-           COUNT(*) FILTER (WHERE status = 'delivered')::text AS delivered,
-           COUNT(*) FILTER (WHERE status IN ('pending', 'shipped', 'delivered'))::text AS active
-         FROM pd_fulfillment
-         WHERE order_id = $1`,
-        [opts.order_id],
-      );
-      const counts = rows[0];
-      if (counts.active === '0') {
-        await c.query(
-          `UPDATE pd_order
-           SET status = 'cancelled',
-               cancelled_at = NOW(),
-               cancelled_reason = $2
-           WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-          [opts.order_id, opts.reason],
-        );
-      } else if (counts.pending === '0' && counts.shipped === '0' && counts.delivered !== '0') {
-        await c.query(
-          `UPDATE pd_order SET status = 'delivered' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-          [opts.order_id],
-        );
-      } else if (counts.pending === '0' && counts.shipped !== '0') {
-        await c.query(
-          `UPDATE pd_order SET status = 'fulfilled' WHERE id = $1 AND status NOT IN ('cancelled','refunded')`,
-          [opts.order_id],
-        );
-      }
+      // Recompute the order aggregate from all fulfillments (same transaction)
+      await this.syncOrderStatusFromFulfillments(c, opts.order_id, { cancelReason: opts.reason });
     });
     logger.info(opts, 'Store fulfillment cancelled');
   }
@@ -2050,10 +2002,31 @@ export class OrderService {
       });
     }
     await transaction(async (c) => {
+      // Guard on fulfillment reality, not just the order-level status:
+      // a shipped/delivered fulfillment may coexist with a stale
+      // pending/payment_required order status (e.g. carrier-label path).
+      const { rows: startedRows } = await c.query<{ started: string }>(
+        `SELECT COUNT(*) FILTER (WHERE status IN ('shipped','delivered'))::text AS started
+         FROM pd_fulfillment
+         WHERE order_id = $1`,
+        [orderId],
+      );
+      if (Number(startedRows[0]?.started ?? 0) > 0) {
+        throw new PdValidationError('Cannot cancel an order with shipped or delivered items', {
+          code: PdErrorCode.ORDER_CANNOT_CANCEL,
+          status: order.status,
+        });
+      }
       await c.query(
         `UPDATE pd_order SET status = 'cancelled', cancelled_at = NOW(), cancelled_reason = $2
          WHERE id = $1`,
         [orderId, reason],
+      );
+      // Cancel any pending fulfillments atomically with the order
+      await c.query(
+        `UPDATE pd_fulfillment SET status = 'cancelled', updated_at = NOW()
+         WHERE order_id = $1 AND status = 'pending'`,
+        [orderId],
       );
       // Restock items
       const { rows: items } = await c.query<{
@@ -2229,6 +2202,20 @@ export class OrderService {
              WHEN NOT EXISTS (
                SELECT 1 FROM pd_fulfillment
                WHERE order_id = $1 AND status = 'pending'
+             ) AND EXISTS (
+               SELECT 1 FROM pd_fulfillment
+               WHERE order_id = $1 AND status = 'delivered'
+             ) THEN 'delivered'
+             WHEN NOT EXISTS (
+               SELECT 1 FROM pd_fulfillment
+               WHERE order_id = $1 AND status = 'pending'
+             ) AND EXISTS (
+               SELECT 1 FROM pd_fulfillment
+               WHERE order_id = $1 AND status = 'shipped'
+             ) THEN 'fulfilled'
+             WHEN NOT EXISTS (
+               SELECT 1 FROM pd_fulfillment
+               WHERE order_id = $1
              ) THEN 'fulfilled'
              WHEN status = 'payment_required' THEN 'pending'
              ELSE status
@@ -2466,17 +2453,23 @@ export class OrderService {
     notes?: string;
   }): Promise<void> {
     await transaction(async (c) => {
-      // 1. Update fulfillment status
-      await c.query(
+      // 1. Update fulfillment status (guarded: RTO only valid on a shipped fulfillment)
+      const { rowCount } = await c.query(
         `UPDATE pd_fulfillment
          SET status = 'cancelled',
              rto_reason_code = $3,
              rto_notes = $4,
              rto_at = NOW(),
              updated_at = NOW()
-         WHERE order_id = $1 AND store_id = $2`,
+         WHERE order_id = $1 AND store_id = $2 AND status = 'shipped'`,
         [params.orderId, params.storeId, params.reasonCode, params.notes || null],
       );
+      if (!rowCount) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          'Fulfillment not found, not shipped, or already returned',
+        );
+      }
 
       // 2. Update shipment if exists
       await c.query(
@@ -2487,25 +2480,58 @@ export class OrderService {
         [params.orderId, params.storeId],
       );
 
-      // 3. Mark COD verification as rejected/unreachable
+      // 3. Mark COD verification: rejected only for customer-fault reasons,
+      //    neutral for carrier-side issues
+      const customerFaultReasons = ['client_refused', 'unreachable', 'wrong_address', 'fake_order', 'customer_cancelled'];
+      const verificationStatus = customerFaultReasons.includes(params.reasonCode) ? 'rejected' : 'unreachable';
       await c.query(
         `INSERT INTO pd_cod_verification (id, order_id, store_id, status, notes, updated_at)
-         VALUES ($1, $2, $3, 'rejected', $4, NOW())
+         VALUES ($1, $2, $3, $5, $4, NOW())
          ON CONFLICT (order_id, store_id) DO UPDATE
-         SET status = 'rejected',
+         SET status = $5,
              notes = COALESCE($4, pd_cod_verification.notes),
              updated_at = NOW()`,
-        [pdId('codv'), params.orderId, params.storeId, `RTO: ${params.reasonCode} - ${params.notes || ''}`],
+        [pdId('codv'), params.orderId, params.storeId, `RTO: ${params.reasonCode} - ${params.notes || ''}`, verificationStatus],
       );
 
-      // 4. Restock inventory
-      const { rows: items } = await c.query<{ product_id: string; variant_id: string | null; quantity: number }>(
-        `SELECT product_id, variant_id, quantity FROM pd_order_item WHERE order_id = $1 AND store_id = $2`,
+      // 4. Restock inventory (variant/bundle aware)
+      const { rows: items } = await c.query<{
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        product_type: ProductType;
+      }>(
+        `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+         FROM pd_order_item i
+         JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = $1 AND i.store_id = $2`,
         [params.orderId, params.storeId],
       );
       for (const item of items) {
         await restoreOrderItemStock(c, item);
+        // Free serial license keys reserved by this order for returned items
+        if (item.product_type === ProductType.Serial) {
+          await c.query(
+            `UPDATE pd_license_key
+             SET order_id = NULL, assigned_at = NULL, is_used = false
+             WHERE product_id = $1 AND order_id = $2 AND is_used = false`,
+            [item.product_id, params.orderId],
+          );
+        }
       }
+
+      // 5. Flag the courier settlement for reconciliation
+      await c.query(
+        `UPDATE pd_courier_settlement
+         SET status = 'disputed', updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2`,
+        [params.orderId, params.storeId],
+      );
+
+      // 6. Recompute the order aggregate from all fulfillments
+      await this.syncOrderStatusFromFulfillments(c, params.orderId, {
+        cancelReason: `RTO: ${params.reasonCode}`,
+      });
     });
 
     logger.info({ order_id: params.orderId, store_id: params.storeId, reason: params.reasonCode }, 'Marked fulfillment as RTO and restocked');
