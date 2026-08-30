@@ -5,7 +5,8 @@
 
 import { query, transaction } from '../db/pool';
 import type { PoolClient } from 'pg';
-import { pdId } from '../utils/crypto';
+import { randomInt, timingSafeEqual } from 'node:crypto';
+import { pdId, sha256 } from '../utils/crypto';
 import {
   PdConflictError,
   PdErrorCode,
@@ -34,6 +35,7 @@ import { checkoutQuoteService } from './checkout-quote.service';
 import { paymentCapabilityService } from './payment-capability.service';
 import { walletService } from './wallet.service';
 import { subscriptionService } from './subscription.service';
+import { smsService } from './sms.service';
 import { calculateVendorNet } from '../utils/money';
 import { syncOrderStatusFromFulfillments, restoreOrderItemStock } from './order-fulfillment-shared';
 
@@ -183,7 +185,11 @@ export interface CodVerificationRow {
   status: 'pending' | 'confirmed' | 'rejected' | 'unreachable' | 'otp_verified';
   call_attempts: number;
   last_call_at: Date | null;
-  otp_code?: string | null;
+  /** SHA-256 of the delivered code. The plaintext OTP is never persisted. */
+  otp_hash?: string | null;
+  otp_expires_at?: Date | null;
+  otp_attempts?: number;
+  otp_channel?: string | null;
   otp_sent_at: Date | null;
   otp_verified_at: Date | null;
   risk_score: number;
@@ -248,6 +254,11 @@ export interface StoreOrderSummary {
 
 export const FLAT_SHIPPING_PER_STORE = 7; // TND — fallback until a live carrier quote is available
 export const COMBINED_SHIPPING_REBATE_PER_ADDITIONAL_STORE = 3;
+
+// COD confirmation OTP policy (audit P1-2 hardening)
+export const COD_OTP_TTL_MINUTES = 10;
+export const COD_OTP_MAX_ATTEMPTS = 5;
+export const COD_OTP_RESEND_SECONDS = 60;
 
 export function numberSetting(settings: PlatformSettings, key: keyof PlatformSettings, fallback: number) {
   const value = Number(settings[key]);
@@ -2531,31 +2542,120 @@ export class OrderService {
     return rows[0];
   }
 
-  async sendCodOtp(orderId: string, storeId: string): Promise<{ success: boolean; message: string }> {
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    await this.getOrCreateCodVerification(orderId, storeId);
+  /**
+   * Generate and dispatch a COD confirmation OTP to the CUSTOMER.
+   *
+   * Security invariants (audit P1-2):
+   *  - the code is never returned by the API, never logged, and only its
+   *    SHA-256 hash is persisted;
+   *  - it expires after COD_OTP_TTL_MINUTES;
+   *  - the send endpoint is rate-limited per order+store;
+   *  - failed verifications are counted and lock the code after
+   *    COD_OTP_MAX_ATTEMPTS.
+   */
+  async sendCodOtp(orderId: string, storeId: string): Promise<{ success: boolean; message: string; channel: string }> {
+    const verification = await this.getOrCreateCodVerification(orderId, storeId);
+
+    // Rate limit: one code per COD_OTP_RESEND_SECONDS per order+store
+    if (verification.otp_sent_at) {
+      const elapsedSeconds = (Date.now() - new Date(verification.otp_sent_at).getTime()) / 1000;
+      if (elapsedSeconds < COD_OTP_RESEND_SECONDS) {
+        throw new PdValidationError(
+          `Veuillez patienter ${Math.ceil(COD_OTP_RESEND_SECONDS - elapsedSeconds)} secondes avant de renvoyer un code`,
+          { code: PdErrorCode.RATE_LIMITED },
+        );
+      }
+    }
+
+    // Resolve the customer's phone number — the code must reach the BUYER.
+    const { rows: contactRows } = await query<{ phone: string | null; customer_name: string | null }>(
+      `SELECT COALESCE(u.phone, sc.phone, o.shipping_address->>'phone') AS phone,
+              COALESCE(u.full_name, sc.full_name, o.shipping_address->>'first_name') AS customer_name
+       FROM pd_order o
+       LEFT JOIN pd_user u ON u.id = o.customer_id
+       LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
+       WHERE o.id = $1`,
+      [orderId],
+    );
+    const phone = contactRows[0]?.phone?.trim();
+    if (!phone) {
+      throw new PdValidationError('Aucun numéro de téléphone client disponible pour envoyer le code');
+    }
+
+    const otpCode = randomInt(100000, 1000000).toString();
+    const otpHash = sha256(otpCode);
+    const marketplaceName = String((await platformConfigService.getSettings()).marketplace_name || 'PandaMarket');
+    const shortId = orderId.slice(-8).toUpperCase();
+
+    let channel = 'none';
+    try {
+      const sent = await smsService.sendSms(
+        phone,
+        `${marketplaceName}: votre code de confirmation pour la commande #${shortId} est ${otpCode}. Valide ${COD_OTP_TTL_MINUTES} minutes.`,
+      );
+      channel = sent ? 'sms' : 'none';
+    } catch (err) {
+      logger.warn({ err, order_id: orderId }, 'COD OTP dispatch failed');
+      channel = 'none';
+    }
 
     await query(
       `UPDATE pd_cod_verification
-       SET otp_code = $3,
+       SET otp_hash = $3,
            otp_sent_at = NOW(),
+           otp_expires_at = NOW() + ($4 || ' minutes')::interval,
+           otp_attempts = 0,
+           otp_channel = $5,
            updated_at = NOW()
        WHERE order_id = $1 AND store_id = $2`,
-      [orderId, storeId, otpCode],
+      [orderId, storeId, otpHash, String(COD_OTP_TTL_MINUTES), channel],
     );
 
-    logger.info({ order_id: orderId, otp_code: otpCode }, 'Generated COD verification OTP');
-    return { success: true, message: `Code OTP de vérification généré : ${otpCode}` };
+    // NOTE: the code itself is intentionally absent from logs and the response.
+    logger.info({ order_id: orderId, store_id: storeId, channel }, 'COD verification OTP dispatched');
+    return {
+      success: channel !== 'none',
+      channel,
+      message: channel === 'none'
+        ? 'Code généré mais aucun canal SMS/WhatsApp actif : activez les notifications SMS dans les réglages de la plateforme.'
+        : 'Code de confirmation envoyé au client par SMS.',
+    };
   }
 
   async verifyCodOtp(orderId: string, storeId: string, code: string): Promise<CodVerificationRow> {
-    const { rows } = await query<CodVerificationRow>(
+    const { rows } = await query<CodVerificationRow & {
+      otp_hash: string | null;
+      otp_expires_at: Date | null;
+      otp_attempts: number;
+    }>(
       `SELECT * FROM pd_cod_verification WHERE order_id = $1 AND store_id = $2`,
       [orderId, storeId],
     );
-    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Vérification COD introuvable');
+    const verification = rows[0];
+    if (!verification) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Vérification COD introuvable');
 
-    if (rows[0].otp_code !== code.trim()) {
+    if (!verification.otp_hash) {
+      throw new PdValidationError('Aucun code actif : envoyez un nouveau code au client');
+    }
+    if (verification.otp_expires_at && new Date(verification.otp_expires_at).getTime() < Date.now()) {
+      throw new PdValidationError('Code expiré : envoyez un nouveau code au client');
+    }
+    if ((verification.otp_attempts ?? 0) >= COD_OTP_MAX_ATTEMPTS) {
+      throw new PdValidationError('Trop de tentatives échouées : envoyez un nouveau code au client');
+    }
+
+    const submittedHash = sha256(code.trim());
+    const expected = Buffer.from(verification.otp_hash, 'utf8');
+    const provided = Buffer.from(submittedHash, 'utf8');
+    const matches = expected.length === provided.length && timingSafeEqual(expected, provided);
+
+    if (!matches) {
+      await query(
+        `UPDATE pd_cod_verification
+         SET otp_attempts = otp_attempts + 1, updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2`,
+        [orderId, storeId],
+      );
       throw new PdValidationError('Code OTP invalide');
     }
 
@@ -2563,6 +2663,9 @@ export class OrderService {
       `UPDATE pd_cod_verification
        SET status = 'otp_verified',
            otp_verified_at = NOW(),
+           otp_hash = NULL,
+           otp_expires_at = NULL,
+           otp_attempts = 0,
            risk_score = 0,
            updated_at = NOW()
        WHERE order_id = $1 AND store_id = $2

@@ -2187,10 +2187,16 @@ export default function OrdersPage() {
         credentials: 'include',
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error?.message || 'Erreur envoi OTP');
-      setCodFeedback(data.message || 'Code OTP SMS envoyé au client.');
+      if (!res.ok) throw new Error(data?.error?.message || t('dashboardPages.orders.errorSendingOtp'));
+      // The backend never returns the code itself (it is SMS-delivered to the
+      // customer); show a neutral confirmation only.
+      setCodFeedback(
+        data?.channel === 'none'
+          ? t('dashboardPages.orders.otpNoChannel')
+          : t('dashboardPages.orders.otpSentToCustomer'),
+      );
     } catch (err) {
-      setCodFeedback(err instanceof Error ? err.message : 'Erreur réseau');
+      setCodFeedback(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setSendingCodOtp(false);
     }
