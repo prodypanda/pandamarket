@@ -1103,6 +1103,10 @@ function canPrepare(order: Order) {
   return order.fulfillment_status === 'pending';
 }
 
+function canRevertPreparation(order: Order) {
+  return order.fulfillment_status === 'preparing';
+}
+
 function canFulfill(order: Order) {
   return order.fulfillment_status === 'pending' || order.fulfillment_status === 'preparing';
 }
@@ -1643,6 +1647,31 @@ export default function OrdersPage() {
       });
       if (!res.ok) {
         setError(await getErrorMessage(res, t('dashboardPages.orders.errorPreparing')));
+        return;
+      }
+      await fetchOrders();
+      if (selectedOrder?.id === order.id) {
+        await openOrderDetail(order);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
+    } finally {
+      setPreparingId('');
+    }
+  };
+
+  const revertPreparation = async (order: Order) => {
+    setPreparingId(order.id);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/prepare/revert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorRevertingPreparation')));
         return;
       }
       await fetchOrders();
@@ -2198,9 +2227,9 @@ export default function OrdersPage() {
         }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error?.message || 'Erreur lors de la mise à jour COD');
+      if (!res.ok) throw new Error(data?.error?.message || t('dashboardPages.orders.codUpdateError'));
       
-      setCodFeedback(status === 'confirmed' ? 'Commande confirmée avec succès !' : `Statut COD mis à jour : ${status}`);
+      setCodFeedback(status === 'confirmed' ? t('dashboardPages.orders.codConfirmedSuccess') : t('dashboardPages.orders.codStatusUpdated', { status }));
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, cod_verification: data.verification, cod_status: data.verification.status });
       }
@@ -2249,7 +2278,7 @@ export default function OrdersPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error?.message || 'Code OTP incorrect');
-      setCodFeedback('Code OTP vérifié avec succès ! Commande 100% sécurisée.');
+      setCodFeedback(t('dashboardPages.orders.otpVerifiedSuccess'));
       setCodOtpInput('');
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, cod_verification: data.verification, cod_status: 'otp_verified', cod_risk_score: 0 });
@@ -2365,14 +2394,14 @@ export default function OrdersPage() {
 
   const getRtoLabel = (code?: string | null) => {
     switch (code) {
-      case 'client_refused': return 'Client a refusé à la livraison';
-      case 'unreachable': return 'Client injoignable (3 tentatives)';
-      case 'wrong_address': return 'Adresse erronée / introuvable';
-      case 'fake_order': return 'Fausse commande / Numéro faux';
-      case 'delayed_delivery': return 'Retard livraison / Refus';
-      case 'damaged_in_transit': return 'Colis endommagé';
-      case 'customer_cancelled': return 'Annulation tardive acheteur';
-      default: return code || 'Retour Expéditeur';
+      case 'client_refused': return t('dashboardPages.orders.rtoReasonClientRefused');
+      case 'unreachable': return t('dashboardPages.orders.rtoReasonUnreachable');
+      case 'wrong_address': return t('dashboardPages.orders.rtoReasonWrongAddress');
+      case 'fake_order': return t('dashboardPages.orders.rtoReasonFakeOrder');
+      case 'delayed_delivery': return t('dashboardPages.orders.rtoReasonDelayedDelivery');
+      case 'damaged_in_transit': return t('dashboardPages.orders.rtoReasonDamagedInTransit');
+      case 'customer_cancelled': return t('dashboardPages.orders.rtoReasonCustomerCancelled');
+      default: return code || t('dashboardPages.orders.rtoReasonDefault');
     }
   };
 
@@ -2441,7 +2470,7 @@ export default function OrdersPage() {
           }`}
         >
           <Package className="w-4 h-4 text-blue-600" />
-          <span>Toutes les Commandes</span>
+          <span>{t('dashboardPages.orders.tabAllOrders')}</span>
           <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 font-bold">
             {meta.total || orders.length}
           </span>
@@ -2457,10 +2486,10 @@ export default function OrdersPage() {
           }`}
         >
           <ShieldAlert className="w-4 h-4 text-amber-500" />
-          <span>🛡️ Radar Anti-Fraude COD & Pré-Validation</span>
+          <span>{t('dashboardPages.orders.tabCodRadar')}</span>
           {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length > 0 && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold animate-pulse">
-              {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length} à valider
+              {t('dashboardPages.orders.badgeToValidate', { count: orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length })}
             </span>
           )}
         </button>
@@ -2475,10 +2504,10 @@ export default function OrdersPage() {
           }`}
         >
           <RotateCcw className="w-4 h-4 text-rose-500" />
-          <span>🔄 Analyse des Retours (RTO)</span>
+          <span>{t('dashboardPages.orders.tabRtoReturns')}</span>
           {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length > 0 && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
-              {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length} retours
+              {t('dashboardPages.orders.badgeReturns', { count: orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length })}
             </span>
           )}
         </button>
@@ -2493,10 +2522,10 @@ export default function OrdersPage() {
           }`}
         >
           <DollarSign className="w-4 h-4 text-emerald-600" />
-          <span>💰 Rapprochement Transporteurs</span>
+          <span>{t('dashboardPages.orders.tabSettlements')}</span>
           {settlementsSummary.pending_payout > 0 && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
-              {formatMoney(settlementsSummary.pending_payout)} dû
+              {t('dashboardPages.orders.badgeDue', { amount: formatMoney(settlementsSummary.pending_payout) })}
             </span>
           )}
         </button>
@@ -2921,10 +2950,16 @@ export default function OrdersPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => void startPreparation(order)}
-                              disabled={preparingId === order.id || !canPrepare(order)}
-                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40"
-                              title={t('dashboardPages.orders.startPreparation')}
+                              onClick={() => void (canRevertPreparation(order) ? revertPreparation(order) : startPreparation(order))}
+                              disabled={preparingId === order.id || (!canPrepare(order) && !canRevertPreparation(order))}
+                              className={`p-2 rounded-lg transition-colors disabled:opacity-40 ${
+                                canRevertPreparation(order)
+                                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                                  : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                              }`}
+                              title={canRevertPreparation(order)
+                                ? t('dashboardPages.orders.revertPreparation')
+                                : t('dashboardPages.orders.startPreparation')}
                             >
                               {preparingId === order.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -3004,35 +3039,35 @@ export default function OrdersPage() {
           {/* COD Stats Header */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Commandes COD</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codTotalOrders')}</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
                 {orders.filter(o => o.payment_gateway === 'cod').length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Paiement à la livraison</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codOnDelivery')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">En Attente de Confirmation</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">{t('dashboardPages.orders.codAwaitingConfirmation')}</span>
               <p className="text-2xl font-black text-amber-600">
                 {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Appel téléphonique requis</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codPhoneCallRequired')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Confirmées & OTP Sécurisées</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">{t('dashboardPages.orders.codConfirmedSecured')}</span>
               <p className="text-2xl font-black text-emerald-600">
                 {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'confirmed' || o.cod_status === 'otp_verified')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Prêtes pour expédition</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codReadyToShip')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Rejetées / Frauduleuses</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">{t('dashboardPages.orders.codRejectedFraud')}</span>
               <p className="text-2xl font-black text-rose-600">
                 {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'rejected' || o.cod_status === 'unreachable')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Stock protégé</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codStockProtected')}</p>
             </div>
           </div>
 
@@ -3042,10 +3077,10 @@ export default function OrdersPage() {
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-amber-500" />
-                  <span>File de Pré-Validation des Commandes COD</span>
+                  <span>{t('dashboardPages.orders.codQueueTitle')}</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Appelez vos clients ou envoyez un message WhatsApp en 1 clic pour valider la livraison avant l&apos;envoi transporteur.
+                  {t('dashboardPages.orders.codQueueSubtitle')}
                 </p>
               </div>
             </div>
@@ -3054,19 +3089,19 @@ export default function OrdersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">Commande</th>
-                    <th className="px-4 py-3.5">Client & Contact</th>
-                    <th className="px-4 py-3.5">Montant COD</th>
-                    <th className="px-4 py-3.5">Score de Risque</th>
-                    <th className="px-4 py-3.5">Statut de Validation</th>
-                    <th className="px-4 py-3.5 text-right">Actions Rapides</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.customerAndContact')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.codAmount')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.riskScore')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.validationStatus')}</th>
+                    <th className="px-4 py-3.5 text-right">{t('dashboardPages.orders.quickActions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {orders.filter(o => o.payment_gateway === 'cod').length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-12 text-slate-400">
-                        Aucune commande avec paiement à la livraison (COD) pour le moment.
+                        {t('dashboardPages.orders.codNoOrders')}
                       </td>
                     </tr>
                   ) : (
@@ -3100,7 +3135,7 @@ export default function OrdersPage() {
                             <p className="font-bold text-slate-900 dark:text-white">{customerName}</p>
                             <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
                               <Phone className="w-3 h-3 text-slate-400" />
-                              {phone || <span className="italic text-red-500">Non renseigné</span>}
+                              {phone || <span className="italic text-red-500">{t('dashboardPages.orders.phoneUnavailable')}</span>}
                             </p>
                             <p className="text-[10px] text-slate-400 truncate max-w-[180px]">
                               {order.shipping_address?.city}, {order.shipping_address?.address_line_1}
@@ -3120,7 +3155,7 @@ export default function OrdersPage() {
                                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                                   : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                               }`}>
-                                {isHighRisk ? '🔴 Risque Élevé' : isModerateRisk ? '🟡 Risque Modéré' : '🟢 Faible Risque'} ({riskScore}%)
+                                {isHighRisk ? t('dashboardPages.orders.riskHigh') : isModerateRisk ? t('dashboardPages.orders.riskModerate') : t('dashboardPages.orders.riskLow')} ({riskScore}%)
                               </span>
                             </div>
                           </td>
@@ -3133,11 +3168,11 @@ export default function OrdersPage() {
                                 ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
                                 : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                             }`}>
-                              {order.cod_status === 'confirmed' ? '✅ Confirmée par Appel' :
-                               order.cod_status === 'otp_verified' ? '🔐 Vérifiée par OTP' :
-                               order.cod_status === 'unreachable' ? '📵 Client Injoignable' :
-                               order.cod_status === 'rejected' ? '❌ Refusée / Rejetée' :
-                               '⏳ En Attente d’Appel'}
+                              {order.cod_status === 'confirmed' ? t('dashboardPages.orders.codConfirmedByCall') :
+                               order.cod_status === 'otp_verified' ? t('dashboardPages.orders.codVerifiedByOtp') :
+                               order.cod_status === 'unreachable' ? t('dashboardPages.orders.codUnreachable') :
+                               order.cod_status === 'rejected' ? t('dashboardPages.orders.codRejected') :
+                               t('dashboardPages.orders.codAwaitingCall')}
                             </span>
                           </td>
 
@@ -3149,7 +3184,7 @@ export default function OrdersPage() {
                                   href={`tel:${cleanPhone}`}
                                   onClick={() => handleUpdateCodStatus(order.id, 'pending', 1, 'Tentative d’appel sortant')}
                                   className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 transition-colors shadow-xs"
-                                  title="Appeler le client"
+                                  title={t('dashboardPages.orders.callCustomer')}
                                 >
                                   <PhoneCall className="w-4 h-4" />
                                 </a>
@@ -3162,7 +3197,7 @@ export default function OrdersPage() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs"
-                                  title="Envoyer confirmation WhatsApp"
+                                  title={t('dashboardPages.orders.sendWhatsAppConfirmation')}
                                 >
                                   <MessageSquare className="w-4 h-4" />
                                 </a>
@@ -3175,7 +3210,7 @@ export default function OrdersPage() {
                                 className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-xs flex items-center gap-1"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                                <span>Confirmer</span>
+                                <span>{t('dashboardPages.common.confirm')}</span>
                               </button>
 
                               {/* Reject Button */}
@@ -3183,7 +3218,7 @@ export default function OrdersPage() {
                                 type="button"
                                 onClick={() => handleUpdateCodStatus(order.id, 'rejected', 0, 'Rejeté par le vendeur pour risque élevé')}
                                 className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
-                                title="Rejeter / Annuler"
+                                title={t('dashboardPages.orders.rejectCancel')}
                               >
                                 <Ban className="w-4 h-4" />
                               </button>
@@ -3206,25 +3241,25 @@ export default function OrdersPage() {
           {/* RTO Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Taux de Retour Global (RTO)</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoGlobalRate')}</span>
               <p className="text-2xl font-black text-rose-600">
                 {orders.length > 0
                   ? ((orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length / orders.length) * 100).toFixed(1)
                   : '0.0'}%
               </p>
-              <p className="text-xs text-slate-500 font-medium">Objectif cible &lt; 5.0%</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoTargetBelow5')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">Colis Retournés</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">{t('dashboardPages.orders.rtoReturnedParcels')}</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white">
                 {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Marchandise réintégrée au stock</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoStockRestored')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">Valeur Marchandise Sauvée</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">{t('dashboardPages.orders.rtoSavedValue')}</span>
               <p className="text-2xl font-black text-emerald-600 font-mono">
                 {formatMoney(
                   orders
@@ -3232,11 +3267,11 @@ export default function OrdersPage() {
                     .reduce((acc, o) => acc + (parseFloat(o.store_total || o.total) || 0), 0)
                 )}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Stock récupéré</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoStockRecovered')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Coûts de Livraison Perdus</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoLostShippingCosts')}</span>
               <p className="text-2xl font-black text-rose-500 font-mono">
                 {formatMoney(
                   orders
@@ -3244,7 +3279,7 @@ export default function OrdersPage() {
                     .reduce((acc, o) => acc + (parseFloat(o.store_shipping_total || o.shipping_total) || 7.000), 0)
                 )}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Frais transporteurs non récupérables</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoUnrecoverableFees')}</p>
             </div>
           </div>
 
@@ -3253,10 +3288,10 @@ export default function OrdersPage() {
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <RotateCcw className="w-4 h-4 text-rose-500" />
-                <span>Journal des Commandes RTO & Motifs de Non-Livraison</span>
+                <span>{t('dashboardPages.orders.rtoJournalTitle')}</span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Suivez précisément les causes de retours de vos transporteurs pour optimiser la qualification des adresses.
+                {t('dashboardPages.orders.rtoJournalSubtitle')}
               </p>
             </div>
 
@@ -3264,20 +3299,20 @@ export default function OrdersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">Commande</th>
-                    <th className="px-4 py-3.5">Client</th>
-                    <th className="px-4 py-3.5">Transporteur</th>
-                    <th className="px-4 py-3.5">Motif du Retour (RTO)</th>
-                    <th className="px-4 py-3.5">Montant</th>
-                    <th className="px-4 py-3.5">Date Retour</th>
-                    <th className="px-4 py-3.5 text-right">Détails</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.customer')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.carrier')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.rtoReason')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.amount')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.rtoDate')}</th>
+                    <th className="px-4 py-3.5 text-right">{t('dashboardPages.orders.details')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-12 text-slate-400">
-                        Excellent ! Aucun retour RTO enregistré.
+                        {t('dashboardPages.orders.rtoNoReturns')}
                       </td>
                     </tr>
                   ) : (
@@ -3322,7 +3357,7 @@ export default function OrdersPage() {
                              onClick={() => { void openOrderDetail(order); }}
                              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
                            >
-                             Voir Fiche
+                             {t('dashboardPages.orders.viewDetails')}
                            </button>
                          </td>
                       </tr>
@@ -3341,35 +3376,35 @@ export default function OrdersPage() {
           {/* Settlement KPI Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Encaissé par Transporteurs</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementTotalCollected')}</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                 {formatMoney(settlementsSummary.total_collected)}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Montant brut collecté auprès des clients</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.settlementGrossFromCustomers')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">Frais de Livraison Déduits</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">{t('dashboardPages.orders.settlementFeesDeducted')}</span>
               <p className="text-2xl font-black text-rose-600 font-mono">
                 -{formatMoney(settlementsSummary.total_courier_fees)}
               </p>
-              <p className="text-xs text-slate-500 font-medium">Facturation transporteurs</p>
+              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.settlementCarrierBilling')}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 bg-amber-50/20 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">En Attente de Virement</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">{t('dashboardPages.orders.settlementAwaitingTransfer')}</span>
               <p className="text-2xl font-black text-amber-600 font-mono">
                 {formatMoney(settlementsSummary.pending_payout)}
               </p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">{settlementsSummary.pending_count} bordereaux en cours</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">{t('dashboardPages.orders.settlementPendingCount', { count: settlementsSummary.pending_count })}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Net Reversé au Vendeur</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">{t('dashboardPages.orders.settlementNetToVendor')}</span>
               <p className="text-2xl font-black text-emerald-600 font-mono">
                 {formatMoney(settlementsSummary.settled_payout)}
               </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{settlementsSummary.settled_count} règlements clôturés</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('dashboardPages.orders.settlementSettledCount', { count: settlementsSummary.settled_count })}</p>
             </div>
           </div>
 
@@ -3379,10 +3414,10 @@ export default function OrdersPage() {
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-emerald-600" />
-                  <span>Bordereau de Rapprochement des Encaissements</span>
+                  <span>{t('dashboardPages.orders.settlementLedgerTitle')}</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Contrôlez les montants reversés par chaque transporteur et pointez vos virements bancaires.
+                  {t('dashboardPages.orders.settlementLedgerSubtitle')}
                 </p>
               </div>
 
@@ -3393,12 +3428,12 @@ export default function OrdersPage() {
                   onChange={(e) => setSettlementCarrierFilter(e.target.value)}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
                 >
-                  <option value="all">Tous les Transporteurs</option>
+                  <option value="all">{t('dashboardPages.orders.allCarriers')}</option>
                   <option value="aramex">Aramex</option>
                   <option value="laposte">La Poste Tunisienne</option>
                   <option value="first_delivery">First Delivery</option>
                   <option value="livri">Livri</option>
-                  <option value="own_fleet">Flotte Propre</option>
+                  <option value="own_fleet">{t('dashboardPages.orders.ownFleet')}</option>
                 </select>
 
                 <select
@@ -3406,10 +3441,10 @@ export default function OrdersPage() {
                   onChange={(e) => setSettlementStatusFilter(e.target.value)}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
                 >
-                  <option value="all">Tous les Statuts</option>
-                  <option value="pending">En Attente de Virement</option>
-                  <option value="settled">Reversé / Rapproché</option>
-                  <option value="disputed">Écart / Litige</option>
+                  <option value="all">{t('dashboardPages.orders.allStatuses')}</option>
+                  <option value="pending">{t('dashboardPages.orders.settlementAwaitingTransfer')}</option>
+                  <option value="settled">{t('dashboardPages.orders.settlementStatusSettled')}</option>
+                  <option value="disputed">{t('dashboardPages.orders.settlementStatusDisputed')}</option>
                 </select>
               </div>
             </div>
@@ -3418,12 +3453,12 @@ export default function OrdersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">Commande</th>
-                    <th className="px-4 py-3.5">Transporteur</th>
-                    <th className="px-4 py-3.5">Encaissé Client</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.carrier')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementCollectedFromCustomer')}</th>
                     <th className="px-4 py-3.5">Frais Livraison</th>
-                    <th className="px-4 py-3.5">Net à Reverser</th>
-                    <th className="px-4 py-3.5">Statut Règlement</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementNetToPay')}</th>
+                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementStatusHeader')}</th>
                     <th className="px-4 py-3.5 text-right">Rapprochement</th>
                   </tr>
                 </thead>
@@ -3434,10 +3469,10 @@ export default function OrdersPage() {
                         {settlementsLoading ? (
                           <div className="flex items-center justify-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                            <span>Chargement des encaissements transporteurs...</span>
+                            <span>{t('dashboardPages.orders.settlementLoading')}</span>
                           </div>
                         ) : (
-                          <span>Aucun bordereau d&apos;encaissement trouvé. Les règlements s&apos;affichent dès qu&apos;une commande COD est livrée.</span>
+                          <span>{t('dashboardPages.orders.settlementEmpty')}</span>
                         )}
                       </td>
                     </tr>
@@ -3480,10 +3515,10 @@ export default function OrdersPage() {
                               ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                           }`}>
-                            {st.status === 'settled' ? '✅ Reversé / Rapproché' : st.status === 'disputed' ? '⚠️ Écart / Litige' : '⏳ En Attente de Virement'}
+                            {st.status === 'settled' ? t('dashboardPages.orders.settlementStatusSettled') : st.status === 'disputed' ? t('dashboardPages.orders.settlementStatusDisputed') : t('dashboardPages.orders.settlementStatusPending')}
                           </span>
                           {st.settlement_reference && (
-                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">Réf: {st.settlement_reference}</p>
+                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">{t('dashboardPages.orders.settlementRef')} {st.settlement_reference}</p>
                           )}
                         </td>
 
@@ -3503,7 +3538,7 @@ export default function OrdersPage() {
                             }}
                             className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs hover:bg-slate-800 transition-colors"
                           >
-                            Pointeur
+                            {t('dashboardPages.orders.settlementReconcile')}
                           </button>
                         </td>
                       </tr>
@@ -3758,7 +3793,7 @@ export default function OrdersPage() {
                             <div className="flex items-center gap-2">
                               <ShieldAlert className="w-5 h-5 text-amber-600" />
                               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                Diagnostic Risque COD & Pré-Validation
+                                {t('dashboardPages.orders.codDiagnosticTitle')}
                               </h3>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-black ${
@@ -3768,28 +3803,28 @@ export default function OrdersPage() {
                                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                                 : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                             }`}>
-                              {isHighRisk ? '🔴 Risque Élevé' : isModerateRisk ? '🟡 Risque Modéré' : '🟢 Faible Risque'} ({riskScore}%)
+                              {isHighRisk ? t('dashboardPages.orders.riskHigh') : isModerateRisk ? t('dashboardPages.orders.riskModerate') : t('dashboardPages.orders.riskLow')} ({riskScore}%)
                             </span>
                           </div>
 
                           {/* Risk Factors Breakdown */}
                           <div className="space-y-1.5 text-xs">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Facteurs Analysés :</span>
+                            <span className="text-[10px] font-black uppercase text-slate-400">{t('dashboardPages.orders.codFactorsAnalyzed')}</span>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-                                <p className="font-bold text-slate-700 dark:text-slate-200">📱 Téléphone Client</p>
-                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{phone || 'Non renseigné'}</p>
+                                <p className="font-bold text-slate-700 dark:text-slate-200">{t('dashboardPages.orders.codFactorPhone')}</p>
+                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{phone || t('dashboardPages.orders.phoneUnavailable')}</p>
                               </div>
                               <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-                                <p className="font-bold text-slate-700 dark:text-slate-200">📍 Complétude Adresse</p>
-                                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{selectedOrder.shipping_address?.city || 'Ville inconnue'}</p>
+                                <p className="font-bold text-slate-700 dark:text-slate-200">{t('dashboardPages.orders.codFactorAddress')}</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{selectedOrder.shipping_address?.city || t('dashboardPages.orders.cityUnknown')}</p>
                               </div>
                               <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-                                <p className="font-bold text-slate-700 dark:text-slate-200">🛍️ Commandes Antérieures</p>
-                                <p className="text-[11px] text-slate-500 mt-0.5">{selectedOrder.customer_order_count || '1'} commande(s)</p>
+                                <p className="font-bold text-slate-700 dark:text-slate-200">{t('dashboardPages.orders.codFactorHistory')}</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5">{t('dashboardPages.orders.codOrdersCount', { count: toNumber(selectedOrder.customer_order_count) || 1 })}</p>
                               </div>
                               <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-                                <p className="font-bold text-slate-700 dark:text-slate-200">💵 Montant Panier COD</p>
+                                <p className="font-bold text-slate-700 dark:text-slate-200">{t('dashboardPages.orders.codFactorBasket')}</p>
                                 <p className="text-[11px] text-slate-500 font-mono mt-0.5">{formatMoney(selectedOrder.store_total || selectedOrder.total)}</p>
                               </div>
                             </div>
@@ -3797,7 +3832,7 @@ export default function OrdersPage() {
 
                           {/* Quick Pre-Validation Actions */}
                           <div className="space-y-2 pt-2 border-t border-amber-200/60 dark:border-slate-800">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Actions de Confirmation Téléphonique :</span>
+                            <span className="text-[10px] font-black uppercase text-slate-400">{t('dashboardPages.orders.codPhoneActionsTitle')}</span>
                             <div className="grid grid-cols-2 gap-2">
                               {phone && (
                                 <a
@@ -3806,7 +3841,7 @@ export default function OrdersPage() {
                                   className="flex items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-800 dark:text-slate-200 hover:bg-slate-50 shadow-xs"
                                 >
                                   <PhoneCall className="w-4 h-4 text-emerald-600" />
-                                  <span>Appeler le Client</span>
+                                  <span>{t('dashboardPages.orders.callCustomer')}</span>
                                 </a>
                               )}
 
@@ -3818,7 +3853,7 @@ export default function OrdersPage() {
                                   className="flex items-center justify-center gap-1.5 p-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 shadow-xs"
                                 >
                                   <MessageSquare className="w-4 h-4" />
-                                  <span>WhatsApp 1-Clic</span>
+                                  <span>{t('dashboardPages.orders.whatsAppOneClick')}</span>
                                 </a>
                               )}
                             </div>
@@ -3833,7 +3868,7 @@ export default function OrdersPage() {
                                   disabled={sendingCodOtp}
                                   className="text-[10px] font-black text-amber-600 hover:underline disabled:opacity-50"
                                 >
-                                  {sendingCodOtp ? 'Envoi...' : 'Envoyer Code OTP'}
+                                  {sendingCodOtp ? t('dashboardPages.orders.otpSending') : t('dashboardPages.orders.otpSend')}
                                 </button>
                               </div>
                               <div className="flex items-center gap-2">
@@ -3841,7 +3876,7 @@ export default function OrdersPage() {
                                   type="text"
                                   value={codOtpInput}
                                   onChange={(e) => setCodOtpInput(e.target.value)}
-                                  placeholder="Entrez le code à 6 chiffres"
+                                  placeholder={t('dashboardPages.orders.otpPlaceholder')}
                                   className="flex-1 px-3 py-1.5 text-xs font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none"
                                 />
                                 <button
@@ -3868,7 +3903,7 @@ export default function OrdersPage() {
                                 className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 transition-colors shadow-xs flex items-center justify-center gap-1"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                                <span>Confirmer pour Expédition</span>
+                                <span>{t('dashboardPages.orders.codConfirmForShipping')}</span>
                               </button>
 
                               <button
@@ -3877,7 +3912,7 @@ export default function OrdersPage() {
                                 disabled={updatingCodStatus}
                                 className="px-3 py-2 rounded-xl border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors"
                               >
-                                Refuser
+                                {t('dashboardPages.orders.refuse')}
                               </button>
                             </div>
                           </div>
@@ -4069,6 +4104,17 @@ export default function OrdersPage() {
                             {t('dashboardPages.orders.startPreparation')}
                           </button>
                         )}
+                        {canRevertPreparation(selectedOrder) && (
+                          <button
+                            type="button"
+                            onClick={() => void revertPreparation(selectedOrder)}
+                            disabled={preparingId === selectedOrder.id}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+                          >
+                            {preparingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                            {t('dashboardPages.orders.revertPreparation')}
+                          </button>
+                        )}
                         {canFulfill(selectedOrder) && (
                           <button
                             type="button"
@@ -4099,7 +4145,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 transition hover:bg-rose-100"
                           >
                             <RotateCcw className="h-4 w-4" />
-                            <span>Signaler Retour Colis (RTO)</span>
+                            <span>{t('dashboardPages.orders.reportRto')}</span>
                           </button>
                         )}
 
@@ -4116,7 +4162,7 @@ export default function OrdersPage() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100"
                           >
                             <DollarSign className="h-4 w-4" />
-                            <span>Rapprocher Encaissement Transporteur</span>
+                            <span>{t('dashboardPages.orders.reconcileCarrierPayment')}</span>
                           </button>
                         )}
 

@@ -404,6 +404,20 @@ router.post(
   }),
 );
 
+// Vendor: revert a preparation started by mistake (preparing -> pending)
+router.post(
+  '/store/:id/prepare/revert',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await orderService.revertStoreFulfillmentPreparing({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      user_id: req.user!.id,
+    });
+    res.status(200).json({ success: true, message: 'Preparation reverted' });
+  }),
+);
+
 // Vendor: fulfill their portion of the order
 router.post(
   '/:id/fulfill',

@@ -834,6 +834,40 @@ export class OrderService {
         );
       }
 
+      // ----- COD risk scoring at checkout -----
+      // Computing the score here (instead of lazily on the first cod-verify
+      // action) means the seller dashboard always shows a real score rather
+      // than the hardcoded 35% placeholder it used to fall back to.
+      if (opts.payment_gateway === PaymentGateway.Cod) {
+        const customerHistory = await this.getCustomerOrderHistoryForRisk(
+          c,
+          customerId,
+          storefrontCustomerId,
+          orderId,
+        );
+        for (const sid of storeIds) {
+          const storeSubtotal = prepared
+            .filter((item) => item.store_id === sid)
+            .reduce((sum, item) => sum + item.subtotal, 0);
+          const storeShipping = quoteTotals.shipping_by_store[sid] || 0;
+          const risk = this.calculateCodRisk({
+            phone: opts.shipping_address?.phone ?? null,
+            address: opts.shipping_address ?? null,
+            total: roundTnd(storeSubtotal + storeShipping),
+            customerOrderCount: customerHistory.orderCount,
+            customerLifetimeValue: customerHistory.lifetimeValue,
+            paymentGateway: opts.payment_gateway,
+          });
+          await c.query(
+            `INSERT INTO pd_cod_verification
+               (id, order_id, store_id, status, risk_score, risk_factors, created_at, updated_at)
+             VALUES ($1, $2, $3, 'pending', $4, $5::jsonb, NOW(), NOW())
+             ON CONFLICT (order_id, store_id) DO NOTHING`,
+            [pdId('codv'), orderId, sid, risk.riskScore, JSON.stringify(risk.factors)],
+          );
+        }
+      }
+
       if (quote) {
         await checkoutQuoteService.consume(c, quote.id, orderId);
       }
@@ -862,6 +896,35 @@ export class OrderService {
       );
     }
     return order;
+  }
+
+  /**
+   * Prior successful-order history for the buyer, used by the COD risk engine
+   * at checkout time. Excludes the order being created.
+   */
+  private async getCustomerOrderHistoryForRisk(
+    c: Pick<PoolClient, 'query'>,
+    customerId: string | null,
+    storefrontCustomerId: string | null,
+    excludeOrderId: string,
+  ): Promise<{ orderCount: number; lifetimeValue: number }> {
+    if (!customerId && !storefrontCustomerId) return { orderCount: 0, lifetimeValue: 0 };
+    const { rows } = await c.query<{ order_count: string; lifetime_value: string }>(
+      `SELECT COUNT(*)::text AS order_count,
+              COALESCE(SUM(total), 0)::text AS lifetime_value
+       FROM pd_order
+       WHERE id <> $3
+         AND status NOT IN ('cancelled', 'refunded')
+         AND (
+           ($1::text IS NOT NULL AND customer_id = $1)
+           OR ($2::text IS NOT NULL AND storefront_customer_id = $2)
+         )`,
+      [customerId, storefrontCustomerId, excludeOrderId],
+    );
+    return {
+      orderCount: parseInt(rows[0]?.order_count ?? '0', 10),
+      lifetimeValue: parseFloat(rows[0]?.lifetime_value ?? '0'),
+    };
   }
 
   private async getByIdempotencyKeyWithExecutor(executor: PoolClient, key: string): Promise<OrderRow | null> {
@@ -1513,7 +1576,7 @@ export class OrderService {
     }>(
       `SELECT
          COUNT(*)::text AS total_orders,
-         COUNT(*) FILTER (WHERE o.status IN ('payment_required', 'pending', 'processing'))::text AS open_orders,
+         COUNT(*) FILTER (WHERE f.status IN ('pending','preparing'))::text AS open_orders,
          COUNT(*) FILTER (WHERE f.status IN ('pending','preparing'))::text AS to_ship,
          COUNT(*) FILTER (WHERE f.status = 'shipped')::text AS shipped,
          COUNT(*) FILTER (WHERE f.status = 'delivered')::text AS delivered,
@@ -1631,6 +1694,32 @@ export class OrderService {
       await this.syncOrderStatusFromFulfillments(c, opts.order_id);
     });
     logger.info(opts, 'Fulfillment preparation started');
+  }
+
+  /**
+   * Revert a preparation that was started by mistake (preparing -> pending).
+   */
+  async revertStoreFulfillmentPreparing(opts: {
+    order_id: string;
+    store_id: string;
+    user_id?: string;
+  }): Promise<void> {
+    await transaction(async (c) => {
+      const { rowCount } = await c.query(
+        `UPDATE pd_fulfillment
+         SET status = 'pending', updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2 AND status = 'preparing'`,
+        [opts.order_id, opts.store_id],
+      );
+      if (!rowCount) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          'Fulfillment is not in preparation',
+        );
+      }
+      await this.syncOrderStatusFromFulfillments(c, opts.order_id);
+    });
+    logger.info(opts, 'Fulfillment preparation reverted');
   }
 
   /**
