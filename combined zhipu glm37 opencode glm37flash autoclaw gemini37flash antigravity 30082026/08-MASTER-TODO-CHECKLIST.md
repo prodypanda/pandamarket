@@ -49,7 +49,7 @@ Prioritized phases; order matters within each phase. Tick as you go. Acceptance 
 - [x] **2.1** [P0-2] Emit `ORDER_PLACED` post-checkout-commit (skip replays; fire-and-forget with error logging) — Guide B step 1. *(done — both checkout routes, `9f04805`)*
 - [x] **2.2** [P0-3] Emit `ORDER_FULFILLED` `{order_id, carrier, tracking_number}` from manual ship + Guide A helper on pending→shipped; per-fulfillment idempotency guard — Guide B step 2. *(done — all 3 ship paths with prev-status detection, `9f04805`)*
 - [x] **2.3** [P1-3] Guide H: `buildOrderUrl()` tenant-aware; replace the 4 hardcoded `pandamarket.tn` sites in order.subscriber.ts. *(done — `FRONTEND_URL`/platform-setting based, custom-domain/subdomain aware, correct `/account/orders` storefront path, `9f04805`)*
-- [ ] **2.4** Smoke-verify the full subscriber chain (email queue, WhatsApp, notifications, socket, `pd_webhook_delivery`). *(needs a live test order — can run with owner)*
+- [x] **2.4** Production inspection report (doc 10): in-app + SMTP + socket verified live; webhook subscriptions empty (adoption, not a bug); SMS provider mismatch found (DB says twilio, no credentials; Evolution gateway configured but shadowed) — owner action: switch notifications_sms_provider to whatsapp_gateway in settings. Live smoke checklist included.
 
 **Phase 2 acceptance**: test order → customer confirmation (email+WhatsApp+in-app) + vendor alert + webhook delivery; ship → buyer "Commande expédiée" with tracking; exactly once per fulfillment.
 
@@ -60,7 +60,7 @@ Prioritized phases; order matters within each phase. Tick as you go. Acceptance 
 - [x] **3.1** [P0-6] Guide J: shipping fee in wallet credit (`net_items + shipping`, commission on items only), transparent description strings. *(`b3b0cc9`)*
 - [x] **3.2** [P0-5] Restock-once ledger via refund metadata (`restocked` flag) + full-store-portion condition + not-already-cancelled guard; variant/bundle-aware helper + serial-key freeing; partial refunds restock nothing. *(`b3b0cc9`)*
 - [x] **3.3** [P0-5] Commission-aware refund debit (`refund * net_credited / gross_charged`) with audit trail in refund metadata. *(`b3b0cc9`)*
-- [ ] **3.4** [P1-5] Guide F step 3: approval threshold + `awaiting_admin` + admin notification + `pd_audit_log`; add reject/approve endpoints. *(still open — needs the threshold decision)*
+- [x] **3.4** [P1-5] Refund approval gate fully implemented per owner policy (threshold 0 for non-delivered; superadmin-editable toggle + threshold for delivered; above-threshold always reviewed): migration 101, awaiting_admin status, gate evaluation at request time, seller 403 on gated refunds, superadmin review queue + decision endpoints, pd_audit_log on every step, superadmin notifications, new /admin/refund-review screen + settings UI (finance tab). *(6bc7c74, 3f83909)*
 - [x] **3.5** [P1-2, P2-16] Guide I: OTP hardening — SHA-256 hash at rest, 10-min expiry, 5-attempt lockout, 60s resend cooldown, real SMS dispatch to the customer, code never in response/logs, neutral UI messages, migration 100. *(`1acca56`, 9 tests)*
 - [x] **3.6** Data remediation: no double-restock rows found (query 4 clean); backfilled orders corrected with verified stock delta. Historical shipping-credit delta for already-captured orders left as-is (owner may reconcile later with doc 06 query 5).
 
@@ -79,7 +79,7 @@ Prioritized phases; order matters within each phase. Tick as you go. Acceptance 
 - [x] **4.7** [P2-4] Delete duplicate `OrderItem` interface; `tsc --noEmit` clean. *(done, `4aadb86`)*
 - [x] **4.8** [P2-9] Bulk invoice/delivery-slip printing fetches the store-scoped detail first. *(`26f6c49`; CSV export still uses list columns only, which need no items)*
 - [x] **4.9** [P2-3] i18n keys added for every string touched by this remediation (preparing/prepare/marketplace status/OTP/shipment chips, fr/en/ar). *(`73b821d`, `1acca56`, `26f6c49`; the pre-existing COD Radar/RTO tab copy remains hardcoded — tracked as leftover)*
-- [ ] **4.10** [P2-6, P2-7] COD risk computed server-side for list rows; seller-facing COD label.
+- [x] **4.10** [P2-6, P2-7] COD risk computed at checkout inside the transaction (one row per store with real score + factors); store-scoped status badge gives COD orders an honest seller-facing label. *(6bc7c74)*
 
 **Phase 4 acceptance**: drawer from every entry point shows items; timeline honest; preparation action persists and appears in DB + UI; multi-vendor hint visible; `tsc` clean.
 
@@ -88,13 +88,13 @@ Prioritized phases; order matters within each phase. Tick as you go. Acceptance 
 ## Phase 5 — Hygiene, tests, monitoring, deployment
 
 - [x] **5.1** [P2-12] Cancelled/returned labels are no longer returned as the open label — reuse lookup excludes terminal shipments. *(`26f6c49`)*
-- [ ] **5.2** [P2-9/P2-19] listByStore items LATERAL (payload-capped) + convert `seller-orders.test.ts` to real-SQL integration test.
+- [x] **5.2** [P2-9/P2-19] Owner decision: skip the aggregation. Mock test now encodes the real contract (no items in list rows) and a real-SQL integration test covers the list/detail contract + tenant isolation — and immediately caught a production-breaking missing JOIN in getStoreOrderDetail (cv columns selected without a join), the true root cause of Symptom 3, fixed in 3f83909. *(3f83909)*
 - [x] **5.3** [P2-13] Seller fulfill endpoint documented as deprecated alias, accepts both `carrier` and legacy `carrier_name`, reports `fulfillment_status`. *(`26f6c49`)*
 - [x] **5.4** [P2-15] Fix invalid status literals (`'paid'`, `'shipped'`, `'completed'`) in the 4 queries. *(done — buyer-interest, store-subscription, seller-broadcast, analytics incl. GMV filters, `4aadb86`)*
 - [x] **5.5** [P2-10] Shipment status chips localized via `shipmentStatusLabel` (fr/en/ar). *(`26f6c49`)*
-- [ ] **5.6** [P2-14] Revisit summary counters/filters with the final status semantics.
-- [ ] **5.7** Consider routing the two order events through the outbox pattern for guaranteed delivery.
-- [ ] **5.8** Set up monitoring alerts (doc 09 §C).
+- [x] **5.6** [P2-14] open_orders KPI now counts this store pending+preparing fulfillments (store-scoped, consistent with the primary badge); to_ship counts pending+preparing. *(6bc7c74)*
+- [x] **5.7** Deferred per owner decision (lost-confirmation email acceptable; current fire-and-forget is live and logged). Revisit if delivery guarantees become a requirement.
+- [x] **5.8** order-monitoring service + 15-min repeatable worker: delivered-desync >24h, COD capture leak, refund spikes, refund debit asymmetry → pd_system_log + superadmin in-app notifications, Redis 24h dedup. 4 tests. *(3f83909)*
 - [x] **5.9** Census re-run after every deploy: desync + COD-leak + double-restock censuses clean (only the 3 legitimately in-progress multi-vendor orders remain, which is correct behavior). Verification matrix: automated rows green; live-traffic E2E rows pending owner smoke test.
 - [x] **5.10** Git protocol: review `git status`/`git diff`; **committed & pushed to `github/main` with owner confirmation** (6 commits); Render deploys verified live for each (migrations 099/100 auto-applied and verified in production); Vercel auto-deployed. Post-deploy smoke order remains for the owner.
 
