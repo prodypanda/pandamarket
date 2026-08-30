@@ -1069,6 +1069,22 @@ function fulfillmentLabel(status: string | null | undefined, t: (key: string) =>
   return labels[status] || status;
 }
 
+/** Carrier shipment lifecycle labels (pd_shipment.status) — the raw provider
+ *  values are English and must not leak into the localized UI. */
+function shipmentStatusLabel(status: string | null | undefined, t: (key: string) => string) {
+  if (!status) return '—';
+  const labels: Record<string, string> = {
+    created: t('dashboardPages.orders.shipmentCreated'),
+    picked_up: t('dashboardPages.orders.shipmentPickedUp'),
+    in_transit: t('dashboardPages.orders.shipmentInTransit'),
+    out_for_delivery: t('dashboardPages.orders.shipmentOutForDelivery'),
+    delivered: t('dashboardPages.orders.delivered'),
+    returned: t('dashboardPages.orders.shipmentReturned'),
+    cancelled: t('dashboardPages.orders.cancelled'),
+  };
+  return labels[status] || status;
+}
+
 function fulfillmentColor(status?: string | null) {
   switch (status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
@@ -2002,9 +2018,27 @@ export default function OrdersPage() {
     );
   };
 
-  const printSelectedOrders = (kind: PrintDocumentKind) => {
+  /**
+   * Fetch the store-scoped detail (which is the only payload carrying `items`)
+   * before printing, so invoices and delivery slips generated from the list
+   * never render the "items unavailable" row (audit P2-9).
+   */
+  const fetchOrderDetailForPrint = async (order: Order): Promise<Order> => {
+    if ((order.items || []).length > 0) return order;
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}`, { credentials: 'include' });
+      if (!res.ok) return order;
+      const data = await res.json();
+      return (data.order as Order) || order;
+    } catch {
+      return order;
+    }
+  };
+
+  const printSelectedOrders = async (kind: PrintDocumentKind) => {
     if (selectedOrders.length === 0) return;
-    selectedOrders.forEach((order) => {
+    const detailed = await Promise.all(selectedOrders.map(fetchOrderDetailForPrint));
+    detailed.forEach((order) => {
       openOrderPrintDocument(order, kind, marketplaceName, t, locale);
     });
   };
@@ -2656,8 +2690,8 @@ export default function OrdersPage() {
           {selectedOrderIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <span className="mr-2 text-sm font-black text-amber-900">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
-              <button type="button" onClick={() => printSelectedOrders('delivery_slip')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printLabels')}</button>
-              <button type="button" onClick={() => printSelectedOrders('invoice')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printInvoices')}</button>
+              <button type="button" onClick={() => void printSelectedOrders('delivery_slip')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printLabels')}</button>
+              <button type="button" onClick={() => void printSelectedOrders('invoice')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printInvoices')}</button>
               <button type="button" onClick={openBulkFulfillment} className="rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white hover:bg-[#991B1B]">{t('dashboardPages.orders.markShipped')}</button>
               <button type="button" onClick={exportSelectedOrders} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.exportSelected')}</button>
               <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-full px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.clear')}</button>
@@ -3969,7 +4003,7 @@ export default function OrdersPage() {
                                   <p className="mt-1 font-mono text-xs font-bold text-gray-500">{shipment.tracking_number}</p>
                                   {shipment.estimated_delivery && <p className="mt-1 text-xs font-semibold text-gray-500">ETA {formatDateTime(shipment.estimated_delivery, locale)}</p>}
                                 </div>
-                                <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-black text-purple-700">{shipment.status}</span>
+                                <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-black text-purple-700">{shipmentStatusLabel(shipment.status, t)}</span>
                               </div>
                               <button
                                 type="button"

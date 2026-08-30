@@ -1102,10 +1102,14 @@ export class OrderService {
       });
     }
 
+    // Reuse an existing label only while it is still usable. A cancelled
+    // label must not be handed back as "open label" forever (audit P2-12):
+    // the seller needs to be able to generate a fresh one.
     const { rows: existingShipments } = await query<StoreOrderShipmentRow>(
       `SELECT *
        FROM pd_shipment
        WHERE order_id = $1 AND store_id = $2
+         AND status NOT IN ('cancelled', 'returned')
        ORDER BY created_at DESC
        LIMIT 1`,
       [opts.order_id, opts.store_id],

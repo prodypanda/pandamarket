@@ -224,7 +224,13 @@ sellerRouter.get(
 
 /**
  * PATCH /api/pd/seller/orders/:id/fulfill
- * Mark seller order fulfillment as shipped with tracking and carrier information.
+ *
+ * @deprecated Alias of the canonical `POST /api/pd/orders/:id/fulfill`.
+ * Kept for existing ERP/POS integrations. It ships THIS store's fulfillment;
+ * the order-level status is recomputed from the fulfillment aggregate by the
+ * service, so the response reports `fulfillment_status` (audit P2-13: the old
+ * `status: 'fulfilled'` body wrongly implied the whole order was fulfilled).
+ * Accepts both `carrier` and the legacy `carrier_name` body field.
  */
 sellerRouter.patch(
   '/orders/:id/fulfill',
@@ -232,22 +238,24 @@ sellerRouter.patch(
   requireStore,
   asyncHandler(async (req: Request, res: Response) => {
     const storeId = await resolveSellerStoreId(req);
-    const { tracking_number, carrier_name } = req.body;
+    const { tracking_number, carrier, carrier_name } = req.body;
+    const resolvedCarrier = carrier || carrier_name;
 
     await orderService.fulfill({
       order_id: req.params.id,
       store_id: storeId,
       tracking_number: tracking_number || undefined,
-      carrier: carrier_name || undefined,
+      carrier: resolvedCarrier || undefined,
     });
 
     res.status(200).json({
       success: true,
       order_id: req.params.id,
       store_id: storeId,
-      status: 'fulfilled',
+      fulfillment_status: 'shipped',
       tracking_number: tracking_number || null,
-      carrier_name: carrier_name || null,
+      carrier: resolvedCarrier || null,
+      deprecated: 'Use POST /api/pd/orders/:id/fulfill',
     });
   })
 );
