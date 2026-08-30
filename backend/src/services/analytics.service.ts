@@ -664,8 +664,8 @@ export class AnalyticsService {
             o.total::numeric AS amount_tnd,
             COALESCE(o.payment_gateway, 'cod') AS payment_gateway,
             CASE 
-              WHEN o.payment_status IN ('paid', 'captured', 'completed', 'approved') THEN 'captured'
-              WHEN o.payment_status IN ('failed', 'declined', 'cancelled') THEN 'failed'
+              WHEN o.payment_status = 'captured' THEN 'captured'
+              WHEN o.payment_status = 'failed' THEN 'failed'
               ELSE 'pending'
             END AS status,
             o.shipping_address,
@@ -1161,7 +1161,7 @@ export class AnalyticsService {
           COALESCE(SUM(total), 0)::numeric AS current_order_gmv,
           COUNT(id)::int AS current_orders_count
         FROM pd_order
-        WHERE (payment_status IN ('paid', 'captured', 'approved', 'completed') OR status IN ('paid', 'delivered', 'fulfilled', 'completed'))
+        WHERE (payment_status IN ('captured') OR status IN ('delivered', 'fulfilled'))
           AND ($1::timestamp IS NULL OR created_at >= $1::timestamp)
           AND created_at <= $2::timestamp
       `, [range.startDate, range.endDate]).catch(() => ({ rows: [{ current_order_gmv: 0, current_orders_count: 0 }] }));
@@ -1175,7 +1175,7 @@ export class AnalyticsService {
             COALESCE(SUM(total), 0)::numeric AS prev_order_gmv,
             COUNT(id)::int AS prev_orders_count
           FROM pd_order
-          WHERE (payment_status IN ('paid', 'captured', 'approved', 'completed') OR status IN ('paid', 'delivered', 'fulfilled', 'completed'))
+          WHERE (payment_status IN ('captured') OR status IN ('delivered', 'fulfilled'))
             AND created_at BETWEEN $1 AND $2
         `, [range.previousStartDate, range.previousEndDate]).catch(() => ({ rows: [{ prev_order_gmv: 0, prev_orders_count: 0 }] }));
         prevOrderGmv = Number(prevOrderStats[0]?.prev_order_gmv || 0);
@@ -2449,7 +2449,7 @@ export class AnalyticsService {
         FROM pd_store s
         JOIN pd_order_item oi ON oi.store_id = s.id
         JOIN pd_order o ON oi.order_id = o.id
-        WHERE o.status IN ('completed', 'fulfilled', 'delivered', 'processing', 'pending')
+        WHERE o.status IN ('fulfilled', 'delivered', 'processing', 'pending')
         GROUP BY s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan
         ORDER BY total_sales_gmv_tnd DESC
         LIMIT 8
@@ -3222,7 +3222,7 @@ export class AnalyticsService {
         s.created_at,
         COALESCE((SELECT COUNT(*)::int FROM pd_product p WHERE p.store_id = s.id), 0) AS product_count,
         COALESCE((SELECT COUNT(DISTINCT oi.order_id)::int FROM pd_order_item oi WHERE oi.store_id = s.id), 0) AS order_count,
-        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o JOIN pd_order_item oi ON oi.order_id = o.id WHERE oi.store_id = s.id AND o.payment_status IN ('paid', 'captured')), 0) AS total_gmv_tnd,
+        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o JOIN pd_order_item oi ON oi.order_id = o.id WHERE oi.store_id = s.id AND o.payment_status = 'captured'), 0) AS total_gmv_tnd,
         (SELECT k.status FROM pd_verification_documents k WHERE k.store_id = s.id ORDER BY k.created_at DESC LIMIT 1) AS kyc_status
       FROM pd_store s
       LEFT JOIN pd_user u ON s.owner_id = u.id
@@ -3294,7 +3294,7 @@ export class AnalyticsService {
         u.email AS buyer_email,
         u.created_at,
         COALESCE((SELECT COUNT(*)::int FROM pd_order o WHERE o.customer_id = u.id), 0) AS order_count,
-        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o WHERE o.customer_id = u.id AND o.payment_status IN ('paid', 'captured')), 0) AS total_spend_tnd,
+        COALESCE((SELECT SUM(o.total)::numeric FROM pd_order o WHERE o.customer_id = u.id AND o.payment_status = 'captured'), 0) AS total_spend_tnd,
         (SELECT MAX(o.created_at) FROM pd_order o WHERE o.customer_id = u.id) AS last_order_at
       FROM pd_user u
       WHERE ${whereClause}
@@ -3953,7 +3953,7 @@ export class AnalyticsService {
         s.created_at AS store_created_at,
         COUNT(DISTINCT oi.order_id) AS total_orders,
         COUNT(DISTINCT CASE WHEN o.status IN ('cancelled', 'refunded', 'disputed') THEN o.id END) AS cancelled_orders,
-        COALESCE(SUM(o.total) FILTER (WHERE o.payment_status IN ('paid', 'captured')), 0) AS gmv_tnd,
+        COALESCE(SUM(o.total) FILTER (WHERE o.payment_status = 'captured'), 0) AS gmv_tnd,
         COUNT(DISTINCT r.id) AS open_reports_count,
         COUNT(DISTINCT k.id) FILTER (WHERE k.status = 'rejected') AS rejected_kyc_count,
         COUNT(DISTINCT k.id) FILTER (WHERE k.status = 'pending') AS pending_kyc_count
@@ -4093,7 +4093,7 @@ export class AnalyticsService {
         COUNT(DISTINCT p.id) AS total_products,
         MAX(p.created_at) AS last_product_added_at,
         COUNT(DISTINCT oi.order_id) AS period_orders,
-        COALESCE(SUM(o.total) FILTER (WHERE o.payment_status IN ('paid', 'captured')), 0) AS period_gmv_tnd
+        COALESCE(SUM(o.total) FILTER (WHERE o.payment_status = 'captured'), 0) AS period_gmv_tnd
       FROM pd_store s
       LEFT JOIN pd_product p ON p.store_id = s.id
       LEFT JOIN pd_order_item oi ON oi.store_id = s.id

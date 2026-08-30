@@ -607,6 +607,7 @@
       "noAddressRequired": "لا يوجد عنوان مطلوب",
       "product": "منتج",
       "itemsDetailUnavailable": "تفاصيل المنتجات غير متاحة",
+      "waitingOtherStores": "في انتظار {count} متجر آخر",
       "item": "صنف",
       "quantity": "الكمية",
       "unitPrice": "سعر الوحدة",

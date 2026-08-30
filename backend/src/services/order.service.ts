@@ -115,6 +115,7 @@ export interface StoreOrderRow extends OrderRow {
   rto_at?: Date | null;
   cod_status?: string | null;
   cod_risk_score?: number | null;
+  other_pending_stores?: string | null;
 }
 
 export interface StoreOrderNoteRow {
@@ -1440,7 +1441,9 @@ export class OrderService {
               COALESCE(u.last_name, sc.last_name) AS customer_last_name,
               COALESCE(u.phone, sc.phone) AS customer_phone
               ,
-              COALESCE(reports.open_report_count, 0)::text AS open_report_count
+              COALESCE(reports.open_report_count, 0)::text AS open_report_count,
+              (SELECT COUNT(*) FROM pd_fulfillment f2
+                WHERE f2.order_id = o.id AND f2.store_id <> $1 AND f2.status = 'pending')::text AS other_pending_stores
        FROM pd_order o
        LEFT JOIN pd_user u ON u.id = o.customer_id
        LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id

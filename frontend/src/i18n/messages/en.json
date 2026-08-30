@@ -607,6 +607,7 @@
       "noAddressRequired": "No address required",
       "product": "Product",
       "itemsDetailUnavailable": "Item details unavailable",
+      "waitingOtherStores": "Waiting on {count} other store(s)",
       "item": "Item",
       "quantity": "Qty",
       "unitPrice": "Unit price",

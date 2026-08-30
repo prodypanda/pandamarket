@@ -458,7 +458,7 @@ export class SellerBroadcastService {
                  JOIN pd_order_item oi ON oi.order_id = o.id
                  WHERE oi.store_id = $1
                    AND o.created_at >= $2
-                   AND o.status IN ('paid', 'delivered', 'fulfilled', 'processing')
+                   AND (o.payment_status = 'captured' OR o.status IN ('delivered', 'fulfilled', 'processing'))
                    AND (o.notes ILIKE '%' || $3 || '%' OR o.billing_address::text ILIKE '%' || $3 || '%')`,
                 [storeId, row.sent_at || row.created_at, code]
               );

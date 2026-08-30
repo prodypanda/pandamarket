@@ -109,6 +109,7 @@ interface Order {
   store_custom_domain?: string | null;
   store_settings?: Record<string, unknown> | null;
   open_report_count?: string | number | null;
+  other_pending_stores?: string | number | null;
   customer_order_count?: string | number | null;
   customer_lifetime_value?: string | number | null;
   customer_last_order_at?: string | null;
@@ -135,16 +136,6 @@ interface ShippingAddress {
   city?: string | null;
   postal_code?: string | null;
   country?: string | null;
-}
-
-interface OrderItem {
-  id?: string;
-  store_id: string;
-  body: string;
-  created_by?: string | null;
-  updated_by?: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 interface SellerOrderRefund {
@@ -1093,7 +1084,7 @@ function fulfillmentColor(status?: string | null) {
   switch (status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'shipped': return 'bg-purple-50 text-purple-700 border-purple-200';
-    case 'delivered': return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
     case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
     default: return 'bg-gray-50 text-gray-600 border-gray-200';
   }
@@ -1126,9 +1117,11 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
   const isCancelled = order.status === 'cancelled' || order.fulfillment_status === 'cancelled';
   const isRefunded = order.status === 'refunded' || order.payment_status === 'refunded';
   const isPaid = order.payment_status === 'captured';
-  const isProcessing = ['processing', 'fulfilled', 'delivered'].includes(order.status) || ['pending', 'shipped', 'delivered'].includes(order.fulfillment_status || '');
   const isShipped = order.fulfillment_status === 'shipped' || order.fulfillment_status === 'delivered' || order.status === 'fulfilled' || order.status === 'delivered';
   const isDelivered = order.fulfillment_status === 'delivered' || order.status === 'delivered';
+  // Preparation is the seller's active step until the package actually ships.
+  // It must never read as "done" merely because a pending fulfillment exists.
+  const isPreparationDone = isShipped;
 
   if (isCancelled || isRefunded) {
     return [
@@ -1152,14 +1145,14 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
     },
     {
       label: t('dashboardPages.orders.timelinePreparation'),
-      description: isProcessing ? t('dashboardPages.orders.timelinePreparationReady') : t('dashboardPages.orders.timelinePreparationWaiting'),
-      state: isProcessing ? 'done' : 'pending',
+      description: isPreparationDone ? t('dashboardPages.orders.timelinePreparationReady') : t('dashboardPages.orders.timelinePreparationWaiting'),
+      state: isPreparationDone ? 'done' : 'current',
     },
     {
       label: t('dashboardPages.orders.shipment'),
       description: isShipped ? t('dashboardPages.orders.timelineShippedDesc', { carrier: order.carrier || '' }) : t('dashboardPages.orders.timelineShippedWaiting'),
       date: order.shipped_at,
-      state: isShipped ? 'done' : isProcessing ? 'current' : 'pending',
+      state: isShipped ? 'done' : 'pending',
     },
     {
       label: t('dashboardPages.orders.timelineDelivery'),
@@ -1310,6 +1303,7 @@ export default function OrdersPage() {
   const [savedPresets, setSavedPresets] = useState<SavedFilterPreset[]>([]);
   const [presetName, setPresetName] = useState('');
   const [loadingOrderDetail, setLoadingOrderDetail] = useState(false);
+  const [detailLoadFailed, setDetailLoadFailed] = useState(false);
   const [fulfillOrderTarget, setFulfillOrderTarget] = useState<Order | null>(null);
   const [carrier, setCarrier] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -1598,10 +1592,12 @@ export default function OrdersPage() {
     setSellerNote(order.seller_note?.body || '');
     setNoteFeedback('');
     setLoadingOrderDetail(true);
+    setDetailLoadFailed(false);
     setError('');
     try {
       const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}`, { credentials: 'include' });
       if (!res.ok) {
+        setDetailLoadFailed(true);
         setError(await getErrorMessage(res, t('dashboardPages.orders.errorLoadingDetail')));
         return;
       }
@@ -1610,6 +1606,7 @@ export default function OrdersPage() {
       setSelectedOrder(detail);
       setSellerNote(detail.seller_note?.body || '');
     } catch (err) {
+      setDetailLoadFailed(true);
       setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
       setLoadingOrderDetail(false);
@@ -2754,6 +2751,11 @@ export default function OrdersPage() {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
                             {statusLabel(order.status, t)}
                           </span>
+                          {toNumber(order.other_pending_stores) > 0 && (
+                            <p className="mt-1 text-[10px] font-bold text-gray-400">
+                              {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(order.other_pending_stores) })}
+                            </p>
+                          )}
                         </td>
                       )}
                       {visibleColumns.fulfillment && (
@@ -2969,7 +2971,7 @@ export default function OrdersPage() {
                           <td className="px-4 py-3.5">
                             <button
                               type="button"
-                              onClick={() => { setSelectedOrder(order); }}
+                              onClick={() => { void openOrderDetail(order); }}
                               className="font-black text-slate-900 dark:text-white font-mono hover:text-[#B91C1C]"
                             >
                               #{order.id.slice(-8).toUpperCase()}
@@ -3199,15 +3201,15 @@ export default function OrdersPage() {
                         <td className="px-4 py-3.5 text-slate-500 text-[11px]">
                           {order.rto_at ? new Date(order.rto_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : 'fr-TN') : new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : 'fr-TN')}
                         </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedOrder(order); }}
-                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
-                          >
-                            Voir Fiche
-                          </button>
-                        </td>
+                         <td className="px-4 py-3.5 text-right">
+                           <button
+                             type="button"
+                             onClick={() => { void openOrderDetail(order); }}
+                             className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+                           >
+                             Voir Fiche
+                           </button>
+                         </td>
                       </tr>
                     ))
                   )}
@@ -3452,6 +3454,11 @@ export default function OrdersPage() {
                         <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedOrder.status)}`}>
                           {statusLabel(selectedOrder.status, t)}
                         </span>
+                        {toNumber(selectedOrder.other_pending_stores) > 0 && (
+                          <p className="mt-2 text-[10px] font-bold text-gray-400">
+                            {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(selectedOrder.other_pending_stores) })}
+                          </p>
+                        )}
                       </div>
                       <div className="rounded-2xl bg-gray-50 p-4">
                         <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.paymentStatus')}</p>
@@ -3517,7 +3524,12 @@ export default function OrdersPage() {
                         <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.storeItems')}</h3>
                       </div>
                       <div className="mt-4 space-y-3">
-                        {(selectedOrder.items || []).length > 0 ? (
+                        {loadingOrderDetail ? (
+                          <div className="flex items-center justify-center gap-2 rounded-2xl bg-gray-50 p-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-[#B91C1C]" />
+                            <span className="text-sm font-semibold text-gray-500">{t('common.loading')}</span>
+                          </div>
+                        ) : (selectedOrder.items || []).length > 0 ? (
                           selectedOrder.items?.map((item) => (
                             <div key={item.id || `${item.product_id}-${item.variant_id}`} className="flex gap-3 rounded-2xl bg-gray-50 p-3">
                               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-200">
@@ -3540,6 +3552,17 @@ export default function OrdersPage() {
                               <p className="text-sm font-black text-gray-900">{formatMoney(item.subtotal, selectedOrder.currency || 'TND')}</p>
                             </div>
                           ))
+                        ) : detailLoadFailed ? (
+                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-red-50 p-4">
+                            <span className="text-sm font-semibold text-red-700">{t('dashboardPages.orders.errorLoadingDetail')}</span>
+                            <button
+                              type="button"
+                              onClick={() => { void openOrderDetail(selectedOrder); }}
+                              className="shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+                            >
+                              {t('common.retry')}
+                            </button>
+                          </div>
                         ) : (
                           <p className="rounded-2xl bg-gray-50 p-4 text-sm font-semibold text-gray-500">{t('dashboardPages.orders.itemsDetailUnavailable')}</p>
                         )}

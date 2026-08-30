@@ -59,7 +59,7 @@ export class StoreSubscriptionService {
       `SELECT COUNT(*)::text AS count 
        FROM pd_order 
        WHERE customer_id = $1 
-         AND status IN ('processing', 'fulfilled', 'delivered', 'paid', 'shipped')`,
+         AND (payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered'))`,
       [buyerId.trim()]
     );
 
