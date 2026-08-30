@@ -36,6 +36,7 @@ import { paymentCapabilityService } from './payment-capability.service';
 import { walletService } from './wallet.service';
 import { subscriptionService } from './subscription.service';
 import { smsService } from './sms.service';
+import { notificationService } from './notification.service';
 import { calculateVendorNet } from '../utils/money';
 import { syncOrderStatusFromFulfillments, restoreOrderItemStock } from './order-fulfillment-shared';
 
@@ -144,6 +145,9 @@ export interface StoreOrderRefundRow {
   reason: string | null;
   status: string;
   metadata: Record<string, unknown>;
+  reviewed_by?: string | null;
+  reviewed_at?: Date | null;
+  decision_metadata?: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -996,6 +1000,7 @@ export class OrderService {
        LEFT JOIN pd_storefront_customer sc ON sc.id = o.storefront_customer_id
        LEFT JOIN pd_store s ON s.id = $2
        LEFT JOIN pd_fulfillment f ON f.order_id = o.id AND f.store_id = $2
+       LEFT JOIN pd_cod_verification cv ON cv.order_id = o.id AND cv.store_id = $2
        LEFT JOIN pd_store_order_note note ON note.order_id = o.id AND note.store_id = $2
        LEFT JOIN LATERAL (
          SELECT json_agg(r ORDER BY r.created_at DESC) AS refunds
@@ -1992,10 +1997,19 @@ export class OrderService {
         });
       }
 
+      // Refund approval gate (audit P1-5): decide between seller-processable
+      // ('requested') and superadmin review ('awaiting_admin') up front.
+      const gate = await this.evaluateRefundGate({
+        order_id: opts.order_id,
+        store_id: opts.store_id,
+        amount,
+        executor: c,
+      });
+
       const { rows } = await c.query<StoreOrderRefundRow>(
         `INSERT INTO pd_store_order_refund
-          (id, order_id, store_id, requested_by, amount, currency, reason_code, reason, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+          (id, order_id, store_id, requested_by, amount, currency, reason_code, reason, status, metadata, decision_metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $10, $9::jsonb, $11::jsonb)
          RETURNING *`,
         [
           pdId('refund'),
@@ -2007,19 +2021,127 @@ export class OrderService {
           opts.reason_code,
           opts.reason?.trim() || null,
           JSON.stringify({ source: 'seller_dashboard' }),
+          gate.initialStatus,
+          JSON.stringify(gate.context),
         ],
       );
+
+      // Notify superadmins when the refund needs their review
+      if (gate.initialStatus === 'awaiting_admin') {
+        await this.notifySuperadminsRefundReview(rows[0], gate.context);
+      }
+
+      await this.auditRefundDecision({
+        action: 'refund.requested',
+        refund_id: rows[0].id,
+        order_id: opts.order_id,
+        store_id: opts.store_id,
+        actor_id: opts.requested_by,
+        actor_role: 'vendor',
+        metadata: { amount, gate: gate.context },
+      }, c);
+
       return rows[0];
     });
+  }
+
+  /**
+   * Evaluate the refund approval gate (owner policy 2026-08-30):
+   *  - not-delivered order  -> always awaiting_admin (threshold 0);
+   *  - delivered order      -> auto ('requested') when enabled AND amount <= threshold,
+   *                            else awaiting_admin.
+   */
+  private async evaluateRefundGate(opts: {
+    order_id: string;
+    store_id: string;
+    amount: number;
+    executor: Pick<PoolClient, 'query'>;
+  }): Promise<{ initialStatus: 'requested' | 'awaiting_admin'; context: Record<string, unknown> }> {
+    const { rows } = await opts.executor.query<{ delivered: string }>(
+      `SELECT COUNT(*) FILTER (WHERE status = 'delivered')::text AS delivered
+       FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2`,
+      [opts.order_id, opts.store_id],
+    );
+    const delivered = Number(rows[0]?.delivered ?? 0) > 0;
+
+    const settings = await platformConfigService.getSettingsFresh(opts.executor as PoolClient, ['finance']);
+    const autoEnabled = settings.refund_auto_process_delivered_enabled === true;
+    const threshold = Number(settings.refund_auto_process_delivered_max_tnd);
+
+    const autoProcess = delivered && autoEnabled && Number.isFinite(threshold) && opts.amount <= threshold;
+
+    return {
+      initialStatus: autoProcess ? 'requested' : 'awaiting_admin',
+      context: {
+        order_delivered: delivered,
+        auto_process_enabled: autoEnabled,
+        auto_process_threshold_tnd: Number.isFinite(threshold) ? threshold : null,
+        refund_amount: opts.amount,
+        decision: autoProcess ? 'auto_eligible' : 'superadmin_review_required',
+        evaluated_at: new Date().toISOString(),
+      },
+    };
+  }
+
+  private async notifySuperadminsRefundReview(
+    refund: StoreOrderRefundRow,
+    context: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const { rows: admins } = await query<{ id: string }>(
+        `SELECT id FROM pd_user WHERE role IN ('admin','super_admin')`,
+      );
+      for (const admin of admins) {
+        await notificationService.create({
+          user_id: admin.id,
+          type: 'refund_review',
+          title: 'Remboursement à approuver',
+          message: `Remboursement de ${refund.amount} TND (commande #${refund.order_id.slice(-8)}) en attente d'approbation.`,
+          data: { refund_id: refund.id, order_id: refund.order_id, store_id: refund.store_id, context },
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, refund_id: refund.id }, 'Could not notify superadmins about refund review');
+    }
+  }
+
+  private async auditRefundDecision(entry: {
+    action: string;
+    refund_id: string;
+    order_id: string;
+    store_id: string;
+    actor_id?: string;
+    actor_role: string;
+    metadata: Record<string, unknown>;
+  }, executor?: Pick<PoolClient, 'query'>): Promise<void> {
+    try {
+      await (executor ?? query as unknown as Pick<PoolClient, 'query'>).query(
+        `INSERT INTO pd_audit_log (id, actor_id, actor_role, action, resource_type, resource_id, metadata)
+         VALUES ($1, $2, $3, $4, 'store_order_refund', $5, $6::jsonb)`,
+        [
+          pdId('audit'),
+          entry.actor_id ?? null,
+          entry.actor_role,
+          entry.action,
+          entry.refund_id,
+          JSON.stringify({ order_id: entry.order_id, store_id: entry.store_id, ...entry.metadata }),
+        ],
+      );
+    } catch (err) {
+      logger.warn({ err, action: entry.action, refund_id: entry.refund_id }, 'Refund audit log write failed');
+    }
   }
 
 
   /**
    * Process and execute a requested refund in an atomic transaction.
-   * Transitions refund status from 'requested' -> 'processed'.
-   * 1. Debits merchant wallet via walletService.debitRefund
+   * Transitions refund status from 'requested'|'approved' -> 'processed'.
+   * 'awaiting_admin' refunds may only be processed after a superadmin approval
+   * (decideRefund) — a seller calling this endpoint directly is rejected.
+   * 1. Debits merchant wallet via walletService.debitRefund (commission-aware)
    * 2. Checks cumulative refunds vs order total to update order/payment status
-   * 3. Emits PdEvent.ORDER_REFUNDED and PAYMENT_REFUNDED
+   * 3. Restocks once when the store's whole portion is refunded
+   * 4. Emits PdEvent.ORDER_REFUNDED and PAYMENT_REFUNDED
    */
   async processStoreRefund(opts: {
     refund_id: string;
@@ -2034,6 +2156,13 @@ export class OrderService {
       const refund = refundRows[0];
       if (!refund) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Refund request not found');
 
+      if (refund.status === 'awaiting_admin') {
+        throw new PdForbiddenError(
+          PdErrorCode.PERM_FORBIDDEN,
+          'This refund requires superadmin approval before it can be processed',
+          { refund_id: refund.id, status: refund.status },
+        );
+      }
       if (refund.status === 'processed') {
         return refund;
       }
@@ -2219,8 +2348,132 @@ export class OrderService {
         'Refund processed successfully',
       );
 
+      await this.auditRefundDecision({
+        action: 'refund.processed',
+        refund_id: refund.id,
+        order_id: refund.order_id,
+        store_id: refund.store_id,
+        actor_id: opts.reviewed_by,
+        actor_role: refund.status === 'approved' ? 'admin' : 'vendor',
+        metadata: {
+          refund_amount: refundAmount,
+          debit_amount: debitAmount,
+          restocked: shouldRestock === true,
+          was_admin_approved: refund.status === 'approved',
+          transaction_reference: opts.transaction_reference || null,
+        },
+      }, c);
+
       return updatedRefundRows[0];
     });
+  }
+
+  /**
+   * Superadmin review queue: refunds held by the approval gate.
+   */
+  async listAwaitingAdminRefunds(opts: { page?: number; limit?: number } = {}): Promise<{
+    data: Array<StoreOrderRefundRow & { store_name: string | null; owner_email: string | null; gate: Record<string, unknown> | null }>;
+    meta: { page: number; limit: number; total: number; total_pages: number };
+  }> {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, opts.limit ?? 20);
+    const offset = (page - 1) * limit;
+    const { rows } = await query<StoreOrderRefundRow & { store_name: string | null; owner_email: string | null }>(
+      `SELECT r.*, s.name AS store_name, u.email AS owner_email
+       FROM pd_store_order_refund r
+       LEFT JOIN pd_store s ON s.id = r.store_id
+       LEFT JOIN pd_user u ON u.id = s.owner_id
+       WHERE r.status = 'awaiting_admin'
+       ORDER BY r.created_at ASC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    );
+    const { rows: cnt } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pd_store_order_refund WHERE status = 'awaiting_admin'`,
+    );
+    const total = parseInt(cnt[0].count, 10);
+    return {
+      data: rows.map((row) => ({
+        ...row,
+        gate: ((row.decision_metadata as Record<string, unknown> | null)?.gate ?? null) as Record<string, unknown> | null,
+      })),
+      meta: { page, limit, total, total_pages: Math.ceil(total / limit) || 1 },
+    };
+  }
+
+  /**
+   * Superadmin decision on a gated refund: approve -> 'approved' (processing
+   * may then be triggered), or reject -> 'rejected' (terminal).
+   */
+  async decideRefund(opts: {
+    refund_id: string;
+    decision: 'approve' | 'reject';
+    admin_id: string;
+    note?: string;
+  }): Promise<StoreOrderRefundRow> {
+    const refund = await transaction(async (c) => {
+      const { rows } = await c.query<StoreOrderRefundRow>(
+        'SELECT * FROM pd_store_order_refund WHERE id = $1 FOR UPDATE',
+        [opts.refund_id],
+      );
+      const target = rows[0];
+      if (!target) throw new PdNotFoundError(PdErrorCode.NOT_FOUND, 'Refund request not found');
+      if (target.status !== 'awaiting_admin') {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          `Refund is not awaiting review (status: ${target.status})`,
+        );
+      }
+
+      const { rows: updated } = await c.query<StoreOrderRefundRow>(
+        `UPDATE pd_store_order_refund
+         SET status = $2,
+             reviewed_by = $3,
+             reviewed_at = NOW(),
+             decision_metadata = COALESCE(decision_metadata, '{}'::jsonb) || $4::jsonb,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          opts.refund_id,
+          opts.decision === 'approve' ? 'approved' : 'rejected',
+          opts.admin_id,
+          JSON.stringify({
+            review: {
+              decision: opts.decision,
+              note: opts.note?.trim() || null,
+              reviewed_at: new Date().toISOString(),
+            },
+          }),
+        ],
+      );
+      return updated[0];
+    });
+
+    await this.auditRefundDecision({
+      action: `refund.${opts.decision === 'approve' ? 'approved' : 'rejected'}`,
+      refund_id: refund.id,
+      order_id: refund.order_id,
+      store_id: refund.store_id,
+      actor_id: opts.admin_id,
+      actor_role: 'super_admin',
+      metadata: { note: opts.note?.trim() || null, amount: parseFloat(String(refund.amount)) },
+    });
+
+    // Notify the requesting seller of the decision
+    if (refund.requested_by) {
+      notificationService.create({
+        user_id: refund.requested_by,
+        type: opts.decision === 'approve' ? 'refund_approved' : 'refund_rejected',
+        title: opts.decision === 'approve' ? 'Remboursement approuvé' : 'Remboursement refusé',
+        message: opts.decision === 'approve'
+          ? `Votre remboursement de ${refund.amount} TND (commande #${refund.order_id.slice(-8)}) a été approuvé. Vous pouvez maintenant le traiter.`
+          : `Votre demande de remboursement de ${refund.amount} TND (commande #${refund.order_id.slice(-8)}) a été refusée.`,
+        data: { refund_id: refund.id, order_id: refund.order_id },
+      }).catch(() => {});
+    }
+
+    return refund;
   }
 
   async cancel(orderId: string, reason: string): Promise<void> {

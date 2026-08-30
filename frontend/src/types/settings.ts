@@ -142,6 +142,8 @@ export interface PlatformSettings {
   retention_days_cod: number;
   payout_schedule: 'manual' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
   min_withdrawal_tnd: number;
+  refund_auto_process_delivered_enabled: boolean;
+  refund_auto_process_delivered_max_tnd: number;
   max_upload_size_mb: number;
   max_product_images: number;
   max_products_per_store_free: number;
@@ -414,6 +416,8 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   retention_days_cod: 14,
   payout_schedule: 'weekly',
   min_withdrawal_tnd: 20,
+  refund_auto_process_delivered_enabled: true,
+  refund_auto_process_delivered_max_tnd: 100,
   max_upload_size_mb: 10,
   max_product_images: 10,
   max_products_per_store_free: 50,

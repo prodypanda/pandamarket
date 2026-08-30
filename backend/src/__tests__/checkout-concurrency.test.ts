@@ -352,6 +352,13 @@ describe('Checkout Idempotency & Inventory Concurrency (GAP-P0-004 & GAP-P0-005)
             if (sql.includes('INSERT INTO pd_fulfillment')) {
               return { rows: [], rowCount: 1 };
             }
+            if (sql.includes('FROM pd_order') && sql.includes('id <> $3')) {
+              // COD risk customer-history lookup (computed at checkout for COD)
+              return { rows: [{ order_count: '0', lifetime_value: '0' }], rowCount: 1 };
+            }
+            if (sql.includes('INSERT INTO pd_cod_verification')) {
+              return { rows: [], rowCount: 1 };
+            }
             if (sql.includes('UPDATE pd_checkout_quote')) {
               quoteConsumeCount += 1;
               return { rows: [], rowCount: 1 };
@@ -485,6 +492,11 @@ describe('Checkout Idempotency & Inventory Concurrency (GAP-P0-004 & GAP-P0-005)
       mockClient.query.mockResolvedValueOnce({ rows: [] });
       // 5. Guarded UPDATE product inventory (returns 1 updated row)
       mockClient.query.mockResolvedValueOnce({ rows: [{ inventory_quantity: 0 }] });
+      // 6+. Fulfillment insert + COD risk history select + cod verification insert
+      // (risk is computed at checkout for COD gateways); tolerant fallback for
+      // any additional plumbing queries so the sequence never exhausts.
+      mockClient.query.mockResolvedValue({ rows: [{ order_count: '0', lifetime_value: '0' }] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
 
       mockedTransaction.mockImplementationOnce(async (cb: any) => cb(mockClient));
 

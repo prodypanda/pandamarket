@@ -78,6 +78,8 @@ import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { schedulePaymentReconciliationSweep } from './queues/payment-reconciliation-queue';
 import { scheduleShipmentReconciliationSweep } from './queues/shipment-reconciliation-queue';
+import { startOrderMonitoringWorker } from './workers/order-monitoring.worker';
+import { scheduleOrderMonitoringSweep } from './queues/order-monitoring-queue';
 import { adsService } from './services/ads.service';
 import { adminNotesService } from './services/admin-notes.service';
 import { notificationService } from './services/notification.service';
@@ -586,6 +588,7 @@ async function bootstrap() {
         startPaymentReconciliationWorker(),
         startShipmentReconciliationWorker(),
         startImageWorker(),
+        startOrderMonitoringWorker(),
       ].filter(Boolean);
 
       const shutdownWorkers = async () => {
@@ -604,7 +607,7 @@ async function bootstrap() {
       process.on('SIGINT', async () => {
         await shutdownWorkers();
       });
-      logger.info('🤖 All background workers successfully started in-process (11 BullMQ workers + outbox poller).');
+      logger.info('🤖 All background workers successfully started in-process (12 BullMQ workers + outbox poller).');
 
       // Schedule recurring BullMQ jobs (idempotent — safe to call on every boot).
       // Non-blocking: don't let Redis queue scheduling hang the bootstrap.
@@ -614,8 +617,9 @@ async function bootstrap() {
         scheduleDailyDigestCron(),
         schedulePaymentReconciliationSweep(),
         scheduleShipmentReconciliationSweep(),
+        scheduleOrderMonitoringSweep(),
       ])
-        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout, subscription, daily digest, payment and shipment reconciliation).'))
+        .then(() => logger.info('⏰ Recurring BullMQ jobs scheduled (payout, subscription, daily digest, payment/shipment reconciliation, order monitoring).'))
         .catch((err) => logger.error({ err }, 'Failed to schedule recurring BullMQ jobs.'));
     } catch (err) {
       logger.error({ err }, 'Failed to start background workers in-process.');

@@ -169,6 +169,8 @@ interface PlatformSettings {
   retention_days_cod: number;
   payout_schedule: 'manual' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
   min_withdrawal_tnd: number;
+  refund_auto_process_delivered_enabled: boolean;
+  refund_auto_process_delivered_max_tnd: number;
   max_upload_size_mb: number;
   max_product_images: number;
   max_products_per_store_free: number;
@@ -441,6 +443,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   retention_days_cod: 14,
   payout_schedule: 'weekly',
   min_withdrawal_tnd: 20,
+  refund_auto_process_delivered_enabled: true,
+  refund_auto_process_delivered_max_tnd: 100,
   max_upload_size_mb: 10,
   max_product_images: 10,
   max_products_per_store_free: 50,
@@ -712,6 +716,7 @@ const NUMBER_SETTING_KEYS = [
   'default_tax_rate',
   'auto_cancel_unpaid_minutes',
   'min_withdrawal_tnd',
+  'refund_auto_process_delivered_max_tnd',
   'max_upload_size_mb',
   'max_product_images',
   'max_products_per_store_free',
@@ -776,6 +781,7 @@ const BOOLEAN_SETTING_KEYS = [
   'chat_bubble_enabled',
   'marketplace_rtl_enabled',
   'payment_sandbox_mode',
+  'refund_auto_process_delivered_enabled',
   'payment_flouci_enabled',
   'payment_konnect_enabled',
   'payment_paypal_enabled',
@@ -988,9 +994,11 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'retention_days_cod',
     'payout_schedule',
     'min_withdrawal_tnd',
+    'refund_auto_process_delivered_max_tnd',
     'platform_commission_rate',
     'default_currency',
     'payment_sandbox_mode',
+    'refund_auto_process_delivered_enabled',
     'payment_flouci_enabled',
     'payment_konnect_enabled',
     'payment_paypal_enabled',
@@ -1183,6 +1191,8 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'min_withdrawal_tnd', tab: 'finance', label: 'Minimum Vendor Payout Withdrawal (TND)', description: 'Minimum wallet balance required for sellers to request a payout transfer', keywords: ['payout', 'withdrawal', 'minimum', 'retrait', 'solde'] },
   { key: 'payout_schedule', tab: 'finance', label: 'Automated Payout Schedule', description: 'Frequency of vendor wallet settlements (Daily, Weekly, Bi-weekly, Monthly, Manual)', keywords: ['payout', 'schedule', 'settlement', 'virement', 'frequence'] },
   { key: 'default_currency', tab: 'finance', label: 'Default Marketplace Currency', description: 'Standard platform currency code (TND, EUR, USD)', keywords: ['currency', 'devise', 'tnd', 'dinar'] },
+  { key: 'refund_auto_process_delivered_enabled', tab: 'finance', label: 'Auto-Process Delivered-Order Refunds', description: 'When ON, refunds on DELIVERED orders are processed by the seller without review, up to the threshold below. Refunds on non-delivered orders ALWAYS require review.', keywords: ['refund', 'remboursement', 'auto', 'gate', 'approval'] },
+  { key: 'refund_auto_process_delivered_max_tnd', tab: 'finance', label: 'Refund Auto-Process Threshold (TND)', description: 'Refunds on delivered orders at or below this amount auto-process; anything above always goes to superadmin review', keywords: ['refund', 'threshold', 'remboursement', 'seuil', 'gate'] },
 
   // Shipping & Delivery
   { key: 'shipping_enabled', tab: 'shipping', label: 'Platform Shipping Management', description: 'Master switch for automated platform shipping and rate calculation', keywords: ['shipping', 'delivery', 'livraison', 'expedition'] },
@@ -5499,6 +5509,15 @@ export default function SuperAdminSettingsPage() {
             </p>
           </div>
           {renderNumberInput('min_withdrawal_tnd', 'Minimum Withdrawal Amount', settings.default_currency, 1)}
+          {renderToggle({
+            key: 'refund_auto_process_delivered_enabled',
+            label: 'Auto-Process Delivered-Order Refunds',
+            description: 'ON: refunds on DELIVERED orders are processed by the seller without review, up to the threshold below. OFF: every refund requires superadmin review. Refunds on non-delivered orders ALWAYS require review.',
+          })}
+          {renderNumberInput('refund_auto_process_delivered_max_tnd', 'Refund Auto-Process Threshold', settings.default_currency, 0)}
+          <p className="text-[11px] font-medium text-slate-500">
+            Refunds on delivered orders at or below this amount auto-process; anything above always goes to the superadmin review queue (Admin → Refund Review).
+          </p>
           {renderTextInput('default_currency', 'Settlement Currency')}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Payout Schedule</label>

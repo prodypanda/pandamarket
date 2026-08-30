@@ -25,6 +25,8 @@ import { scheduleRecurringPayoutJobs } from './queues/payout-queue';
 import { scheduleRecurringSubscriptionJobs } from './queues/subscription-queue';
 import { schedulePaymentReconciliationSweep } from './queues/payment-reconciliation-queue';
 import { scheduleShipmentReconciliationSweep } from './queues/shipment-reconciliation-queue';
+import { startOrderMonitoringWorker } from './workers/order-monitoring.worker';
+import { scheduleOrderMonitoringSweep } from './queues/order-monitoring-queue';
 
 async function bootstrapWorker() {
   logger.info('🚀 Initializing PandaMarket Dedicated Background Worker process...');
@@ -65,12 +67,13 @@ async function bootstrapWorker() {
     startPaymentReconciliationWorker(),
     startShipmentReconciliationWorker(),
     startImageWorker(),
+    startOrderMonitoringWorker(),
   ].filter(Boolean);
 
   // Start Transactional Outbox Poller
   outboxWorker.start();
 
-  logger.info('🤖 All 11 BullMQ workers + Outbox poller active in dedicated worker process.');
+  logger.info('🤖 All 12 BullMQ workers + Outbox poller active in dedicated worker process.');
 
   // Schedule Recurring Jobs
   try {
@@ -80,6 +83,7 @@ async function bootstrapWorker() {
       scheduleDailyDigestCron(),
       schedulePaymentReconciliationSweep(),
       scheduleShipmentReconciliationSweep(),
+      scheduleOrderMonitoringSweep(),
     ]);
     logger.info('⏰ Recurring cron schedules configured.');
   } catch (err) {

@@ -268,6 +268,7 @@ export default function AdminLayout({
             { href: '/kyc', label: t('admin.sidebar.kyc') || 'KYC Verifications' },
             { href: '/mandats', label: t('admin.sidebar.mandats') || 'Mandats' },
             { href: '/withdrawals', label: t('admin.sidebar.withdrawals') || 'Withdrawals' },
+            { href: '/refund-review', label: t('admin.sidebar.refundReview') || 'Refund Review' },
           ],
         },
       ],

@@ -153,6 +153,13 @@ export const PLATFORM_SETTING_DEFAULTS = {
   payout_schedule: 'weekly',
   min_withdrawal_tnd: 20,
   platform_commission_rate: 15,
+  // Refund approval gate (audit P1-5):
+  // - refunds on orders NOT yet delivered always require superadmin approval;
+  // - refunds on delivered orders auto-process only while the refund amount is
+  //   at or below refund_auto_process_delivered_max_tnd AND the toggle is on;
+  // - refunds above the threshold always require superadmin approval.
+  refund_auto_process_delivered_enabled: true,
+  refund_auto_process_delivered_max_tnd: 100,
   default_currency: 'TND',
   payment_sandbox_mode: true,
   payment_flouci_enabled: true,
@@ -599,9 +606,12 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'retention_days_cod',
     'payout_schedule',
     'min_withdrawal_tnd',
+    'refund_auto_process_delivered_enabled',
+    'refund_auto_process_delivered_max_tnd',
     'platform_commission_rate',
     'default_currency',
     'payment_sandbox_mode',
+  'refund_auto_process_delivered_enabled',
     'payment_flouci_enabled',
     'payment_konnect_enabled',
     'payment_paypal_enabled',
@@ -801,6 +811,7 @@ const NUMERIC_PLATFORM_SETTING_KEYS = new Set<PlatformSettingKey>([
   'auto_cancel_unpaid_minutes',
   'min_withdrawal_tnd',
   'platform_commission_rate',
+  'refund_auto_process_delivered_max_tnd',
   'max_upload_size_mb',
   'max_product_images',
   'max_products_per_store_free',
