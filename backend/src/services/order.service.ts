@@ -33,6 +33,8 @@ import { buyerInterestService } from './buyer-interest.service';
 import { checkoutQuoteService } from './checkout-quote.service';
 import { paymentCapabilityService } from './payment-capability.service';
 import { walletService } from './wallet.service';
+import { subscriptionService } from './subscription.service';
+import { calculateVendorNet } from '../utils/money';
 import { syncOrderStatusFromFulfillments, restoreOrderItemStock } from './order-fulfillment-shared';
 
 interface CartLine {
@@ -1910,7 +1912,7 @@ export class OrderService {
 
       // 1. Update refund status
       const currentMeta = typeof refund.metadata === 'object' && refund.metadata ? refund.metadata : {};
-      const updatedMetadata = {
+      const updatedMetadata: Record<string, unknown> = {
         ...currentMeta,
         processed_at: new Date().toISOString(),
         processed_by: opts.reviewed_by || 'system',
@@ -1927,10 +1929,50 @@ export class OrderService {
         [refund.id, JSON.stringify(updatedMetadata)],
       );
 
-      // 2. Debit vendor wallet
+      // 2. Debit vendor wallet — commission-aware.
+      //    The wallet was credited (items − commission) + shipping at capture
+      //    time, so a refund of X TND must debit X × (net/gross) of the store's
+      //    charged amount. Debiting the gross amount would push Free-plan
+      //    (15% commission) vendor wallets negative on full refunds.
+      const { rows: debitContextRows } = await c.query<{
+        item_subtotal: string;
+        shipping_total: string;
+        plan: string;
+      }>(
+        `SELECT COALESCE(SUM(i.subtotal), 0)::text AS item_subtotal,
+                COALESCE(MAX(f.shipping_total), 0)::text AS shipping_total,
+                s.subscription_plan AS plan
+         FROM pd_store s
+         LEFT JOIN pd_order_item i ON i.store_id = s.id AND i.order_id = $1
+         LEFT JOIN pd_fulfillment f ON f.store_id = s.id AND f.order_id = $1
+         WHERE s.id = $2
+         GROUP BY s.subscription_plan`,
+        [refund.order_id, refund.store_id],
+      );
+      const debitContext = debitContextRows[0];
+      let debitAmount = refundAmount;
+      if (debitContext) {
+        const itemSubtotal = parseFloat(debitContext.item_subtotal);
+        const shippingTotal = parseFloat(debitContext.shipping_total);
+        const grossCharged = roundTnd(itemSubtotal + shippingTotal);
+        const limits = await subscriptionService.getLimits(debitContext.plan);
+        const netCredited = roundTnd(
+          calculateVendorNet(itemSubtotal, limits.commission_rate) + shippingTotal,
+        );
+        if (grossCharged > 0 && netCredited > 0 && netCredited < grossCharged) {
+          debitAmount = roundTnd((refundAmount * netCredited) / grossCharged);
+        }
+        updatedMetadata.commission_aware_debit = {
+          gross_charged: grossCharged,
+          net_credited: netCredited,
+          refund_amount: refundAmount,
+          debited: debitAmount,
+        };
+      }
+
       await walletService.debitRefund({
         store_id: refund.store_id,
-        amount: refundAmount,
+        amount: debitAmount,
         order_id: refund.order_id,
         description: `Refund for order ${refund.order_id}`,
         client: c,
@@ -1962,14 +2004,69 @@ export class OrderService {
         }
       }
 
-      // 3b. Restock product inventory for store items in this refunded order
-      await c.query(
-        `UPDATE pd_product p
-         SET inventory_quantity = p.inventory_quantity + oi.quantity,
-             updated_at = NOW()
-         FROM pd_order_item oi
-         WHERE oi.order_id = $1 AND oi.store_id = $2 AND oi.product_id = p.id`,
+      // 3b. Restock inventory — exactly once, and only when the refund
+      //     effectively covers the store's whole portion AND the stock was
+      //     not already restored by a fulfillment cancel/RTO. Partial
+      //     (amount-only) refunds do not restock.
+      const { rows: restockContextRows } = await c.query<{
+        store_total: string;
+        refunded_total: string;
+        fulfillment_status: string | null;
+      }>(
+        `SELECT (COALESCE(SUM(i.subtotal), 0) + COALESCE(MAX(f.shipping_total), 0))::text AS store_total,
+                (SELECT COALESCE(SUM(r.amount), 0)
+                   FROM pd_store_order_refund r
+                  WHERE r.order_id = $1 AND r.store_id = $2 AND r.status = 'processed')::text AS refunded_total,
+                MAX(f.status) AS fulfillment_status
+         FROM pd_order_item i
+         LEFT JOIN pd_fulfillment f ON f.order_id = i.order_id AND f.store_id = i.store_id
+         WHERE i.order_id = $1 AND i.store_id = $2`,
         [refund.order_id, refund.store_id],
+      );
+      const restockContext = restockContextRows[0];
+      const alreadyRestocked = Boolean((currentMeta as Record<string, unknown>).restocked);
+      const storeTotal = roundTnd(parseFloat(restockContext?.store_total ?? '0'));
+      const refundedTotal = roundTnd(parseFloat(restockContext?.refunded_total ?? '0'));
+      const shouldRestock =
+        !alreadyRestocked
+        && restockContext?.fulfillment_status !== 'cancelled'
+        && storeTotal > 0
+        && refundedTotal >= storeTotal;
+
+      if (shouldRestock) {
+        updatedMetadata.restocked = true;
+        updatedMetadata.restocked_at = new Date().toISOString();
+        const { rows: items } = await c.query<{
+          product_id: string;
+          variant_id: string | null;
+          quantity: number;
+          product_type: ProductType;
+        }>(
+          `SELECT i.product_id, i.variant_id, i.quantity, p.type AS product_type
+           FROM pd_order_item i
+           JOIN pd_product p ON p.id = i.product_id
+           WHERE i.order_id = $1 AND i.store_id = $2`,
+          [refund.order_id, refund.store_id],
+        );
+        for (const item of items) {
+          await restoreOrderItemStock(c, item);
+          if (item.product_type === ProductType.Serial) {
+            await c.query(
+              `UPDATE pd_license_key
+               SET order_id = NULL, assigned_at = NULL, is_used = false
+               WHERE product_id = $1 AND order_id = $2 AND is_used = false`,
+              [item.product_id, refund.order_id],
+            );
+          }
+        }
+      }
+
+      // Persist the enriched metadata (commission-aware debit + restock ledger)
+      await c.query(
+        `UPDATE pd_store_order_refund
+         SET metadata = $2::jsonb, updated_at = NOW()
+         WHERE id = $1`,
+        [refund.id, JSON.stringify(updatedMetadata)],
       );
 
       // 4. Emit events

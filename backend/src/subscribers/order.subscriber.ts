@@ -12,7 +12,7 @@ import { walletService } from '../services/wallet.service';
 import { notificationService } from '../services/notification.service';
 import { emailQueue } from '../queues/email-queue';
 import { socketGateway } from '../realtime/socket-gateway';
-import { calculateCommission, calculateVendorNet } from '../utils/money';
+import { calculateCommission, calculateVendorNet, roundTnd } from '../utils/money';
 import { subscriptionService } from '../services/subscription.service';
 import { platformConfigService } from '../services/platform-config.service';
 import { ProductType } from '@pandamarket/types';
@@ -240,30 +240,37 @@ async function onPaymentCaptured(orderId: string, gateway?: string): Promise<voi
     if (typeof raw === 'number' && raw > 0) retentionDays = raw;
   }
 
-  // Per-store totals (excluding shipping for commission calc — keep it simple here)
+  // Per-store totals: commission applies to the item subtotal only; the
+  // shipping fee collected from the buyer is credited 100% to the merchant
+  // who pays the carrier (owner decision 2026-08-30).
   const { rows: storeRows } = await query<{
     store_id: string;
     owner_id: string;
     owner_email: string;
     plan: string;
-    store_total: string;
+    item_subtotal: string;
+    shipping_total: string;
   }>(
     `SELECT i.store_id, s.owner_id, u.email AS owner_email,
             s.subscription_plan AS plan,
-            SUM(i.subtotal)::text AS store_total
+            SUM(i.subtotal)::text AS item_subtotal,
+            COALESCE(MAX(f.shipping_total), 0)::text AS shipping_total
      FROM pd_order_item i
      JOIN pd_store s ON s.id = i.store_id
      JOIN pd_user u ON u.id = s.owner_id
+     LEFT JOIN pd_fulfillment f ON f.order_id = $1 AND f.store_id = i.store_id
      WHERE i.order_id = $1
      GROUP BY i.store_id, s.owner_id, u.email, s.subscription_plan`,
     [orderId],
   );
 
   for (const row of storeRows) {
-    const total = parseFloat(row.store_total);
+    const itemSubtotal = parseFloat(row.item_subtotal);
+    const shippingTotal = parseFloat(row.shipping_total);
     const limits = await subscriptionService.getLimits(row.plan);
-    const commission = calculateCommission(total, limits.commission_rate);
-    const net = calculateVendorNet(total, limits.commission_rate);
+    const commission = calculateCommission(itemSubtotal, limits.commission_rate);
+    const netItems = calculateVendorNet(itemSubtotal, limits.commission_rate);
+    const net = roundTnd(netItems + shippingTotal);
 
     if (net > 0) {
       await walletService.creditPending({
@@ -273,8 +280,8 @@ async function onPaymentCaptured(orderId: string, gateway?: string): Promise<voi
         retention_days: retentionDays,
         description:
           commission > 0
-            ? `Sale (${total} TND) − commission (${commission} TND)`
-            : `Sale (${total} TND)`,
+            ? `Sale (${itemSubtotal} TND) + shipping (${shippingTotal} TND) − commission (${commission} TND)`
+            : `Sale (${itemSubtotal} TND) + shipping (${shippingTotal} TND)`,
       });
     }
 
