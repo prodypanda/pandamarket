@@ -643,15 +643,16 @@ export class ShippingService {
     };
 
     try {
-      let wasPending = false;
+      let wasAwaitingShipment = false;
       await transaction(async (c) => {
         // Lock + read the previous status so ORDER_FULFILLED is emitted only
-        // on a genuine pending -> shipped transition (exactly once per fulfillment).
+        // on a genuine awaiting-shipment -> shipped transition (exactly once
+        // per fulfillment).
         const { rows: prevRows } = await c.query<{ status: string }>(
           'SELECT status FROM pd_fulfillment WHERE id = $1 AND store_id = $2 FOR UPDATE',
           [req.fulfillment_id, req.store_id],
         );
-        wasPending = prevRows[0]?.status === 'pending';
+        wasAwaitingShipment = prevRows[0]?.status === 'pending' || prevRows[0]?.status === 'preparing';
 
         await c.query(
           `INSERT INTO pd_shipment
@@ -709,7 +710,7 @@ export class ShippingService {
       });
       // Post-commit: notify the buyer when the label generation actually
       // transitioned this store's fulfillment to shipped.
-      if (wasPending) {
+      if (wasAwaitingShipment) {
         try {
           eventBus.emit(PdEvent.ORDER_FULFILLED, {
             order_id: req.order_id,
@@ -927,7 +928,7 @@ export class ShippingService {
          SET status = CASE
                WHEN $2 = 'delivered' THEN 'delivered'
                WHEN $2 IN ('cancelled', 'returned') THEN 'cancelled'
-               ELSE CASE WHEN status = 'pending' THEN 'shipped' ELSE status END
+               ELSE CASE WHEN status IN ('pending','preparing') THEN 'shipped' ELSE status END
              END,
              rto_reason_code = CASE WHEN $2 = 'returned' THEN COALESCE(rto_reason_code, 'carrier_returned') ELSE rto_reason_code END,
              rto_at = CASE WHEN $2 = 'returned' THEN COALESCE(rto_at, NOW()) ELSE rto_at END,
@@ -986,10 +987,10 @@ export class ShippingService {
         } else {
           await syncOrderStatusFromFulfillments(client, shipment.order_id);
         }
-        // A genuine pending -> shipped transition via carrier sync also
-        // notifies the buyer (exactly once per fulfillment).
+        // A genuine awaiting-shipment -> shipped transition via carrier sync
+        // also notifies the buyer (exactly once per fulfillment).
         if (
-          prevFulfillmentStatus === 'pending'
+          (prevFulfillmentStatus === 'pending' || prevFulfillmentStatus === 'preparing')
           && mappedStatus !== 'delivered'
           && mappedStatus !== 'cancelled'
           && mappedStatus !== 'returned'

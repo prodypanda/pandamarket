@@ -141,7 +141,7 @@ const storeOrdersQuerySchema = z.object({
   status: z.nativeEnum(OrderStatus).optional(),
   payment_gateway: z.nativeEnum(PaymentGateway).optional(),
   payment_status: z.nativeEnum(PaymentStatus).optional(),
-  fulfillment_status: z.enum(['pending', 'shipped', 'delivered', 'cancelled']).optional(),
+  fulfillment_status: z.enum(['pending', 'preparing', 'shipped', 'delivered', 'cancelled']).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   customer: z.string().trim().max(100).optional(),
@@ -271,7 +271,7 @@ router.get(
       status?: OrderStatus;
       payment_gateway?: PaymentGateway;
       payment_status?: PaymentStatus;
-      fulfillment_status?: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+      fulfillment_status?: 'pending' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
       date_from?: string;
       date_to?: string;
       customer?: string;
@@ -387,6 +387,20 @@ router.get(
       return;
     }
     res.status(200).json({ order });
+  }),
+);
+
+// Vendor: start preparation of their portion of the order
+router.post(
+  '/store/:id/prepare',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    await orderService.markStoreFulfillmentPreparing({
+      order_id: req.params.id,
+      store_id: req.user!.store_id!,
+      user_id: req.user!.id,
+    });
+    res.status(200).json({ success: true, message: 'Fulfillment marked as in preparation' });
   }),
 );
 

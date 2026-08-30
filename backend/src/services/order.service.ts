@@ -1326,7 +1326,7 @@ export class OrderService {
       status?: OrderStatus;
       paymentGateway?: PaymentGateway;
       paymentStatus?: PaymentStatus;
-      fulfillmentStatus?: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+      fulfillmentStatus?: 'pending' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
       dateFrom?: string;
       dateTo?: string;
       customer?: string;
@@ -1499,7 +1499,7 @@ export class OrderService {
       `SELECT
          COUNT(*)::text AS total_orders,
          COUNT(*) FILTER (WHERE o.status IN ('payment_required', 'pending', 'processing'))::text AS open_orders,
-         COUNT(*) FILTER (WHERE f.status = 'pending')::text AS to_ship,
+         COUNT(*) FILTER (WHERE f.status IN ('pending','preparing'))::text AS to_ship,
          COUNT(*) FILTER (WHERE f.status = 'shipped')::text AS shipped,
          COUNT(*) FILTER (WHERE f.status = 'delivered')::text AS delivered,
          COUNT(*) FILTER (WHERE o.status = 'cancelled' OR f.status = 'cancelled')::text AS cancelled,
@@ -1591,7 +1591,36 @@ export class OrderService {
   }
 
   /**
+   * Mark a store's fulfillment as being prepared (pending -> preparing).
+   * The order-level aggregate derives 'processing' when every active store
+   * fulfillment is preparing (see syncOrderStatusFromFulfillments).
+   */
+  async markStoreFulfillmentPreparing(opts: {
+    order_id: string;
+    store_id: string;
+    user_id?: string;
+  }): Promise<void> {
+    await transaction(async (c) => {
+      const { rowCount } = await c.query(
+        `UPDATE pd_fulfillment
+         SET status = 'preparing', updated_at = NOW()
+         WHERE order_id = $1 AND store_id = $2 AND status = 'pending'`,
+        [opts.order_id, opts.store_id],
+      );
+      if (!rowCount) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_ALREADY_FULFILLED,
+          'Fulfillment not found or not awaiting preparation',
+        );
+      }
+      await this.syncOrderStatusFromFulfillments(c, opts.order_id);
+    });
+    logger.info(opts, 'Fulfillment preparation started');
+  }
+
+  /**
    * Mark a fulfillment (this store's portion of an order) as shipped.
+   * Accepts both 'pending' and 'preparing' as source states.
    */
   async fulfill(opts: {
     order_id: string;
@@ -1611,7 +1640,7 @@ export class OrderService {
              carrier = COALESCE($3, carrier),
              tracking_number = COALESCE($4, tracking_number),
              shipped_at = NOW()
-         WHERE order_id = $1 AND store_id = $2 AND status = 'pending'
+         WHERE order_id = $1 AND store_id = $2 AND status IN ('pending','preparing')
          RETURNING carrier, tracking_number`,
         [opts.order_id, opts.store_id, opts.carrier ?? null, opts.tracking_number ?? null],
       );
@@ -1765,7 +1794,7 @@ export class OrderService {
         `UPDATE pd_fulfillment
          SET status = 'cancelled',
              updated_at = NOW()
-         WHERE order_id = $1 AND store_id = $2 AND status = 'pending'`,
+         WHERE order_id = $1 AND store_id = $2 AND status IN ('pending','preparing')`,
         [opts.order_id, opts.store_id],
       );
       if (!rowCount) {

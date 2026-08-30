@@ -46,9 +46,47 @@ describe('Order status state machine centralization (P0 desync fixes)', () => {
       expect(sql).toContain(SYNC_SQL_SIGNATURE);
       expect(sql).toContain("WHEN sub.pend = 0 AND sub.del > 0 THEN 'delivered'");
       expect(sql).toContain("WHEN sub.pend = 0 AND sub.ship > 0 THEN 'fulfilled'");
-      expect(sql).toContain("WHEN sub.pend = 0 AND sub.del = 0 AND sub.ship = 0 THEN 'cancelled'");
+      // preparing-only aggregate derives the order-level 'processing' state
+      expect(sql).toContain("sub.prep > 0 THEN 'processing'");
+      expect(sql).toContain("sub.prep = 0 THEN 'cancelled'");
       expect(sql).toContain("o.status NOT IN ('cancelled','refunded')");
       expect(params).toEqual(['ord_1', 'test']);
+    });
+  });
+
+  describe('markStoreFulfillmentPreparing() — persisted preparation state', () => {
+    it('transitions pending -> preparing and recomputes the order aggregate', async () => {
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({ rowCount: 1 })
+          .mockResolvedValueOnce({ rowCount: 0 }),
+      };
+      mockTransaction.mockImplementationOnce(async (cb) => cb(mockClient));
+
+      await orderService.markStoreFulfillmentPreparing({
+        order_id: 'ord_1',
+        store_id: 'store_1',
+        user_id: 'user_1',
+      });
+
+      const [prepareSql, prepareParams] = mockClient.query.mock.calls[0];
+      expect(prepareSql).toContain("SET status = 'preparing'");
+      expect(prepareSql).toContain("AND status = 'pending'");
+      expect(prepareParams).toEqual(['ord_1', 'store_1']);
+
+      const [syncSql] = mockClient.query.mock.calls[1];
+      expect(syncSql).toContain(SYNC_SQL_SIGNATURE);
+    });
+
+    it('rejects when the fulfillment is no longer awaiting preparation', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValueOnce({ rowCount: 0 }) };
+      mockTransaction.mockImplementationOnce(async (cb) => cb(mockClient));
+
+      await expect(
+        orderService.markStoreFulfillmentPreparing({ order_id: 'ord_1', store_id: 'store_1' }),
+      ).rejects.toThrow('Fulfillment not found or not awaiting preparation');
+
+      expect(mockClient.query).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -80,7 +118,8 @@ describe('Order status state machine centralization (P0 desync fixes)', () => {
       expect(fulfillSql).toContain("SET status = 'shipped'");
       expect(fulfillSql).toContain('carrier = COALESCE($3, carrier)');
       expect(fulfillSql).toContain('tracking_number = COALESCE($4, tracking_number)');
-      expect(fulfillSql).toContain("AND status = 'pending'");
+      // Both awaiting-shipment states may transition to shipped
+      expect(fulfillSql).toContain("AND status IN ('pending','preparing')");
       expect(fulfillParams).toEqual(['ord_1', 'store_1', 'Aramex', 'TRK_001']);
 
       const [syncSql] = mockClient.query.mock.calls[1];

@@ -281,18 +281,6 @@ const REFUND_REASON_OPTIONS = [
   { value: 'other', labelKey: 'dashboardPages.orders.refundReasonOther' },
 ];
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-    case 'payment_required': return 'bg-orange-50 text-orange-700 border-orange-200';
-    case 'processing': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'fulfilled': return 'bg-purple-50 text-purple-700 border-purple-200';
-    case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
-    case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
-    default: return 'bg-gray-50 text-gray-700 border-gray-200';
-  }
-};
-
 const statusLabel = (status: string, t: (key: string) => string) => {
   const labels: Record<string, string> = {
     pending: t('dashboardPages.orders.pending'),
@@ -1073,6 +1061,7 @@ function fulfillmentLabel(status: string | null | undefined, t: (key: string) =>
   if (!status) return t('dashboardPages.orders.notFulfillable');
   const labels: Record<string, string> = {
     pending: t('dashboardPages.orders.toShip'),
+    preparing: t('dashboardPages.orders.preparing'),
     shipped: t('dashboardPages.orders.shipped'),
     delivered: t('dashboardPages.orders.delivered'),
     cancelled: t('dashboardPages.orders.cancelled'),
@@ -1083,6 +1072,7 @@ function fulfillmentLabel(status: string | null | undefined, t: (key: string) =>
 function fulfillmentColor(status?: string | null) {
   switch (status) {
     case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
     case 'shipped': return 'bg-purple-50 text-purple-700 border-purple-200';
     case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
     case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
@@ -1090,16 +1080,53 @@ function fulfillmentColor(status?: string | null) {
   }
 }
 
+// Seller-facing gating is driven by the store's own fulfillment state only:
+// the order-level aggregate can be advanced by other vendors' actions and must
+// never disable this store's controls.
+function canPrepare(order: Order) {
+  return order.fulfillment_status === 'pending';
+}
+
 function canFulfill(order: Order) {
-  return order.fulfillment_status === 'pending' && !['fulfilled', 'delivered', 'cancelled'].includes(order.status);
+  return order.fulfillment_status === 'pending' || order.fulfillment_status === 'preparing';
 }
 
 function canMarkDelivered(order: Order) {
-  return order.fulfillment_status === 'shipped' && !['delivered', 'cancelled'].includes(order.status);
+  return order.fulfillment_status === 'shipped';
 }
 
 function canCancelSellerFulfillment(order: Order) {
-  return order.fulfillment_status === 'pending' && !['fulfilled', 'delivered', 'cancelled', 'refunded'].includes(order.status);
+  return (order.fulfillment_status === 'pending' || order.fulfillment_status === 'preparing')
+    && order.status !== 'refunded';
+}
+
+/**
+ * Store-scoped order status for the seller: the fulfillment reality of THIS
+ * store takes precedence over the marketplace-wide master order status.
+ */
+function storeOrderStatus(order: Order, t: (key: string) => string): { label: string; color: string } {
+  if (order.fulfillment_status === 'cancelled' || order.status === 'cancelled') {
+    return { label: t('dashboardPages.orders.cancelled'), color: 'bg-red-50 text-red-700 border-red-200' };
+  }
+  if (order.status === 'refunded' || order.payment_status === 'refunded') {
+    return { label: t('dashboardPages.orders.refunded'), color: 'bg-slate-100 text-slate-700 border-slate-200' };
+  }
+  if (order.fulfillment_status === 'delivered') {
+    return { label: t('dashboardPages.orders.delivered'), color: 'bg-green-50 text-green-700 border-green-200' };
+  }
+  if (order.fulfillment_status === 'shipped') {
+    return { label: t('dashboardPages.orders.shipped'), color: 'bg-purple-50 text-purple-700 border-purple-200' };
+  }
+  if (order.fulfillment_status === 'preparing') {
+    return { label: t('dashboardPages.orders.preparing'), color: 'bg-blue-50 text-blue-700 border-blue-200' };
+  }
+  if (order.status === 'payment_required') {
+    return { label: t('dashboardPages.orders.paymentRequired'), color: 'bg-orange-50 text-orange-700 border-orange-200' };
+  }
+  if (order.payment_status === 'captured') {
+    return { label: t('dashboardPages.orders.confirmed'), color: 'bg-blue-50 text-blue-700 border-blue-200' };
+  }
+  return { label: t('dashboardPages.orders.toShip'), color: 'bg-amber-50 text-amber-700 border-amber-200' };
 }
 
 function getTrackingUrl(carrier?: string | null, trackingNumber?: string | null) {
@@ -1119,9 +1146,9 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
   const isPaid = order.payment_status === 'captured';
   const isShipped = order.fulfillment_status === 'shipped' || order.fulfillment_status === 'delivered' || order.status === 'fulfilled' || order.status === 'delivered';
   const isDelivered = order.fulfillment_status === 'delivered' || order.status === 'delivered';
-  // Preparation is the seller's active step until the package actually ships.
-  // It must never read as "done" merely because a pending fulfillment exists.
-  const isPreparationDone = isShipped;
+  // Preparation reflects the real persisted state: done once the seller marked
+  // the parcel prepared (or it already shipped), never auto-done at creation.
+  const isPreparationDone = isShipped || order.fulfillment_status === 'preparing';
 
   if (isCancelled || isRefunded) {
     return [
@@ -1308,6 +1335,7 @@ export default function OrdersPage() {
   const [carrier, setCarrier] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [fulfillingId, setFulfillingId] = useState('');
+  const [preparingId, setPreparingId] = useState('');
   const [bulkFulfillmentTargets, setBulkFulfillmentTargets] = useState<Order[]>([]);
   const [bulkFulfillmentDrafts, setBulkFulfillmentDrafts] = useState<Record<string, BulkFulfillmentDraft>>({});
   const [bulkFulfilling, setBulkFulfilling] = useState(false);
@@ -1585,6 +1613,31 @@ export default function OrdersPage() {
     setFulfillOrderTarget(order);
     setCarrier(order.carrier || '');
     setTrackingNumber(order.tracking_number || '');
+  };
+
+  const startPreparation = async (order: Order) => {
+    setPreparingId(order.id);
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        setError(await getErrorMessage(res, t('dashboardPages.orders.errorPreparing')));
+        return;
+      }
+      await fetchOrders();
+      if (selectedOrder?.id === order.id) {
+        await openOrderDetail(order);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
+    } finally {
+      setPreparingId('');
+    }
   };
 
   const openOrderDetail = async (order: Order) => {
@@ -2494,6 +2547,7 @@ export default function OrdersPage() {
               >
                 <option value="">{t('dashboardPages.orders.allFulfillment')}</option>
                 <option value="pending">{t('dashboardPages.orders.toShip')}</option>
+                <option value="preparing">{t('dashboardPages.orders.preparing')}</option>
                 <option value="shipped">{t('dashboardPages.orders.shipped')}</option>
                 <option value="delivered">{t('dashboardPages.orders.delivered')}</option>
                 <option value="cancelled">{t('dashboardPages.orders.cancelled')}</option>
@@ -2748,11 +2802,19 @@ export default function OrdersPage() {
                       )}
                       {visibleColumns.status && (
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
-                            {statusLabel(order.status, t)}
-                          </span>
+                          {(() => {
+                            const store = storeOrderStatus(order, t);
+                            return (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${store.color}`}>
+                                {store.label}
+                              </span>
+                            );
+                          })()}
+                          <p className="mt-1 text-[10px] font-bold text-gray-400">
+                            {t('dashboardPages.orders.marketplaceStatus')}: {statusLabel(order.status, t)}
+                          </p>
                           {toNumber(order.other_pending_stores) > 0 && (
-                            <p className="mt-1 text-[10px] font-bold text-gray-400">
+                            <p className="mt-0.5 text-[10px] font-bold text-gray-400">
                               {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(order.other_pending_stores) })}
                             </p>
                           )}
@@ -2815,6 +2877,19 @@ export default function OrdersPage() {
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <ReceiptText className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void startPreparation(order)}
+                              disabled={preparingId === order.id || !canPrepare(order)}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40"
+                              title={t('dashboardPages.orders.startPreparation')}
+                            >
+                              {preparingId === order.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Package className="w-4 h-4" />
                               )}
                             </button>
                             <button
@@ -3451,11 +3526,19 @@ export default function OrdersPage() {
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-2xl bg-gray-50 p-4">
                         <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.status')}</p>
-                        <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedOrder.status)}`}>
-                          {statusLabel(selectedOrder.status, t)}
-                        </span>
+                        {(() => {
+                          const store = storeOrderStatus(selectedOrder, t);
+                          return (
+                            <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${store.color}`}>
+                              {store.label}
+                            </span>
+                          );
+                        })()}
+                        <p className="mt-2 text-[10px] font-bold text-gray-400">
+                          {t('dashboardPages.orders.marketplaceStatus')}: {statusLabel(selectedOrder.status, t)}
+                        </p>
                         {toNumber(selectedOrder.other_pending_stores) > 0 && (
-                          <p className="mt-2 text-[10px] font-bold text-gray-400">
+                          <p className="mt-1 text-[10px] font-bold text-gray-400">
                             {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(selectedOrder.other_pending_stores) })}
                           </p>
                         )}
@@ -3933,6 +4016,17 @@ export default function OrdersPage() {
                           >
                             {generatingLabelId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />}
                             {latestShipment(selectedOrder) ? t('dashboardPages.orders.openLabel') : t('dashboardPages.orders.generateLabel')}
+                          </button>
+                        )}
+                        {canPrepare(selectedOrder) && (
+                          <button
+                            type="button"
+                            onClick={() => void startPreparation(selectedOrder)}
+                            disabled={preparingId === selectedOrder.id}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-black text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
+                          >
+                            {preparingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                            {t('dashboardPages.orders.startPreparation')}
                           </button>
                         )}
                         {canFulfill(selectedOrder) && (

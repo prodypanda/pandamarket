@@ -22,7 +22,8 @@ import { ProductType } from '@pandamarket/types';
  *  - cancelled/refunded orders are never touched
  *  - zero pending, >=1 delivered, rest terminal   -> 'delivered'
  *  - zero pending, >=1 shipped                    -> 'fulfilled'
- *  - zero pending/shipped/delivered (all canc.)   -> 'cancelled' (reason passed in)
+ *  - zero pending/shipped/delivered, >=1 preparing-> 'processing' (derived)
+ *  - zero pending/shipped/delivered/preparing     -> 'cancelled' (reason passed in)
  *  - otherwise (any pending)                      -> leave the order alone
  * Digital-only orders have zero fulfillments -> the sub-select returns no row -> untouched.
  */
@@ -39,15 +40,17 @@ export async function syncOrderStatusFromFulfillments(
          cancelled_reason = CASE WHEN ns.next_status = 'cancelled' THEN COALESCE(o.cancelled_reason, $2) ELSE o.cancelled_reason END
      FROM (
        SELECT order_id,
-              COUNT(*) FILTER (WHERE status = 'pending')   AS pend,
-              COUNT(*) FILTER (WHERE status = 'shipped')   AS ship,
-              COUNT(*) FILTER (WHERE status = 'delivered') AS del
+              COUNT(*) FILTER (WHERE status = 'pending')    AS pend,
+              COUNT(*) FILTER (WHERE status = 'preparing')  AS prep,
+              COUNT(*) FILTER (WHERE status = 'shipped')    AS ship,
+              COUNT(*) FILTER (WHERE status = 'delivered')  AS del
        FROM pd_fulfillment WHERE order_id = $1 GROUP BY order_id
      ) sub,
      LATERAL (SELECT CASE
                 WHEN sub.pend = 0 AND sub.del > 0 THEN 'delivered'
                 WHEN sub.pend = 0 AND sub.ship > 0 THEN 'fulfilled'
-                WHEN sub.pend = 0 AND sub.del = 0 AND sub.ship = 0 THEN 'cancelled'
+                WHEN sub.pend = 0 AND sub.ship = 0 AND sub.del = 0 AND sub.prep > 0 THEN 'processing'
+                WHEN sub.pend = 0 AND sub.ship = 0 AND sub.del = 0 AND sub.prep = 0 THEN 'cancelled'
                 ELSE NULL
               END AS next_status) ns
      WHERE o.id = sub.order_id
