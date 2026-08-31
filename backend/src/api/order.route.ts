@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { orderService } from '../services/order.service';
+import { pdfInvoiceService } from '../services/pdf-invoice.service';
 import { asyncHandler, validate, requireAuth, requireStore, requireStorefrontCustomer } from '../middlewares';
 import { OrderStatus, PaymentGateway, PaymentStatus } from '@pandamarket/types';
 import { PdValidationError } from '../errors';
@@ -99,6 +100,20 @@ const storeRefundSchema = z.object({
   reason: z.string().trim().max(1000).optional(),
 });
 
+const addStoreOrderItemSchema = z.object({
+  product_id: z.string().trim().min(1),
+  variant_id: z.string().trim().min(1).nullable().optional(),
+  quantity: z.number().int().positive().default(1),
+});
+
+const updateStoreOrderItemSchema = z.object({
+  quantity: z.number().int().min(0),
+});
+
+const changeStoreOrderItemVariantSchema = z.object({
+  variant_id: z.string().trim().min(1),
+});
+
 const storeShipmentSchema = z.object({
   provider: z.enum(['aramex', 'laposte']).optional(),
 }).default({});
@@ -190,7 +205,8 @@ router.get(
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const status = req.query.status as OrderStatus | undefined;
-    const result = await orderService.listByCustomer(req.user!.id, { page, limit, status });
+    const search = req.query.search as string | undefined;
+    const result = await orderService.listByCustomer(req.user!.id, { page, limit, status, search });
     res.status(200).json(result);
   }),
 );
@@ -242,6 +258,29 @@ router.get(
     const status = req.query.status as OrderStatus | undefined;
     const result = await orderService.listByStorefrontCustomer(req.storefrontCustomer!.id, req.storefrontCustomer!.store_id, { page, limit, status });
     res.status(200).json(result);
+  }),
+);
+
+router.get(
+  '/storefront/:id/invoice.pdf',
+  requireStorefrontCustomer,
+  asyncHandler(async (req: Request, res: Response) => {
+    const isStoreOrder = await orderService.hasStoreItems(req.params.id, req.storefrontCustomer!.store_id);
+    if (!isStoreOrder) {
+      res.status(404).json({ error: { message: 'Order not found' } });
+      return;
+    }
+    const pdfBuffer = await pdfInvoiceService.generateBuyerInvoicePdf(
+      req.params.id,
+      req.storefrontCustomer!.id,
+      { channel: 'storefront', storeId: req.storefrontCustomer!.store_id },
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="facture-${req.params.id.slice(-8).toUpperCase()}.pdf"`,
+    );
+    res.status(200).send(pdfBuffer);
   }),
 );
 
@@ -330,6 +369,73 @@ router.put(
   }),
 );
 
+// Vendor: add an item to an active order
+router.post(
+  '/store/:id/items',
+  requireStore,
+  validate(addStoreOrderItemSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.addStoreOrderItem({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      userId: req.user!.id,
+      productId: req.body.product_id,
+      variantId: req.body.variant_id,
+      quantity: req.body.quantity,
+    });
+    res.status(201).json({ order });
+  }),
+);
+
+// Vendor: update quantity of an order item
+router.patch(
+  '/store/:id/items/:itemId',
+  requireStore,
+  validate(updateStoreOrderItemSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.updateStoreOrderItemQuantity({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      itemId: req.params.itemId,
+      newQuantity: req.body.quantity,
+      userId: req.user!.id,
+    });
+    res.status(200).json({ order });
+  }),
+);
+
+// Vendor: remove an item from an active order
+router.delete(
+  '/store/:id/items/:itemId',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.removeStoreOrderItem({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      itemId: req.params.itemId,
+      userId: req.user!.id,
+    });
+    res.status(200).json({ order });
+  }),
+);
+
+// Vendor: swap variant of an order item
+router.post(
+  '/store/:id/items/:itemId/variant',
+  requireStore,
+  validate(changeStoreOrderItemVariantSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.changeStoreOrderItemVariant({
+      orderId: req.params.id,
+      storeId: req.user!.store_id!,
+      itemId: req.params.itemId,
+      newVariantId: req.body.variant_id,
+      userId: req.user!.id,
+    });
+    res.status(200).json({ order });
+  }),
+);
+
 router.post(
   '/store/:id/refunds',
   requireStore,
@@ -371,6 +477,25 @@ router.post(
       provider: req.body.provider,
     });
     res.status(201).json({ shipment });
+  }),
+);
+
+// Customer: download official sales invoice PDF
+router.get(
+  '/:id/invoice.pdf',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const pdfBuffer = await pdfInvoiceService.generateBuyerInvoicePdf(
+      req.params.id,
+      req.user!.id,
+      { channel: 'marketplace' },
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="facture-${req.params.id.slice(-8).toUpperCase()}.pdf"`,
+    );
+    res.status(200).send(pdfBuffer);
   }),
 );
 

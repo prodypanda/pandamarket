@@ -73,6 +73,14 @@ vi.mock('../services/system-log.service', () => ({
   },
 }));
 
+vi.mock('../middlewares', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../middlewares')>();
+  return {
+    ...actual,
+    authRateLimit: (_req: any, _res: any, next: any) => next(),
+  };
+});
+
 import { query } from '../db/pool';
 import { emailQueue } from '../queues/email-queue';
 import storefrontAuthRouter from '../api/storefront-auth.route';

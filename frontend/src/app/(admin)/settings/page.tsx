@@ -35,6 +35,8 @@ interface PlatformSettings {
   marketplace_og_image_url: string;
   marketplace_public_url: string;
   marketplace_theme: 'panda' | 'aliexpress' | 'aliexpress2';
+  buyer_orders_theme_style: 'modern_cards' | 'timeline_logistics';
+  invoice_platform_matricule_fiscal: string;
   marketplace_primary_color: string;
   marketplace_secondary_color: string;
   marketplace_default_locale: 'fr' | 'en' | 'ar';
@@ -309,6 +311,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   marketplace_og_image_url: '/og-image.png',
   marketplace_public_url: 'https://garbage.team',
   marketplace_theme: 'panda',
+  buyer_orders_theme_style: 'modern_cards',
+  invoice_platform_matricule_fiscal: '0001234/A/M/000',
   marketplace_primary_color: '#16C784',
   marketplace_secondary_color: '#0f9f6e',
   marketplace_default_locale: 'fr',
@@ -596,6 +600,7 @@ type StringSettingKey = {
 type FreeTextSettingKey = Exclude<
   StringSettingKey,
   | 'marketplace_theme'
+  | 'buyer_orders_theme_style'
   | 'marketplace_default_locale'
   | 'chat_bubble_position'
   | 'catalog_default_sort'
@@ -615,6 +620,7 @@ type FreeTextSettingKey = Exclude<
 >;
 
 const TEXT_SETTING_KEYS = [
+  'invoice_platform_matricule_fiscal',
   'watermark_text',
   'watermark_image_url',
   'marketplace_name',
@@ -843,6 +849,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'marketplace_og_image_url',
     'marketplace_public_url',
     'marketplace_theme',
+    'buyer_orders_theme_style',
     'marketplace_primary_color',
     'marketplace_secondary_color',
     'marketplace_default_locale',
@@ -996,6 +1003,7 @@ const SETTINGS_TAB_KEYS: Record<PlatformSettingsTab, readonly (keyof PlatformSet
     'min_withdrawal_tnd',
     'refund_auto_process_delivered_max_tnd',
     'platform_commission_rate',
+    'invoice_platform_matricule_fiscal',
     'default_currency',
     'payment_sandbox_mode',
     'refund_auto_process_delivered_enabled',
@@ -1126,6 +1134,7 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'marketplace_og_image_url', tab: 'marketplace', label: 'OpenGraph Share Image', description: 'Default banner image for social sharing previews (FB, Twitter, WhatsApp)', keywords: ['og', 'image', 'share', 'social', 'preview'] },
   { key: 'marketplace_public_url', tab: 'marketplace', label: 'Public Canonical URL', description: 'Production public base URL of the marketplace', keywords: ['url', 'domain', 'canonical', 'link'] },
   { key: 'marketplace_theme', tab: 'marketplace', label: 'Marketplace Visual Theme', description: 'Active marketplace design aesthetic (PandaMarket, AliExpress, AliExpress 2.0)', keywords: ['theme', 'style', 'design', 'aliexpress', 'skin'] },
+  { key: 'buyer_orders_theme_style', tab: 'marketplace', label: 'Style Page Commandes Client', description: 'Style d\'affichage de la page Mes Commandes (Modern Cards vs Timeline Logistics)', keywords: ['order', 'commande', 'style', 'stepper', 'timeline', 'cards'] },
   { key: 'marketplace_primary_color', tab: 'marketplace', label: 'Primary Brand Color', description: 'Primary accent color across all Hub homepage layouts and controls', keywords: ['color', 'primary', 'brand', 'green', 'couleur', 'accent'] },
   { key: 'marketplace_secondary_color', tab: 'marketplace', label: 'Secondary Brand Color', description: 'Secondary accent color for badges, gradients, and buttons', keywords: ['color', 'secondary', 'brand', 'couleur', 'accent'] },
   { key: 'marketplace_default_locale', tab: 'marketplace', label: 'Default Locale', description: 'Default storefront language (French, English, Arabic)', keywords: ['language', 'locale', 'french', 'arabic', 'english', 'langue'] },
@@ -1193,6 +1202,7 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchItem[] = [
   { key: 'default_currency', tab: 'finance', label: 'Default Marketplace Currency', description: 'Standard platform currency code (TND, EUR, USD)', keywords: ['currency', 'devise', 'tnd', 'dinar'] },
   { key: 'refund_auto_process_delivered_enabled', tab: 'finance', label: 'Auto-Process Delivered-Order Refunds', description: 'When ON, refunds on DELIVERED orders are processed by the seller without review, up to the threshold below. Refunds on non-delivered orders ALWAYS require review.', keywords: ['refund', 'remboursement', 'auto', 'gate', 'approval'] },
   { key: 'refund_auto_process_delivered_max_tnd', tab: 'finance', label: 'Refund Auto-Process Threshold (TND)', description: 'Refunds on delivered orders at or below this amount auto-process; anything above always goes to superadmin review', keywords: ['refund', 'threshold', 'remboursement', 'seuil', 'gate'] },
+  { key: 'invoice_platform_matricule_fiscal', tab: 'finance', label: 'Matricule Fiscal Plateforme', description: 'Identifiant fiscal légal tunisien figurant sur les factures de vente (Facture de Vente)', keywords: ['facture', 'invoice', 'matricule', 'fiscal', 'tax', 'tva'] },
 
   // Shipping & Delivery
   { key: 'shipping_enabled', tab: 'shipping', label: 'Platform Shipping Management', description: 'Master switch for automated platform shipping and rate calculation', keywords: ['shipping', 'delivery', 'livraison', 'expedition'] },
@@ -2560,6 +2570,63 @@ export default function SuperAdminSettingsPage() {
     );
   }
 
+  function renderBuyerOrdersThemeSelector() {
+    const styleOptions = [
+      {
+        id: 'modern_cards' as const,
+        name: 'Panda Emerald Cards (Moderne)',
+        description: 'Design aéré en cartes modernes avec badges de statut émeraude, vue par colis claire et boutons d\'action directe.',
+        badge: 'Style 1 · Recommandé',
+        preview: 'Cartes flottantes, sous-totaux par boutique, téléchargement rapide des factures et suivi colis clair.',
+      },
+      {
+        id: 'timeline_logistics' as const,
+        name: 'Timeline Logistics (AliExpress / Amazon)',
+        description: 'Vue logistique dense avec barre de progression horizontale en 5 étapes, jalons de transporteur et horodatages précis.',
+        badge: 'Style 2 · Logistique avancée',
+        preview: 'Stepper horizontal (Validée → Préparation → Expédiée → En route → Livrée), badges transporteurs et vue compacte.',
+      },
+    ];
+
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mt-4">
+        {styleOptions.map((style) => {
+          const selected = (settings.buyer_orders_theme_style || 'modern_cards') === style.id;
+          return (
+            <button
+              type="button"
+              key={style.id}
+              onClick={() => updateSetting('buyer_orders_theme_style', style.id)}
+              className={`rounded-[1.5rem] border-2 p-5 text-left transition-all duration-300 group relative ${
+                selected
+                  ? 'border-emerald-600 bg-emerald-50/50 shadow-lg shadow-emerald-900/10'
+                  : 'border-slate-100 bg-white hover:border-emerald-200 hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                  selected ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  {style.badge}
+                </span>
+                {selected && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">
+                    ✓
+                  </span>
+                )}
+              </div>
+              <p className={`font-black text-base ${selected ? 'text-emerald-950' : 'text-slate-900'}`}>{style.name}</p>
+              <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-600">{style.description}</p>
+              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200/60 p-3 text-[11px] font-medium text-slate-500">
+                {style.preview}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   useEffect(() => {
     let active = true;
     async function fetchSettings() {
@@ -3278,6 +3345,16 @@ export default function SuperAdminSettingsPage() {
           description="Select the visual design preset and skin that dictates homepage typography, badge styling, and layout defaults."
         />
         {renderMarketplaceThemeSelector()}
+      </section>
+
+      {/* Style de la Page Mes Commandes Acheteur (Dual Style System) */}
+      <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
+        <SectionHeader
+          icon={<Package className="h-5 w-5" />}
+          title="Style de la Page « Mes Commandes » (Acheteur)"
+          description="Choisissez la disposition visuelle par défaut pour la page /hub/orders (Panda Emerald Cards moderne ou Timeline Logistics AliExpress/Amazon en 5 étapes)."
+        />
+        {renderBuyerOrdersThemeSelector()}
       </section>
 
       <section className={`${activeTab === 'marketplace' ? '' : 'hidden'} rounded-[2rem] border border-slate-200/70 bg-white p-8 shadow-xl shadow-slate-200/40`}>
@@ -5532,6 +5609,12 @@ export default function SuperAdminSettingsPage() {
               <option value="biweekly">Biweekly</option>
               <option value="monthly">Monthly</option>
             </select>
+          </div>
+          <div className="space-y-1.5 md:col-span-3">
+            {renderTextInput('invoice_platform_matricule_fiscal', 'Matricule Fiscal de la Plateforme (Défaut Factures)', '0001234/A/M/000')}
+            <p className="text-[11px] font-medium text-slate-500">
+              Identifiant fiscal légal tunisien figurant sur les factures émises pour les acheteurs (Facture de Vente).
+            </p>
           </div>
         </div>
 

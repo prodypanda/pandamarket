@@ -1406,17 +1406,32 @@ export class OrderService {
 
   async listByCustomer(
     customerId: string,
-    opts: { page?: number; limit?: number; status?: OrderStatus } = {},
+    opts: { page?: number; limit?: number; status?: OrderStatus; search?: string } = {},
   ) {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, opts.limit ?? 20);
     const offset = (page - 1) * limit;
     const params: unknown[] = [customerId];
-    let where = 'customer_id = $1';
+    const clauses: string[] = ['o.customer_id = $1'];
+    const countClauses: string[] = ['customer_id = $1'];
+
     if (opts.status) {
       params.push(opts.status);
-      where += ` AND status = $${params.length}`;
+      clauses.push(`o.status = $${params.length}`);
+      countClauses.push(`status = $${params.length}`);
     }
+    if (opts.search && opts.search.trim()) {
+      const q = `%${opts.search.trim()}%`;
+      params.push(q);
+      const pIdx = params.length;
+      clauses.push(
+        `(o.id ILIKE $${pIdx} OR EXISTS (SELECT 1 FROM pd_order_item oi LEFT JOIN pd_store s ON s.id = oi.store_id WHERE oi.order_id = o.id AND (oi.title ILIKE $${pIdx} OR s.name ILIKE $${pIdx})))`,
+      );
+      countClauses.push(
+        `(id ILIKE $${pIdx} OR EXISTS (SELECT 1 FROM pd_order_item oi LEFT JOIN pd_store s ON s.id = oi.store_id WHERE oi.order_id = pd_order.id AND (oi.title ILIKE $${pIdx} OR s.name ILIKE $${pIdx})))`,
+      );
+    }
+    const countParams = [...params];
     params.push(limit, offset);
     const { rows } = await query<OrderRow & { items: unknown[] }>(
       `SELECT o.*, COALESCE(items.items, '[]'::json) AS items,
@@ -1443,13 +1458,12 @@ export class OrderService {
          WHERE i.order_id = o.id
        ) items ON true
        ${BUYER_FULFILLMENTS_ALL}
-       WHERE ${where.replaceAll('customer_id', 'o.customer_id').replaceAll('status', 'o.status')}
+       WHERE ${clauses.join(' AND ')}
        ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
-    const countParams = opts.status ? [customerId, opts.status] : [customerId];
     const { rows: cnt } = await query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM pd_order WHERE ${where}`,
+      `SELECT COUNT(*)::text AS count FROM pd_order WHERE ${countClauses.join(' AND ')}`,
       countParams,
     );
     const total = parseInt(cnt[0].count, 10);
@@ -2046,6 +2060,485 @@ export class OrderService {
       await this.syncOrderStatusFromFulfillments(c, opts.order_id, { cancelReason: opts.reason });
     });
     logger.info(opts, 'Store fulfillment cancelled');
+  }
+
+  /**
+   * Recalculate order gross_subtotal, subtotal, and total in transaction.
+   */
+  private async recalculateOrderTotalsInTransaction(
+    c: Pick<PoolClient, 'query'>,
+    orderId: string,
+  ): Promise<void> {
+    const { rows: sumRows } = await c.query<{ subtotal: string; gross_subtotal: string }>(
+      `SELECT COALESCE(SUM(subtotal), 0)::text AS subtotal,
+              COALESCE(SUM(COALESCE(gross_subtotal, subtotal)), 0)::text AS gross_subtotal
+       FROM pd_order_item
+       WHERE order_id = $1`,
+      [orderId],
+    );
+    const newSubtotal = roundTnd(parseFloat(sumRows[0]?.subtotal || '0'));
+    const newGrossSubtotal = roundTnd(parseFloat(sumRows[0]?.gross_subtotal || '0'));
+
+    const { rows: orderRows } = await c.query<{ shipping_total: string; tax_total: string }>(
+      'SELECT shipping_total::text, tax_total::text FROM pd_order WHERE id = $1',
+      [orderId],
+    );
+    const shippingTotal = parseFloat(orderRows[0]?.shipping_total || '0');
+    const taxTotal = parseFloat(orderRows[0]?.tax_total || '0');
+    const newTotal = roundTnd(newSubtotal + shippingTotal + taxTotal);
+
+    await c.query(
+      `UPDATE pd_order
+       SET subtotal = $2,
+           gross_subtotal = $3,
+           total = $4,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [orderId, newSubtotal, newGrossSubtotal, newTotal],
+    );
+  }
+
+  /**
+   * Vendor: Add an item from the seller's catalog to an active order
+   */
+  async addStoreOrderItem(opts: {
+    orderId: string;
+    storeId: string;
+    userId: string;
+    productId: string;
+    variantId?: string | null;
+    quantity: number;
+  }): Promise<StoreOrderDetail> {
+    if (!opts.quantity || opts.quantity <= 0) {
+      throw new PdValidationError('Quantity must be greater than 0');
+    }
+
+    await transaction(async (c) => {
+      // 1. Check store fulfillment status
+      const { rows: fulRows } = await c.query<{ status: string }>(
+        `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,
+        [opts.orderId, opts.storeId],
+      );
+      const ful = fulRows[0];
+      if (!ful || ['shipped', 'delivered', 'cancelled'].includes(ful.status)) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot edit order lines for a shipment that is already shipped, delivered, or cancelled',
+        );
+      }
+
+      // Check order payment status: refuse additions that increase total on captured online payments
+      const { rows: orderRows } = await c.query<{ payment_status: string; payment_gateway: string }>(
+        `SELECT payment_status, payment_gateway FROM pd_order WHERE id = $1 FOR UPDATE`,
+        [opts.orderId],
+      );
+      const order = orderRows[0];
+      if (!order) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+
+      if (order.payment_status === 'captured') {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot add items to an already-captured online payment order (additional payment cannot be charged)',
+        );
+      }
+
+      // 2. Fetch and lock product (isolated to this store)
+      const { rows: prodRows } = await c.query<{
+        id: string;
+        title: string;
+        price: string;
+        inventory_quantity: number;
+        status: ProductStatus;
+        type: ProductType;
+      }>(
+        `SELECT id, title, price, inventory_quantity, status, type
+         FROM pd_product
+         WHERE id = $1 AND store_id = $2 FOR UPDATE`,
+        [opts.productId, opts.storeId],
+      );
+      const prod = prodRows[0];
+      if (!prod || prod.status !== ProductStatus.Published) {
+        throw new PdNotFoundError(PdErrorCode.PRODUCT_NOT_FOUND, 'Product not found or not published in your store');
+      }
+
+      if (prod.type === ProductType.Bundle || prod.type === ProductType.Serial) {
+        throw new PdValidationError('Bundle and serial products cannot be manually added to an existing order in v1');
+      }
+
+      let unitPrice = parseFloat(prod.price);
+      let variantTitle = '';
+
+      if (opts.variantId) {
+        const { rows: varRows } = await c.query<{
+          id: string;
+          title: string;
+          price: string | null;
+          inventory_quantity: number;
+        }>(
+          `SELECT id, title, price, inventory_quantity
+           FROM pd_product_variant
+           WHERE id = $1 AND product_id = $2 FOR UPDATE`,
+          [opts.variantId, prod.id],
+        );
+        const variant = varRows[0];
+        if (!variant) throw new PdNotFoundError(PdErrorCode.VARIANT_NOT_FOUND, 'Variant not found');
+        if (variant.price) unitPrice = parseFloat(variant.price);
+        variantTitle = ` (${variant.title})`;
+
+        if (prod.type === ProductType.Physical) {
+          const { rowCount } = await c.query(
+            `UPDATE pd_product_variant
+             SET inventory_quantity = inventory_quantity - $2
+             WHERE id = $1 AND inventory_quantity >= $2`,
+            [variant.id, opts.quantity],
+          );
+          if (!rowCount) throw new PdValidationError('Insufficient stock available for this variant');
+        }
+      } else if (prod.type === ProductType.Physical) {
+        const { rowCount } = await c.query(
+          `UPDATE pd_product
+           SET inventory_quantity = inventory_quantity - $2
+           WHERE id = $1 AND inventory_quantity >= $2`,
+          [prod.id, opts.quantity],
+        );
+        if (!rowCount) throw new PdValidationError('Insufficient stock available for this product');
+      }
+
+      const lineSubtotal = roundTnd(unitPrice * opts.quantity);
+      const itemId = pdId('oitem');
+
+      await c.query(
+        `INSERT INTO pd_order_item (id, order_id, product_id, variant_id, store_id, title, quantity, unit_price, gross_subtotal, discount_amount, subtotal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $9)`,
+        [
+          itemId,
+          opts.orderId,
+          prod.id,
+          opts.variantId ?? null,
+          opts.storeId,
+          `${prod.title}${variantTitle}`,
+          opts.quantity,
+          unitPrice,
+          lineSubtotal,
+        ],
+      );
+
+      await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId }, 'Store order item added');
+    });
+
+    return this.getStoreOrderDetail(opts.orderId, opts.storeId);
+  }
+
+  /**
+   * Vendor: Update order item quantity
+   */
+  async updateStoreOrderItemQuantity(opts: {
+    orderId: string;
+    storeId: string;
+    itemId: string;
+    newQuantity: number;
+    userId: string;
+  }): Promise<StoreOrderDetail> {
+    if (opts.newQuantity <= 0) {
+      return this.removeStoreOrderItem({
+        orderId: opts.orderId,
+        storeId: opts.storeId,
+        itemId: opts.itemId,
+        userId: opts.userId,
+      });
+    }
+
+    await transaction(async (c) => {
+      const { rows: fulRows } = await c.query<{ status: string }>(
+        `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,
+        [opts.orderId, opts.storeId],
+      );
+      const ful = fulRows[0];
+      if (!ful || ['shipped', 'delivered', 'cancelled'].includes(ful.status)) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot edit order lines for a shipment that is already shipped, delivered, or cancelled',
+        );
+      }
+
+      const { rows: orderRows } = await c.query<{ payment_status: string; payment_gateway: string }>(
+        `SELECT payment_status, payment_gateway FROM pd_order WHERE id = $1 FOR UPDATE`,
+        [opts.orderId],
+      );
+      const order = orderRows[0];
+      if (!order) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+
+      const { rows: itemRows } = await c.query<{
+        id: string;
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        unit_price: string;
+        product_type?: ProductType;
+      }>(
+        `SELECT oi.id, oi.product_id, oi.variant_id, oi.quantity, oi.unit_price::text, p.type AS product_type
+         FROM pd_order_item oi
+         JOIN pd_product p ON p.id = oi.product_id
+         WHERE oi.id = $1 AND oi.order_id = $2 AND oi.store_id = $3 FOR UPDATE`,
+        [opts.itemId, opts.orderId, opts.storeId],
+      );
+      const item = itemRows[0];
+      if (!item) throw new PdNotFoundError(PdErrorCode.ORDER_ITEM_NOT_FOUND, 'Order item not found');
+
+      const delta = opts.newQuantity - item.quantity;
+      if (delta === 0) return;
+
+      if (delta > 0 && order.payment_status === 'captured') {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot increase quantity on an already-captured online payment order',
+        );
+      }
+
+      if (item.product_type === ProductType.Physical) {
+        if (delta > 0) {
+          if (item.variant_id) {
+            const { rowCount } = await c.query(
+              `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity - $2 WHERE id = $1 AND inventory_quantity >= $2`,
+              [item.variant_id, delta],
+            );
+            if (!rowCount) throw new PdValidationError('Insufficient stock to increase quantity');
+          } else {
+            const { rowCount } = await c.query(
+              `UPDATE pd_product SET inventory_quantity = inventory_quantity - $2 WHERE id = $1 AND inventory_quantity >= $2`,
+              [item.product_id, delta],
+            );
+            if (!rowCount) throw new PdValidationError('Insufficient stock to increase quantity');
+          }
+        } else {
+          const restockQty = Math.abs(delta);
+          if (item.variant_id) {
+            await c.query(`UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.variant_id, restockQty]);
+          } else {
+            await c.query(`UPDATE pd_product SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.product_id, restockQty]);
+          }
+        }
+      }
+
+      const unitPrice = parseFloat(item.unit_price);
+      const newSubtotal = roundTnd(unitPrice * opts.newQuantity);
+      await c.query(
+        `UPDATE pd_order_item SET quantity = $2, gross_subtotal = $3, subtotal = $3 WHERE id = $1`,
+        [item.id, opts.newQuantity, newSubtotal],
+      );
+
+      // If online payment was already captured and quantity decreased, generate a refund request for the price difference
+      if (order.payment_status === 'captured' && delta < 0) {
+        const refundDelta = roundTnd(unitPrice * Math.abs(delta));
+        if (refundDelta > 0) {
+          await c.query(
+            `INSERT INTO pd_store_order_refund (
+               id, order_id, store_id, requested_by, amount, reason_code, reason, status
+             ) VALUES ($1, $2, $3, $4, $5, 'customer_request', 'Ajustement de quantité suite à modification de commande', 'awaiting_admin')`,
+            [pdId('srefund'), opts.orderId, opts.storeId, opts.userId, refundDelta],
+          );
+        }
+      }
+
+      await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId, delta }, 'Store order item quantity updated');
+    });
+
+    return this.getStoreOrderDetail(opts.orderId, opts.storeId);
+  }
+
+  /**
+   * Vendor: Remove order item entirely
+   */
+  async removeStoreOrderItem(opts: {
+    orderId: string;
+    storeId: string;
+    itemId: string;
+    userId: string;
+  }): Promise<StoreOrderDetail> {
+    await transaction(async (c) => {
+      const { rows: fulRows } = await c.query<{ status: string }>(
+        `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,
+        [opts.orderId, opts.storeId],
+      );
+      const ful = fulRows[0];
+      if (!ful || ['shipped', 'delivered', 'cancelled'].includes(ful.status)) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot edit order lines for a shipment that is already shipped, delivered, or cancelled',
+        );
+      }
+
+      const { rows: orderRows } = await c.query<{ payment_status: string; payment_gateway: string }>(
+        `SELECT payment_status, payment_gateway FROM pd_order WHERE id = $1 FOR UPDATE`,
+        [opts.orderId],
+      );
+      const order = orderRows[0];
+      if (!order) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+
+      const { rows: itemRows } = await c.query<{
+        id: string;
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        unit_price: string;
+        subtotal: string;
+        product_type?: ProductType;
+      }>(
+        `SELECT oi.id, oi.product_id, oi.variant_id, oi.quantity, oi.unit_price::text, oi.subtotal::text, p.type AS product_type
+         FROM pd_order_item oi
+         JOIN pd_product p ON p.id = oi.product_id
+         WHERE oi.id = $1 AND oi.order_id = $2 AND oi.store_id = $3 FOR UPDATE`,
+        [opts.itemId, opts.orderId, opts.storeId],
+      );
+      const item = itemRows[0];
+      if (!item) throw new PdNotFoundError(PdErrorCode.ORDER_ITEM_NOT_FOUND, 'Order item not found');
+
+      // Restore stock
+      await restoreOrderItemStock(c, item);
+
+      // If captured online payment, generate refund request for full item subtotal
+      if (order.payment_status === 'captured') {
+        const refundAmt = roundTnd(parseFloat(item.subtotal));
+        if (refundAmt > 0) {
+          await c.query(
+            `INSERT INTO pd_store_order_refund (
+               id, order_id, store_id, requested_by, amount, reason_code, reason, status
+             ) VALUES ($1, $2, $3, $4, $5, 'customer_request', 'Suppression d’article suite à modification de commande', 'awaiting_admin')`,
+            [pdId('srefund'), opts.orderId, opts.storeId, opts.userId, refundAmt],
+          );
+        }
+      }
+
+      // Delete the item
+      await c.query(`DELETE FROM pd_order_item WHERE id = $1`, [item.id]);
+
+      // Check if store has any remaining items in order
+      const { rows: remRows } = await c.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM pd_order_item WHERE order_id = $1 AND store_id = $2`,
+        [opts.orderId, opts.storeId],
+      );
+      const remainingCount = parseInt(remRows[0]?.count || '0', 10);
+      if (remainingCount === 0) {
+        // Auto-cancel empty fulfillment so it does not block order aggregate
+        await c.query(
+          `UPDATE pd_fulfillment SET status = 'cancelled', updated_at = NOW() WHERE order_id = $1 AND store_id = $2`,
+          [opts.orderId, opts.storeId],
+        );
+        await this.syncOrderStatusFromFulfillments(c, opts.orderId, { cancelReason: 'All store items removed' });
+      }
+
+      await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId }, 'Store order item removed');
+    });
+
+    return this.getStoreOrderDetail(opts.orderId, opts.storeId);
+  }
+
+  /**
+   * Vendor: Swap variant for a physical item
+   */
+  async changeStoreOrderItemVariant(opts: {
+    orderId: string;
+    storeId: string;
+    itemId: string;
+    newVariantId: string;
+    userId: string;
+  }): Promise<StoreOrderDetail> {
+    await transaction(async (c) => {
+      const { rows: fulRows } = await c.query<{ status: string }>(
+        `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,
+        [opts.orderId, opts.storeId],
+      );
+      const ful = fulRows[0];
+      if (!ful || ['shipped', 'delivered', 'cancelled'].includes(ful.status)) {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot edit order lines for a shipment that is already shipped, delivered, or cancelled',
+        );
+      }
+
+      const { rows: orderRows } = await c.query<{ payment_status: string; payment_gateway: string }>(
+        `SELECT payment_status, payment_gateway FROM pd_order WHERE id = $1 FOR UPDATE`,
+        [opts.orderId],
+      );
+      const order = orderRows[0];
+      if (!order) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+
+      const { rows: itemRows } = await c.query<{
+        id: string;
+        product_id: string;
+        variant_id: string | null;
+        quantity: number;
+        unit_price: string;
+        product_type?: ProductType;
+      }>(
+        `SELECT oi.id, oi.product_id, oi.variant_id, oi.quantity, oi.unit_price::text, p.type AS product_type
+         FROM pd_order_item oi
+         JOIN pd_product p ON p.id = oi.product_id
+         WHERE oi.id = $1 AND oi.order_id = $2 AND oi.store_id = $3 FOR UPDATE`,
+        [opts.itemId, opts.orderId, opts.storeId],
+      );
+      const item = itemRows[0];
+      if (!item) throw new PdNotFoundError(PdErrorCode.ORDER_ITEM_NOT_FOUND, 'Order item not found');
+
+      if (item.variant_id === opts.newVariantId) return;
+
+      // Fetch new variant
+      const { rows: varRows } = await c.query<{
+        id: string;
+        title: string;
+        price: string | null;
+        inventory_quantity: number;
+      }>(
+        `SELECT id, title, price, inventory_quantity
+         FROM pd_product_variant
+         WHERE id = $1 AND product_id = $2 FOR UPDATE`,
+        [opts.newVariantId, item.product_id],
+      );
+      const newVar = varRows[0];
+      if (!newVar) throw new PdNotFoundError(PdErrorCode.VARIANT_NOT_FOUND, 'New variant not found');
+
+      const newUnitPrice = newVar.price ? parseFloat(newVar.price) : parseFloat(item.unit_price);
+      if (newUnitPrice > parseFloat(item.unit_price) && order.payment_status === 'captured') {
+        throw new PdConflictError(
+          PdErrorCode.ORDER_CANNOT_BE_EDITED,
+          'Cannot swap to a more expensive variant on an already-captured online payment order',
+        );
+      }
+
+      // Restock old variant, decrement new variant
+      if (item.variant_id) {
+        await c.query(`UPDATE pd_product_variant SET inventory_quantity = inventory_quantity + $2 WHERE id = $1`, [item.variant_id, item.quantity]);
+      }
+      const { rowCount } = await c.query(
+        `UPDATE pd_product_variant SET inventory_quantity = inventory_quantity - $2 WHERE id = $1 AND inventory_quantity >= $2`,
+        [newVar.id, item.quantity],
+      );
+      if (!rowCount) throw new PdValidationError('Insufficient stock for the new variant');
+
+      // Fetch base product title
+      const { rows: pRows } = await c.query<{ title: string }>(`SELECT title FROM pd_product WHERE id = $1`, [item.product_id]);
+      const baseTitle = pRows[0]?.title || 'Product';
+
+      const newSubtotal = roundTnd(newUnitPrice * item.quantity);
+      await c.query(
+        `UPDATE pd_order_item
+         SET variant_id = $2,
+             title = $3,
+             unit_price = $4,
+             gross_subtotal = $5,
+             subtotal = $5
+         WHERE id = $1`,
+        [item.id, newVar.id, `${baseTitle} (${newVar.title})`, newUnitPrice, newSubtotal],
+      );
+
+      await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId, newVariantId: opts.newVariantId }, 'Store order item variant swapped');
+    });
+
+    return this.getStoreOrderDetail(opts.orderId, opts.storeId);
   }
 
   async requestStoreRefund(opts: {

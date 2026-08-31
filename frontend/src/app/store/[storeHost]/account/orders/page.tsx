@@ -328,6 +328,18 @@ export default function StorefrontAccountOrdersPage() {
                         {paymentStatusLabel(order.payment_status)}
                       </span>
                       <span className="text-base font-extrabold text-emerald-600">{formatPrice(order.total)}</span>
+                      {((order.payment_status === 'captured') || (order.payment_gateway === 'cod' && order.status === 'delivered')) && (
+                        <a
+                          href={`/api/pd/orders/storefront/${order.id}/invoice.pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="Télécharger la Facture PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Facture PDF
+                        </a>
+                      )}
                       <button
                         onClick={() => setSelectedOrder(order)}
                         className="p-1.5 text-gray-400 hover:text-emerald-600 transition-colors"
@@ -429,19 +441,30 @@ export default function StorefrontAccountOrdersPage() {
               </div>
             </div>
 
-            <div className="pt-4 flex items-center justify-between border-t">
-              {/* Mandat receipt management only applies to Mandat Minute orders
-                  that are still awaiting payment. */}
-              {selectedOrder.payment_gateway === 'manual_mandat' && selectedOrder.payment_status !== 'captured' ? (
-                <Link
-                  href={`/checkout/success?order=${encodeURIComponent(selectedOrder.id)}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
-                >
-                  Gérer le reçu Mandat
-                </Link>
-              ) : (
-                <span />
-              )}
+            <div className="pt-4 flex flex-wrap items-center justify-between gap-2 border-t">
+              <div className="flex items-center gap-2">
+                {/* Mandat receipt management only applies to Mandat Minute orders
+                    that are still awaiting payment. */}
+                {selectedOrder.payment_gateway === 'manual_mandat' && selectedOrder.payment_status !== 'captured' && (
+                  <Link
+                    href={`/checkout/success?order=${encodeURIComponent(selectedOrder.id)}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
+                  >
+                    Gérer le reçu Mandat
+                  </Link>
+                )}
+                {((selectedOrder.payment_status === 'captured') || (selectedOrder.payment_gateway === 'cod' && selectedOrder.status === 'delivered')) && (
+                  <a
+                    href={`/api/pd/orders/storefront/${selectedOrder.id}/invoice.pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Facture PDF
+                  </a>
+                )}
+              </div>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="px-5 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-200 transition-colors"

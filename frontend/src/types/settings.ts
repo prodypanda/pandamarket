@@ -8,6 +8,8 @@ export interface PlatformSettings {
   marketplace_og_image_url: string;
   marketplace_public_url: string;
   marketplace_theme: 'panda' | 'aliexpress' | 'aliexpress2';
+  buyer_orders_theme_style: 'modern_cards' | 'timeline_logistics';
+  invoice_platform_matricule_fiscal: string;
   marketplace_primary_color: string;
   marketplace_secondary_color: string;
   marketplace_default_locale: 'fr' | 'en' | 'ar';

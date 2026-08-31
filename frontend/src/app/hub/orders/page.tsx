@@ -1,8 +1,25 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
-import { useEffect, useState } from 'react';
-import { Download, Package, Loader2, ShoppingBag, ChevronDown, Flag, MessageSquare, XCircle } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import {
+  Download,
+  Package,
+  Loader2,
+  ShoppingBag,
+  ChevronDown,
+  Flag,
+  MessageSquare,
+  XCircle,
+  Search,
+  FileText,
+  Truck,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Check,
+  AlertCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
@@ -76,8 +93,8 @@ const statusLabel = (status: string) => {
     fulfilled: 'Expédiée',
     partially_delivered: 'Partiellement livrée',
     delivered: 'Livrée',
-    cancelled: 'Annulé',
-    refunded: 'Remboursé',
+    cancelled: 'Annulée',
+    refunded: 'Remboursée',
   };
   return labels[status] || status;
 };
@@ -115,9 +132,7 @@ const packageStatusColor = (status: string) => {
 };
 
 /**
- * Carrier tracking deep links. Carriers are stored as display names
- * (e.g. 'Aramex', 'La Poste Tunisienne') or ids ('aramex', 'laposte'),
- * so match on normalized substrings.
+ * Carrier tracking deep links.
  */
 const getCarrierTrackingUrl = (carrier?: string | null, trackingNumber?: string | null) => {
   const tracking = trackingNumber?.trim();
@@ -140,21 +155,59 @@ const packagesProgress = (packages: OrderPackage[]) => {
   return { total, shipped, delivered };
 };
 
+/**
+ * 5-Step Stepper Helper for Timeline Logistics Style
+ */
+function getOrderTimelineStep(status: string): number {
+  switch (status) {
+    case 'pending':
+    case 'payment_required':
+      return 1;
+    case 'processing':
+      return 2;
+    case 'partially_shipped':
+    case 'fulfilled':
+      return 3;
+    case 'partially_delivered':
+      return 4;
+    case 'delivered':
+      return 5;
+    default:
+      return 1;
+  }
+}
+
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [downloadMessage, setDownloadMessage] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<{ orderId: string; storeId: string; storeName?: string } | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [reportMessage, setReportMessage] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
   const [startingChatKey, setStartingChatKey] = useState('');
   const { settings, classes, isAliExpress } = useMarketplaceTheme();
+
+  const themeStyle = useMemo(() => {
+    return settings?.buyer_orders_theme_style || 'modern_cards';
+  }, [settings?.buyer_orders_theme_style]);
+
+  // Debounce search by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleDownload = async (productId: string) => {
     setDownloadingProductId(productId);
@@ -163,7 +216,7 @@ export default function CustomerOrdersPage() {
       const res = await fetch(`/api/pd/products/${productId}/download`, { credentials: 'include' });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error?.message || 'Download unavailable');
+        throw new Error(data.error?.message || 'Téléchargement indisponible');
       }
       if (data.data?.download_url) {
         window.open(data.data.download_url, '_blank', 'noopener,noreferrer');
@@ -171,12 +224,18 @@ export default function CustomerOrdersPage() {
       const licenseKeys = Array.isArray(data.data?.license_keys)
         ? data.data.license_keys
         : data.data?.license_key ? [data.data.license_key] : [];
-      setDownloadMessage(licenseKeys.length > 0 ? `License keys: ${licenseKeys.join(', ')}` : 'Download link opened.');
+      setDownloadMessage(licenseKeys.length > 0 ? `Clés de licence : ${licenseKeys.join(', ')}` : 'Lien de téléchargement ouvert.');
     } catch (err) {
-      setDownloadMessage(err instanceof Error ? err.message : 'Download failed');
+      setDownloadMessage(err instanceof Error ? err.message : 'Échec du téléchargement');
     } finally {
       setDownloadingProductId(null);
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(text);
+    setTimeout(() => setCopiedKey(null), 2500);
   };
 
   const submitSellerReport = async () => {
@@ -223,7 +282,7 @@ export default function CustomerOrdersPage() {
           store_id: item.store_id,
           order_id: orderId,
           product_id: item.product_id,
-          subject: `Order #${orderId.slice(-8).toUpperCase()} · ${item.product_title}`,
+          subject: `Commande #${orderId.slice(-8).toUpperCase()} · ${item.product_title}`,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -241,8 +300,9 @@ export default function CustomerOrdersPage() {
       setLoading(true);
       try {
         const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : '';
+        const searchParam = debouncedSearch.trim() ? `&search=${encodeURIComponent(debouncedSearch.trim())}` : '';
         const res = await fetch(
-          `/api/pd/orders/me?page=${page}&limit=10${statusParam}`,
+          `/api/pd/orders/me?page=${page}&limit=10${statusParam}${searchParam}`,
           { credentials: 'include' },
         );
         if (res.ok) {
@@ -257,7 +317,11 @@ export default function CustomerOrdersPage() {
       }
     }
     fetchOrders();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, debouncedSearch]);
+
+  const canDownloadInvoice = (order: Order) => {
+    return order.payment_status === 'captured' || (order.payment_gateway === 'cod' && order.status === 'delivered');
+  };
 
   return (
     <div className={`min-h-screen ${classes.pageSoft}`}>
@@ -268,14 +332,14 @@ export default function CustomerOrdersPage() {
       />
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className={`mb-8 rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
+        <div className={`mb-6 rounded-[2rem] p-6 text-white sm:p-8 ${classes.header}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-2xl font-black flex items-center gap-2">
                 <Package className="w-6 h-6" />
                 Mes Commandes
               </h1>
-              <p className="text-white/75 text-sm mt-1">Suivez l&apos;état de vos commandes.</p>
+              <p className="text-white/75 text-sm mt-1">Suivez l&apos;état de vos colis, téléchargez vos factures et accédez à vos achats.</p>
             </div>
             <Link
               href="/hub"
@@ -287,453 +351,591 @@ export default function CustomerOrdersPage() {
           </div>
         </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {['all', 'pending', 'processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered', 'cancelled'].map((s) => (
-          <button
-            key={s}
-            onClick={() => { setStatusFilter(s); setPage(1); }}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              statusFilter === s
-                ? classes.primary
-                : isAliExpress ? 'bg-white text-gray-600 hover:bg-orange-50 border border-orange-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {s === 'all' ? 'Toutes' : statusLabel(s)}
-          </button>
-        ))}
-      </div>
-
-      {/* Orders List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className={`w-6 h-6 ${classes.primaryText} animate-spin`} />
-          <span className="ml-2 text-gray-500">Chargement...</span>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className={`text-center py-16 ${classes.panel}`}>
-          <Package className={`w-12 h-12 ${isAliExpress ? 'text-orange-200' : 'text-gray-300'} mx-auto mb-4`} />
-          <p className="text-gray-500 text-lg">Aucune commande trouvée.</p>
-          <p className="text-gray-400 text-sm mt-1">Vos commandes apparaîtront ici.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className={`${classes.panel} overflow-hidden transition-shadow hover:shadow-md`}
-            >
-              {/* Order Header */}
-              <div
-                className="p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer"
-                onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+        {/* Search Bar & Filters */}
+        <div className="space-y-4 mb-6">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par N° commande, article ou boutique..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-sm font-bold text-gray-900">
-                      #{order.id.slice(-8).toUpperCase()}
-                    </span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
-                      {statusLabel(order.status)}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                    <span>
-                      {new Date(order.created_at).toLocaleDateString('fr-TN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </span>
-                    <span>•</span>
-                    <span>{paymentLabel(order.payment_gateway)}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`text-lg font-bold ${classes.primaryText}`}>
-                    {parseFloat(order.total).toFixed(3)} TND
-                  </span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-400 transition-transform ${
-                      expandedOrder === order.id ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </div>
+                <XCircle className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-              {/* Expanded Details */}
-              {expandedOrder === order.id && (
-                <div className={`border-t p-4 sm:p-6 ${isAliExpress ? 'border-orange-100 bg-orange-50/40' : 'border-gray-100 bg-gray-50/50'}`}>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wider">Sous-total</span>
-                      <p className="text-sm font-medium text-gray-900">{parseFloat(order.subtotal).toFixed(3)} TND</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wider">Livraison</span>
-                      <p className="text-sm font-medium text-gray-900">{parseFloat(order.shipping_total).toFixed(3)} TND</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wider">Paiement</span>
-                      <p className="text-sm font-medium text-gray-900 capitalize">{order.payment_status}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase tracking-wider">Total</span>
-                      <p className={`text-sm font-bold ${classes.primaryText}`}>{parseFloat(order.total).toFixed(3)} TND</p>
-                    </div>
-                  </div>
+          <div className="flex flex-wrap gap-2">
+            {['all', 'pending', 'processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered', 'cancelled'].map((s) => (
+              <button
+                key={s}
+                onClick={() => { setStatusFilter(s); setPage(1); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  statusFilter === s
+                    ? classes.primary
+                    : isAliExpress ? 'bg-white text-gray-600 hover:bg-orange-50 border border-orange-100' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {s === 'all' ? 'Toutes' : statusLabel(s)}
+              </button>
+            ))}
+          </div>
+        </div>
 
-                  {/* Parcels (one per store) — multi-vendor aware */}
-                  {order.fulfillments && order.fulfillments.length > 0 ? (
-                    <div className="mb-4 space-y-3">
-                      {(() => {
-                        const progress = packagesProgress(order.fulfillments);
-                        return (
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-xs text-gray-500 uppercase tracking-wider">
-                              {progress.total > 1 ? `Expéditions (${progress.total} colis)` : 'Expédition & articles'}
+        {/* Orders List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className={`w-8 h-8 ${classes.primaryText} animate-spin`} />
+            <span className="ml-3 text-sm font-semibold text-gray-500">Chargement de vos commandes...</span>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className={`text-center py-20 ${classes.panel} border border-dashed border-gray-200 rounded-[2rem]`}>
+            <Package className={`w-14 h-14 ${isAliExpress ? 'text-orange-200' : 'text-gray-300'} mx-auto mb-4`} />
+            <p className="text-gray-700 text-lg font-bold">Aucune commande trouvée.</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {debouncedSearch ? 'Aucune commande ne correspond à votre recherche.' : 'Vos futures commandes apparaîtront ici.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {orders.map((order) => {
+              const hasInvoice = canDownloadInvoice(order);
+              const isExpanded = expandedOrder === order.id;
+              const currentStep = getOrderTimelineStep(order.status);
+              const isCancelled = order.status === 'cancelled' || order.status === 'refunded';
+
+              return (
+                <div
+                  key={order.id}
+                  className={`${classes.panel} border border-gray-200/80 rounded-[1.75rem] overflow-hidden transition-all shadow-xs hover:shadow-md`}
+                >
+                  {/* Order Card Header */}
+                  <div
+                    className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer select-none bg-white"
+                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                  >
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
+                        <span className="text-base font-extrabold text-gray-900 tracking-tight">
+                          #{order.id.slice(-8).toUpperCase()}
+                        </span>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${getStatusColor(order.status)}`}>
+                          {statusLabel(order.status)}
+                        </span>
+                        {order.payment_status === 'captured' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Payée
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs font-medium text-gray-500">
+                        <span>
+                          {new Date(order.created_at).toLocaleDateString('fr-TN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                        <span>•</span>
+                        <span>{paymentLabel(order.payment_gateway)}</span>
+                        {order.fulfillments && order.fulfillments.length > 1 && (
+                          <>
+                            <span>•</span>
+                            <span className="text-emerald-700 font-bold">
+                              {order.fulfillments.length} colis multi-vendeurs
                             </span>
-                            {progress.total > 1 && (
-                              <span className="text-xs font-bold text-gray-500">
-                                {progress.delivered > 0
-                                  ? `${progress.delivered}/${progress.total} livré${progress.delivered > 1 ? 's' : ''}`
-                                  : `${progress.shipped}/${progress.total} expédié${progress.shipped > 1 ? 's' : ''}`}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                      {order.fulfillments.map((pkg, idx) => {
-                        const trackingUrl = getCarrierTrackingUrl(pkg.carrier, pkg.tracking_number);
-                        const packageCount = order.fulfillments!.length;
-                        return (
-                          <div key={pkg.id || `${order.id}-${idx}`} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
-                            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 pb-3">
-                              <div className="flex items-start gap-2">
-                                <div className="rounded-xl bg-gray-50 p-2">
-                                  <Package className={`h-4 w-4 ${classes.primaryText}`} />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-black text-gray-900">
-                                    {packageCount > 1 ? `Colis ${idx + 1}/${packageCount} · ` : ''}
-                                    {pkg.store_name || 'Boutique'}
-                                  </p>
-                                  {pkg.carrier ? (
-                                    <p className="text-xs text-gray-500">
-                                      Transporteur : <strong className="text-gray-700">{pkg.carrier}</strong>
-                                      {pkg.tracking_number ? ` · N° ${pkg.tracking_number}` : ''}
-                                    </p>
-                                  ) : (
-                                    <p className="text-xs text-gray-400">Transporteur non encore assigné</p>
-                                  )}
-                                  {pkg.shipped_at && (
-                                    <p className="text-[11px] text-gray-400">
-                                      Expédié le {new Date(pkg.shipped_at).toLocaleDateString('fr-TN')}
-                                      {pkg.delivered_at ? ` · Livré le ${new Date(pkg.delivered_at).toLocaleDateString('fr-TN')}` : ''}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                      <div className="text-right">
+                        <span className="text-xs text-gray-400 block sm:inline mr-1">Total:</span>
+                        <span className={`text-lg font-black ${classes.primaryText}`}>
+                          {parseFloat(order.total).toFixed(3)} TND
+                        </span>
+                      </div>
 
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${packageStatusColor(pkg.status)}`}>
-                                  {packageStatusLabel(pkg.status)}
+                      {hasInvoice && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/api/pd/orders/${order.id}/invoice.pdf`, '_blank');
+                          }}
+                          className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="Télécharger la facture officielle PDF"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                          Facture PDF
+                        </button>
+                      )}
+
+                      <div className="p-1 rounded-full bg-gray-100 text-gray-500">
+                        <ChevronDown
+                          className={`w-4 h-4 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ─────────────────────────────────────────────────────────────
+                      STYLE 2: TIMELINE LOGISTICS STEPPER (When timeline_logistics selected)
+                     ───────────────────────────────────────────────────────────── */}
+                  {themeStyle === 'timeline_logistics' && (
+                    <div className="border-t border-gray-100 bg-gray-50/70 px-5 py-4">
+                      <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-3">Progression logistique</p>
+                      
+                      {isCancelled ? (
+                        <div className="flex items-center gap-2 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Cette commande a été {statusLabel(order.status).toLowerCase()}.</span>
+                        </div>
+                      ) : (
+                        <div className="relative flex items-center justify-between max-w-2xl mx-auto py-2">
+                          {/* Progress Line */}
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 -z-0 rounded-full" />
+                          <div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 -z-0 rounded-full transition-all duration-500"
+                            style={{ width: `${((currentStep - 1) / 4) * 100}%` }}
+                          />
+
+                          {[
+                            { step: 1, label: 'Validée' },
+                            { step: 2, label: 'Préparation' },
+                            { step: 3, label: 'Expédiée' },
+                            { step: 4, label: 'En route' },
+                            { step: 5, label: 'Livrée' },
+                          ].map((s) => {
+                            const isDone = currentStep >= s.step;
+                            const isCurrent = currentStep === s.step;
+                            return (
+                              <div key={s.step} className="flex flex-col items-center relative z-10">
+                                <div
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                    isDone
+                                      ? 'bg-emerald-600 text-white shadow-xs'
+                                      : 'bg-white border-2 border-gray-300 text-gray-400'
+                                  } ${isCurrent ? 'ring-4 ring-emerald-100 ring-offset-1' : ''}`}
+                                >
+                                  {isDone ? <Check className="w-3.5 h-3.5" /> : s.step}
+                                </div>
+                                <span className={`text-[11px] font-bold mt-1.5 ${isDone ? 'text-gray-900' : 'text-gray-400'}`}>
+                                  {s.label}
                                 </span>
-                                {trackingUrl && (
-                                  <a
-                                    href={trackingUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
-                                  >
-                                    Suivre mon colis ↗
-                                  </a>
-                                )}
-                                {pkg.store_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => startSellerChat(order.id, { product_id: pkg.items[0]?.product_id ?? '', product_title: pkg.items[0]?.product_title ?? '', quantity: 1, unit_price: '0', store_id: pkg.store_id, store_name: pkg.store_name ?? undefined })}
-                                    disabled={startingChatKey === `${order.id}-${pkg.store_id}`}
-                                    className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black transition-colors disabled:opacity-50 ${isAliExpress ? 'bg-orange-50 text-[#ff4747] hover:bg-orange-100' : 'bg-emerald-50 text-[#16C784] hover:bg-emerald-100'}`}
-                                  >
-                                    {startingChatKey === `${order.id}-${pkg.store_id}` ? (
-                                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                                    )}
-                                    Message
-                                  </button>
-                                )}
-                                {pkg.store_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setReportTarget({ orderId: order.id, storeId: pkg.store_id, storeName: pkg.store_name ?? undefined });
-                                      setReportReason('');
-                                      setReportMessage('');
-                                    }}
-                                    className="inline-flex items-center justify-center rounded-full border border-red-100 bg-white px-3 py-1 text-xs font-black text-red-600 transition-colors hover:bg-red-50"
-                                  >
-                                    <Flag className="mr-1.5 h-3.5 w-3.5" />
-                                    Signaler
-                                  </button>
-                                )}
                               </div>
-                            </div>
-
-                            <div className="divide-y divide-gray-50">
-                              {pkg.items.map((item) => {
-                                const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
-                                const canDownload = order.payment_status === 'captured' && isDownloadable;
-                                return (
-                                  <div key={item.id || `${pkg.id}-${item.product_id}`} className="flex flex-col gap-2 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="flex items-center gap-3">
-                                      {item.thumbnail && (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={item.thumbnail} alt={item.product_title} className="h-10 w-10 rounded-lg border object-cover" />
-                                      )}
-                                      <div>
-                                        <p className="font-semibold text-gray-900">{item.product_title}</p>
-                                        <p className="text-xs text-gray-500">
-                                          {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {item.subtotal && (
-                                        <span className="text-sm font-bold text-gray-900">{parseFloat(item.subtotal).toFixed(3)} TND</span>
-                                      )}
-                                      {canDownload && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDownload(item.product_id)}
-                                          disabled={downloadingProductId === item.product_id}
-                                          className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-black transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
-                                        >
-                                          {downloadingProductId === item.product_id ? (
-                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                          ) : (
-                                            <Download className="mr-1.5 h-3.5 w-3.5" />
-                                          )}
-                                          Télécharger
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Digital-only items have no parcel: list them separately */}
-                      {(() => {
-                        const parcelStores = new Set(order.fulfillments!.map((pkg) => pkg.store_id));
-                        const orphanItems = (order.items || []).filter((item) => !item.store_id || !parcelStores.has(item.store_id));
-                        if (orphanItems.length === 0) return null;
-                        return (
-                          <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-4 space-y-2">
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Articles numériques (sans expédition)</p>
-                            {orphanItems.map((item) => {
-                              const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
-                              const canDownload = order.payment_status === 'captured' && isDownloadable;
-                              return (
-                                <div key={`orphan-${order.id}-${item.product_id}`} className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                                  <div>
-                                    <p className="font-semibold text-gray-900">{item.product_title}</p>
-                                    <p className="text-xs text-gray-500">
-                                      {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
-                                      {item.store_name ? ` · ${item.store_name}` : ''}
-                                    </p>
-                                  </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                            {canDownload && (
-                              <button
-                                type="button"
-                                onClick={() => handleDownload(item.product_id)}
-                                disabled={downloadingProductId === item.product_id}
-                                className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
-                              >
-                                {downloadingProductId === item.product_id ? (
-                                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Download className="mr-2 h-3.5 w-3.5" />
-                                )}
-                                Télécharger
-                              </button>
-                            )}
-                            </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
-
-                      {downloadMessage && (
-                        <p className="rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-gray-600">{downloadMessage}</p>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-                  ) : (order.items && order.items.length > 0) ? (
-                        <div className="mb-4 space-y-2">
-                          <span className="text-xs text-gray-500 uppercase tracking-wider">Articles</span>
-                          {order.items.map((item) => {
-                            const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
-                            const canDownload = order.payment_status === 'captured' && isDownloadable;
+                  )}
+
+                  {/* Expanded Details Body */}
+                  {isExpanded && (
+                    <div className={`border-t p-5 sm:p-6 ${isAliExpress ? 'border-orange-100 bg-orange-50/30' : 'border-gray-100 bg-gray-50/40'}`}>
+                      {/* Financial Breakdown */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-white border border-gray-200/70 mb-5 text-sm">
+                        <div>
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Sous-total</span>
+                          <p className="font-extrabold text-gray-900 mt-0.5">{parseFloat(order.subtotal).toFixed(3)} TND</p>
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Livraison</span>
+                          <p className="font-extrabold text-gray-900 mt-0.5">{parseFloat(order.shipping_total).toFixed(3)} TND</p>
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Paiement</span>
+                          <p className="font-extrabold text-gray-900 mt-0.5 capitalize">{order.payment_status}</p>
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total TTC</span>
+                          <p className={`font-black text-base ${classes.primaryText} mt-0.5`}>{parseFloat(order.total).toFixed(3)} TND</p>
+                        </div>
+                      </div>
+
+                      {/* Mobile invoice download button */}
+                      {hasInvoice && (
+                        <div className="sm:hidden mb-4">
+                          <button
+                            type="button"
+                            onClick={() => window.open(`/api/pd/orders/${order.id}/invoice.pdf`, '_blank')}
+                            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-xs font-extrabold text-gray-800 shadow-xs"
+                          >
+                            <FileText className="w-4 h-4 text-emerald-600" />
+                            Télécharger la Facture PDF
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Parcels (Multi-Vendor Aware) */}
+                      {order.fulfillments && order.fulfillments.length > 0 ? (
+                        <div className="space-y-4">
+                          {(() => {
+                            const progress = packagesProgress(order.fulfillments);
                             return (
-                              <div key={`${order.id}-${item.product_id}`} className="flex flex-col gap-2 rounded-2xl bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                  <p className="font-semibold text-gray-900">{item.product_title}</p>
-                                  <p className="text-xs text-gray-500">
-                                    {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
-                                    {item.store_name ? ` · ${item.store_name}` : ''}
-                                  </p>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs font-black uppercase tracking-wider text-gray-500">
+                                  {progress.total > 1 ? `Colis d'expédition (${progress.total} colis)` : 'Détail du colis & transport'}
+                                </span>
+                                {progress.total > 1 && (
+                                  <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                                    {progress.delivered > 0
+                                      ? `${progress.delivered}/${progress.total} livré${progress.delivered > 1 ? 's' : ''}`
+                                      : `${progress.shipped}/${progress.total} expédié${progress.shipped > 1 ? 's' : ''}`}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {order.fulfillments.map((pkg, idx) => {
+                            const trackingUrl = getCarrierTrackingUrl(pkg.carrier, pkg.tracking_number);
+                            const packageCount = order.fulfillments!.length;
+                            return (
+                              <div
+                                key={pkg.id || `${order.id}-${idx}`}
+                                className="rounded-2xl border border-gray-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-xs"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-3">
+                                  <div className="flex items-start gap-3">
+                                    <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700 border border-emerald-100">
+                                      <Package className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-black text-gray-900">
+                                        {packageCount > 1 ? `Colis ${idx + 1}/${packageCount} · ` : ''}
+                                        {pkg.store_name || 'Boutique'}
+                                      </p>
+                                      {pkg.carrier ? (
+                                        <p className="text-xs text-gray-600 mt-0.5 flex items-center gap-1.5">
+                                          <Truck className="w-3.5 h-3.5 text-gray-400" />
+                                          <span>{pkg.carrier}</span>
+                                          {pkg.tracking_number && (
+                                            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">
+                                              #{pkg.tracking_number}
+                                            </span>
+                                          )}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-gray-400 mt-0.5">Préparation en cours par le vendeur</p>
+                                      )}
+                                      {pkg.shipped_at && (
+                                        <p className="text-[11px] text-gray-400 mt-0.5">
+                                          Expédié le {new Date(pkg.shipped_at).toLocaleDateString('fr-TN')}
+                                          {pkg.delivered_at ? ` · Livré le ${new Date(pkg.delivered_at).toLocaleDateString('fr-TN')}` : ''}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${packageStatusColor(pkg.status)}`}>
+                                      {packageStatusLabel(pkg.status)}
+                                    </span>
+                                    {trackingUrl && (
+                                      <a
+                                        href={trackingUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
+                                      >
+                                        Suivi transporteur ↗
+                                      </a>
+                                    )}
+                                    {pkg.store_id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startSellerChat(order.id, { product_id: pkg.items[0]?.product_id ?? '', product_title: pkg.items[0]?.product_title ?? '', quantity: 1, unit_price: '0', store_id: pkg.store_id, store_name: pkg.store_name ?? undefined })}
+                                        disabled={startingChatKey === `${order.id}-${pkg.store_id}`}
+                                        className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                                      >
+                                        {startingChatKey === `${order.id}-${pkg.store_id}` ? (
+                                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                                        )}
+                                        Message
+                                      </button>
+                                    )}
+                                    {pkg.store_id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setReportTarget({ orderId: order.id, storeId: pkg.store_id, storeName: pkg.store_name ?? undefined });
+                                          setReportReason('');
+                                          setReportMessage('');
+                                        }}
+                                        className="inline-flex items-center rounded-full border border-red-100 bg-white px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+                                      >
+                                        <Flag className="mr-1 h-3 w-3" />
+                                        Signaler
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                {canDownload && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDownload(item.product_id)}
-                                    disabled={downloadingProductId === item.product_id}
-                                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
-                                  >
-                                    {downloadingProductId === item.product_id ? (
-                                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <Download className="mr-2 h-3.5 w-3.5" />
-                                    )}
-                                    Télécharger
-                                  </button>
-                                )}
-                                {item.store_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => startSellerChat(order.id, item)}
-                                    disabled={startingChatKey === `${order.id}-${item.store_id}`}
-                                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${isAliExpress ? 'bg-orange-50 text-[#ff4747] hover:bg-orange-100' : 'bg-emerald-50 text-[#16C784] hover:bg-emerald-100'}`}
-                                  >
-                                    {startingChatKey === `${order.id}-${item.store_id}` ? (
-                                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                                    )}
-                                    Message
-                                  </button>
-                                )}
-                                {item.store_id && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setReportTarget({ orderId: order.id, storeId: item.store_id!, storeName: item.store_name });
-                                      setReportReason('');
-                                      setReportMessage('');
-                                    }}
-                                    className="inline-flex items-center justify-center rounded-full border border-red-100 bg-white px-4 py-2 text-xs font-black text-red-600 transition-colors hover:bg-red-50"
-                                  >
-                                    <Flag className="mr-2 h-3.5 w-3.5" />
-                                    Signaler le vendeur
-                                  </button>
-                                )}
+
+                                <div className="divide-y divide-gray-100">
+                                  {pkg.items.map((item) => {
+                                    const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                                    const canDownload = order.payment_status === 'captured' && isDownloadable;
+                                    return (
+                                      <div key={item.id || `${pkg.id}-${item.product_id}`} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between text-sm">
+                                        <div className="flex items-center gap-3">
+                                          {item.thumbnail ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={item.thumbnail} alt={item.product_title} className="h-11 w-11 rounded-xl border border-gray-200 object-cover" />
+                                          ) : (
+                                            <div className="h-11 w-11 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+                                              <ShoppingBag className="w-5 h-5" />
+                                            </div>
+                                          )}
+                                          <div>
+                                            <p className="font-extrabold text-gray-900">{item.product_title}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                              Quantité : {item.quantity} × {parseFloat(item.unit_price).toFixed(3)} TND
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                          {item.subtotal && (
+                                            <span className="text-sm font-black text-gray-900">{parseFloat(item.subtotal).toFixed(3)} TND</span>
+                                          )}
+                                          {canDownload && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDownload(item.product_id)}
+                                              disabled={downloadingProductId === item.product_id}
+                                              className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
+                                            >
+                                              {downloadingProductId === item.product_id ? (
+                                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                              ) : (
+                                                <Download className="mr-1.5 h-3.5 w-3.5" />
+                                              )}
+                                              Télécharger
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
                           })}
-                          {downloadMessage && (
-                            <p className="rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-gray-600">{downloadMessage}</p>
+
+                          {/* Digital items without parcel */}
+                          {(() => {
+                            const parcelStores = new Set(order.fulfillments!.map((pkg) => pkg.store_id));
+                            const orphanItems = (order.items || []).filter((item) => !item.store_id || !parcelStores.has(item.store_id));
+                            if (orphanItems.length === 0) return null;
+                            return (
+                              <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-4 space-y-3">
+                                <p className="text-xs font-extrabold uppercase tracking-wider text-gray-500">Articles numériques & licences</p>
+                                {orphanItems.map((item) => {
+                                  const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                                  const canDownload = order.payment_status === 'captured' && isDownloadable;
+                                  return (
+                                    <div key={`orphan-${order.id}-${item.product_id}`} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm py-1">
+                                      <div>
+                                        <p className="font-extrabold text-gray-900">{item.product_title}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {item.quantity} × {parseFloat(item.unit_price).toFixed(3)} TND
+                                          {item.store_name ? ` · ${item.store_name}` : ''}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {canDownload && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDownload(item.product_id)}
+                                            disabled={downloadingProductId === item.product_id}
+                                            className={`inline-flex items-center rounded-full px-4 py-1.5 text-xs font-black text-white shadow-xs transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
+                                          >
+                                            {downloadingProductId === item.product_id ? (
+                                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                              <Download className="mr-1.5 h-3.5 w-3.5" />
+                                            )}
+                                            Télécharger le fichier
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (order.items && order.items.length > 0) ? (
+                        <div className="space-y-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-gray-500">Articles commandés</span>
+                          <div className="rounded-2xl border border-gray-200 bg-white p-4 divide-y divide-gray-100">
+                            {order.items.map((item) => {
+                              const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                              const canDownload = order.payment_status === 'captured' && isDownloadable;
+                              return (
+                                <div key={`${order.id}-${item.product_id}`} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2.5 text-sm">
+                                  <div>
+                                    <p className="font-extrabold text-gray-900">{item.product_title}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {item.quantity} × {parseFloat(item.unit_price).toFixed(3)} TND
+                                      {item.store_name ? ` · ${item.store_name}` : ''}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {canDownload && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownload(item.product_id)}
+                                        disabled={downloadingProductId === item.product_id}
+                                        className={`inline-flex items-center rounded-full px-4 py-1.5 text-xs font-black text-white shadow-xs transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
+                                      >
+                                        {downloadingProductId === item.product_id ? (
+                                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                                        )}
+                                        Télécharger
+                                      </button>
+                                    )}
+                                    {item.store_id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startSellerChat(order.id, item)}
+                                        disabled={startingChatKey === `${order.id}-${item.store_id}`}
+                                        className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                      >
+                                        <MessageSquare className="mr-1 h-3 w-3" />
+                                        Message
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {downloadMessage && (
+                        <div className="mt-4 flex items-center justify-between gap-2 rounded-2xl bg-white border border-gray-200 p-3 text-xs font-semibold text-gray-700 shadow-xs">
+                          <span>{downloadMessage}</span>
+                          {downloadMessage.includes('Clés de licence') && (
+                            <button
+                              onClick={() => copyToClipboard(downloadMessage.replace('Clés de licence : ', ''))}
+                              className="inline-flex items-center gap-1 text-emerald-600 hover:underline font-bold"
+                            >
+                              {copiedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                              {copiedKey ? 'Copié !' : 'Copier'}
+                            </button>
                           )}
                         </div>
-                  ) : null}
+                      )}
 
-                  {order.status === 'payment_required' && order.payment_gateway === 'manual_mandat' && (
-                    <Link
-                      href={`/hub/checkout/mandat-upload?order_id=${order.id}`}
-                      className={`inline-flex items-center px-4 py-2 rounded-full transition-colors text-sm font-black mt-2 ${classes.primaryGradient}`}
-                    >
-                      Uploader la preuve de mandat
-                    </Link>
+                      {order.status === 'payment_required' && order.payment_gateway === 'manual_mandat' && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                          <p className="text-xs text-amber-700 font-bold">Un reçu de virement Mandat Minute est requis pour valider cette commande.</p>
+                          <Link
+                            href={`/hub/checkout/mandat-upload?order_id=${order.id}`}
+                            className={`inline-flex items-center px-4 py-2 rounded-full transition-colors text-xs font-black text-white ${classes.primaryGradient}`}
+                          >
+                            Uploader la preuve de mandat
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className={`px-4 py-2 text-sm border rounded-full disabled:opacity-50 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 hover:bg-gray-50'}`}
-          >
-            ← Précédent
-          </button>
-          <span className="text-sm text-gray-500 px-4">
-            Page {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className={`px-4 py-2 text-sm border rounded-full disabled:opacity-50 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 hover:bg-gray-50'}`}
-          >
-            Suivant →
-          </button>
-        </div>
-      )}
-      {reportMessage && !reportTarget && (
-        <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-gray-600 shadow-sm">{reportMessage}</p>
-      )}
-      {reportTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-black text-gray-900">Signaler le vendeur</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  {reportTarget.storeName || 'Vendeur'} · Commande #{reportTarget.orderId.slice(-8).toUpperCase()}
-                </p>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-10">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className={`px-4 py-2 text-xs font-bold border rounded-full disabled:opacity-40 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+            >
+              ← Précédent
+            </button>
+            <span className="text-xs font-bold text-gray-500 px-4">
+              Page {page} sur {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className={`px-4 py-2 text-xs font-bold border rounded-full disabled:opacity-40 transition-colors ${isAliExpress ? 'border-orange-200 bg-white hover:bg-orange-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+            >
+              Suivant →
+            </button>
+          </div>
+        )}
+
+        {/* Report Modal */}
+        {reportTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black text-gray-900">Signaler le vendeur</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {reportTarget.storeName || 'Vendeur'} · Commande #{reportTarget.orderId.slice(-8).toUpperCase()}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReportTarget(null)}
+                  className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setReportTarget(null)}
-                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-            <textarea
-              value={reportReason}
-              onChange={(event) => setReportReason(event.target.value)}
-              rows={5}
-              placeholder="Décrivez le problème avec ce vendeur..."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-red-300"
-            />
-            {reportMessage && (
-              <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{reportMessage}</p>
-            )}
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={submitSellerReport}
-                disabled={submittingReport || reportReason.trim().length < 10}
-                className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:opacity-50"
-              >
-                {submittingReport ? 'Envoi...' : 'Envoyer le signalement'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportTarget(null)}
-                className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50"
-              >
-                Annuler
-              </button>
+              <textarea
+                value={reportReason}
+                onChange={(event) => setReportReason(event.target.value)}
+                rows={5}
+                placeholder="Décrivez le problème rencontré avec cette boutique..."
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-red-300"
+              />
+              {reportMessage && (
+                <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{reportMessage}</p>
+              )}
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={submitSellerReport}
+                  disabled={submittingReport || reportReason.trim().length < 10}
+                  className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:opacity-50"
+                >
+                  {submittingReport ? 'Envoi...' : 'Envoyer le signalement'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportTarget(null)}
+                  className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </main>
       <HubFooter {...settings} />
     </div>

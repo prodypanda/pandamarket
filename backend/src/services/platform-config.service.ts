@@ -21,6 +21,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
   marketplace_og_image_url: '/og-image.png',
   marketplace_public_url: 'https://garbage.team',
   marketplace_theme: 'panda',
+  buyer_orders_theme_style: 'modern_cards',
   marketplace_primary_color: '#16C784',
   marketplace_secondary_color: '#0f9f6e',
   marketplace_default_locale: 'fr',
@@ -153,6 +154,7 @@ export const PLATFORM_SETTING_DEFAULTS = {
   payout_schedule: 'weekly',
   min_withdrawal_tnd: 20,
   platform_commission_rate: 15,
+  invoice_platform_matricule_fiscal: '0001234/A/M/000',
   // Refund approval gate (audit P1-5):
   // - refunds on orders NOT yet delivered always require superadmin approval;
   // - refunds on delivered orders auto-process only while the refund amount is
@@ -295,6 +297,7 @@ export const PUBLIC_PLATFORM_SETTING_KEYS = [
   'marketplace_og_image_url',
   'marketplace_public_url',
   'marketplace_theme',
+  'buyer_orders_theme_style',
   'marketplace_primary_color',
   'marketplace_secondary_color',
   'marketplace_default_locale',
@@ -450,6 +453,7 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'marketplace_og_image_url',
     'marketplace_public_url',
     'marketplace_theme',
+    'buyer_orders_theme_style',
     'marketplace_primary_color',
     'marketplace_secondary_color',
     'marketplace_default_locale',
@@ -609,6 +613,7 @@ export const PLATFORM_SETTING_SECTION_KEYS: Record<PlatformSettingSection, reado
     'refund_auto_process_delivered_enabled',
     'refund_auto_process_delivered_max_tnd',
     'platform_commission_rate',
+    'invoice_platform_matricule_fiscal',
     'default_currency',
     'payment_sandbox_mode',
   'refund_auto_process_delivered_enabled',

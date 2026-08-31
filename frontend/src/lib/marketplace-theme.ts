@@ -63,6 +63,7 @@ export interface MarketplaceThemeSettings {
   plugins_marketplace_enabled?: boolean;
   email_marketing_enabled?: boolean;
   default_currency?: string;
+  buyer_orders_theme_style?: 'modern_cards' | 'timeline_logistics' | string;
 }
 
 export function resolveMarketplaceTheme(theme?: MarketplaceTheme): MarketplaceTheme {
