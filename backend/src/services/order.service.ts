@@ -2108,7 +2108,7 @@ export class OrderService {
     productId: string;
     variantId?: string | null;
     quantity: number;
-  }): Promise<StoreOrderDetail> {
+  }): Promise<StoreOrderDetailRow> {
     if (!opts.quantity || opts.quantity <= 0) {
       throw new PdValidationError('Quantity must be greater than 0');
     }
@@ -2239,7 +2239,7 @@ export class OrderService {
     itemId: string;
     newQuantity: number;
     userId: string;
-  }): Promise<StoreOrderDetail> {
+  }): Promise<StoreOrderDetailRow> {
     if (opts.newQuantity <= 0) {
       return this.removeStoreOrderItem({
         orderId: opts.orderId,
@@ -2356,7 +2356,7 @@ export class OrderService {
     storeId: string;
     itemId: string;
     userId: string;
-  }): Promise<StoreOrderDetail> {
+  }): Promise<StoreOrderDetailRow> {
     await transaction(async (c) => {
       const { rows: fulRows } = await c.query<{ status: string }>(
         `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,
@@ -2445,7 +2445,7 @@ export class OrderService {
     itemId: string;
     newVariantId: string;
     userId: string;
-  }): Promise<StoreOrderDetail> {
+  }): Promise<StoreOrderDetailRow> {
     await transaction(async (c) => {
       const { rows: fulRows } = await c.query<{ status: string }>(
         `SELECT status FROM pd_fulfillment WHERE order_id = $1 AND store_id = $2 FOR UPDATE`,

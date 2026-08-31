@@ -35,94 +35,25 @@ import {
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { getResizedImageUrl } from '@/lib/image-url';
+import type {
+  Order,
+  OrderItem,
+  SellerOrderNote,
+  SellerOrderRefund,
+  SellerOrderShipment,
+  SellerDeliveryProof,
+  ShippingAddress,
+} from '@/app/hub/dashboard/orders/page';
 
-export interface OrderItem {
-  id?: string;
-  product_id?: string;
-  variant_id?: string | null;
-  product_title?: string | null;
-  quantity?: number | string | null;
-  unit_price?: number | string | null;
-  subtotal?: number | string | null;
-  product_type?: string | null;
-  thumbnail?: string | null;
-  variant_sku?: string | null;
-  variant_title?: string | null;
-}
-
-export interface SellerOrderNote {
-  id: string;
-  order_id: string;
-  store_id: string;
-  body: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SellerOrderRefund {
-  id: string;
-  amount: string | number;
-  currency?: string;
-  reason_code: string;
-  reason?: string | null;
-  status: string;
-  created_at: string;
-}
-
-export interface SellerOrderShipment {
-  id: string;
-  provider: string;
-  tracking_number: string;
-  estimated_delivery?: string | null;
-  status: string;
-  label_url?: string | null;
-}
-
-export interface SellerDeliveryProof {
-  id: string;
-  received_by?: string | null;
-  proof_url?: string | null;
-  note?: string | null;
-  created_at: string;
-}
-
-export interface Order {
-  id: string;
-  status: string;
-  payment_gateway: string;
-  payment_status: string;
-  payment_reference?: string | null;
-  subtotal: string;
-  shipping_total: string;
-  total: string;
-  currency: string;
-  created_at: string;
-  shipping_address?: any;
-  store_subtotal?: string | null;
-  store_shipping_total?: string | null;
-  store_total?: string | null;
-  fulfillment_id?: string | null;
-  fulfillment_status?: string | null;
-  carrier?: string | null;
-  tracking_number?: string | null;
-  shipped_at?: string | null;
-  delivered_at?: string | null;
-  customer_email?: string | null;
-  customer_first_name?: string | null;
-  customer_last_name?: string | null;
-  customer_phone?: string | null;
-  other_pending_stores?: string | number | null;
-  customer_order_count?: string | number | null;
-  customer_lifetime_value?: string | number | null;
-  customer_last_order_at?: string | null;
-  items?: OrderItem[];
-  seller_note?: SellerOrderNote | null;
-  refunds?: SellerOrderRefund[];
-  shipments?: SellerOrderShipment[];
-  delivery_proofs?: SellerDeliveryProof[];
-  cod_risk_score?: number | null;
-  cod_status?: string | null;
-}
+export type {
+  Order,
+  OrderItem,
+  SellerOrderNote,
+  SellerOrderRefund,
+  SellerOrderShipment,
+  SellerDeliveryProof,
+  ShippingAddress,
+};
 
 interface SellerOrderDrawerProps {
   order: Order;
@@ -133,7 +64,7 @@ interface SellerOrderDrawerProps {
   locale: string;
   t: (key: string, params?: any) => string;
   formatMoney: (amount: string | number | null | undefined, currency?: string) => string;
-  formatDateTime: (dateStr: string | null | undefined, locale?: string) => string;
+  formatDateTime: (dateStr: string | null | undefined, locale: string) => string;
   statusLabel: (status: string, t: any) => string;
   paymentStatusLabel: (status: string, t: any) => string;
   paymentStatusColor: (status: string) => string;
@@ -167,7 +98,7 @@ interface SellerOrderDrawerProps {
   preparingId?: string;
   submittingDeliveryProofId?: string;
   startingChatId?: string;
-  MandatReceiptReviewWidget: React.ComponentType<{ orderId: string; onReviewed?: () => void }>;
+  MandatReceiptReviewWidget: React.ComponentType<{ orderId: string; onReviewed: () => void }>;
 }
 
 export function SellerOrderDrawer({

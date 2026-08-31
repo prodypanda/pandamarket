@@ -519,6 +519,8 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   single_product_show_wholesale_calculator: true,
   single_product_show_live_views: true,
   single_product_show_contact_seller: true,
+  buyer_orders_theme_style: 'modern_cards',
+  invoice_platform_matricule_fiscal: '0001234/A/M/000',
 };
 
 export const DEFAULT_SMTP_FORM: SmtpFormData = {

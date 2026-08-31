@@ -27,7 +27,7 @@ export interface CodVerification {
   updated_at: string;
 }
 
-interface OrderItem {
+export interface OrderItem {
   id?: string;
   product_id?: string;
   variant_id?: string | null;
@@ -47,7 +47,7 @@ interface OrderItem {
   }>;
 }
 
-interface SellerOrderNote {
+export interface SellerOrderNote {
   id: string;
   order_id: string;
   store_id: string;
@@ -78,7 +78,7 @@ export interface CourierSettlement {
   delivery_date?: string | null;
 }
 
-interface Order {
+export interface Order {
   id: string;
   customer_id?: string | null;
   storefront_customer_id?: string | null;
@@ -128,7 +128,7 @@ interface Order {
   courier_settlement?: CourierSettlement | null;
 }
 
-interface ShippingAddress {
+export interface ShippingAddress {
   first_name?: string | null;
   last_name?: string | null;
   phone?: string | null;
@@ -139,7 +139,7 @@ interface ShippingAddress {
   country?: string | null;
 }
 
-interface SellerOrderRefund {
+export interface SellerOrderRefund {
   id: string;
   order_id: string;
   store_id: string;
@@ -153,7 +153,7 @@ interface SellerOrderRefund {
   updated_at: string;
 }
 
-interface SellerOrderShipment {
+export interface SellerOrderShipment {
   id: string;
   order_id: string;
   fulfillment_id?: string | null;
@@ -169,7 +169,7 @@ interface SellerOrderShipment {
   updated_at: string;
 }
 
-interface SellerDeliveryProof {
+export interface SellerDeliveryProof {
   id: string;
   order_id: string;
   fulfillment_id?: string | null;
