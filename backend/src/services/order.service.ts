@@ -1024,8 +1024,8 @@ export class OrderService {
     let fulfillmentsLateral = BUYER_FULFILLMENTS_ALL;
     if (opts.storeId) {
       params.push(opts.storeId);
-      itemScope = ` AND i.store_id = ${params.length}`;
-      fulfillmentsLateral = buyerFulfillmentsForStore(`${params.length}`);
+      itemScope = ` AND i.store_id = $${params.length}`;
+      fulfillmentsLateral = buyerFulfillmentsForStore(`$${params.length}`);
     }
     const { rows } = await query<OrderRow & { items: unknown[]; fulfillments: unknown[] }>(
       `SELECT o.*, COALESCE(items.items, '[]'::json) AS items,

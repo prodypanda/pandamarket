@@ -48,19 +48,29 @@
 
 ## 📋 Phase 4 : Tests & Validation QA
 
-- [ ] **QA-01** : Passer une commande multi-boutiques (Boutique 1 + Boutique 2) sur le Hub.
-- [ ] **QA-02** : Boutique 1 passe en « En préparation » $\rightarrow$ Vérifier que la commande de l'acheteur passe à « En cours de préparation ».
-- [ ] **QA-03** : Boutique 1 expédie avec numéro Aramex $\rightarrow$ Vérifier que la commande passe à « Partiellement expédiée », que le Colis 1 affiche « Expédié » avec lien Aramex cliquable, et que le Colis 2 affiche « En attente ».
-- [ ] **QA-04** : Boutique 2 expédie $\rightarrow$ Vérifier que la commande passe à « Expédiée ».
-- [ ] **QA-05** : Boutique 1 est livrée $\rightarrow$ Vérifier que la commande passe à « Partiellement livrée ».
-- [ ] **QA-06** : Boutique 2 est livrée $\rightarrow$ Vérifier que la commande passe à « Livrée ».
+> **Couverture automatisée (31/08/2026)** : `backend/src/__tests__/multi-vendor-qa-walkthrough.integration.test.ts` exécute QA-01 → QA-06 en intégralité sur un PostgreSQL réel via la couche service, en vérifiant à chaque étape l'agrégat de la commande maître **et** la charge utile acheteur (`fulfillments` : statut, transporteur, n° de suivi, dates, articles par colis). 5 tests supplémentaires verrouillent la séparation des canaux marketplace/storefront.
+
+- [x] **QA-01** : Passer une commande multi-boutiques (Boutique 1 + Boutique 2) sur le Hub. *(automatisé : `pending`, 2 colis, articles bien séparés)*
+- [x] **QA-02** : Boutique 1 passe en « En préparation » $\rightarrow$ Vérifier que la commande de l'acheteur passe à « En cours de préparation ». *(automatisé : `processing`)*
+- [x] **QA-03** : Boutique 1 expédie avec numéro Aramex $\rightarrow$ Vérifier que la commande passe à « Partiellement expédiée », que le Colis 1 affiche « Expédié » avec lien Aramex cliquable, et que le Colis 2 affiche « En attente ». *(automatisé : `partially_shipped`, transporteur + n° de suivi + date dans la charge utile acheteur, colis 2 intact)*
+- [x] **QA-04** : Boutique 2 expédie $\rightarrow$ Vérifier que la commande passe à « Expédiée ». *(automatisé : `fulfilled`)*
+- [x] **QA-05** : Boutique 1 est livrée $\rightarrow$ Vérifier que la commande passe à « Partiellement livrée ». *(automatisé : `partially_delivered`)*
+- [x] **QA-06** : Boutique 2 est livrée $\rightarrow$ Vérifier que la commande passe à « Livrée ». *(automatisé : `delivered`)*
+- [ ] **QA-MANUEL** : le même parcours dans le navigateur (rendu des cartes colis + clic sur les boutons du tableau de bord vendeur) — nécessite une session acheteur et deux sessions vendeur.
+
+### Phase 4bis : page storefront « Mes commandes » (ajoutée le 31/08/2026)
+
+- [x] Correction du badge **toujours « En attente »** (`payment_status === 'paid'` / `status === 'completed'` : littéraux inexistants) → statut réel sur les 9 états + badge de paiement distinct.
+- [x] Carte d'expédition par commande (statut du colis, transporteur, n° de suivi, dates, « Suivre mon colis ↗ »).
+- [x] Lien « Gérer le reçu Mandat » affiché uniquement pour les commandes `manual_mandat` non capturées.
+- [x] Consommation de `fulfillments` (portée boutique — une commande storefront étant toujours mono-boutique, un seul colis).
 
 ---
 
 ## 📋 Phase 5 : Déploiement & Synchronisation Git
 
-- [ ] **GIT-01** : Examiner le diff complet avec `git status` et `git diff`.
-- [ ] **GIT-02** : Demander la confirmation explicite de l'utilisateur pour commiter et pousser sur `github/main`.
-- [ ] **DEPLOY-01** : Déclencher et valider le déploiement Render Backend.
-- [ ] **DEPLOY-02** : Valider le déploiement Vercel Frontend.
-- [ ] **DEPLOY-03** : Tester le endpoint santé : `https://pandamarket-backend-fjom.onrender.com/health`.
+- [x] **GIT-01** : Examiner le diff complet avec `git status` et `git diff`.
+- [x] **GIT-02** : Commit et pousser sur `github/main` avec la confirmation du propriétaire (commits `39ee640` puis 2e passe 31/08).
+- [x] **DEPLOY-01** : Déploiement Render Backend validé (`39ee640` live ; migration 102 appliquée et vérifiée).
+- [x] **DEPLOY-02** : Vercel déploie automatiquement depuis `main`.
+- [x] **DEPLOY-03** : Endpoint santé testé : `{"status":"ok"}`.
