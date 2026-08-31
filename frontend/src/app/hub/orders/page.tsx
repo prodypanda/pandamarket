@@ -8,6 +8,35 @@ import { HubNavbar } from '../../../components/hub/HubNavbar';
 import { HubFooter } from '../../../components/hub/HubFooter';
 import { useMarketplaceTheme } from '../../../hooks/useMarketplaceTheme';
 
+interface OrderItem {
+  id?: string;
+  product_id: string;
+  product_title: string;
+  quantity: number;
+  unit_price: string;
+  subtotal?: string;
+  store_id?: string;
+  store_name?: string;
+  product_type?: string;
+  thumbnail?: string | null;
+  has_digital_file?: boolean;
+}
+
+/** One store parcel of a (possibly multi-vendor) order. */
+interface OrderPackage {
+  id: string;
+  store_id: string;
+  store_name?: string | null;
+  store_subdomain?: string | null;
+  status: 'pending' | 'preparing' | 'shipped' | 'delivered' | 'cancelled' | string;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  shipping_total?: string | null;
+  items: OrderItem[];
+}
+
 interface Order {
   id: string;
   status: string;
@@ -18,16 +47,9 @@ interface Order {
   total: string;
   currency: string;
   created_at: string;
-  items?: Array<{
-    product_id: string;
-    product_title: string;
-    quantity: number;
-    unit_price: string;
-    store_id?: string;
-    store_name?: string;
-    product_type?: string;
-    has_digital_file?: boolean;
-  }>;
+  items?: OrderItem[];
+  /** Per-store parcels; empty for digital-only orders. */
+  fulfillments?: OrderPackage[];
 }
 
 const getStatusColor = (status: string) => {
@@ -35,7 +57,9 @@ const getStatusColor = (status: string) => {
     case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
     case 'payment_required': return 'bg-orange-50 text-orange-700 border-orange-200';
     case 'processing': return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'partially_shipped': return 'bg-violet-50 text-violet-700 border-violet-200';
     case 'fulfilled': return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'partially_delivered': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
     case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
     case 'refunded': return 'bg-gray-50 text-gray-700 border-gray-200';
@@ -47,9 +71,11 @@ const statusLabel = (status: string) => {
   const labels: Record<string, string> = {
     pending: 'En attente',
     payment_required: 'Paiement requis',
-    processing: 'En cours',
-    fulfilled: 'Expédié',
-    delivered: 'Livré',
+    processing: 'En préparation',
+    partially_shipped: 'Partiellement expédiée',
+    fulfilled: 'Expédiée',
+    partially_delivered: 'Partiellement livrée',
+    delivered: 'Livrée',
     cancelled: 'Annulé',
     refunded: 'Remboursé',
   };
@@ -64,6 +90,54 @@ const paymentLabel = (gateway: string) => {
     cod: 'Paiement à la livraison',
   };
   return labels[gateway] || gateway;
+};
+
+/** Per-parcel status chip label. */
+const packageStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    pending: 'En attente de préparation',
+    preparing: 'En préparation',
+    shipped: 'Expédié',
+    delivered: 'Livré',
+    cancelled: 'Annulé',
+  };
+  return labels[status] || status;
+};
+
+const packageStatusColor = (status: string) => {
+  switch (status) {
+    case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
+    case 'shipped': return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
+    default: return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+  }
+};
+
+/**
+ * Carrier tracking deep links. Carriers are stored as display names
+ * (e.g. 'Aramex', 'La Poste Tunisienne') or ids ('aramex', 'laposte'),
+ * so match on normalized substrings.
+ */
+const getCarrierTrackingUrl = (carrier?: string | null, trackingNumber?: string | null) => {
+  const tracking = trackingNumber?.trim();
+  if (!tracking) return null;
+  const c = (carrier || '').toLowerCase();
+  const code = encodeURIComponent(tracking);
+  if (c.includes('aramex')) return `https://www.aramex.com/track/results?ShipmentNumber=${code}`;
+  if (c.includes('poste')) return `https://www.poste.tn/suivi?code=${code}`;
+  if (c.includes('dhl')) return `https://www.dhl.com/tn-en/home/tracking/tracking-express.html?submit=1&tracking-id=${code}`;
+  if (c.includes('fedex')) return `https://www.fedex.com/fedextrack/?trknbr=${code}`;
+  if (c.includes('ups')) return `https://www.ups.com/track?tracknum=${code}`;
+  return null;
+};
+
+/** Progress summary for a multi-parcel order, e.g. "1/2 colis expédié". */
+const packagesProgress = (packages: OrderPackage[]) => {
+  const total = packages.length;
+  const shipped = packages.filter((pkg) => pkg.status === 'shipped' || pkg.status === 'delivered').length;
+  const delivered = packages.filter((pkg) => pkg.status === 'delivered').length;
+  return { total, shipped, delivered };
 };
 
 export default function CustomerOrdersPage() {
@@ -215,7 +289,7 @@ export default function CustomerOrdersPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {['all', 'pending', 'processing', 'fulfilled', 'delivered', 'cancelled'].map((s) => (
+        {['all', 'pending', 'processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered', 'cancelled'].map((s) => (
           <button
             key={s}
             onClick={() => { setStatusFilter(s); setPage(1); }}
@@ -309,21 +383,171 @@ export default function CustomerOrdersPage() {
                     </div>
                   </div>
 
-                  {order.items && order.items.length > 0 && (
-                    <div className="mb-4 space-y-2">
-                      <span className="text-xs text-gray-500 uppercase tracking-wider">Articles</span>
-                      {order.items.map((item) => {
-                        const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
-                        const canDownload = order.payment_status === 'captured' && isDownloadable;
+                  {/* Parcels (one per store) — multi-vendor aware */}
+                  {order.fulfillments && order.fulfillments.length > 0 ? (
+                    <div className="mb-4 space-y-3">
+                      {(() => {
+                        const progress = packagesProgress(order.fulfillments);
                         return (
-                          <div key={`${order.id}-${item.product_id}`} className="flex flex-col gap-2 rounded-2xl bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="font-semibold text-gray-900">{item.product_title}</p>
-                              <p className="text-xs text-gray-500">
-                                {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
-                                {item.store_name ? ` · ${item.store_name}` : ''}
-                              </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs text-gray-500 uppercase tracking-wider">
+                              {progress.total > 1 ? `Expéditions (${progress.total} colis)` : 'Expédition & articles'}
+                            </span>
+                            {progress.total > 1 && (
+                              <span className="text-xs font-bold text-gray-500">
+                                {progress.delivered > 0
+                                  ? `${progress.delivered}/${progress.total} livré${progress.delivered > 1 ? 's' : ''}`
+                                  : `${progress.shipped}/${progress.total} expédié${progress.shipped > 1 ? 's' : ''}`}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {order.fulfillments.map((pkg, idx) => {
+                        const trackingUrl = getCarrierTrackingUrl(pkg.carrier, pkg.tracking_number);
+                        const packageCount = order.fulfillments!.length;
+                        return (
+                          <div key={pkg.id || `${order.id}-${idx}`} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 pb-3">
+                              <div className="flex items-start gap-2">
+                                <div className="rounded-xl bg-gray-50 p-2">
+                                  <Package className={`h-4 w-4 ${classes.primaryText}`} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-black text-gray-900">
+                                    {packageCount > 1 ? `Colis ${idx + 1}/${packageCount} · ` : ''}
+                                    {pkg.store_name || 'Boutique'}
+                                  </p>
+                                  {pkg.carrier ? (
+                                    <p className="text-xs text-gray-500">
+                                      Transporteur : <strong className="text-gray-700">{pkg.carrier}</strong>
+                                      {pkg.tracking_number ? ` · N° ${pkg.tracking_number}` : ''}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-gray-400">Transporteur non encore assigné</p>
+                                  )}
+                                  {pkg.shipped_at && (
+                                    <p className="text-[11px] text-gray-400">
+                                      Expédié le {new Date(pkg.shipped_at).toLocaleDateString('fr-TN')}
+                                      {pkg.delivered_at ? ` · Livré le ${new Date(pkg.delivered_at).toLocaleDateString('fr-TN')}` : ''}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${packageStatusColor(pkg.status)}`}>
+                                  {packageStatusLabel(pkg.status)}
+                                </span>
+                                {trackingUrl && (
+                                  <a
+                                    href={trackingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                                  >
+                                    Suivre mon colis ↗
+                                  </a>
+                                )}
+                                {pkg.store_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startSellerChat(order.id, { product_id: pkg.items[0]?.product_id ?? '', product_title: pkg.items[0]?.product_title ?? '', quantity: 1, unit_price: '0', store_id: pkg.store_id, store_name: pkg.store_name ?? undefined })}
+                                    disabled={startingChatKey === `${order.id}-${pkg.store_id}`}
+                                    className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black transition-colors disabled:opacity-50 ${isAliExpress ? 'bg-orange-50 text-[#ff4747] hover:bg-orange-100' : 'bg-emerald-50 text-[#16C784] hover:bg-emerald-100'}`}
+                                  >
+                                    {startingChatKey === `${order.id}-${pkg.store_id}` ? (
+                                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    Message
+                                  </button>
+                                )}
+                                {pkg.store_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReportTarget({ orderId: order.id, storeId: pkg.store_id, storeName: pkg.store_name ?? undefined });
+                                      setReportReason('');
+                                      setReportMessage('');
+                                    }}
+                                    className="inline-flex items-center justify-center rounded-full border border-red-100 bg-white px-3 py-1 text-xs font-black text-red-600 transition-colors hover:bg-red-50"
+                                  >
+                                    <Flag className="mr-1.5 h-3.5 w-3.5" />
+                                    Signaler
+                                  </button>
+                                )}
+                              </div>
                             </div>
+
+                            <div className="divide-y divide-gray-50">
+                              {pkg.items.map((item) => {
+                                const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                                const canDownload = order.payment_status === 'captured' && isDownloadable;
+                                return (
+                                  <div key={item.id || `${pkg.id}-${item.product_id}`} className="flex flex-col gap-2 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex items-center gap-3">
+                                      {item.thumbnail && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={item.thumbnail} alt={item.product_title} className="h-10 w-10 rounded-lg border object-cover" />
+                                      )}
+                                      <div>
+                                        <p className="font-semibold text-gray-900">{item.product_title}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {item.subtotal && (
+                                        <span className="text-sm font-bold text-gray-900">{parseFloat(item.subtotal).toFixed(3)} TND</span>
+                                      )}
+                                      {canDownload && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDownload(item.product_id)}
+                                          disabled={downloadingProductId === item.product_id}
+                                          className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-black transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
+                                        >
+                                          {downloadingProductId === item.product_id ? (
+                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                                          )}
+                                          Télécharger
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Digital-only items have no parcel: list them separately */}
+                      {(() => {
+                        const parcelStores = new Set(order.fulfillments!.map((pkg) => pkg.store_id));
+                        const orphanItems = (order.items || []).filter((item) => !item.store_id || !parcelStores.has(item.store_id));
+                        if (orphanItems.length === 0) return null;
+                        return (
+                          <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-4 space-y-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Articles numériques (sans expédition)</p>
+                            {orphanItems.map((item) => {
+                              const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                              const canDownload = order.payment_status === 'captured' && isDownloadable;
+                              return (
+                                <div key={`orphan-${order.id}-${item.product_id}`} className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="font-semibold text-gray-900">{item.product_title}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
+                                      {item.store_name ? ` · ${item.store_name}` : ''}
+                                    </p>
+                                  </div>
                             <div className="flex flex-wrap items-center gap-2">
                             {canDownload && (
                               <button
@@ -340,44 +564,87 @@ export default function CustomerOrdersPage() {
                                 Télécharger
                               </button>
                             )}
-                            {item.store_id && (
-                              <button
-                                type="button"
-                                onClick={() => startSellerChat(order.id, item)}
-                                disabled={startingChatKey === `${order.id}-${item.store_id}`}
-                                className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${isAliExpress ? 'bg-orange-50 text-[#ff4747] hover:bg-orange-100' : 'bg-emerald-50 text-[#16C784] hover:bg-emerald-100'}`}
-                              >
-                                {startingChatKey === `${order.id}-${item.store_id}` ? (
-                                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                                )}
-                                Message
-                              </button>
-                            )}
-                            {item.store_id && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setReportTarget({ orderId: order.id, storeId: item.store_id!, storeName: item.store_name });
-                                  setReportReason('');
-                                  setReportMessage('');
-                                }}
-                                className="inline-flex items-center justify-center rounded-full border border-red-100 bg-white px-4 py-2 text-xs font-black text-red-600 transition-colors hover:bg-red-50"
-                              >
-                                <Flag className="mr-2 h-3.5 w-3.5" />
-                                Signaler le vendeur
-                              </button>
-                            )}
                             </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
-                      })}
+                      })()}
+
                       {downloadMessage && (
                         <p className="rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-gray-600">{downloadMessage}</p>
                       )}
                     </div>
-                  )}
+                  ) : (order.items && order.items.length > 0) ? (
+                        <div className="mb-4 space-y-2">
+                          <span className="text-xs text-gray-500 uppercase tracking-wider">Articles</span>
+                          {order.items.map((item) => {
+                            const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
+                            const canDownload = order.payment_status === 'captured' && isDownloadable;
+                            return (
+                              <div key={`${order.id}-${item.product_id}`} className="flex flex-col gap-2 rounded-2xl bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="font-semibold text-gray-900">{item.product_title}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {item.quantity} x {parseFloat(item.unit_price).toFixed(3)} TND
+                                    {item.store_name ? ` · ${item.store_name}` : ''}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                {canDownload && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownload(item.product_id)}
+                                    disabled={downloadingProductId === item.product_id}
+                                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${classes.primaryGradient}`}
+                                  >
+                                    {downloadingProductId === item.product_id ? (
+                                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Download className="mr-2 h-3.5 w-3.5" />
+                                    )}
+                                    Télécharger
+                                  </button>
+                                )}
+                                {item.store_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startSellerChat(order.id, item)}
+                                    disabled={startingChatKey === `${order.id}-${item.store_id}`}
+                                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-black transition-colors disabled:opacity-50 ${isAliExpress ? 'bg-orange-50 text-[#ff4747] hover:bg-orange-100' : 'bg-emerald-50 text-[#16C784] hover:bg-emerald-100'}`}
+                                  >
+                                    {startingChatKey === `${order.id}-${item.store_id}` ? (
+                                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                                    )}
+                                    Message
+                                  </button>
+                                )}
+                                {item.store_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReportTarget({ orderId: order.id, storeId: item.store_id!, storeName: item.store_name });
+                                      setReportReason('');
+                                      setReportMessage('');
+                                    }}
+                                    className="inline-flex items-center justify-center rounded-full border border-red-100 bg-white px-4 py-2 text-xs font-black text-red-600 transition-colors hover:bg-red-50"
+                                  >
+                                    <Flag className="mr-2 h-3.5 w-3.5" />
+                                    Signaler le vendeur
+                                  </button>
+                                )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {downloadMessage && (
+                            <p className="rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-gray-600">{downloadMessage}</p>
+                          )}
+                        </div>
+                  ) : null}
 
                   {order.status === 'payment_required' && order.payment_gateway === 'manual_mandat' && (
                     <Link

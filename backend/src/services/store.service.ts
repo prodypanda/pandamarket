@@ -1148,7 +1148,7 @@ export class StoreService {
        LEFT JOIN LATERAL (
          SELECT
            COUNT(DISTINCT o.id) AS order_count,
-           COUNT(DISTINCT o.id) FILTER (WHERE o.status IN ('pending', 'processing')) AS pending_order_count,
+           COUNT(DISTINCT o.id) FILTER (WHERE o.status IN ('payment_required', 'pending', 'processing', 'partially_shipped')) AS pending_order_count,
            COALESCE(SUM(CASE WHEN o.payment_status = 'captured' THEN oi.subtotal::numeric ELSE 0 END), 0) AS captured_revenue
          FROM pd_order_item oi
          JOIN pd_order o ON o.id = oi.order_id
@@ -1380,7 +1380,7 @@ export class StoreService {
       LEFT JOIN LATERAL (
         SELECT
           COUNT(*) AS order_count,
-          COUNT(*) FILTER (WHERE o.status IN ('pending', 'processing')) AS open_order_count,
+          COUNT(*) FILTER (WHERE o.status IN ('payment_required', 'pending', 'processing', 'partially_shipped')) AS open_order_count,
           COUNT(*) FILTER (WHERE o.payment_status = 'captured') AS captured_order_count,
           COALESCE(SUM(CASE WHEN o.payment_status = 'captured' THEN o.total::numeric ELSE 0 END), 0) AS total_spent,
           MAX(o.created_at) AS last_order_at

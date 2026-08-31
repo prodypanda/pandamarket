@@ -29,7 +29,7 @@ import { orderService } from '../services/order.service';
 import { syncOrderStatusFromFulfillments } from '../services/order-fulfillment-shared';
 import { eventBus, PdEvent } from '../events/event-bus';
 
-const SYNC_SQL_SIGNATURE = 'FROM pd_fulfillment WHERE order_id = $1 GROUP BY order_id';
+const SYNC_SQL_SIGNATURE = 'FROM pd_fulfillment f' + "\n       JOIN pd_order o2 ON o2.id = f.order_id";
 
 describe('Order status state machine centralization (P0 desync fixes)', () => {
   beforeEach(() => {
@@ -44,11 +44,13 @@ describe('Order status state machine centralization (P0 desync fixes)', () => {
       const [sql, params] = executor.query.mock.calls[0];
       expect(sql).toContain('UPDATE pd_order');
       expect(sql).toContain(SYNC_SQL_SIGNATURE);
-      expect(sql).toContain("WHEN sub.pend = 0 AND sub.del > 0 THEN 'delivered'");
-      expect(sql).toContain("WHEN sub.pend = 0 AND sub.ship > 0 THEN 'fulfilled'");
-      // preparing-only aggregate derives the order-level 'processing' state
-      expect(sql).toContain("sub.prep > 0 THEN 'processing'");
-      expect(sql).toContain("sub.prep = 0 THEN 'cancelled'");
+      // Multi-vendor ladder: partial states before the "all parcels" states
+      expect(sql).toContain("WHEN sub.canc = sub.total THEN 'cancelled'");
+      expect(sql).toContain("WHEN sub.del > 0 AND (sub.del + sub.canc) = sub.total THEN 'delivered'");
+      expect(sql).toContain("WHEN sub.del > 0 THEN 'partially_delivered'");
+      expect(sql).toContain("WHEN sub.ship > 0 AND (sub.ship + sub.canc) = sub.total THEN 'fulfilled'");
+      expect(sql).toContain("WHEN sub.ship > 0 THEN 'partially_shipped'");
+      expect(sql).toContain("WHEN sub.prep > 0 THEN 'processing'");
       expect(sql).toContain("o.status NOT IN ('cancelled','refunded')");
       expect(params).toEqual(['ord_1', 'test']);
     });

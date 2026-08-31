@@ -18,6 +18,37 @@ import {
 import { IAddress } from './entities';
 
 // =====================================================
+// Buyer multi-parcel order contract (multi-vendor orders)
+// =====================================================
+
+export interface BuyerOrderPackageItem {
+  id: string;
+  product_id: string;
+  product_title: string;
+  quantity: number;
+  unit_price: string;
+  subtotal: string;
+  product_type?: string;
+  thumbnail?: string | null;
+  has_digital_file?: boolean;
+}
+
+/** One store parcel of a (possibly multi-vendor) order, as seen by the buyer. */
+export interface BuyerOrderPackage {
+  id: string;
+  store_id: string;
+  store_name: string;
+  store_subdomain?: string | null;
+  status: 'pending' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
+  carrier?: string | null;
+  tracking_number?: string | null;
+  tracking_url?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  shipping_total: string;
+  items: BuyerOrderPackageItem[];
+}
+// =====================================================
 // Auth
 // =====================================================
 

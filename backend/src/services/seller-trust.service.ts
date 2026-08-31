@@ -327,7 +327,7 @@ export async function calculateSellerTrustScore(storeId: string): Promise<{
     `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (o.updated_at - o.created_at)) / 3600), 24.0)::text AS avg_sla_hours
      FROM pd_order o
      JOIN pd_order_item oi ON oi.order_id = o.id
-     WHERE oi.store_id = $1 AND o.status IN ('delivered', 'fulfilled', 'paid')`,
+     WHERE oi.store_id = $1 AND (o.payment_status = 'captured' OR o.status IN ('delivered', 'partially_delivered', 'fulfilled', 'partially_shipped'))`,
     [cleanStoreId]
   );
   const slaHours = Math.max(1, parseFloat(orderSlaRes.rows[0]?.avg_sla_hours || '24.0'));
@@ -405,7 +405,7 @@ export async function calculateBatchSellerTrustScores(
     `SELECT oi.store_id, COALESCE(AVG(EXTRACT(EPOCH FROM (o.updated_at - o.created_at)) / 3600), 24.0)::text AS avg_sla_hours
      FROM pd_order o
      JOIN pd_order_item oi ON oi.order_id = o.id
-     WHERE oi.store_id = ANY($1) AND o.status IN ('delivered', 'fulfilled', 'paid')
+     WHERE oi.store_id = ANY($1) AND (o.payment_status = 'captured' OR o.status IN ('delivered', 'partially_delivered', 'fulfilled', 'partially_shipped'))
      GROUP BY oi.store_id`,
     [cleanStoreIds]
   );

@@ -343,6 +343,63 @@ export function getWholesaleUnitPrice(basePrice: number, quantity: number, selle
   return activeTier ? activeTier.unit_price : basePrice;
 }
 
+/**
+ * Buyer-facing parcel aggregation (multi-vendor orders).
+ *
+ * One pd_fulfillment row per store becomes one "package" carrying its own
+ * status, carrier, tracking number and item list, so the buyer sees per-parcel
+ * progress instead of a single frozen order badge. `$STORE_FILTER` is replaced
+ * with a store scope for storefront customers (who must only ever see the
+ * parcel of the store they bought from).
+ */
+const BUYER_FULFILLMENTS_LATERAL = `
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', f.id,
+             'store_id', f.store_id,
+             'store_name', fs.name,
+             'store_subdomain', fs.subdomain,
+             'status', f.status,
+             'carrier', f.carrier,
+             'tracking_number', f.tracking_number,
+             'shipped_at', f.shipped_at,
+             'delivered_at', f.delivered_at,
+             'shipping_total', f.shipping_total,
+             'items', COALESCE((
+               SELECT json_agg(
+                 json_build_object(
+                   'id', fi.id,
+                   'product_id', fi.product_id,
+                   'product_title', fi.title,
+                   'quantity', fi.quantity,
+                   'unit_price', fi.unit_price,
+                   'subtotal', fi.subtotal,
+                   'product_type', fp.type,
+                   'thumbnail', fp.thumbnail,
+                   'has_digital_file', fp.digital_file_key IS NOT NULL
+                 )
+                 ORDER BY fi.created_at ASC
+               )
+               FROM pd_order_item fi
+               LEFT JOIN pd_product fp ON fp.id = fi.product_id
+               WHERE fi.order_id = o.id AND fi.store_id = f.store_id
+             ), '[]'::json)
+           )
+           ORDER BY f.created_at ASC
+         ) AS fulfillments
+         FROM pd_fulfillment f
+         LEFT JOIN pd_store fs ON fs.id = f.store_id
+         WHERE f.order_id = o.id $STORE_FILTER
+       ) fulfillments ON true`;
+
+/** Parcel aggregation for marketplace buyers (all stores of the order). */
+const BUYER_FULFILLMENTS_ALL = BUYER_FULFILLMENTS_LATERAL.replace('$STORE_FILTER', '');
+
+/** Parcel aggregation scoped to one store (storefront customers). */
+function buyerFulfillmentsForStore(storeParam: string): string {
+  return BUYER_FULFILLMENTS_LATERAL.replace('$STORE_FILTER', `AND f.store_id = ${storeParam}`);
+}
 export class OrderService {
   /**
    * Create an order from a cart. Splits items per store into separate fulfillments.
@@ -953,6 +1010,58 @@ export class OrderService {
     return rows[0];
   }
 
+  /**
+   * Buyer-facing single order with per-store parcels (multi-vendor aware).
+   * `storeId` scopes the parcels/items for storefront customers so a store
+   * buyer never sees another vendor's parcel of the same master order.
+   */
+  async getBuyerOrderDetail(
+    id: string,
+    opts: { storeId?: string | null } = {},
+  ): Promise<OrderRow & { items: unknown[]; fulfillments: unknown[] }> {
+    const params: unknown[] = [id];
+    let itemScope = '';
+    let fulfillmentsLateral = BUYER_FULFILLMENTS_ALL;
+    if (opts.storeId) {
+      params.push(opts.storeId);
+      itemScope = ` AND i.store_id = ${params.length}`;
+      fulfillmentsLateral = buyerFulfillmentsForStore(`${params.length}`);
+    }
+    const { rows } = await query<OrderRow & { items: unknown[]; fulfillments: unknown[] }>(
+      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items,
+              COALESCE(fulfillments.fulfillments, '[]'::json) AS fulfillments
+       FROM pd_order o
+       LEFT JOIN LATERAL (
+         SELECT json_agg(
+           json_build_object(
+             'id', i.id,
+             'product_id', i.product_id,
+             'product_title', i.title,
+             'quantity', i.quantity,
+             'unit_price', i.unit_price,
+             'subtotal', i.subtotal,
+             'store_id', i.store_id,
+             'store_name', s.name,
+             'product_type', p.type,
+             'thumbnail', p.thumbnail,
+             'has_digital_file', p.digital_file_key IS NOT NULL
+           )
+           ORDER BY i.created_at ASC
+         ) AS items
+         FROM pd_order_item i
+         LEFT JOIN pd_store s ON s.id = i.store_id
+         LEFT JOIN pd_product p ON p.id = i.product_id
+         WHERE i.order_id = o.id${itemScope}
+       ) items ON true
+       ${fulfillmentsLateral}
+       WHERE o.id = $1
+       LIMIT 1`,
+      params,
+    );
+    if (!rows[0]) throw new PdNotFoundError(PdErrorCode.ORDER_NOT_FOUND, 'Order not found');
+    return rows[0];
+  }
+
   async getStoreOrderDetail(orderId: string, storeId: string): Promise<StoreOrderDetailRow> {
     const { rows } = await query<StoreOrderDetailRow>(
       `SELECT o.*,
@@ -1310,7 +1419,8 @@ export class OrderService {
     }
     params.push(limit, offset);
     const { rows } = await query<OrderRow & { items: unknown[] }>(
-      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items
+      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items,
+              COALESCE(fulfillments.fulfillments, '[]'::json) AS fulfillments
        FROM pd_order o
        LEFT JOIN LATERAL (
          SELECT json_agg(
@@ -1332,6 +1442,7 @@ export class OrderService {
          LEFT JOIN pd_product p ON p.id = i.product_id
          WHERE i.order_id = o.id
        ) items ON true
+       ${BUYER_FULFILLMENTS_ALL}
        WHERE ${where.replaceAll('customer_id', 'o.customer_id').replaceAll('status', 'o.status')}
        ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
@@ -1361,7 +1472,8 @@ export class OrderService {
     }
     params.push(limit, offset);
     const { rows } = await query<OrderRow & { items: unknown[] }>(
-      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items
+      `SELECT o.*, COALESCE(items.items, '[]'::json) AS items,
+              COALESCE(fulfillments.fulfillments, '[]'::json) AS fulfillments
        FROM pd_order o
        LEFT JOIN LATERAL (
          SELECT json_agg(
@@ -1383,6 +1495,7 @@ export class OrderService {
          LEFT JOIN pd_product p ON p.id = i.product_id
          WHERE i.order_id = o.id AND i.store_id = $2
        ) items ON true
+       ${buyerFulfillmentsForStore('$2')}
        WHERE ${where}
        ORDER BY o.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
@@ -2481,7 +2594,12 @@ export class OrderService {
     if (order.status === OrderStatus.Cancelled) {
       throw new PdConflictError(PdErrorCode.ORDER_ALREADY_CANCELLED, 'Order already cancelled');
     }
-    if ([OrderStatus.Fulfilled, OrderStatus.Delivered].includes(order.status)) {
+    if ([
+      OrderStatus.PartiallyShipped,
+      OrderStatus.Fulfilled,
+      OrderStatus.PartiallyDelivered,
+      OrderStatus.Delivered,
+    ].includes(order.status)) {
       throw new PdValidationError('Cannot cancel a shipped/delivered order', {
         code: PdErrorCode.ORDER_CANNOT_CANCEL,
         status: order.status,
@@ -2685,16 +2803,19 @@ export class OrderService {
            payment_reference = $3,
            status = CASE
              WHEN status IN ('cancelled', 'refunded') THEN status
+             -- 'delivered' only when every package is delivered (none still
+             -- shipped/pending) — otherwise a delivered+shipped mix must not
+             -- jump the order straight to 'delivered' (partially_delivered).
              WHEN NOT EXISTS (
                SELECT 1 FROM pd_fulfillment
-               WHERE order_id = $1 AND status = 'pending'
+               WHERE order_id = $1 AND status IN ('pending', 'preparing', 'shipped')
              ) AND EXISTS (
                SELECT 1 FROM pd_fulfillment
                WHERE order_id = $1 AND status = 'delivered'
              ) THEN 'delivered'
              WHEN NOT EXISTS (
                SELECT 1 FROM pd_fulfillment
-               WHERE order_id = $1 AND status = 'pending'
+               WHERE order_id = $1 AND status IN ('pending', 'preparing')
              ) AND EXISTS (
                SELECT 1 FROM pd_fulfillment
                WHERE order_id = $1 AND status = 'shipped'

@@ -141,7 +141,7 @@ export class BuyerInterestService {
        JOIN pd_order_item oi ON oi.order_id = o.id
        JOIN pd_product p ON p.id = oi.product_id
        WHERE o.customer_id = $1
-         AND (o.payment_status = 'captured' OR o.status IN ('fulfilled', 'delivered'))`,
+         AND (o.payment_status = 'captured' OR o.status IN ('partially_shipped', 'fulfilled', 'partially_delivered', 'delivered'))`,
       [buyerId]
     );
 

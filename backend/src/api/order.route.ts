@@ -256,7 +256,12 @@ router.get(
       res.status(404).json({ error: { message: 'Order not found' } });
       return;
     }
-    res.status(200).json({ order });
+    // Return the parcel-aware payload (scoped to this storefront's store) so
+    // the buyer sees per-package status, carrier and tracking.
+    const detailed = await orderService.getBuyerOrderDetail(req.params.id, {
+      storeId: req.storefrontCustomer!.store_id,
+    });
+    res.status(200).json({ order: detailed });
   }),
 );
 // Vendor: list orders containing their products
@@ -386,7 +391,12 @@ router.get(
       res.status(404).json({ error: { message: 'Order not found' } });
       return;
     }
-    res.status(200).json({ order });
+    // Buyers (and admins) get the parcel-aware payload; a vendor viewing this
+    // route is scoped to their own store's parcel.
+    const detailed = await orderService.getBuyerOrderDetail(req.params.id, {
+      storeId: !isCustomer && !isAdmin && isVendor ? req.user!.store_id : null,
+    });
+    res.status(200).json({ order: detailed });
   }),
 );
 

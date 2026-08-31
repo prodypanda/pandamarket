@@ -78,7 +78,11 @@ export enum OrderStatus {
   PaymentRequired = 'payment_required',
   Pending = 'pending',
   Processing = 'processing',
+  /** Multi-vendor order: at least one package shipped, others still pending/preparing. */
+  PartiallyShipped = 'partially_shipped',
   Fulfilled = 'fulfilled',
+  /** Multi-vendor order: at least one package delivered, others still in transit/preparation. */
+  PartiallyDelivered = 'partially_delivered',
   Delivered = 'delivered',
   Cancelled = 'cancelled',
   Refunded = 'refunded',

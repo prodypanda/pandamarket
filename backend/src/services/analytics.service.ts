@@ -1161,7 +1161,7 @@ export class AnalyticsService {
           COALESCE(SUM(total), 0)::numeric AS current_order_gmv,
           COUNT(id)::int AS current_orders_count
         FROM pd_order
-        WHERE (payment_status IN ('captured') OR status IN ('delivered', 'fulfilled'))
+        WHERE (payment_status IN ('captured') OR status IN ('delivered', 'partially_delivered', 'fulfilled', 'partially_shipped'))
           AND ($1::timestamp IS NULL OR created_at >= $1::timestamp)
           AND created_at <= $2::timestamp
       `, [range.startDate, range.endDate]).catch(() => ({ rows: [{ current_order_gmv: 0, current_orders_count: 0 }] }));
@@ -1175,7 +1175,7 @@ export class AnalyticsService {
             COALESCE(SUM(total), 0)::numeric AS prev_order_gmv,
             COUNT(id)::int AS prev_orders_count
           FROM pd_order
-          WHERE (payment_status IN ('captured') OR status IN ('delivered', 'fulfilled'))
+          WHERE (payment_status IN ('captured') OR status IN ('delivered', 'partially_delivered', 'fulfilled', 'partially_shipped'))
             AND created_at BETWEEN $1 AND $2
         `, [range.previousStartDate, range.previousEndDate]).catch(() => ({ rows: [{ prev_order_gmv: 0, prev_orders_count: 0 }] }));
         prevOrderGmv = Number(prevOrderStats[0]?.prev_order_gmv || 0);
@@ -1684,10 +1684,10 @@ export class AnalyticsService {
       const { rows: currentOrders } = await query(`
         SELECT 
           COUNT(*)::int AS total_orders,
-          COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN 1 END)::int AS paid_orders,
+          COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered') THEN 1 END)::int AS paid_orders,
           COUNT(CASE WHEN status = 'cancelled' THEN 1 END)::int AS cancelled_orders,
-          COUNT(CASE WHEN status IN ('fulfilled', 'delivered') THEN 1 END)::int AS fulfilled_orders,
-          COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
+          COUNT(CASE WHEN status IN ('partially_shipped', 'fulfilled', 'partially_delivered', 'delivered') THEN 1 END)::int AS fulfilled_orders,
+          COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
         FROM pd_order
         WHERE ($1::timestamp IS NULL OR created_at >= $1::timestamp)
           AND created_at <= $2::timestamp
@@ -1698,8 +1698,8 @@ export class AnalyticsService {
       if (range.comparison_available && range.previousStartDate && range.previousEndDate) {
         const { rows: prevOrders } = await query(`
           SELECT 
-            COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN 1 END)::int AS paid_orders,
-            COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'fulfilled', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
+            COUNT(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered') THEN 1 END)::int AS paid_orders,
+            COALESCE(SUM(CASE WHEN payment_status = 'captured' OR status IN ('processing', 'partially_shipped', 'fulfilled', 'partially_delivered', 'delivered') THEN total ELSE 0 END), 0)::numeric AS gmv_tnd
           FROM pd_order
           WHERE created_at >= $1::timestamp AND created_at <= $2::timestamp
         `, [range.previousStartDate, range.previousEndDate]);
@@ -2449,7 +2449,7 @@ export class AnalyticsService {
         FROM pd_store s
         JOIN pd_order_item oi ON oi.store_id = s.id
         JOIN pd_order o ON oi.order_id = o.id
-        WHERE o.status IN ('fulfilled', 'delivered', 'processing', 'pending')
+        WHERE o.status IN ('fulfilled', 'partially_shipped', 'delivered', 'partially_delivered', 'processing', 'pending')
         GROUP BY s.id, s.name, s.subdomain, s.settings, s.status, s.subscription_plan
         ORDER BY total_sales_gmv_tnd DESC
         LIMIT 8

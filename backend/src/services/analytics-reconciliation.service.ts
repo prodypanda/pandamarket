@@ -387,7 +387,7 @@ export class AnalyticsReconciliationService {
           CASE 
             WHEN o.status = 'cancelled' OR o.payment_status = 'cancelled' THEN 'cancelled'
             WHEN o.status = 'refunded' OR o.payment_status = 'refunded' THEN 'refunded'
-            WHEN o.status IN ('delivered', 'fulfilled', 'completed') THEN 'delivered'
+            WHEN o.status IN ('delivered', 'partially_delivered', 'fulfilled', 'partially_shipped') THEN 'delivered'
             ELSE 'paid'
           END AS status,
           CASE 
