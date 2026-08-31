@@ -23,6 +23,7 @@ vi.mock('../utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+import { UserRole } from '@pandamarket/types';
 import { PdConflictError, PdErrorCode } from '../errors';
 import { platformConfigService } from '../services/platform-config.service';
 
@@ -201,6 +202,35 @@ describe('PlatformConfigService section saves', () => {
     expect(updated).toContain('hub_card_show_store_name');
     expect(updated).toContain('hub_card_show_store_verified');
     expect(updated).toContain('hub_card_show_store_score');
+  });
+
+  it('allows updating buyer_orders_theme_style in marketplace section and invoice_platform_matricule_fiscal in finance section', async () => {
+    const clientQuery = vi.fn()
+      .mockResolvedValue({ rows: [{ updated_at: new Date('2026-08-31T12:00:00.000Z') }] });
+    mockTransaction.mockImplementation(async (callback: (client: { query: typeof clientQuery }) => Promise<unknown>) => (
+      callback({ query: clientQuery })
+    ));
+
+    const updatedMarketplace = await platformConfigService.updateSectionSettings(
+      'marketplace',
+      {
+        buyer_orders_theme_style: 'timeline_logistics',
+      },
+      'admin_user_123',
+      '2026-08-31T12:00:00.000Z',
+    );
+    expect(updatedMarketplace).toContain('buyer_orders_theme_style');
+
+    const updatedFinance = await platformConfigService.updateSectionSettings(
+      'finance',
+      {
+        invoice_platform_matricule_fiscal: '1234567/X/A/000',
+      },
+      'admin_user_123',
+      '2026-08-31T12:00:00.000Z',
+      UserRole.SuperAdmin,
+    );
+    expect(updatedFinance).toContain('invoice_platform_matricule_fiscal');
   });
 });
 

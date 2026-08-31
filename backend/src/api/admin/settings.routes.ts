@@ -328,6 +328,7 @@ const marketplaceSettingsSchema = globalSettingsSchema
     marketplace_og_image_url: true,
     marketplace_public_url: true,
     marketplace_theme: true,
+    buyer_orders_theme_style: true,
     marketplace_primary_color: true,
     marketplace_secondary_color: true,
     marketplace_default_locale: true,
@@ -490,6 +491,7 @@ const financeSettingsSchema = globalSettingsSchema
     mandat_recipient_cin: true,
     mandat_recipient_city: true,
     mandat_proof_email: true,
+    invoice_platform_matricule_fiscal: true,
   })
   .strict();
 
