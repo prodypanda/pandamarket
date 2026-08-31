@@ -97,10 +97,10 @@ export class PdfInvoiceService {
     const { rows: itemRows } = await query<{
       title: string;
       quantity: number;
-      price: string;
+      unit_price: string;
       subtotal: string;
     }>(
-      `SELECT title, quantity, price::text, subtotal::text
+      `SELECT title, quantity, unit_price::text, subtotal::text
        FROM pd_order_item
        WHERE order_id = $1 AND store_id = $2`,
       [orderId, storeId],
@@ -119,7 +119,7 @@ export class PdfInvoiceService {
       `Client: ${order.customer_name} (${order.customer_phone})`,
       '------------------------------------------------------------',
       'Articles commandes:',
-      ...itemRows.map((it) => `- ${it.title} x${it.quantity} : ${parseFloat(it.price).toFixed(3)} TND (${parseFloat(it.subtotal).toFixed(3)} TND)`),
+      ...itemRows.map((it) => `- ${it.title} x${it.quantity} : ${parseFloat(it.unit_price).toFixed(3)} TND (${parseFloat(it.subtotal).toFixed(3)} TND)`),
       '------------------------------------------------------------',
       `Sous-total HT: ${subtotal.toFixed(3)} TND`,
       `Frais de livraison: ${shipping.toFixed(3)} TND`,
