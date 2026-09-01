@@ -306,10 +306,10 @@ const paymentStatusLabel = (status: string, t: (key: string) => string) => {
 
 const paymentStatusColor = (status: string) => {
   switch (status) {
-    case 'captured': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'failed': return 'bg-red-50 text-red-700 border-red-200';
-    case 'refunded': return 'bg-slate-100 text-slate-700 border-slate-200';
-    default: return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'captured': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'failed': return 'bg-rose-50 text-rose-800 border-rose-200/60';
+    case 'refunded': return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
+    default: return 'bg-amber-50 text-amber-800 border-amber-200/60';
   }
 };
 
@@ -321,10 +321,10 @@ const refundReasonLabel = (reasonCode: string, t: (key: string) => string) => (
 
 const refundStatusColor = (status: string) => {
   switch (status) {
-    case 'processed': return 'bg-green-50 text-green-700 border-green-200';
-    case 'approved': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'rejected': return 'bg-red-50 text-red-700 border-red-200';
-    default: return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'processed': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'approved': return 'bg-sky-50 text-sky-800 border-sky-200/60';
+    case 'rejected': return 'bg-rose-50 text-rose-800 border-rose-200/60';
+    default: return 'bg-amber-50 text-amber-800 border-amber-200/60';
   }
 };
 
@@ -1088,12 +1088,12 @@ function shipmentStatusLabel(status: string | null | undefined, t: (key: string)
 
 function fulfillmentColor(status?: string | null) {
   switch (status) {
-    case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'shipped': return 'bg-purple-50 text-purple-700 border-purple-200';
-    case 'delivered': return 'bg-green-50 text-green-700 border-green-200';
-    case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
-    default: return 'bg-gray-50 text-gray-600 border-gray-200';
+    case 'pending': return 'bg-amber-50 text-amber-800 border-amber-200/60';
+    case 'preparing': return 'bg-sky-50 text-sky-800 border-sky-200/60';
+    case 'shipped': return 'bg-purple-50 text-purple-800 border-purple-200/60';
+    case 'delivered': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'cancelled': return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
+    default: return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
   }
 }
 
@@ -1127,27 +1127,27 @@ function canCancelSellerFulfillment(order: Order) {
  */
 function storeOrderStatus(order: Order, t: (key: string) => string): { label: string; color: string } {
   if (order.fulfillment_status === 'cancelled' || order.status === 'cancelled') {
-    return { label: t('dashboardPages.orders.cancelled'), color: 'bg-red-50 text-red-700 border-red-200' };
+    return { label: t('dashboardPages.orders.cancelled'), color: 'bg-zinc-100 text-zinc-600 border-zinc-200/80' };
   }
   if (order.status === 'refunded' || order.payment_status === 'refunded') {
-    return { label: t('dashboardPages.orders.refunded'), color: 'bg-slate-100 text-slate-700 border-slate-200' };
+    return { label: t('dashboardPages.orders.refunded'), color: 'bg-zinc-100 text-zinc-600 border-zinc-200/80' };
   }
   if (order.fulfillment_status === 'delivered') {
-    return { label: t('dashboardPages.orders.delivered'), color: 'bg-green-50 text-green-700 border-green-200' };
+    return { label: t('dashboardPages.orders.delivered'), color: 'bg-emerald-50 text-emerald-800 border-emerald-200/60' };
   }
   if (order.fulfillment_status === 'shipped') {
-    return { label: t('dashboardPages.orders.shipped'), color: 'bg-purple-50 text-purple-700 border-purple-200' };
+    return { label: t('dashboardPages.orders.shipped'), color: 'bg-purple-50 text-purple-800 border-purple-200/60' };
   }
   if (order.fulfillment_status === 'preparing') {
-    return { label: t('dashboardPages.orders.preparing'), color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    return { label: t('dashboardPages.orders.preparing'), color: 'bg-sky-50 text-sky-800 border-sky-200/60' };
   }
   if (order.status === 'payment_required') {
-    return { label: t('dashboardPages.orders.paymentRequired'), color: 'bg-orange-50 text-orange-700 border-orange-200' };
+    return { label: t('dashboardPages.orders.paymentRequired'), color: 'bg-orange-50 text-orange-800 border-orange-200/60' };
   }
   if (order.payment_status === 'captured') {
-    return { label: t('dashboardPages.orders.confirmed'), color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    return { label: t('dashboardPages.orders.confirmed'), color: 'bg-sky-50 text-sky-800 border-sky-200/60' };
   }
-  return { label: t('dashboardPages.orders.toShip'), color: 'bg-amber-50 text-amber-700 border-amber-200' };
+  return { label: t('dashboardPages.orders.toShip'), color: 'bg-amber-50 text-amber-800 border-amber-200/60' };
 }
 
 function getTrackingUrl(carrier?: string | null, trackingNumber?: string | null) {
@@ -2313,53 +2313,51 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
-              <Truck className="h-4 w-4" />
-              {t('dashboardPages.orders.orderManagement')}
-            </div>
-            <h1 className="mt-3 text-2xl font-black tracking-tight">{t('dashboardPages.orders.ordersTitle')}</h1>
-            <p className="mt-1 text-sm text-amber-50/70">
-              {t('dashboardPages.orders.ordersSubtitle')}
-            </p>
+      {/* Quieter Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {t('dashboardPages.orders.ordersTitle')}
+            </h1>
           </div>
-          <button
-            type="button"
-            onClick={() => void fetchOrders()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 shadow transition-all hover:-translate-y-0.5 hover:bg-amber-50 disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            {t('dashboardPages.orders.refresh')}
-          </button>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {t('dashboardPages.orders.ordersSubtitle')}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => void fetchOrders()}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-60 shadow-2xs"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          {t('dashboardPages.orders.refresh')}
+        </button>
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+        <div className="flex items-center gap-3 rounded-2xl border border-rose-200/60 bg-rose-50 p-4 text-xs font-medium text-rose-800">
           <X className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
-      {/* NAVIGATION TABS (All Orders, COD Risk Radar, RTO Returns, Courier Settlements) */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+      {/* NAVIGATION TABS */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700">
         <button
           type="button"
           onClick={() => setMainTab('all_orders')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs transition-colors ${
             mainTab === 'all_orders'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-normal'
           }`}
         >
-          <Package className="w-4 h-4 text-blue-600" />
+          <Package className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
           <span>{t('dashboardPages.orders.tabAllOrders')}</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 font-bold">
+          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
             {meta.total || orders.length}
           </span>
         </button>
@@ -2367,16 +2365,16 @@ export default function OrdersPage() {
         <button
           type="button"
           onClick={() => setMainTab('cod_radar')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs transition-colors ${
             mainTab === 'cod_radar'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-normal'
           }`}
         >
-          <ShieldAlert className="w-4 h-4 text-amber-500" />
+          <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           <span>{t('dashboardPages.orders.tabCodRadar')}</span>
           {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length > 0 && (
-            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold animate-pulse">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-medium">
               {t('dashboardPages.orders.badgeToValidate', { count: orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length })}
             </span>
           )}
@@ -2385,16 +2383,16 @@ export default function OrdersPage() {
         <button
           type="button"
           onClick={() => setMainTab('rto_returns')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs transition-colors ${
             mainTab === 'rto_returns'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-normal'
           }`}
         >
-          <RotateCcw className="w-4 h-4 text-rose-500" />
+          <RotateCcw className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
           <span>{t('dashboardPages.orders.tabRtoReturns')}</span>
           {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length > 0 && (
-            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-medium">
               {t('dashboardPages.orders.badgeReturns', { count: orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length })}
             </span>
           )}
@@ -2403,69 +2401,68 @@ export default function OrdersPage() {
         <button
           type="button"
           onClick={() => setMainTab('courier_settlements')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs transition-colors ${
             mainTab === 'courier_settlements'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-normal'
           }`}
         >
-          <DollarSign className="w-4 h-4 text-emerald-600" />
+          <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>{t('dashboardPages.orders.tabSettlements')}</span>
           {settlementsSummary.pending_payout > 0 && (
-            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-medium">
               {t('dashboardPages.orders.badgeDue', { amount: formatMoney(settlementsSummary.pending_payout) })}
             </span>
           )}
         </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
+      {/* Quieter KPI Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
         {[
-          { label: t('dashboardPages.orders.revenue30d'), value: formatMoney(summary?.revenue_30d ?? 0), icon: TrendingUp, gradient: 'from-amber-500 to-teal-600' },
-          { label: t('dashboardPages.orders.revenue7d'), value: formatMoney(summary?.revenue_7d ?? 0), icon: TrendingUp, gradient: 'from-emerald-500 to-teal-600' },
-          { label: t('dashboardPages.orders.revenueToday'), value: formatMoney(summary?.revenue_today ?? 0), icon: CalendarDays, gradient: 'from-blue-500 to-indigo-600' },
-          { label: t('dashboardPages.orders.toShip'), value: String(summary?.to_ship ?? 0), icon: PackageCheck, gradient: 'from-amber-500 to-orange-600' },
-          { label: t('dashboardPages.orders.aov'), value: formatMoney(summary?.average_order_value ?? 0), icon: CreditCard, gradient: 'from-violet-500 to-purple-600' },
-          { label: t('dashboardPages.orders.refunds'), value: formatPercent(summary?.refund_rate ?? 0), icon: Ban, gradient: 'from-red-500 to-rose-700' },
-          { label: t('dashboardPages.orders.sla48h'), value: formatPercent(summary?.fulfillment_sla_rate ?? 0), detail: `${t('dashboardPages.orders.avgLabel')} ${formatHours(summary?.average_fulfillment_hours ?? 0, t)}`, icon: CheckCircle2, gradient: 'from-slate-500 to-slate-700' },
+          { label: t('dashboardPages.orders.revenue30d'), value: formatMoney(summary?.revenue_30d ?? 0), icon: TrendingUp },
+          { label: t('dashboardPages.orders.revenue7d'), value: formatMoney(summary?.revenue_7d ?? 0), icon: TrendingUp },
+          { label: t('dashboardPages.orders.revenueToday'), value: formatMoney(summary?.revenue_today ?? 0), icon: CalendarDays },
+          { label: t('dashboardPages.orders.toShip'), value: String(summary?.to_ship ?? 0), icon: PackageCheck },
+          { label: t('dashboardPages.orders.aov'), value: formatMoney(summary?.average_order_value ?? 0), icon: CreditCard },
+          { label: t('dashboardPages.orders.refunds'), value: formatPercent(summary?.refund_rate ?? 0), icon: Ban },
+          { label: t('dashboardPages.orders.sla48h'), value: formatPercent(summary?.fulfillment_sla_rate ?? 0), detail: `${t('dashboardPages.orders.avgLabel')} ${formatHours(summary?.average_fulfillment_hours ?? 0, t)}`, icon: CheckCircle2 },
         ].map((item) => (
-          <div key={item.label} className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-lg hover:-translate-y-0.5">
+          <div key={item.label} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs transition-all hover:border-slate-300 dark:hover:border-slate-700">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-400">{item.label}</span>
-              <div className={`rounded-xl bg-gradient-to-br ${item.gradient} p-2.5 text-white shadow-lg`}>
-                <item.icon className="h-4 w-4" />
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{item.label}</span>
+              <div className="rounded-lg bg-slate-100 dark:bg-slate-800 p-1.5 text-slate-500 dark:text-slate-400">
+                <item.icon className="h-3.5 w-3.5" />
               </div>
             </div>
-            <p className="mt-3 text-2xl font-black text-gray-900">{item.value}</p>
-            {'detail' in item && item.detail && <p className="mt-1 text-xs font-black text-gray-400">{item.detail}</p>}
-            <div className={`absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${item.gradient} opacity-0 transition-opacity group-hover:opacity-100`} />
+            <p className="mt-2 text-base font-bold text-slate-900 dark:text-white">{item.value}</p>
+            {'detail' in item && item.detail && <p className="mt-0.5 text-[10px] text-slate-400">{item.detail}</p>}
           </div>
         ))}
       </div>
 
       {/* TAB 1: ALL ORDERS STANDARD VIEW */}
+      {/* TAB 1: ALL ORDERS STANDARD VIEW */}
       {mainTab === 'all_orders' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
         {/* Toolbar */}
-        <div className="space-y-4 border-b border-gray-100 bg-gray-50/30 p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-md">
-              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(event) => handleSearchChange(event.target.value)}
                 placeholder={t('dashboardPages.orders.searchPlaceholder')}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] outline-none transition-all"
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none transition-all shadow-2xs"
               />
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
-              <Filter className="w-4 h-4 mr-2" />
               <select
                 value={statusFilter}
                 onChange={(event) => handleStatusChange(event.target.value)}
-                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+                className="min-w-[140px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs lg:flex-none"
               >
                 <option value="">{t('dashboardPages.orders.filterAll')}</option>
                 <option value="pending">{t('dashboardPages.orders.pending')}</option>
@@ -2478,7 +2475,7 @@ export default function OrdersPage() {
               <select
                 value={paymentGatewayFilter}
                 onChange={(event) => handlePaymentGatewayChange(event.target.value)}
-                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+                className="min-w-[140px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs lg:flex-none"
               >
                 <option value="">{t('dashboardPages.orders.allPaymentMethods')}</option>
                 <option value="flouci">Flouci</option>
@@ -2489,7 +2486,7 @@ export default function OrdersPage() {
               <select
                 value={paymentStatusFilter}
                 onChange={(event) => handlePaymentStatusChange(event.target.value)}
-                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+                className="min-w-[140px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs lg:flex-none"
               >
                 <option value="">{t('dashboardPages.orders.allPayments')}</option>
                 <option value="pending">{t('dashboardPages.orders.pending')}</option>
@@ -2500,7 +2497,7 @@ export default function OrdersPage() {
               <select
                 value={fulfillmentStatusFilter}
                 onChange={(event) => handleFulfillmentStatusChange(event.target.value)}
-                className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 outline-none transition-colors hover:bg-gray-50 lg:flex-none"
+                className="min-w-[140px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs lg:flex-none"
               >
                 <option value="">{t('dashboardPages.orders.allFulfillment')}</option>
                 <option value="pending">{t('dashboardPages.orders.toShip')}</option>
@@ -2512,31 +2509,31 @@ export default function OrdersPage() {
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters((value) => !value)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs"
               >
-                <Filter className="h-4 w-4" />
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
                 {t('dashboardPages.orders.advanced')}
               </button>
             </div>
           </div>
           {showAdvancedFilters && (
-            <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 md:grid-cols-2 xl:grid-cols-5">
               <input
                 value={customerFilter}
                 onChange={(event) => updateAdvancedFilter(setCustomerFilter, event.target.value)}
                 placeholder={t('dashboardPages.orders.customerPlaceholder')}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400"
               />
               <input
                 value={productFilter}
                 onChange={(event) => updateAdvancedFilter(setProductFilter, event.target.value)}
                 placeholder={t('dashboardPages.orders.productPlaceholder')}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400"
               />
               <select
                 value={channelFilter}
                 onChange={(event) => updateAdvancedFilter(setChannelFilter, event.target.value)}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 outline-none focus:border-[#B91C1C]"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400"
               >
                 <option value="">{t('dashboardPages.orders.allChannels')}</option>
                 <option value="marketplace">Marketplace</option>
@@ -2547,57 +2544,57 @@ export default function OrdersPage() {
                 onChange={(event) => updateAdvancedFilter(setCountryFilter, event.target.value.toUpperCase().slice(0, 2))}
                 placeholder={t('dashboardPages.orders.countryPlaceholder')}
                 maxLength={2}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold uppercase outline-none focus:border-[#B91C1C]"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-normal uppercase text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400"
               />
-              <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-black text-gray-600">
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={hasDisputeFilter}
                   onChange={(event) => updateHasDisputeFilter(event.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-[#B91C1C]"
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900"
                 />
                 {t('dashboardPages.orders.hasDispute')}
               </label>
             </div>
           )}
-          <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200/70 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-1 flex-wrap items-center gap-2">
               <input
                 value={presetName}
                 onChange={(event) => setPresetName(event.target.value)}
                 placeholder={t('dashboardPages.orders.presetNamePlaceholder')}
-                className="min-w-[180px] rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold outline-none focus:border-[#B91C1C]"
+                className="min-w-[160px] rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-normal outline-none focus:border-slate-400"
               />
               <button
                 type="button"
                 onClick={saveCurrentPreset}
                 disabled={!presetName.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-sm font-black text-white disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-slate-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40 shadow-2xs"
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-3.5 w-3.5" />
                 {t('dashboardPages.orders.savePreset')}
               </button>
               {savedPresets.map((preset) => (
-                <span key={preset.id} className="inline-flex overflow-hidden rounded-full border border-gray-200 bg-gray-50 text-xs font-black">
-                  <button type="button" onClick={() => applyPreset(preset)} className="px-3 py-1.5 text-gray-700 hover:bg-white">
+                <span key={preset.id} className="inline-flex overflow-hidden rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-normal">
+                  <button type="button" onClick={() => applyPreset(preset)} className="px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700">
                     {preset.name}
                   </button>
-                  <button type="button" onClick={() => deletePreset(preset.id)} className="border-l border-gray-200 px-2 text-gray-400 hover:bg-red-50 hover:text-red-600">
+                  <button type="button" onClick={() => deletePreset(preset.id)} className="border-l border-slate-200 dark:border-slate-700 px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
                     ×
                   </button>
                 </span>
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.columns')}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.columns')}</span>
               {ORDER_COLUMNS.map((column) => (
-                <label key={column.key} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-black text-gray-600">
+                <label key={column.key} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11px] font-normal text-slate-600 dark:text-slate-400 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={visibleColumns[column.key]}
                     disabled={column.required}
                     onChange={() => toggleColumn(column.key)}
-                    className="h-3.5 w-3.5"
+                    className="h-3 w-3 rounded text-slate-900"
                   />
                   {t(column.labelKey)}
                 </label>
@@ -2605,56 +2602,56 @@ export default function OrdersPage() {
             </div>
           </div>
           {selectedOrderIds.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <span className="mr-2 text-sm font-black text-amber-900">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
-              <button type="button" onClick={() => void printSelectedOrders('delivery_slip')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printLabels')}</button>
-              <button type="button" onClick={() => void printSelectedOrders('invoice')} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.printInvoices')}</button>
-              <button type="button" onClick={openBulkFulfillment} className="rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white hover:bg-[#991B1B]">{t('dashboardPages.orders.markShipped')}</button>
-              <button type="button" onClick={exportSelectedOrders} className="rounded-full bg-white px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.exportSelected')}</button>
-              <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-full px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100">{t('dashboardPages.orders.clear')}</button>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-900 text-white p-3 shadow-sm animate-in fade-in">
+              <span className="mr-2 text-xs font-semibold text-white">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
+              <button type="button" onClick={() => void printSelectedOrders('delivery_slip')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.printLabels')}</button>
+              <button type="button" onClick={() => void printSelectedOrders('invoice')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.printInvoices')}</button>
+              <button type="button" onClick={openBulkFulfillment} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors shadow-2xs">{t('dashboardPages.orders.markShipped')}</button>
+              <button type="button" onClick={exportSelectedOrders} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.exportSelected')}</button>
+              <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-lg px-2 py-1 text-xs font-normal text-slate-400 hover:text-white transition-colors">{t('dashboardPages.orders.clear')}</button>
             </div>
           )}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="grid gap-3 sm:grid-cols-2 lg:flex">
-              <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
-                <CalendarDays className="h-4 w-4 text-gray-400" />
+            <div className="grid gap-2 sm:grid-cols-2 lg:flex">
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-normal text-slate-600 dark:text-slate-300">
+                <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
                 <span>{t('dashboardPages.orders.from')}</span>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(event) => handleDateFromChange(event.target.value)}
-                  className="min-w-0 outline-none"
+                  className="min-w-0 bg-transparent outline-none text-xs"
                 />
               </label>
-              <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-500">
-                <CalendarDays className="h-4 w-4 text-gray-400" />
+              <label className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-normal text-slate-600 dark:text-slate-300">
+                <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
                 <span>{t('dashboardPages.orders.to')}</span>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(event) => handleDateToChange(event.target.value)}
-                  className="min-w-0 outline-none"
+                  className="min-w-0 bg-transparent outline-none text-xs"
                 />
               </label>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-400">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="text-[11px] font-normal text-slate-400">
                 {t('dashboardPages.orders.resultCount', { total: meta.total, filters: hasActiveFilters ? ` · ${t('dashboardPages.orders.filterCount', { count: activeFilterCount })}` : '' })}
               </span>
               <button
                 type="button"
                 onClick={() => void exportFilteredOrders()}
                 disabled={exportingOrders || loading}
-                className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700 hover:border-amber-500 hover:bg-amber-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 shadow-2xs"
               >
-                {exportingOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {exportingOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-slate-400" />}
                 {t('dashboardPages.orders.exportCsv')}
               </button>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600 hover:border-[#B91C1C] hover:text-[#B91C1C]"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs"
                 >
                   {t('dashboardPages.orders.reset')}
                 </button>
@@ -2667,60 +2664,60 @@ export default function OrdersPage() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-[#B91C1C] animate-spin" />
-              <span className="ml-2 text-gray-500">{t('dashboardPages.orders.loadingOrders')}</span>
+              <Loader2 className="w-5 h-5 text-slate-600 animate-spin" />
+              <span className="ml-2 text-xs text-slate-500">{t('dashboardPages.orders.loadingOrders')}</span>
             </div>
           ) : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="mb-4 rounded-2xl bg-gray-100 p-4">
-                <Truck className="h-8 w-8 text-gray-300" />
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-3 rounded-2xl bg-slate-100 dark:bg-slate-800 p-3.5 text-slate-400">
+                <Truck className="h-6 w-6" />
               </div>
-              <p className="text-sm font-bold text-gray-500">{t('dashboardPages.orders.noOrders')}</p>
-              <p className="mt-1 text-xs text-gray-400">{t('dashboardPages.orders.noOrdersHint')}</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{t('dashboardPages.orders.noOrders')}</p>
+              <p className="mt-1 text-xs text-slate-400">{t('dashboardPages.orders.noOrdersHint')}</p>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-100">
-                  <th className="px-4 py-3.5 font-bold">
+                <tr className="bg-slate-50/70 dark:bg-slate-800/40 text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-4 py-3 font-medium">
                     <input
                       type="checkbox"
                       checked={orders.length > 0 && orders.every((order) => selectedOrderIds.includes(order.id))}
                       onChange={toggleAllVisibleOrders}
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900"
                     />
                   </th>
-                  {visibleColumns.id && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.orderNumber')}</th>}
-                  {visibleColumns.date && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.date')}</th>}
-                  {visibleColumns.customer && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.customer')}</th>}
-                  {visibleColumns.payment && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.paymentStatus')}</th>}
-                  {visibleColumns.total && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.total')}</th>}
-                  {visibleColumns.status && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.status')}</th>}
-                  {visibleColumns.fulfillment && <th className="px-6 py-3.5 font-bold">{t('dashboardPages.orders.fulfillment')}</th>}
-                  {visibleColumns.actions && <th className="px-6 py-3.5 font-bold text-right">{t('dashboardPages.orders.actions')}</th>}
+                  {visibleColumns.id && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.orderNumber')}</th>}
+                  {visibleColumns.date && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.date')}</th>}
+                  {visibleColumns.customer && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.customer')}</th>}
+                  {visibleColumns.payment && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.paymentStatus')}</th>}
+                  {visibleColumns.total && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.total')}</th>}
+                  {visibleColumns.status && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.status')}</th>}
+                  {visibleColumns.fulfillment && <th className="px-5 py-3 font-medium">{t('dashboardPages.orders.fulfillment')}</th>}
+                  {visibleColumns.actions && <th className="px-5 py-3 font-medium text-right">{t('dashboardPages.orders.actions')}</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {orders.map((order) => {
                   const openReportCount = toNumber(order.open_report_count);
                   return (
-                    <tr key={order.id} className="hover:bg-[#B91C1C]/[0.02] transition-colors group border-b border-gray-50 last:border-0">
-                      <td className="px-4 py-4">
+                    <tr key={order.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors group">
+                      <td className="px-4 py-3.5">
                         <input
                           type="checkbox"
                           checked={selectedOrderIds.includes(order.id)}
                           onChange={() => toggleOrderSelection(order.id)}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900"
                         />
                       </td>
                       {visibleColumns.id && (
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3.5">
                           <div className="flex flex-col gap-1">
-                            <span className="inline-flex w-fit items-center rounded-lg bg-gray-50 px-2.5 py-1 font-mono text-xs font-bold text-gray-700 group-hover:bg-[#B91C1C]/10 group-hover:text-[#B91C1C] transition-colors">
+                            <span className="inline-flex w-fit items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
                               #{order.id.slice(-8).toUpperCase()}
                             </span>
                             {openReportCount > 0 && (
-                              <span className="inline-flex w-fit rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-black text-red-600">
+                              <span className="inline-flex w-fit rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 border border-rose-200/60">
                                 {t('dashboardPages.orders.disputeCount', { count: openReportCount })}
                               </span>
                             )}
@@ -2728,7 +2725,7 @@ export default function OrdersPage() {
                         </td>
                       )}
                       {visibleColumns.date && (
-                        <td className="px-6 py-4 text-sm text-gray-600">
+                        <td className="px-5 py-3.5 text-xs text-slate-500 font-normal">
                           {new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
                             day: 'numeric',
                             month: 'short',
@@ -2737,49 +2734,49 @@ export default function OrdersPage() {
                         </td>
                       )}
                       {visibleColumns.customer && (
-                        <td className="px-6 py-4 text-sm">
-                          <p className="font-semibold text-gray-900">{customerName(order, t)}</p>
-                          {order.customer_email && <p className="text-xs text-gray-500">{order.customer_email}</p>}
+                        <td className="px-5 py-3.5 text-xs">
+                          <p className="font-semibold text-slate-900 dark:text-white">{customerName(order, t)}</p>
+                          {order.customer_email && <p className="text-[11px] text-slate-400 mt-0.5">{order.customer_email}</p>}
                         </td>
                       )}
                       {visibleColumns.payment && (
-                        <td className="px-6 py-4 text-sm">
-                          <p className="font-semibold capitalize text-gray-700">
+                        <td className="px-5 py-3.5 text-xs">
+                          <p className="font-medium capitalize text-slate-700 dark:text-slate-300">
                             {order.payment_gateway?.replace('_', ' ') || '—'}
                           </p>
-                          <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentStatusColor(order.payment_status)}`}>
+                          <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${paymentStatusColor(order.payment_status)}`}>
                             {paymentStatusLabel(order.payment_status, t)}
                           </span>
                         </td>
                       )}
                       {visibleColumns.total && (
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          <span className="font-black">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
+                        <td className="px-5 py-3.5 text-xs text-slate-900 dark:text-white">
+                          <span className="font-semibold">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
                         </td>
                       )}
                       {visibleColumns.status && (
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3.5">
                           {(() => {
                             const store = storeOrderStatus(order, t);
                             return (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${store.color}`}>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${store.color}`}>
                                 {store.label}
                               </span>
                             );
                           })()}
-                          <p className="mt-1 text-[10px] font-bold text-gray-400">
+                          <p className="mt-1 text-[10px] text-slate-400">
                             {t('dashboardPages.orders.marketplaceStatus')}: {statusLabel(order.status, t)}
                           </p>
                           {toNumber(order.other_pending_stores) > 0 && (
-                            <p className="mt-0.5 text-[10px] font-bold text-gray-400">
+                            <p className="mt-0.5 text-[10px] text-slate-400">
                               {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(order.other_pending_stores) })}
                             </p>
                           )}
                         </td>
                       )}
                       {visibleColumns.fulfillment && (
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${fulfillmentColor(order.fulfillment_status)}`}>
+                        <td className="px-5 py-3.5">
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${fulfillmentColor(order.fulfillment_status)}`}>
                             {fulfillmentLabel(order.fulfillment_status, t)}
                           </span>
                           {order.tracking_number && (
@@ -2788,97 +2785,97 @@ export default function OrdersPage() {
                                 href={getTrackingUrl(order.carrier, order.tracking_number)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800"
+                                className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900"
                               >
                                 {order.tracking_number}
-                                <ExternalLink className="h-3 w-3" />
+                                <ExternalLink className="h-2.5 w-2.5 text-slate-400" />
                               </a>
                             ) : (
-                              <p className="mt-1 text-xs font-semibold text-gray-500">{order.tracking_number}</p>
+                              <p className="mt-1 text-[11px] text-slate-500">{order.tracking_number}</p>
                             )
                           )}
                         </td>
                       )}
                       {visibleColumns.actions && (
-                        <td className="px-6 py-4 text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
+                        <td className="px-5 py-3.5 text-right text-xs">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => void openOrderDetail(order)}
-                              className="p-2 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/5 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                               title={t('dashboardPages.orders.viewDetails')}
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => startBuyerChat(order)}
                               disabled={startingChatId === order.id}
-                              className="p-2 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/5 rounded-lg transition-colors disabled:opacity-40"
+                              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
                               title={t('dashboardPages.orders.messageBuyer')}
                             >
                               {startingChatId === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <MessageSquare className="w-4 h-4" />
+                                <MessageSquare className="w-3.5 h-3.5" />
                               )}
                             </button>
                             <button
                               type="button"
                               onClick={() => void generateShippingLabel(order)}
                               disabled={generatingLabelId === order.id || !canGenerateShippingLabel(order)}
-                              className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-40"
+                              className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-40"
                               title={t('dashboardPages.orders.carrierLabel')}
                             >
                               {generatingLabelId === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <ReceiptText className="w-4 h-4" />
+                                <ReceiptText className="w-3.5 h-3.5" />
                               )}
                             </button>
                             <button
                               type="button"
                               onClick={() => void (canRevertPreparation(order) ? revertPreparation(order) : startPreparation(order))}
                               disabled={preparingId === order.id || (!canPrepare(order) && !canRevertPreparation(order))}
-                              className={`p-2 rounded-lg transition-colors disabled:opacity-40 ${
+                              className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
                                 canRevertPreparation(order)
-                                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                                  : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                  ? 'text-sky-700 bg-sky-50 hover:bg-sky-100'
+                                  : 'text-slate-400 hover:text-sky-700 hover:bg-sky-50'
                               }`}
                               title={canRevertPreparation(order)
                                 ? t('dashboardPages.orders.revertPreparation')
                                 : t('dashboardPages.orders.startPreparation')}
                             >
                               {preparingId === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <Package className="w-4 h-4" />
+                                <Package className="w-3.5 h-3.5" />
                               )}
                             </button>
                             <button
                               type="button"
                               onClick={() => openFulfillmentModal(order)}
                               disabled={fulfillingId === order.id || !canFulfill(order)}
-                              className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-40"
+                              className="p-1.5 text-slate-400 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-40"
                               title={t('dashboardPages.orders.markShipped')}
                             >
                               {fulfillingId === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <Truck className="w-4 h-4" />
+                                <Truck className="w-3.5 h-3.5" />
                               )}
                             </button>
                             <button
                               type="button"
                               onClick={() => void markOrderDelivered(order)}
                               disabled={submittingDeliveryProofId === order.id || !canMarkDelivered(order)}
-                              className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-40"
+                              className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40"
                               title={t('dashboardPages.orders.markDelivered')}
                             >
                               {submittingDeliveryProofId === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 className="w-3.5 h-3.5" />
                               )}
                             </button>
                           </div>
@@ -2892,26 +2889,26 @@ export default function OrdersPage() {
           )}
         </div>
 
-        {/* Pagination */}
+        {/* Quieter Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
-            <span className="text-xs font-bold text-gray-400">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-5 py-3.5 bg-slate-50/30 dark:bg-slate-800/20">
+            <span className="text-xs text-slate-400 font-normal">
               {t('dashboardPages.orders.pageOf', { page, total: totalPages, count: meta.total })}
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-2xs"
               >
-                ← {t('dashboardPages.common.previous')}
+                ← {t('dashboardPages.orders.previous')}
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-xl border border-gray-200 bg-gray-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-gray-800 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-2xs"
               >
-                {t('dashboardPages.common.next')} →
+                {t('dashboardPages.orders.next')} →
               </button>
             </div>
           </div>
@@ -2925,49 +2922,49 @@ export default function OrdersPage() {
       {mainTab === 'cod_radar' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* COD Stats Header */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codTotalOrders')}</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codTotalOrders')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
                 {orders.filter(o => o.payment_gateway === 'cod').length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codOnDelivery')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.codOnDelivery')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">{t('dashboardPages.orders.codAwaitingConfirmation')}</span>
-              <p className="text-2xl font-black text-amber-600">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">{t('dashboardPages.orders.codAwaitingConfirmation')}</span>
+              <p className="text-lg font-bold text-amber-800 dark:text-amber-300">
                 {orders.filter(o => o.payment_gateway === 'cod' && (!o.cod_status || o.cod_status === 'pending')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codPhoneCallRequired')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.codPhoneCallRequired')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">{t('dashboardPages.orders.codConfirmedSecured')}</span>
-              <p className="text-2xl font-black text-emerald-600">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{t('dashboardPages.orders.codConfirmedSecured')}</span>
+              <p className="text-lg font-bold text-emerald-800 dark:text-emerald-300">
                 {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'confirmed' || o.cod_status === 'otp_verified')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codReadyToShip')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.codReadyToShip')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">{t('dashboardPages.orders.codRejectedFraud')}</span>
-              <p className="text-2xl font-black text-rose-600">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-rose-700 dark:text-rose-400">{t('dashboardPages.orders.codRejectedFraud')}</span>
+              <p className="text-lg font-bold text-rose-800 dark:text-rose-300">
                 {orders.filter(o => o.payment_gateway === 'cod' && (o.cod_status === 'rejected' || o.cod_status === 'unreachable')).length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.codStockProtected')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.codStockProtected')}</p>
             </div>
           </div>
 
           {/* COD Orders Action Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40 dark:bg-slate-800/30">
               <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>{t('dashboardPages.orders.codQueueTitle')}</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5 font-normal">
                   {t('dashboardPages.orders.codQueueSubtitle')}
                 </p>
               </div>
@@ -2975,14 +2972,14 @@ export default function OrdersPage() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                <thead className="bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.customerAndContact')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.codAmount')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.riskScore')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.validationStatus')}</th>
-                    <th className="px-4 py-3.5 text-right">{t('dashboardPages.orders.quickActions')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.customerAndContact')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.codAmount')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.riskScore')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.validationStatus')}</th>
+                    <th className="px-4 py-3 text-right">{t('dashboardPages.orders.quickActions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -3010,7 +3007,7 @@ export default function OrdersPage() {
                             <button
                               type="button"
                               onClick={() => { void openOrderDetail(order); }}
-                              className="font-black text-slate-900 dark:text-white font-mono hover:text-[#B91C1C]"
+                              className="font-semibold text-slate-900 dark:text-white font-mono hover:text-slate-600"
                             >
                               #{order.id.slice(-8).toUpperCase()}
                             </button>
@@ -3020,28 +3017,28 @@ export default function OrdersPage() {
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <p className="font-bold text-slate-900 dark:text-white">{customerName}</p>
+                            <p className="font-semibold text-slate-900 dark:text-white">{customerName}</p>
                             <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
                               <Phone className="w-3 h-3 text-slate-400" />
-                              {phone || <span className="italic text-red-500">{t('dashboardPages.orders.phoneUnavailable')}</span>}
+                              {phone || <span className="italic text-rose-500">{t('dashboardPages.orders.phoneUnavailable')}</span>}
                             </p>
                             <p className="text-[10px] text-slate-400 truncate max-w-[180px]">
                               {order.shipping_address?.city}, {order.shipping_address?.address_line_1}
                             </p>
                           </td>
 
-                          <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono text-sm">
+                          <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-white font-mono text-xs">
                             {formatMoney(order.store_total || order.total)}
                           </td>
 
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                                 isHighRisk
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                  ? 'bg-rose-50 text-rose-800 border-rose-200/60'
                                   : isModerateRisk
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200/60'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
                               }`}>
                                 {isHighRisk ? t('dashboardPages.orders.riskHigh') : isModerateRisk ? t('dashboardPages.orders.riskModerate') : t('dashboardPages.orders.riskLow')} ({riskScore}%)
                               </span>
@@ -3049,12 +3046,12 @@ export default function OrdersPage() {
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                               order.cod_status === 'confirmed' || order.cod_status === 'otp_verified'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
                                 : order.cod_status === 'rejected' || order.cod_status === 'unreachable'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                ? 'bg-rose-50 text-rose-800 border-rose-200/60'
+                                : 'bg-amber-50 text-amber-800 border-amber-200/60'
                             }`}>
                               {order.cod_status === 'confirmed' ? t('dashboardPages.orders.codConfirmedByCall') :
                                order.cod_status === 'otp_verified' ? t('dashboardPages.orders.codVerifiedByOtp') :
@@ -3071,10 +3068,10 @@ export default function OrdersPage() {
                                 <a
                                   href={`tel:${cleanPhone}`}
                                   onClick={() => handleUpdateCodStatus(order.id, 'pending', 1, 'Tentative d’appel sortant')}
-                                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 transition-colors shadow-xs"
+                                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-2xs"
                                   title={t('dashboardPages.orders.callCustomer')}
                                 >
-                                  <PhoneCall className="w-4 h-4" />
+                                  <PhoneCall className="w-3.5 h-3.5 text-slate-500" />
                                 </a>
                               )}
 
@@ -3084,10 +3081,10 @@ export default function OrdersPage() {
                                   href={`https://wa.me/${waPhone}?text=${waText}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs"
+                                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
                                   title={t('dashboardPages.orders.sendWhatsAppConfirmation')}
                                 >
-                                  <MessageSquare className="w-4 h-4" />
+                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                                 </a>
                               )}
 
@@ -3095,9 +3092,9 @@ export default function OrdersPage() {
                               <button
                                 type="button"
                                 onClick={() => handleUpdateCodStatus(order.id, 'confirmed', 0, 'Confirmé manuellement par le vendeur')}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-xs flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-medium text-xs hover:bg-slate-800 transition-colors shadow-2xs flex items-center gap-1"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                <Check className="w-3 h-3" />
                                 <span>{t('dashboardPages.common.confirm')}</span>
                               </button>
 
@@ -3105,10 +3102,10 @@ export default function OrdersPage() {
                               <button
                                 type="button"
                                 onClick={() => handleUpdateCodStatus(order.id, 'rejected', 0, 'Rejeté par le vendeur pour risque élevé')}
-                                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shadow-2xs"
                                 title={t('dashboardPages.orders.rejectCancel')}
                               >
-                                <Ban className="w-4 h-4" />
+                                <Ban className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -3127,73 +3124,73 @@ export default function OrdersPage() {
       {mainTab === 'rto_returns' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* RTO Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoGlobalRate')}</span>
-              <p className="text-2xl font-black text-rose-600">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoGlobalRate')}</span>
+              <p className="text-lg font-bold text-rose-700 dark:text-rose-400">
                 {orders.length > 0
                   ? ((orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length / orders.length) * 100).toFixed(1)
                   : '0.0'}%
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoTargetBelow5')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.rtoTargetBelow5')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">{t('dashboardPages.orders.rtoReturnedParcels')}</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoReturnedParcels')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
                 {orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').length}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoStockRestored')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.rtoStockRestored')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">{t('dashboardPages.orders.rtoSavedValue')}</span>
-              <p className="text-2xl font-black text-emerald-600 font-mono">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoSavedValue')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white font-mono">
                 {formatMoney(
                   orders
                     .filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled')
                     .reduce((acc, o) => acc + (parseFloat(o.store_total || o.total) || 0), 0)
                 )}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoStockRecovered')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.rtoStockRecovered')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoLostShippingCosts')}</span>
-              <p className="text-2xl font-black text-rose-500 font-mono">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.rtoLostShippingCosts')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white font-mono">
                 {formatMoney(
                   orders
                     .filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled')
                     .reduce((acc, o) => acc + (parseFloat(o.store_shipping_total || o.shipping_total) || 7.000), 0)
                 )}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.rtoUnrecoverableFees')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.rtoUnrecoverableFees')}</p>
             </div>
           </div>
 
           {/* RTO Reason Breakdown Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-rose-500" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30">
+              <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <span>{t('dashboardPages.orders.rtoJournalTitle')}</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5 font-normal">
                 {t('dashboardPages.orders.rtoJournalSubtitle')}
               </p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                <thead className="bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.customer')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.carrier')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.rtoReason')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.amount')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.rtoDate')}</th>
-                    <th className="px-4 py-3.5 text-right">{t('dashboardPages.orders.details')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.customer')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.carrier')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.rtoReason')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.amount')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.rtoDate')}</th>
+                    <th className="px-4 py-3 text-right">{t('dashboardPages.orders.details')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -3207,18 +3204,18 @@ export default function OrdersPage() {
                     orders.filter(o => Boolean(o.rto_reason_code) || o.status === 'cancelled').map((order) => (
                       <tr key={order.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-4 py-3.5">
-                          <span className="font-black text-slate-900 dark:text-white font-mono">
+                          <span className="font-semibold text-slate-900 dark:text-white font-mono">
                             #{order.id.slice(-8).toUpperCase()}
                           </span>
                         </td>
                         <td className="px-4 py-3.5">
-                          <p className="font-bold text-slate-900 dark:text-white">
+                          <p className="font-semibold text-slate-900 dark:text-white">
                             {order.customer_first_name || order.shipping_address?.first_name} {order.customer_last_name || order.shipping_address?.last_name}
                           </p>
                           <p className="text-[10px] text-slate-400">{order.shipping_address?.city}</p>
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="font-bold uppercase text-[11px] text-slate-700 dark:text-slate-300">
+                          <span className="font-medium uppercase text-[11px] text-slate-700 dark:text-slate-300">
                             {order.carrier || 'Aramex'}
                           </span>
                           {order.tracking_number && (
@@ -3226,14 +3223,14 @@ export default function OrdersPage() {
                           )}
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/60">
                             {getRtoLabel(order.rto_reason_code)}
                           </span>
                           {order.rto_notes && (
                             <p className="text-[10px] text-slate-500 italic mt-0.5">{order.rto_notes}</p>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono">
+                        <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-white font-mono">
                           {formatMoney(order.store_total || order.total)}
                         </td>
                         <td className="px-4 py-3.5 text-slate-500 text-[11px]">
@@ -3243,7 +3240,7 @@ export default function OrdersPage() {
                            <button
                              type="button"
                              onClick={() => { void openOrderDetail(order); }}
-                             className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+                             className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-xs font-medium transition-colors shadow-2xs"
                            >
                              {t('dashboardPages.orders.viewDetails')}
                            </button>
@@ -3262,49 +3259,49 @@ export default function OrdersPage() {
       {mainTab === 'courier_settlements' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Settlement KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementTotalCollected')}</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementTotalCollected')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white font-mono">
                 {formatMoney(settlementsSummary.total_collected)}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.settlementGrossFromCustomers')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.settlementGrossFromCustomers')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">{t('dashboardPages.orders.settlementFeesDeducted')}</span>
-              <p className="text-2xl font-black text-rose-600 font-mono">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementFeesDeducted')}</span>
+              <p className="text-lg font-bold text-slate-900 dark:text-white font-mono">
                 -{formatMoney(settlementsSummary.total_courier_fees)}
               </p>
-              <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.orders.settlementCarrierBilling')}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.settlementCarrierBilling')}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 bg-amber-50/20 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">{t('dashboardPages.orders.settlementAwaitingTransfer')}</span>
-              <p className="text-2xl font-black text-amber-600 font-mono">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">{t('dashboardPages.orders.settlementAwaitingTransfer')}</span>
+              <p className="text-lg font-bold text-amber-800 dark:text-amber-300 font-mono">
                 {formatMoney(settlementsSummary.pending_payout)}
               </p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">{t('dashboardPages.orders.settlementPendingCount', { count: settlementsSummary.pending_count })}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.settlementPendingCount', { count: settlementsSummary.pending_count })}</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 shadow-sm space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">{t('dashboardPages.orders.settlementNetToVendor')}</span>
-              <p className="text-2xl font-black text-emerald-600 font-mono">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{t('dashboardPages.orders.settlementNetToVendor')}</span>
+              <p className="text-lg font-bold text-emerald-800 dark:text-emerald-300 font-mono">
                 {formatMoney(settlementsSummary.settled_payout)}
               </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('dashboardPages.orders.settlementSettledCount', { count: settlementsSummary.settled_count })}</p>
+              <p className="text-xs text-slate-500 font-normal">{t('dashboardPages.orders.settlementSettledCount', { count: settlementsSummary.settled_count })}</p>
             </div>
           </div>
 
           {/* Settlements Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40 dark:bg-slate-800/30">
               <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                   <span>{t('dashboardPages.orders.settlementLedgerTitle')}</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5 font-normal">
                   {t('dashboardPages.orders.settlementLedgerSubtitle')}
                 </p>
               </div>
@@ -3314,7 +3311,7 @@ export default function OrdersPage() {
                 <select
                   value={settlementCarrierFilter}
                   onChange={(e) => setSettlementCarrierFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-300 outline-none shadow-2xs"
                 >
                   <option value="all">{t('dashboardPages.orders.allCarriers')}</option>
                   <option value="aramex">Aramex</option>
@@ -3327,7 +3324,7 @@ export default function OrdersPage() {
                 <select
                   value={settlementStatusFilter}
                   onChange={(e) => setSettlementStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-300 outline-none shadow-2xs"
                 >
                   <option value="all">{t('dashboardPages.orders.allStatuses')}</option>
                   <option value="pending">{t('dashboardPages.orders.settlementAwaitingTransfer')}</option>
@@ -3339,15 +3336,15 @@ export default function OrdersPage() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-black uppercase text-[10px]">
+                <thead className="bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium uppercase text-[10px]">
                   <tr>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.orderNumber')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.carrier')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementCollectedFromCustomer')}</th>
-                    <th className="px-4 py-3.5">Frais Livraison</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementNetToPay')}</th>
-                    <th className="px-4 py-3.5">{t('dashboardPages.orders.settlementStatusHeader')}</th>
-                    <th className="px-4 py-3.5 text-right">Rapprochement</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.orderNumber')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.carrier')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.settlementCollectedFromCustomer')}</th>
+                    <th className="px-4 py-3">Frais Livraison</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.settlementNetToPay')}</th>
+                    <th className="px-4 py-3">{t('dashboardPages.orders.settlementStatusHeader')}</th>
+                    <th className="px-4 py-3 text-right">Rapprochement</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -3356,7 +3353,7 @@ export default function OrdersPage() {
                       <td colSpan={7} className="text-center py-12 text-slate-400">
                         {settlementsLoading ? (
                           <div className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                            <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
                             <span>{t('dashboardPages.orders.settlementLoading')}</span>
                           </div>
                         ) : (
@@ -3368,14 +3365,14 @@ export default function OrdersPage() {
                     settlements.map((st) => (
                       <tr key={st.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-4 py-3.5">
-                          <span className="font-black text-slate-900 dark:text-white font-mono">
+                          <span className="font-semibold text-slate-900 dark:text-white font-mono">
                             #{st.order_id.slice(-8).toUpperCase()}
                           </span>
                           <p className="text-[10px] text-slate-400 mt-0.5">{st.customer_name || 'Client'}</p>
                         </td>
 
                         <td className="px-4 py-3.5">
-                          <span className="font-bold uppercase text-[11px] text-slate-800 dark:text-slate-200">
+                          <span className="font-medium uppercase text-[11px] text-slate-800 dark:text-slate-200">
                             {st.carrier}
                           </span>
                           {st.tracking_number && (
@@ -3383,25 +3380,25 @@ export default function OrdersPage() {
                           )}
                         </td>
 
-                        <td className="px-4 py-3.5 font-black text-slate-900 dark:text-white font-mono">
+                        <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-white font-mono">
                           {formatMoney(st.collected_amount)}
                         </td>
 
-                        <td className="px-4 py-3.5 font-black text-rose-500 font-mono">
+                        <td className="px-4 py-3.5 font-semibold text-slate-600 dark:text-slate-400 font-mono">
                           -{formatMoney(st.courier_fee)}
                         </td>
 
-                        <td className="px-4 py-3.5 font-black text-emerald-600 font-mono text-sm">
+                        <td className="px-4 py-3.5 font-semibold text-emerald-700 dark:text-emerald-400 font-mono text-xs">
                           +{formatMoney(st.net_payout)}
                         </td>
 
                         <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black ${
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                             st.status === 'settled'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
                               : st.status === 'disputed'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              ? 'bg-rose-50 text-rose-800 border-rose-200/60'
+                              : 'bg-amber-50 text-amber-800 border-amber-200/60'
                           }`}>
                             {st.status === 'settled' ? t('dashboardPages.orders.settlementStatusSettled') : st.status === 'disputed' ? t('dashboardPages.orders.settlementStatusDisputed') : t('dashboardPages.orders.settlementStatusPending')}
                           </span>
@@ -3424,7 +3421,7 @@ export default function OrdersPage() {
                                 setReconcileStatus(st.status);
                               }
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs hover:bg-slate-800 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 transition-colors shadow-2xs"
                           >
                             {t('dashboardPages.orders.settlementReconcile')}
                           </button>
