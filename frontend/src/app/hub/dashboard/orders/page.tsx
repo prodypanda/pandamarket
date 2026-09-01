@@ -2684,12 +2684,12 @@ export default function OrdersPage() {
             </div>
           </div>
           {selectedOrderIds.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-900 text-white p-3 shadow-sm animate-in fade-in">
-              <span className="mr-2 text-xs font-semibold text-white">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
-              <button type="button" onClick={() => void printSelectedOrders('delivery_slip')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.printLabels')}</button>
-              <button type="button" onClick={() => void printSelectedOrders('invoice')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.printInvoices')}</button>
-              <button type="button" onClick={openBulkFulfillment} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors shadow-2xs">{t('dashboardPages.orders.markShipped')}</button>
-              <button type="button" onClick={exportSelectedOrders} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-200 transition-colors">{t('dashboardPages.orders.exportSelected')}</button>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-900 text-white p-2.5 shadow-sm animate-in fade-in">
+              <span className="mr-2 text-xs font-medium text-white">{t('dashboardPages.orders.selectedCount', { count: selectedOrderIds.length })}</span>
+              <button type="button" onClick={() => void printSelectedOrders('delivery_slip')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-normal text-slate-200 transition-colors">{t('dashboardPages.orders.printLabels')}</button>
+              <button type="button" onClick={() => void printSelectedOrders('invoice')} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-normal text-slate-200 transition-colors">{t('dashboardPages.orders.printInvoices')}</button>
+              <button type="button" onClick={openBulkFulfillment} className="rounded-lg bg-emerald-700 hover:bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white transition-colors shadow-2xs">{t('dashboardPages.orders.markShipped')}</button>
+              <button type="button" onClick={exportSelectedOrders} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-xs font-normal text-slate-200 transition-colors">{t('dashboardPages.orders.exportSelected')}</button>
               <button type="button" onClick={() => setSelectedOrderIds([])} className="rounded-lg px-2 py-1 text-xs font-normal text-slate-400 hover:text-white transition-colors">{t('dashboardPages.orders.clear')}</button>
             </div>
           )}

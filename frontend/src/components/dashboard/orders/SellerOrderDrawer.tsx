@@ -927,9 +927,9 @@ export function SellerOrderDrawer({
                           type="button"
                           onClick={() => void markOrderDelivered(order)}
                           disabled={submittingDeliveryProofId === order.id}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-700 disabled:opacity-60 shadow-xs"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-800 disabled:opacity-60 shadow-2xs"
                         >
-                          {submittingDeliveryProofId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                          {submittingDeliveryProofId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                           {t('dashboardPages.orders.markDelivered')}
                         </button>
                       )}
@@ -938,9 +938,9 @@ export function SellerOrderDrawer({
                         <button
                           type="button"
                           onClick={() => setRtoOrderTarget(order)}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black text-rose-700 transition hover:bg-rose-100"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200/70 bg-rose-50/60 px-4 py-2.5 text-xs font-medium text-rose-800 transition hover:bg-rose-100/80 shadow-2xs"
                         >
-                          <RotateCcw className="h-4 w-4" />
+                          <RotateCcw className="h-3.5 w-3.5" />
                           <span>{t('dashboardPages.orders.reportRto')}</span>
                         </button>
                       )}
@@ -963,50 +963,55 @@ export function SellerOrderDrawer({
                 const isModerateRisk = riskScore > 25 && riskScore <= 60;
 
                 return (
-                  <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-slate-900/5 p-6 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                       <div className="flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5 text-amber-600" />
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                        <ShieldAlert className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                        <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
                           {t('dashboardPages.orders.codDiagnosticTitle')}
                         </h3>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                        isHighRisk ? 'bg-red-100 text-red-800' : isModerateRisk ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                        isHighRisk
+                          ? 'bg-rose-50 text-rose-800 border-rose-200/60'
+                          : isModerateRisk
+                          ? 'bg-amber-50 text-amber-800 border-amber-200/60'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
                       }`}>
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                         {isHighRisk ? t('dashboardPages.orders.riskHigh') : isModerateRisk ? t('dashboardPages.orders.riskModerate') : t('dashboardPages.orders.riskLow')} ({riskScore}%)
                       </span>
                     </div>
 
                     {/* Risk Factors Breakdown */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      <div className="p-3 rounded-xl bg-white border border-slate-200">
-                        <p className="font-bold text-slate-700">{t('dashboardPages.orders.codFactorPhone')}</p>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">{phone || t('dashboardPages.orders.phoneUnavailable')}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codFactorPhone')}</p>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 font-mono mt-1">{phone || t('dashboardPages.orders.phoneUnavailable')}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-white border border-slate-200">
-                        <p className="font-bold text-slate-700">{t('dashboardPages.orders.codFactorAddress')}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">{order.shipping_address?.city || t('dashboardPages.orders.cityUnknown')}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codFactorAddress')}</p>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-1 truncate">{order.shipping_address?.city || t('dashboardPages.orders.cityUnknown')}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-white border border-slate-200">
-                        <p className="font-bold text-slate-700">{t('dashboardPages.orders.codFactorHistory')}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{t('dashboardPages.orders.codOrdersCount', { count: toNumber(order.customer_order_count) || 1 })}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codFactorHistory')}</p>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-1">{t('dashboardPages.orders.codOrdersCount', { count: toNumber(order.customer_order_count) || 1 })}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-white border border-slate-200">
-                        <p className="font-bold text-slate-700">{t('dashboardPages.orders.codFactorBasket')}</p>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">{formatMoney(order.store_total || order.total)}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.codFactorBasket')}</p>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 font-mono mt-1">{formatMoney(order.store_total || order.total)}</p>
                       </div>
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       {phone && (
                         <a
                           href={`tel:${cleanPhone}`}
                           onClick={() => handleUpdateCodStatus('pending', 1, 'Tentative d’appel')}
-                          className="flex items-center justify-center gap-1.5 p-3 rounded-2xl bg-white border border-slate-200 text-xs font-black text-slate-800 hover:bg-slate-50 shadow-xs"
+                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 transition shadow-2xs"
                         >
-                          <PhoneCall className="w-4 h-4 text-emerald-600" />
+                          <PhoneCall className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                           <span>{t('dashboardPages.orders.callCustomer')}</span>
                         </a>
                       )}
@@ -1015,23 +1020,23 @@ export function SellerOrderDrawer({
                           href={`https://wa.me/${waPhone}?text=${waText}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 p-3 rounded-2xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 shadow-xs"
+                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-emerald-700 text-white text-xs font-medium hover:bg-emerald-800 transition shadow-2xs"
                         >
-                          <MessageSquare className="w-4 h-4" />
+                          <MessageSquare className="w-3.5 h-3.5" />
                           <span>{t('dashboardPages.orders.whatsAppOneClick')}</span>
                         </a>
                       )}
                     </div>
 
                     {/* SMS OTP */}
-                    <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
+                    <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700">Code SMS OTP de confirmation :</span>
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Code SMS OTP de confirmation :</span>
                         <button
                           type="button"
                           onClick={handleSendCodOtp}
                           disabled={sendingCodOtp}
-                          className="text-xs font-black text-amber-600 hover:underline disabled:opacity-50"
+                          className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 underline disabled:opacity-50"
                         >
                           {sendingCodOtp ? t('dashboardPages.orders.otpSending') : t('dashboardPages.orders.otpSend')}
                         </button>
@@ -1042,13 +1047,13 @@ export function SellerOrderDrawer({
                           value={codOtpInput}
                           onChange={(e) => setCodOtpInput(e.target.value)}
                           placeholder={t('dashboardPages.orders.otpPlaceholder')}
-                          className="flex-1 px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-slate-200 bg-slate-50 outline-none"
+                          className="flex-1 px-3 py-1.5 text-xs font-mono font-normal rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-slate-400 shadow-2xs"
                         />
                         <button
                           type="button"
                           onClick={handleVerifyCodOtp}
                           disabled={verifyingCodOtp || !codOtpInput.trim()}
-                          className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:opacity-90 disabled:opacity-40"
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 disabled:opacity-40 shadow-2xs"
                         >
                           {verifyingCodOtp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Valider OTP'}
                         </button>
@@ -1056,7 +1061,7 @@ export function SellerOrderDrawer({
                     </div>
 
                     {codFeedback && (
-                      <p className="text-xs font-bold text-amber-700">{codFeedback}</p>
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">{codFeedback}</p>
                     )}
 
                     <div className="flex items-center gap-2 pt-1">
@@ -1064,16 +1069,16 @@ export function SellerOrderDrawer({
                         type="button"
                         onClick={() => handleUpdateCodStatus('confirmed', 0, 'Confirmé')}
                         disabled={updatingCodStatus}
-                        className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 transition shadow-xs flex items-center justify-center gap-1"
+                        className="flex-1 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 transition shadow-2xs flex items-center justify-center gap-1.5"
                       >
-                        <Check className="w-4 h-4" />
+                        <Check className="w-3.5 h-3.5" />
                         <span>{t('dashboardPages.orders.codConfirmForShipping')}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleUpdateCodStatus('rejected', 0, 'Rejeté')}
                         disabled={updatingCodStatus}
-                        className="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition"
+                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 text-xs font-medium transition shadow-2xs"
                       >
                         {t('dashboardPages.orders.refuse')}
                       </button>
@@ -1088,19 +1093,19 @@ export function SellerOrderDrawer({
               {activeTab === 'notes' && (
                 <div className="space-y-5">
                   {/* Note Editor */}
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-5 space-y-3">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-3 shadow-2xs">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <StickyNote className="h-4 w-4 text-amber-700" />
-                        <h3 className="text-sm font-black text-amber-950">{t('dashboardPages.orders.sellerNoteTitle')}</h3>
+                        <StickyNote className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                        <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.sellerNoteTitle')}</h3>
                       </div>
                       {order.seller_note?.updated_at && (
-                        <span className="text-[11px] font-bold text-amber-700">
+                        <span className="text-[11px] font-normal text-slate-400">
                           {t('dashboardPages.orders.modifiedOn', { date: formatDateTime(order.seller_note.updated_at, locale) })}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-semibold text-amber-800/80">
+                    <p className="text-xs font-normal text-slate-500">
                       {t('dashboardPages.orders.sellerNoteDesc')}
                     </p>
                     <textarea
@@ -1109,73 +1114,73 @@ export function SellerOrderDrawer({
                         setSellerNote(event.target.value);
                         setNoteFeedback('');
                       }}
-                      rows={4}
+                      rows={3}
                       maxLength={5000}
                       placeholder={t('dashboardPages.orders.sellerNotePlaceholder')}
-                      className="w-full resize-none rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:ring-2 focus:ring-amber-400"
+                      className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                     />
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-xs font-bold text-amber-700">{sellerNote.length}/5000</span>
-                      {noteFeedback && <span className="text-xs font-black text-amber-700">{noteFeedback}</span>}
+                      <span className="text-xs font-normal text-slate-400">{sellerNote.length}/5000</span>
+                      {noteFeedback && <span className="text-xs font-medium text-emerald-600">{noteFeedback}</span>}
                       <button
                         type="button"
                         onClick={saveSellerNote}
                         disabled={savingNote}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white transition hover:bg-amber-700 disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
                       >
-                        {savingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                         {t('dashboardPages.orders.saveNote')}
                       </button>
                     </div>
                   </div>
 
                   {/* Invoices & Chat CTAs */}
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 space-y-3 shadow-xs">
-                    <h3 className="text-sm font-black text-gray-900">Facturation & Communication</h3>
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-3 shadow-2xs">
+                    <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Facturation & Communication</h3>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <a
                         href={`/api/pd/orders/store/${order.id}/invoice.pdf`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700 transition"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 dark:bg-white px-4 py-2.5 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 transition shadow-2xs"
                       >
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-3.5 w-3.5" />
                         {t('dashboardPages.orders.drawerSellerInvoice')}
                       </a>
                       <button
                         type="button"
                         onClick={() => void startBuyerChat(order)}
                         disabled={startingChatId === order.id}
-                        className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs font-black text-gray-800 hover:bg-gray-100 transition"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition shadow-2xs"
                       >
-                        {startingChatId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                        {startingChatId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5 text-slate-400" />}
                         {t('dashboardPages.orders.messageCustomer')}
                       </button>
                     </div>
                   </div>
 
                   {/* Refunds Section */}
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 space-y-3 shadow-xs">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-3 shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.refunds')}</h3>
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.refunds')}</h3>
                       <button
                         type="button"
                         onClick={() => openRefundModal(order)}
                         disabled={!canRequestRefund(order)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 disabled:opacity-40 shadow-2xs"
                       >
-                        <CreditCard className="h-3.5 w-3.5" />
+                        <CreditCard className="h-3.5 w-3.5 text-slate-400" />
                         {t('dashboardPages.orders.requestRefund')}
                       </button>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                      <div className="p-3 rounded-xl bg-gray-50">
-                        <span className="text-gray-500">{t('dashboardPages.orders.refundRequestedProcessed')}</span>
-                        <p className="font-bold text-gray-900 mt-1">{formatMoney(refundRequestedTotal(order), order.currency || 'TND')}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.refundRequestedProcessed')}</span>
+                        <p className="font-semibold text-slate-900 dark:text-white mt-1 font-mono">{formatMoney(refundRequestedTotal(order), order.currency || 'TND')}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-gray-50">
-                        <span className="text-gray-500">{t('dashboardPages.orders.refundableRemaining')}</span>
-                        <p className="font-bold text-gray-900 mt-1">{formatMoney(refundableRemaining(order), order.currency || 'TND')}</p>
+                      <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.refundableRemaining')}</span>
+                        <p className="font-semibold text-slate-900 dark:text-white mt-1 font-mono">{formatMoney(refundableRemaining(order), order.currency || 'TND')}</p>
                       </div>
                     </div>
                   </div>
@@ -1190,12 +1195,12 @@ export function SellerOrderDrawer({
           PRODUCT PICKER MODAL (ADD PRODUCT TO ORDER)
          ───────────────────────────────────────────────────────────── */}
       {showAddProductModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-[2rem] bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.drawerAddProduct')}</h3>
-                <p className="text-xs text-gray-500">Commande #{order.id.slice(-8).toUpperCase()}</p>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.orders.drawerAddProduct')}</h3>
+                <p className="mt-0.5 inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">#{order.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
                 type="button"
@@ -1204,33 +1209,33 @@ export function SellerOrderDrawer({
                   setSelectedProductToAdd(null);
                   setSelectedVariantToAdd(null);
                 }}
-                className="rounded-full p-2 text-gray-400 hover:bg-gray-100"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4.5 h-4.5" />
               </button>
             </div>
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Rechercher parmi vos produits..."
                 value={productSearchQuery}
                 onChange={(e) => setProductSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-500"
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
               />
             </div>
 
             {/* Product List */}
-            <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl">
+            <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl">
               {loadingProducts ? (
                 <div className="py-8 text-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-emerald-600 mx-auto" />
-                  <span className="text-xs text-gray-400 mt-2 block">Chargement de votre catalogue...</span>
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-600 mx-auto" />
+                  <span className="text-xs text-slate-400 mt-2 block">Chargement de votre catalogue...</span>
                 </div>
               ) : availableStoreProducts.filter((p) => !productSearchQuery || p.title.toLowerCase().includes(productSearchQuery.toLowerCase())).length === 0 ? (
-                <div className="py-8 text-center text-xs text-gray-400">
+                <div className="py-8 text-center text-xs text-slate-400">
                   {t('dashboardPages.orders.drawerNoProducts')}
                 </div>
               ) : (
@@ -1246,24 +1251,24 @@ export function SellerOrderDrawer({
                           setSelectedVariantToAdd(product.variants?.[0] || null);
                         }}
                         className={`p-3 flex items-center justify-between gap-3 cursor-pointer transition ${
-                          isSelected ? 'bg-emerald-50/80 border-l-4 border-emerald-600' : 'hover:bg-gray-50'
+                          isSelected ? 'bg-slate-100/80 dark:bg-slate-800/80' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {product.thumbnail ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={getResizedImageUrl(product.thumbnail, 'thumbnail')} alt={product.title} className="h-10 w-10 rounded-lg object-cover border" />
+                            <img src={getResizedImageUrl(product.thumbnail, 'thumbnail')} alt={product.title} className="h-10 w-10 rounded-lg object-cover border border-slate-200/80 dark:border-slate-700" />
                           ) : (
-                            <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                            <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                               <ShoppingBag className="w-4 h-4" />
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="font-extrabold text-xs text-gray-900 truncate">{product.title}</p>
-                            <p className="text-[11px] font-semibold text-gray-500">{formatMoney(product.price)} · Stock: {product.inventory_quantity ?? '—'}</p>
+                            <p className="font-semibold text-xs text-slate-900 dark:text-white truncate">{product.title}</p>
+                            <p className="text-[11px] font-normal text-slate-500">{formatMoney(product.price)} · Stock: {product.inventory_quantity ?? '—'}</p>
                           </div>
                         </div>
-                        {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                        {isSelected && <Check className="w-4 h-4 text-slate-900 dark:text-white shrink-0" />}
                       </div>
                     );
                   })
@@ -1273,14 +1278,14 @@ export function SellerOrderDrawer({
             {/* Variant Selector if product has variants */}
             {selectedProductToAdd?.variants && selectedProductToAdd.variants.length > 0 && (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Variante du produit :</label>
+                <label className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Variante du produit :</label>
                 <select
                   value={selectedVariantToAdd?.id || ''}
                   onChange={(e) => {
                     const v = selectedProductToAdd.variants.find((item: any) => item.id === e.target.value);
                     setSelectedVariantToAdd(v || null);
                   }}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-800 outline-none"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
                 >
                   {selectedProductToAdd.variants.map((variant: any) => (
                     <option key={variant.id} value={variant.id}>
@@ -1293,34 +1298,34 @@ export function SellerOrderDrawer({
 
             {/* Quantity Selector */}
             {selectedProductToAdd && (
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-bold text-gray-700">{t('dashboardPages.orders.drawerQuantityToAdd')}</span>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.orders.drawerQuantityToAdd')}</span>
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5">
                   <button
                     type="button"
                     onClick={() => setAddItemQuantity((q) => Math.max(1, q - 1))}
-                    className="h-8 w-8 rounded-lg border bg-white flex items-center justify-center text-gray-700"
+                    className="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 shadow-2xs"
                   >
-                    -
+                    <Minus className="h-3 w-3" />
                   </button>
-                  <span className="w-8 text-center font-mono font-bold text-sm">{addItemQuantity}</span>
+                  <span className="w-8 text-center font-mono font-semibold text-xs text-slate-900 dark:text-white">{addItemQuantity}</span>
                   <button
                     type="button"
                     onClick={() => setAddItemQuantity((q) => q + 1)}
-                    className="h-8 w-8 rounded-lg border bg-white flex items-center justify-center text-gray-700"
+                    className="flex h-7 w-7 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 shadow-2xs"
                   >
-                    +
+                    <Plus className="h-3 w-3" />
                   </button>
                 </div>
               </div>
             )}
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowAddProductModal(false)}
-                className="px-4 py-2 text-xs font-bold text-gray-600 rounded-xl hover:bg-gray-100"
+                className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 transition shadow-2xs"
               >
                 Annuler
               </button>
@@ -1328,7 +1333,7 @@ export function SellerOrderDrawer({
                 type="button"
                 disabled={!selectedProductToAdd || addingItemLoading}
                 onClick={handleAddOrderItem}
-                className="px-5 py-2 text-xs font-black text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white dark:text-slate-900 bg-slate-900 dark:bg-white rounded-xl hover:bg-slate-800 disabled:opacity-50 transition shadow-2xs"
               >
                 {addingItemLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 Ajouter à la commande
