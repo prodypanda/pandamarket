@@ -583,6 +583,17 @@ export default function ProductsPage() {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copiedSkuId, setCopiedSkuId] = useState<string | null>(null);
+
+  const handleCopySku = (text: string, id: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedSkuId(id);
+      setTimeout(() => setCopiedSkuId(null), 2000);
+    } catch {
+      // fallback
+    }
+  };
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
   const [compressingImages, setCompressingImages] = useState(false);
@@ -2811,58 +2822,58 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. HIGH-CRAFT STATS & COMMAND BAR */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-900/50 p-6 shadow-sm">
+      {/* 1. CALM STATS & COMMAND BAR */}
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-[#B91C1C] text-white shadow-lg shadow-red-500/20">
-              <Package className="h-6 w-6" />
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+              <Package className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-red-50 dark:bg-red-950/40 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#B91C1C]">
+                <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Studio Catalogue Vendeur
                 </span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Stock Total: <strong className="text-slate-800 dark:text-slate-200">{totalStockCount}</strong> unités
+                <span className="flex items-center gap-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Stock Total : <strong className="text-slate-800 dark:text-slate-200 font-semibold">{totalStockCount}</strong> unités
                 </span>
               </div>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
                 Gestion des Produits & Studio IA
               </h1>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-normal">
                 Gérez votre inventaire, configurez vos déclinaisons SKU et sublimez vos photos studio en 1 clic.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* View Mode Toggle */}
-            <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 p-1 shadow-sm">
+            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
                   viewMode === 'table'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-700'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
                 title="Vue Tableau Dense"
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
                   viewMode === 'grid'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-700'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
                 title="Vue Grille Studio"
               >
-                <LayoutGrid className="w-4 h-4" />
+                <LayoutGrid className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -2873,11 +2884,11 @@ export default function ProductsPage() {
                 setShowDrawer(true);
                 handleOpenPromptLibreModal();
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 px-3.5 py-2.5 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
               title="Créer une fiche produit complète en 15 secondes via un prompt libre ou message WhatsApp"
             >
-              <Sparkles className="h-4 w-4 text-yellow-300 animate-pulse" />
-              <span>🪄 Assistant Magique (Prompt Libre)</span>
+              <Sparkles className="h-3.5 w-3.5 text-slate-500" />
+              <span>Assistant Magique</span>
             </button>
 
             <button
@@ -2886,21 +2897,22 @@ export default function ProductsPage() {
                 resetForm();
                 setShowDrawer(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-xs font-black text-white hover:bg-[#991B1B] shadow-md shadow-red-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs"
             >
-              <Plus className="h-4 w-4" />
-              Nouveau Produit
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nouveau Produit</span>
             </button>
+
             <button
               type="button"
               onClick={() => handleExportCSV(selectedIds.size > 0 ? 'selected' : 'filtered')}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
               title="Exporter le catalogue en fichier CSV pour Excel"
             >
-              <Download className="h-4 w-4 text-emerald-600" />
+              <Download className="h-3.5 w-3.5 text-slate-400" />
               <span>Export CSV</span>
               {selectedIds.size > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-black">
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 text-[10px] font-semibold">
                   ({selectedIds.size})
                 </span>
               )}
@@ -2910,105 +2922,114 @@ export default function ProductsPage() {
               type="button"
               onClick={() => void fetchProducts()}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 shadow-2xs"
               title="Rafraîchir les données"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-[#B91C1C]' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-slate-600' : ''}`} />
             </button>
           </div>
         </div>
 
         {/* Global Notifications */}
         {error && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-red-200 bg-red-50/90 dark:bg-red-950/30 p-3 text-xs font-bold text-red-700 dark:text-red-300 animate-in fade-in">
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-200/80 bg-rose-50/70 dark:bg-rose-950/30 p-3 text-xs font-medium text-rose-800 dark:text-rose-300 animate-in fade-in">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
               <span>{error}</span>
             </div>
-            <button type="button" onClick={() => setError('')} className="p-1 hover:bg-red-100 rounded">
-              <X className="h-3 w-3" />
+            <button type="button" onClick={() => setError('')} className="p-1 hover:bg-rose-100 rounded-md">
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
         {success && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/90 dark:bg-emerald-950/30 p-3 text-xs font-bold text-emerald-700 dark:text-emerald-300 animate-in fade-in">
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-200/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 text-xs font-medium text-emerald-800 dark:text-emerald-300 animate-in fade-in">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
               <span>{success}</span>
             </div>
-            <button type="button" onClick={() => setSuccess('')} className="p-1 hover:bg-emerald-100 rounded">
-              <X className="h-3 w-3" />
+            <button type="button" onClick={() => setSuccess('')} className="p-1 hover:bg-emerald-100 rounded-md">
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
 
         {/* KPI Metric Cards */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4">
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
           <div
             onClick={() => setStatusFilter('all')}
-            className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
               statusFilter === 'all'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 shadow-sm'
-                : 'bg-white dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900'
+                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
             }`}
           >
-            <span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">Total Références</span>
-            <p className="mt-1 text-xl font-black">{totalProducts}</p>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Total Références</span>
+            <p className="mt-1 text-lg font-semibold">{totalProducts}</p>
           </div>
 
           <div
             onClick={() => setStatusFilter((curr) => (curr === 'published' ? 'all' : 'published'))}
-            className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
               statusFilter === 'published'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                : 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-200'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-300 ring-1 ring-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700'
+                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
             }`}
           >
-            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+            <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
               Publiés & En Ligne
             </span>
-            <p className="mt-1 text-xl font-black text-emerald-900 dark:text-emerald-200">{publishedCount}</p>
+            <p className="mt-1 text-lg font-semibold text-emerald-900 dark:text-emerald-200">{publishedCount}</p>
           </div>
 
           <div
             onClick={() => setStatusFilter((curr) => (curr === 'draft' ? 'all' : 'draft'))}
-            className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
               statusFilter === 'draft'
-                ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
-                : 'bg-white dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+                ? 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700 dark:text-white dark:border-slate-600'
+                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
             }`}
           >
-            <span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">Brouillons</span>
-            <p className="mt-1 text-xl font-black">{draftCount}</p>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Brouillons</span>
+            <p className="mt-1 text-lg font-semibold">{draftCount}</p>
           </div>
 
           <div
             onClick={() => setStatusFilter((curr) => (curr === 'low_stock' ? 'all' : 'low_stock'))}
-            className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
               statusFilter === 'low_stock'
-                ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                : 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 hover:border-amber-200'
+                ? 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700'
+                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
             }`}
           >
-            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+            <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
               Alertes Stock Faible
             </span>
-            <p className="mt-1 text-xl font-black text-amber-900 dark:text-amber-200">{lowStockCount}</p>
+            <p className="mt-1 text-lg font-semibold text-amber-900 dark:text-amber-200">{lowStockCount}</p>
           </div>
         </div>
       </div>
 
       {/* 2. CATALOG SEARCH & MODULAR FILTER BAR */}
-      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par nom, SKU, catégorie..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-[#B91C1C]"
+            className="w-full pl-8 pr-8 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -3016,7 +3037,7 @@ export default function ProductsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:border-[#B91C1C]"
+            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
           >
             <option value="all">Tous les Statuts</option>
             <option value="published">Publiés</option>
@@ -3029,11 +3050,11 @@ export default function ProductsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:border-[#B91C1C]"
+            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
           >
             <option value="all">Tous les Types</option>
             <option value="physical">Physique</option>
-            <option value="bundle">📦 Pack Promo (Lot)</option>
+            <option value="bundle">Pack Promo (Lot)</option>
             <option value="digital">Numérique</option>
             <option value="serial">Licence / Série</option>
             <option value="service">Prestation</option>
@@ -3043,7 +3064,7 @@ export default function ProductsPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:border-[#B91C1C]"
+            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
           >
             <option value="all">Toutes les Catégories</option>
             {hierarchicalMarketplaceCategories.map((c) => (
@@ -3056,18 +3077,18 @@ export default function ProductsPage() {
       </div>
 
       {/* 3. PRODUCT CATALOG: DENSE TABLE OR VISUAL GRID */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-xs font-semibold text-slate-400">
-            <Loader2 className="w-8 h-8 text-[#B91C1C] animate-spin mb-2" />
+          <div className="flex flex-col items-center justify-center py-20 text-xs font-medium text-slate-400">
+            <Loader2 className="w-6 h-6 text-slate-600 animate-spin mb-2" />
             <span>Chargement du catalogue...</span>
           </div>
         ) : visibleProducts.length === 0 ? (
           <div className="py-20 text-center text-xs text-slate-400 space-y-3">
-            <div className="h-16 w-16 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <Package className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+            <div className="h-14 w-14 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Package className="w-6 h-6 text-slate-400 dark:text-slate-500" />
             </div>
-            <p className="font-bold text-slate-700 dark:text-slate-200 text-sm">Aucun produit ne correspond à vos critères.</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Aucun produit ne correspond à vos critères.</p>
             <p className="text-slate-400">Ajoutez un nouveau produit ou réinitialisez vos filtres de recherche.</p>
             <button
               type="button"
@@ -3075,10 +3096,10 @@ export default function ProductsPage() {
                 resetForm();
                 setShowDrawer(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#B91C1C] text-white text-xs font-bold shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 transition shadow-2xs"
             >
-              <Plus className="w-4 h-4" />
-              Créer mon premier produit
+              <Plus className="w-3.5 h-3.5" />
+              <span>Créer mon premier produit</span>
             </button>
           </div>
         ) : viewMode === 'table' ? (
@@ -3086,25 +3107,25 @@ export default function ProductsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-slate-400 uppercase font-black tracking-wider text-[10px]">
-                  <th className="py-3.5 pl-6 pr-2 w-10">
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-slate-400 uppercase font-medium tracking-wider text-[10px]">
+                  <th className="py-3 pl-6 pr-2 w-10">
                     <input
                       type="checkbox"
                       checked={selectedIds.size === visibleProducts.length && visibleProducts.length > 0}
                       onChange={toggleSelectAll}
-                      className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                      className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                     />
                   </th>
-                  <th className="py-3.5 px-3">Visuel & Produit</th>
-                  <th className="py-3.5 px-3">Type</th>
-                  <th className="py-3.5 px-3">Prix Unitaire</th>
-                  <th className="py-3.5 px-3">Stock Dispo</th>
-                  <th className="py-3.5 px-3">Statut</th>
-                  <th className="py-3.5 px-3">Catégories Hub & Vitrine</th>
-                  <th className="py-3.5 pr-6 text-right">Actions</th>
+                  <th className="py-3 px-3">Visuel & Produit</th>
+                  <th className="py-3 px-3">Type</th>
+                  <th className="py-3 px-3">Prix Unitaire</th>
+                  <th className="py-3 px-3">Stock Dispo</th>
+                  <th className="py-3 px-3">Statut</th>
+                  <th className="py-3 px-3">Catégories Hub & Vitrine</th>
+                  <th className="py-3 pr-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-normal">
                 {visibleProducts.map((product) => {
                   const statusMeta = getStatusBadge(product.status);
                   const typeMeta = getTypeBadge(product.type);
@@ -3114,8 +3135,8 @@ export default function ProductsPage() {
                   return (
                     <tr
                       key={product.id}
-                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group ${
-                        isSelected ? 'bg-red-50/30 dark:bg-red-950/20' : ''
+                      className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors group ${
+                        isSelected ? 'bg-slate-50/90 dark:bg-slate-800/50' : ''
                       }`}
                     >
                       {/* Select Checkbox */}
@@ -3124,53 +3145,66 @@ export default function ProductsPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleSelectOne(product.id)}
-                          className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
                       </td>
 
                       {/* Product & Visual */}
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-11 w-11 flex-shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
+                          <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-2xs">
                             {product.thumbnail ? (
                               <img src={product.thumbnail ? getResizedImageUrl(product.thumbnail, 'medium') : ''} alt={product.title} className="h-full w-full object-cover" />
                             ) : (
-                              <Package className="w-5 h-5 text-slate-400" />
+                              <Package className="w-4 h-4 text-slate-400" />
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white truncate max-w-xs group-hover:text-[#B91C1C] transition-colors">
+                            <p className="font-semibold text-slate-900 dark:text-white truncate max-w-xs transition-colors">
                               {product.title}
                             </p>
-                            <p className="text-[10px] font-mono text-slate-400 truncate">
-                              {product.product_reference || product.slug || product.id.slice(-8)}
-                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopySku(product.product_reference || product.slug || product.id, `sku_${product.id}`);
+                              }}
+                              className="text-[10px] font-mono text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 truncate flex items-center gap-1 transition-colors"
+                              title="Copier la référence"
+                            >
+                              <span>{product.product_reference || product.slug || product.id.slice(-8)}</span>
+                              {copiedSkuId === `sku_${product.id}` ? (
+                                <span className="text-[9px] text-emerald-600 font-sans font-medium">Copié !</span>
+                              ) : (
+                                <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </td>
 
                       {/* Type Badge */}
                       <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${typeMeta.color}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeMeta.color}`}>
                           {typeMeta.label}
                         </span>
                       </td>
 
                       {/* Price */}
-                      <td className="py-3 px-3 font-black text-slate-900 dark:text-white text-sm">
+                      <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white text-xs">
                         {formatPrice(product.price)}
                       </td>
 
                       {/* Inventory Stock */}
                       <td className="py-3 px-3">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                             isLowStock
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'
-                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300'
+                              : 'bg-slate-50 text-slate-700 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                           }`}
                         >
-                          {isLowStock && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />}
+                          {isLowStock && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
                           {product.inventory_quantity} en stock
                         </span>
                       </td>
@@ -3180,7 +3214,7 @@ export default function ProductsPage() {
                         <select
                           value={product.status}
                           onChange={(e) => handleStatusChange(product, e.target.value)}
-                          className={`text-[11px] font-bold border rounded-lg px-2 py-1 outline-none ${statusMeta.badge}`}
+                          className="text-[11px] font-medium border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
                         >
                           <option value="published">Publié</option>
                           <option value="draft">Brouillon</option>
@@ -3190,50 +3224,50 @@ export default function ProductsPage() {
 
                       {/* Categories */}
                       <td className="py-3 px-3 text-[11px] text-slate-500 space-y-0.5 max-w-[200px] truncate">
-                        <p className="truncate font-semibold text-slate-700 dark:text-slate-300">
-                          🌐 {product.marketplace_category_name || product.category || 'Non classé'}
+                        <p className="truncate font-medium text-slate-700 dark:text-slate-300">
+                          {product.marketplace_category_name || product.category || 'Non classé'}
                         </p>
                         <p className="truncate text-[10px] text-slate-400">
-                          🏪 {product.storefront_category_name || 'Vitrine générale'}
+                          {product.storefront_category_name || 'Vitrine générale'}
                         </p>
                       </td>
 
                       {/* Actions */}
                       <td className="py-3 pr-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <a
                             href={getHubProductHref(product)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Voir en boutique"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </a>
                           {product.status === 'published' && (
                             <a
                               href={`/hub/dashboard/ads?product_id=${encodeURIComponent(product.id)}`}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               title="Sponsoriser / Campagne Ads"
                             >
-                              <Megaphone className="w-4 h-4" />
+                              <Megaphone className="w-3.5 h-3.5" />
                             </a>
                           )}
                           <button
                             type="button"
                             onClick={() => startEdit(product)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             title="Modifier dans le Studio"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(product.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                             title="Supprimer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -3245,7 +3279,7 @@ export default function ProductsPage() {
           </div>
         ) : (
           /* VISUAL STUDIO GRID VIEW */
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {visibleProducts.map((product) => {
               const statusMeta = getStatusBadge(product.status);
               const typeMeta = getTypeBadge(product.type);
@@ -3254,8 +3288,8 @@ export default function ProductsPage() {
               return (
                 <div
                   key={product.id}
-                  className={`group relative rounded-2xl border overflow-hidden bg-white dark:bg-slate-800/60 shadow-sm transition-all hover:shadow-md ${
-                    isSelected ? 'border-[#B91C1C] ring-2 ring-red-500/20' : 'border-slate-200 dark:border-slate-700/60'
+                  className={`group relative rounded-xl border overflow-hidden bg-white dark:bg-slate-800/60 shadow-2xs transition-all hover:shadow-xs ${
+                    isSelected ? 'border-slate-900 ring-1 ring-slate-900/10 dark:border-white' : 'border-slate-200/80 dark:border-slate-700/60'
                   }`}
                 >
                   {/* Select Tag */}
@@ -3264,65 +3298,66 @@ export default function ProductsPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelectOne(product.id)}
-                      className="rounded border-white/80 bg-white/80 text-[#B91C1C] shadow"
+                      className="rounded border-slate-300 bg-white text-slate-900 shadow-2xs"
                     />
                   </div>
 
                   {/* Top Status & Type Badges */}
                   <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border shadow-sm ${typeMeta.color}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border shadow-2xs ${typeMeta.color}`}>
                       {typeMeta.label}
                     </span>
                   </div>
 
                   {/* Thumbnail Image with Hover Zoom */}
-                  <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center">
+                  <div className="relative aspect-square w-full bg-slate-50 dark:bg-slate-800 overflow-hidden flex items-center justify-center">
                     {product.thumbnail ? (
                       <img
                         src={product.thumbnail ? getResizedImageUrl(product.thumbnail, 'medium') : ''}
                         alt={product.title}
-                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="h-full w-full object-cover group-hover:scale-102 transition-transform duration-200"
                       />
                     ) : (
-                      <Package className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                      <Package className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                     )}
 
                     {/* Quick Action Overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-2xs">
                       <button
                         type="button"
                         onClick={() => startEdit(product)}
-                        className="p-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 shadow-lg font-bold text-xs flex items-center gap-1"
+                        className="p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-50 shadow-md font-medium text-xs flex items-center gap-1"
                       >
-                        <Edit3 className="w-3.5 h-3.5 text-blue-600" /> Éditer
+                        <Edit3 className="w-3 h-3 text-slate-600 dark:text-slate-300" />
+                        <span>Éditer</span>
                       </button>
                       <a
                         href={getHubProductHref(product)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 shadow-lg"
+                        className="p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-50 shadow-md"
                         title="Aperçu"
                       >
-                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <Eye className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                       </a>
                     </div>
                   </div>
 
                   {/* Card Details */}
-                  <div className="p-4 space-y-2 text-xs">
-                    <p className="font-bold text-slate-900 dark:text-white truncate" title={product.title}>
+                  <div className="p-3.5 space-y-1.5 text-xs">
+                    <p className="font-semibold text-slate-900 dark:text-white truncate" title={product.title}>
                       {product.title}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
                         {formatPrice(product.price)}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${statusMeta.badge}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusMeta.badge}`}>
                         {statusMeta.label}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                      <span>Stock: {product.inventory_quantity}</span>
+                      <span>Stock : {product.inventory_quantity}</span>
                       <span className="truncate max-w-[110px] text-right">{product.marketplace_category_name || 'Non classé'}</span>
                     </div>
                   </div>
@@ -3333,20 +3368,20 @@ export default function ProductsPage() {
         )}
 
         {/* Full Interactive Pagination Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-white dark:bg-slate-900">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-medium text-slate-600 dark:text-slate-400">
+            <span className="font-normal text-slate-500 dark:text-slate-400">
               Affichage {totalProducts === 0 ? 0 : (page - 1) * limit + 1} à {Math.min(page * limit, totalProducts)} sur {totalProducts} références
             </span>
             <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-bold text-slate-500">Par page:</span>
+              <span className="text-[11px] font-normal text-slate-400">Par page :</span>
               <select
                 value={limit}
                 onChange={(e) => {
                   setLimit(Number(e.target.value));
                   setPage(1);
                 }}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-[#B91C1C]"
+                className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -3361,7 +3396,7 @@ export default function ProductsPage() {
               type="button"
               onClick={() => setPage((c) => Math.max(1, c - 1))}
               disabled={page <= 1 || loading}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-2xs"
             >
               Précédent
             </button>
@@ -3379,10 +3414,10 @@ export default function ProductsPage() {
                       type="button"
                       onClick={() => setPage(pNum)}
                       disabled={loading}
-                      className={`h-8 w-8 rounded-lg font-bold transition-all text-xs flex items-center justify-center ${
+                      className={`h-7 w-7 rounded-lg font-medium transition text-xs flex items-center justify-center ${
                         page === pNum
-                          ? 'bg-[#B91C1C] text-white shadow-sm'
-                          : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+                          : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {pNum}
@@ -3395,7 +3430,7 @@ export default function ProductsPage() {
               type="button"
               onClick={() => setPage((c) => Math.min(totalPages, c + 1))}
               disabled={page >= totalPages || loading}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-2xs"
             >
               Suivant
             </button>
@@ -3405,12 +3440,12 @@ export default function ProductsPage() {
 
       {/* 4. EXTENDED FLOATING BULK ACTIONS BAR */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center gap-2 sm:gap-2.5 px-4 sm:px-6 py-3 rounded-2xl bg-slate-950/95 text-white shadow-2xl border border-slate-800 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-200 max-w-[95vw]">
-          <div className="flex items-center gap-2 pr-2 border-r border-slate-800">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white font-black text-xs">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center gap-1.5 sm:gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white shadow-xl border border-slate-800 animate-in slide-in-from-bottom-3 duration-150 max-w-[95vw]">
+          <div className="flex items-center gap-1.5 pr-2 border-r border-slate-800">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white font-medium text-[11px]">
               {selectedIds.size}
             </span>
-            <span className="text-xs font-bold text-slate-300 hidden sm:inline">sélectionné(s)</span>
+            <span className="text-xs font-normal text-slate-300 hidden sm:inline">sélectionné(s)</span>
           </div>
 
           {/* Status Actions */}
@@ -3418,28 +3453,28 @@ export default function ProductsPage() {
             type="button"
             onClick={() => void handleBulkStatusChange('published')}
             disabled={bulkActionLoading}
-            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+            className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium transition shadow-2xs"
             title="Publier tous les produits sélectionnés"
           >
-            🟢 Publier
+            Publier
           </button>
           <button
             type="button"
             onClick={() => void handleBulkStatusChange('draft')}
             disabled={bulkActionLoading}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
             title="Passer en brouillon"
           >
-            ⚪ Brouillon
+            Brouillon
           </button>
           <button
             type="button"
             onClick={() => void handleBulkStatusChange('archived')}
             disabled={bulkActionLoading}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all hidden md:inline-block"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition hidden md:inline-block"
             title="Archiver"
           >
-            📦 Archiver
+            Archiver
           </button>
 
           <div className="h-4 w-px bg-slate-800 hidden sm:block" />
@@ -3448,10 +3483,10 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => setShowBulkPriceModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-purple-900/60 border border-purple-700/60 hover:bg-purple-800 text-purple-200 text-xs font-bold transition-all flex items-center gap-1.5"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5"
             title="Ajuster les prix en pourcentage ou montant fixe (ex: soldes)"
           >
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <Coins className="w-3.5 h-3.5 text-slate-400" />
             <span>Ajuster Prix</span>
           </button>
 
@@ -3461,40 +3496,40 @@ export default function ProductsPage() {
               setBulkAiProgress(null);
               setShowBulkAiCategoryModal(true);
             }}
-            className="px-3 py-1.5 rounded-xl bg-amber-900/60 border border-amber-700/60 hover:bg-amber-800 text-amber-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
             title="Classifier automatiquement les produits sélectionnés avec l'IA"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-slate-400" />
             <span>Classifier IA</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowBulkCategoryModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-indigo-900/60 border border-indigo-700/60 hover:bg-indigo-800 text-indigo-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden lg:flex"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 hidden lg:flex"
             title="Assigner une catégorie Marketplace ou Vitrine à la sélection"
           >
-            <Tag className="w-3.5 h-3.5 text-indigo-300" />
+            <Tag className="w-3.5 h-3.5 text-slate-400" />
             <span>Catégories</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowBulkStockModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-blue-900/60 border border-blue-700/60 hover:bg-blue-800 text-blue-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden md:flex"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 hidden md:flex"
             title="Mettre à jour le stock en masse"
           >
-            <Layers className="w-3.5 h-3.5 text-blue-300" />
+            <Layers className="w-3.5 h-3.5 text-slate-400" />
             <span>Stock</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleExportCSV('selected')}
-            className="px-3 py-1.5 rounded-xl bg-emerald-900/60 border border-emerald-700/60 hover:bg-emerald-800 text-emerald-200 text-xs font-bold transition-all flex items-center gap-1.5 hidden sm:flex"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 hidden sm:flex"
             title="Exporter les produits sélectionnés en CSV"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-slate-400" />
             <span>Export CSV</span>
           </button>
 
@@ -3502,10 +3537,10 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => setShowBulkDeleteModal(true)}
-            className="px-2.5 py-1.5 rounded-xl bg-red-950/80 border border-red-800/80 hover:bg-red-900 text-red-300 text-xs font-bold transition-all flex items-center gap-1"
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-950/60 text-rose-300 text-xs font-medium transition flex items-center gap-1"
             title="Supprimer définitivement les produits sélectionnés"
           >
-            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
             <span className="hidden sm:inline">Supprimer</span>
           </button>
 
@@ -3515,10 +3550,10 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => setSelectedIds(new Set())}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             title="Désélectionner tout"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -3527,19 +3562,19 @@ export default function ProductsPage() {
       {/* 5. MODULAR PRODUCT STUDIO DRAWER (THE CORE WORKSPACE) */}
       {/* ========================================================================= */}
       {showDrawer && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col overflow-hidden border-l border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 h-full shadow-xl flex flex-col overflow-hidden border-l border-slate-200 dark:border-slate-800">
             {/* Drawer Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/50">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-red-500 to-[#B91C1C] text-white shadow-md shadow-red-500/20">
-                  <Package className="w-5 h-5" />
+                <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Package className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-black text-slate-900 dark:text-white">
+                  <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                     {editingProduct ? 'Modifier le Produit' : 'Créer un Nouveau Produit'}
                   </h2>
-                  <p className="text-xs text-slate-400 font-medium">Studio d’édition modulaire et enrichissement IA</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Studio d’édition modulaire et enrichissement IA</p>
                 </div>
               </div>
 
@@ -3547,59 +3582,61 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setShowLivePreview((curr) => !curr)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     showLivePreview
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                      : 'border-slate-200 text-slate-600 dark:border-slate-700'
+                      ? 'bg-slate-100 border-slate-300 text-slate-900 dark:bg-slate-800 dark:text-white dark:border-slate-600'
+                      : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-50'
                   }`}
                   title="Afficher/Masquer l'aperçu boutique en direct"
                 >
                   <Eye className="w-3.5 h-3.5 inline mr-1" />
                   Aperçu Live
                 </button>
-                {/* Old/Classic AI Button: Refills remaining fields from whatever is currently entered */}
+
+                {/* Classic AI Auto-Fill */}
                 <button
                   type="button"
                   onClick={handleAutoRefillFromCurrentFields}
                   disabled={smartFillLoading}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/80 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 shadow-2xs"
                   title="Auto-complète le reste de la fiche à partir du titre, description ou photo déjà saisis"
                 >
                   {smartFillLoading && smartFillMode === 'current' ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    <Zap className="w-3.5 h-3.5 text-slate-500" />
                   )}
-                  <span>⚡ Auto-Complétion IA</span>
+                  <span>Auto-Complétion</span>
                 </button>
 
-                {/* New AI Button: Opens the Free Prompt / WhatsApp / Supplier Note Mode */}
+                {/* Prompt Libre Assistant */}
                 <button
                   type="button"
                   onClick={handleOpenPromptLibreModal}
                   disabled={smartFillLoading}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2 text-xs font-black text-white shadow-md shadow-purple-500/20 hover:scale-105 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition disabled:opacity-50 shadow-2xs"
                   title="Ouvre l'Assistant Magique en mode prompt libre / message WhatsApp fournisseur"
                 >
                   {smartFillLoading && smartFillMode === 'prompt' ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                    <Sparkles className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
                   )}
-                  <span>🪄 Assistant Magique (Prompt Libre)</span>
+                  <span>Assistant IA</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Modular Drawer Tab Navigation */}
-            <div className="flex items-center gap-1 overflow-x-auto px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 no-scrollbar">
+            <div className="flex items-center gap-1 overflow-x-auto px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 no-scrollbar">
               {[
                 { id: 'general', label: '1. Fiche & Type', icon: Package, done: Boolean(form.title) },
                 ...(form.type === 'bundle'
@@ -3620,15 +3657,15 @@ export default function ProductsPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setDrawerTab(tab.id as DrawerTab)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                       isActive
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <tab.icon className="w-3.5 h-3.5" />
                     <span>{tab.label}</span>
-                    {tab.done && <Check className="w-3 h-3 text-emerald-400" />}
+                    {tab.done && <Check className="w-3 h-3 text-emerald-500" />}
                   </button>
                 );
               })}
@@ -3643,7 +3680,7 @@ export default function ProductsPage() {
                   <div className="space-y-5 animate-in fade-in duration-150">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Titre du Produit *
                         </label>
                         <input
@@ -3651,12 +3688,12 @@ export default function ProductsPage() {
                           value={form.title}
                           onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))}
                           placeholder="Ex: Montre Chronographe Automatique en Cuir"
-                          className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Permalien / Slug URL
                         </label>
                         <input
@@ -3664,14 +3701,14 @@ export default function ProductsPage() {
                           value={form.slug}
                           onChange={(e) => setForm((c) => ({ ...c, slug: normalizePermalink(e.target.value) }))}
                           placeholder={normalizePermalink(form.title) || 'auto-genere-depuis-titre'}
-                          className="w-full px-4 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Référence SKU / Code Article
                         </label>
                         <input
@@ -3679,12 +3716,12 @@ export default function ProductsPage() {
                           value={form.product_reference}
                           onChange={(e) => setForm((c) => ({ ...c, product_reference: e.target.value }))}
                           placeholder="SKU-2026-X01"
-                          className="w-full px-4 py-2.5 text-xs font-mono font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Famille de Produit
                         </label>
                         <select
@@ -3700,10 +3737,10 @@ export default function ProductsPage() {
                               setDrawerTab('bundle');
                             }
                           }}
-                          className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
                         >
                           <option value="physical">Physique (Colis & Livraison)</option>
-                          <option value="bundle">📦 Pack Promo / Bundle (Lot groupé)</option>
+                          <option value="bundle">Pack Promo / Bundle (Lot groupé)</option>
                           <option value="digital">Numérique (Téléchargement)</option>
                           <option value="serial">Licence / Numéro de série</option>
                           <option value="service">Prestation de service</option>
@@ -3711,13 +3748,13 @@ export default function ProductsPage() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Statut de Publication
                         </label>
                         <select
                           value={form.status}
                           onChange={(e) => setForm((c) => ({ ...c, status: e.target.value }))}
-                          className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 shadow-2xs"
                         >
                           <option value="published">Publié (En ligne)</option>
                           <option value="draft">Brouillon</option>
@@ -4106,8 +4143,8 @@ export default function ProductsPage() {
                     {/* Base Pricing & Inventory */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Selling Price */}
-                      <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-1.5 shadow-2xs">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                           Prix de Vente TTC (TND) *
                         </label>
                         <input
@@ -4117,15 +4154,15 @@ export default function ProductsPage() {
                           value={form.price}
                           onChange={(e) => setForm((c) => ({ ...c, price: e.target.value }))}
                           placeholder="0.000"
-                          className="w-full px-4 py-2.5 text-sm font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
-                        <p className="text-[10px] text-slate-400 font-medium">Prix effectif payé par le client</p>
+                        <p className="text-[10px] text-slate-400 font-normal">Prix effectif payé par le client</p>
                       </div>
 
                       {/* Compare-at Price / Discount */}
-                      <div className="p-4 rounded-2xl border border-rose-100 dark:border-rose-950/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-2">
+                      <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-1.5 shadow-2xs">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                             Prix d&apos;Origine / Barré (TND)
                           </label>
                           {(() => {
@@ -4134,7 +4171,7 @@ export default function ProductsPage() {
                             if (p > 0 && cp > p) {
                               const pct = Math.round(((cp - p) / cp) * 100);
                               return (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-xs">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs">
                                   -{pct}%
                                 </span>
                               );
@@ -4149,32 +4186,32 @@ export default function ProductsPage() {
                           value={form.compare_at_price}
                           onChange={(e) => setForm((c) => ({ ...c, compare_at_price: e.target.value }))}
                           placeholder="Optionnel (ex: 60.000)"
-                          className="w-full px-4 py-2.5 text-sm font-mono font-bold rounded-xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                         {(() => {
                           const p = parseFloat(form.price);
                           const cp = parseFloat(form.compare_at_price);
                           if (form.compare_at_price.trim() !== '') {
                             if (isNaN(cp) || cp <= 0) {
-                              return <p className="text-[10px] text-red-500 font-bold">⚠️ Doit être un montant positif.</p>;
+                              return <p className="text-[10px] text-rose-500 font-medium">⚠️ Doit être un montant positif.</p>;
                             }
                             if (cp <= p) {
-                              return <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">⚠️ Doit être supérieur au prix ({p.toFixed(3)} TND).</p>;
+                              return <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">⚠️ Doit être supérieur au prix ({p.toFixed(3)} TND).</p>;
                             }
                             const diff = cp - p;
                             return (
-                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                                 ✓ Économie client : +{diff.toFixed(3)} TND
                               </p>
                             );
                           }
-                          return <p className="text-[10px] text-slate-400 font-medium">Laissez vide si pas de réduction</p>;
+                          return <p className="text-[10px] text-slate-400 font-normal">Laissez vide si pas de réduction</p>;
                         })()}
                       </div>
 
                       {/* Global Stock */}
-                      <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-2">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-1.5 shadow-2xs">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                           Quantité en Stock Global
                         </label>
                         <input
@@ -4183,7 +4220,7 @@ export default function ProductsPage() {
                           value={form.inventory_quantity}
                           onChange={(e) => setForm((c) => ({ ...c, inventory_quantity: e.target.value }))}
                           placeholder="10"
-                          className="w-full px-4 py-2.5 text-sm font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-[#B91C1C]"
+                          className="w-full px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                       </div>
                     </div>
@@ -4663,10 +4700,10 @@ export default function ProductsPage() {
                               setMatrixDefaultPrice(form.price || '0.000');
                               setShowMatrixModal(true);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-[#B91C1C] text-white text-xs font-black shadow-md shadow-red-500/20 hover:scale-105 transition-all"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                            <span>Générateur Matriciel 1-Clic</span>
+                            <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Générateur Matriciel</span>
                           </button>
 
                           <button
@@ -6211,7 +6248,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50"
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Annuler
                 </button>
@@ -6220,9 +6257,9 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={creating}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-black hover:bg-[#991B1B] shadow-md shadow-red-500/20 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
                 >
-                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                   <span>{editingProduct ? 'Enregistrer les Modifications' : 'Créer et Publier le Produit'}</span>
                 </button>
               </div>
@@ -6235,18 +6272,18 @@ export default function ProductsPage() {
       {/* 6. 1-CLICK VARIANT MATRIX GENERATOR MODAL */}
       {/* ========================================================================= */}
       {showMatrixModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-3xl rounded-3xl border border-red-200 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-red-600 to-[#B91C1C] text-white shadow-md shadow-red-500/20">
-                  <Sliders className="w-5 h-5" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Sliders className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    Générateur Matriciel de Déclinaisons 1-Clic
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Générateur Matriciel de Déclinaisons
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Configurez vos attributs et laissez le moteur combiner automatiquement tous les SKU, prix et stocks.
                   </p>
                 </div>
@@ -6254,9 +6291,9 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowMatrixModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -6506,7 +6543,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setShowMatrixModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Annuler
                 </button>
@@ -6514,10 +6551,10 @@ export default function ProductsPage() {
                   type="button"
                   onClick={handleApplyMatrixGenerator}
                   disabled={matrixCombinationsCount === 0}
-                  className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-red-600 to-[#B91C1C] text-white text-xs font-black shadow-md shadow-red-500/20 hover:scale-105 disabled:opacity-50 transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
                 >
-                  <Sparkles className="w-4 h-4 text-yellow-300" />
-                  <span>Générer {matrixCombinationsCount} Déclinaisons en 1-Clic</span>
+                  <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Générer {matrixCombinationsCount} Déclinaisons</span>
                 </button>
               </div>
             </div>
@@ -6529,24 +6566,24 @@ export default function ProductsPage() {
       {/* 7. AI SMART FILL / ASSISTANT MAGIQUE IA MODAL */}
       {/* ========================================================================= */}
       {showSmartFillModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in">
-          <div className="w-full max-w-4xl rounded-3xl border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-900 p-5 sm:p-7 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-6 max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-purple-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-pink-500 text-white shadow-lg shadow-purple-500/25">
-                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                      Assistant Magique IA : Mode Prompt Libre & Extraction Fiche Complète
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                      Assistant Magique IA : Mode Prompt Libre & Fiche Complète
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                      GPT-4 / Claude / Gemini
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      Multi-LLM
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Collez un message WhatsApp, une note fournisseur ou une phrase brute pour générer instantanément la fiche produit.
                   </p>
                 </div>
