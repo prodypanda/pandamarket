@@ -107,7 +107,7 @@ export default function SellerOnboardingPage() {
   const [categories, setCategories] = useState<CategoryState[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Platform domain shown in the wizard — configurable per deployment
+  // Platform domain shown in the wizard
   const platformDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '');
 
   // Wizard state
@@ -125,7 +125,7 @@ export default function SellerOnboardingPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [logoDarkUrl, setLogoDarkUrl] = useState('');
   const [selectedPresetId, setSelectedPresetId] = useState('');
-  const [customPrimaryColor, setCustomPrimaryColor] = useState('#B91C1C');
+  const [customPrimaryColor, setCustomPrimaryColor] = useState('#0F172A');
 
   // Step 3 Forms (Themes)
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>('minimal');
@@ -189,7 +189,7 @@ export default function SellerOnboardingPage() {
 
       if (onboardingRes.status === 'fulfilled') {
         setOnboardingState(onboardingRes.value);
-        // Resume from the first incomplete step (progress persistence)
+        // Resume from the first incomplete step
         setCurrentStep(getResumeStep(onboardingRes.value));
         // Automatically open wizard if basics not completed
         if (!onboardingRes.value.store_basics?.completed) {
@@ -216,12 +216,12 @@ export default function SellerOnboardingPage() {
   // Animate celebratory confetti
   useEffect(() => {
     if (currentStep === 6 && showWizard) {
-      const particles = Array.from({ length: 80 }).map((_, i) => ({
+      const particles = Array.from({ length: 60 }).map((_, i) => ({
         id: i,
         left: `${Math.random() * 100}%`,
         delay: `${Math.random() * 3}s`,
-        color: ['#B91C1C', '#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6'][Math.floor(Math.random() * 6)],
-        size: `${Math.random() * 10 + 6}px`,
+        color: ['#0F172A', '#10B981', '#F59E0B', '#3B82F6', '#64748B', '#8B5CF6'][Math.floor(Math.random() * 6)],
+        size: `${Math.random() * 8 + 6}px`,
       }));
       setConfetti(particles);
     } else {
@@ -254,19 +254,19 @@ export default function SellerOnboardingPage() {
 
   // Coachmarks helper content per step
   const stepCoachmarks = [
-    `Welcome! This interactive guide will walk you through setting up and launching your store on ${platformDomain} in minutes. Let's start!`,
-    'Your logo and store name are the first things customers see. Enter a catchy name and upload your branding logos.',
-    'Browse our curated designs. Click on any theme card below to instantly preview its layout and visual presets.',
-    'Submit identification documents (RC & CIN) to verify your vendor profile. Verified stores gain organic search ranking!',
-    'Add your first item! Fill in the basic title, price in Tunisian Dinar (TND), and select an appropriate product category.',
-    'Configure how you want to be paid and your delivery fees. We support Cash on Delivery (COD) and Bank Transfer payouts.',
-    'Ready to go live? Toggle the maintenance mode switch off to publish your storefront. Congratulations on launching!',
+    `Bienvenue ! Ce guide pas-à-pas vous accompagne pour configurer et lancer votre boutique sur ${platformDomain} en quelques minutes.`,
+    'Votre logo et le nom de votre boutique sont les premiers éléments que vos clients verront.',
+    'Parcourez nos thèmes soignés. Cliquez sur une carte pour prévisualiser immédiatement le style visuel.',
+    'Téléversez vos justificatifs légaux (RC & CIN) pour faire vérifier votre profil vendeur et débloquer les ventes.',
+    'Ajoutez votre premier produit en indiquant le titre, le prix en Dinars Tunisiens (TND) et la catégorie.',
+    'Configurez vos modalités de paiement et frais de livraison (Paiement à la livraison ou Virement bancaire).',
+    'Prêt à ouvrir ? Désactivez le mode maintenance pour rendre votre vitrine accessible publiquement.',
   ];
 
   // Save Step 2: Store Basics
   const saveStoreBasics = async () => {
     if (!storeName.trim()) {
-      setWizardError('Store Name is required');
+      setWizardError('Le nom de la boutique est obligatoire');
       return;
     }
     setSavingStep(true);
@@ -287,16 +287,16 @@ export default function SellerOnboardingPage() {
           },
         }),
       });
-      if (!res.ok) throw new Error('Failed to save store basic settings');
+      if (!res.ok) throw new Error('Impossible d\'enregistrer les informations de base');
 
       const nextOnboarding = await updateOnboardingStep('store_basics', {
         completed: true,
         metadata: { store_name: storeName, has_logo: Boolean(logoUrl) },
       });
       setOnboardingState(nextOnboarding);
-      setCurrentStep(2); // Go to step 3 (Theme Selection)
+      setCurrentStep(2);
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
@@ -312,18 +312,17 @@ export default function SellerOnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme_id: selectedTheme }),
       });
-      if (!res.ok) throw new Error('Failed to save theme selection');
+      if (!res.ok) throw new Error('Impossible d\'enregistrer le thème');
 
       const nextOnboarding = await updateOnboardingStep('theme', {
         completed: true,
         metadata: { theme_id: selectedTheme },
       });
       setOnboardingState(nextOnboarding);
-      // Invalidate storefront ISR cache so the new theme is visible immediately
       revalidateStoreCache({ subdomain: store?.subdomain, custom_domain: store?.custom_domain });
-      setCurrentStep(3); // Go to Step 4 (KYC)
+      setCurrentStep(3);
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
@@ -331,7 +330,6 @@ export default function SellerOnboardingPage() {
 
   // Save Step 4: KYC Documents
   const saveKyc = async () => {
-    // Verification already submitted or approved — do not resubmit, just advance
     if (verification?.status === 'approved' || verification?.status === 'pending') {
       const nextOnboarding = await updateOnboardingStep('kyc', {
         completed: true,
@@ -342,7 +340,7 @@ export default function SellerOnboardingPage() {
       return;
     }
     if (!rcFileUrl || !cinFileUrl || !phone) {
-      setWizardError('Please complete all document uploads and enter a phone number');
+      setWizardError('Veuillez téléverser tous les documents requis et indiquer un numéro de téléphone');
       return;
     }
     setSavingStep(true);
@@ -357,16 +355,16 @@ export default function SellerOnboardingPage() {
           phone_number: phone,
         }),
       });
-      if (!res.ok) throw new Error('Failed to submit verification request');
+      if (!res.ok) throw new Error('Impossible de soumettre les documents KYC');
 
       const nextOnboarding = await updateOnboardingStep('kyc', {
         completed: false,
         metadata: { status: 'submitted' },
       });
       setOnboardingState(nextOnboarding);
-      setCurrentStep(4); // Go to Step 5 (First Product)
+      setCurrentStep(4);
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
@@ -374,7 +372,6 @@ export default function SellerOnboardingPage() {
 
   // Save Step 5: Product Creator
   const saveFirstProduct = async () => {
-    // A product already exists and no new one was typed — mark the step complete
     if (productCount > 0 && !productTitle.trim()) {
       const nextOnboarding = await updateOnboardingStep('first_product', {
         completed: true,
@@ -385,12 +382,12 @@ export default function SellerOnboardingPage() {
       return;
     }
     if (!productTitle || !productPrice || !selectedCategoryId) {
-      setWizardError('Product Title, Price, and Category are required');
+      setWizardError('Le titre, le prix et la catégorie sont obligatoires');
       return;
     }
     const parsedPrice = parseFloat(productPrice);
     if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-      setWizardError('Price must be a valid positive number (TND)');
+      setWizardError('Le prix doit être un nombre positif (TND)');
       return;
     }
     setSavingStep(true);
@@ -410,16 +407,16 @@ export default function SellerOnboardingPage() {
           inventory_quantity: 10,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create product listing');
+      if (!res.ok) throw new Error('Impossible de créer le produit');
 
       const nextOnboarding = await updateOnboardingStep('first_product', {
         completed: true,
         metadata: { product_title: productTitle },
       });
       setOnboardingState(nextOnboarding);
-      setCurrentStep(5); // Go to Step 6 (Payments & Shipping)
+      setCurrentStep(5);
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
@@ -429,13 +426,12 @@ export default function SellerOnboardingPage() {
   const savePaymentsAndShipping = async () => {
     const parsedShippingFee = parseFloat(shippingFee);
     if (!Number.isFinite(parsedShippingFee) || parsedShippingFee < 0) {
-      setWizardError('Shipping fee must be a valid number (TND)');
+      setWizardError('Les frais de livraison doivent être un montant valide (TND)');
       return;
     }
     setSavingStep(true);
     setWizardError('');
     try {
-      // 1. Save Shipping Fee & Payout details in store settings
       const settingsRes = await fetchWithCsrf('/api/pd/stores/me/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -447,16 +443,16 @@ export default function SellerOnboardingPage() {
           },
         }),
       });
-      if (!settingsRes.ok) throw new Error('Failed to save shipping and payout settings');
+      if (!settingsRes.ok) throw new Error('Impossible d\'enregistrer les options de livraison et paiement');
 
       const nextOnboarding = await updateOnboardingStep('payment_shipping', {
         completed: true,
         metadata: { shipping_fee: shippingFee, payout_method: codEnabled ? 'COD' : 'bank_transfer' },
       });
       setOnboardingState(nextOnboarding);
-      setCurrentStep(6); // Go to final Step 7 (Publish & Celebrate!)
+      setCurrentStep(6);
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
@@ -471,7 +467,7 @@ export default function SellerOnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !publish }),
       });
-      if (!res.ok) throw new Error('Failed to toggle storefront visibility');
+      if (!res.ok) throw new Error('Impossible de modifier la visibilité');
       const data = await res.json();
       setStore(data.store);
 
@@ -479,16 +475,14 @@ export default function SellerOnboardingPage() {
         completed: publish,
       });
     } catch (err) {
-      setWizardError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setWizardError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setSavingStep(false);
     }
   };
 
-  // Store is online when not in maintenance and verified
   const isOnline = store?.status !== 'maintenance' && (store?.status === 'verified' || Boolean(store?.is_verified));
 
-  // Clean dashboard status counts
   const storeBasicsComplete = Boolean(onboardingState.store_basics?.completed || (store?.name && logoUrl));
   const themeStepComplete = Boolean(onboardingState.theme?.completed || store?.theme_id);
   const kycStepComplete = verification?.status === 'approved';
@@ -500,10 +494,10 @@ export default function SellerOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 text-sm font-black text-slate-500">
-          <Loader2 className="h-5 w-5 animate-spin text-[#B91C1C]" />
-          Loading onboarding settings...
+      <div className="flex min-h-[380px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex items-center gap-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-900 dark:text-white" />
+          Chargement du guide d&apos;intégration...
         </div>
       </div>
     );
@@ -513,7 +507,6 @@ export default function SellerOnboardingPage() {
 
   return (
     <div className="relative space-y-6">
-      {/* Confetti falling keyframe styles */}
       <style>{`
         @keyframes confetti-fall {
           0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
@@ -521,7 +514,6 @@ export default function SellerOnboardingPage() {
         }
       `}</style>
 
-      {/* Confetti canvas animation */}
       {confetti.map((p) => (
         <div
           key={p.id}
@@ -544,235 +536,256 @@ export default function SellerOnboardingPage() {
       ))}
 
       {/* Main setup overview card */}
-      <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-800 bg-[#0F0F23] p-8 text-white shadow-xl shadow-red-950/20">
-        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[#B91C1C]/20 blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+            <Store className="h-5 w-5" />
+          </div>
           <div>
-            <span className="rounded-full bg-[#B91C1C]/15 px-3 py-1 text-xs font-black uppercase tracking-wider text-[#ff5f5f]">
-              Dashboard Launcher
-            </span>
-            <h1 className="mt-3 text-3xl font-black sm:text-4xl">Storefront Launch Guide</h1>
-            <p className="mt-3 max-w-xl text-sm font-semibold text-slate-400">
-              Configure your storefront basics, design themes, verify documents, and go live using our interactive checklist.
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                Guide de Lancement Boutique
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                {totalCompleted}/5 étapes
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Configurez votre vitrine, votre thème, téléversez vos documents KYC et publiez votre catalogue.
             </p>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-3xl font-black">{completionPercentage}%</p>
-              <p className="mt-1 text-xs font-black uppercase tracking-wider text-slate-400">
-                {totalCompleted}/5 setup tasks
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCurrentStep(getResumeStep(onboardingState));
-                setShowWizard(true);
-              }}
-              className="flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-6 py-4 text-sm font-black text-white hover:bg-[#991B1B] transition-transform hover:-translate-y-0.5"
-            >
-              <Sparkles className="h-5 w-5" /> Launch Setup Wizard
-            </button>
+        </div>
+
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="text-right">
+            <p className="text-xl font-semibold text-slate-900 dark:text-white">{completionPercentage}%</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              Progression
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentStep(getResumeStep(onboardingState));
+              setShowWizard(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Lancer l&apos;Assistant</span>
+          </button>
         </div>
       </div>
 
       {/* Horizontal checklist layout */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { id: 'basics', title: 'Store Basics', completed: storeBasicsComplete },
-          { id: 'theme', title: 'Theme Selection', completed: themeStepComplete },
-          { id: 'kyc', title: 'KYC Verification', completed: kycStepComplete },
-          { id: 'product', title: 'First Product', completed: firstProductStepComplete },
-          { id: 'payment', title: 'Payments Setup', completed: paymentStepComplete },
+          { id: 'basics', title: 'Identité Boutique', desc: 'Nom, logo & sous-domaine', completed: storeBasicsComplete },
+          { id: 'theme', title: 'Thème Graphique', desc: 'Mise en page & couleurs', completed: themeStepComplete },
+          { id: 'kyc', title: 'Vérification KYC', desc: 'RC & CIN vendeur', completed: kycStepComplete },
+          { id: 'product', title: 'Premier Produit', desc: 'Fiche produit & prix', completed: firstProductStepComplete },
+          { id: 'payment', title: 'Paiement & Livraison', desc: 'Modes de versement & frais', completed: paymentStepComplete },
         ].map((item, idx) => (
           <div
             key={item.id}
-            className={`rounded-2xl border p-4 flex flex-col justify-between ${
+            className={`rounded-xl border p-4 flex flex-col justify-between transition-colors shadow-2xs ${
               item.completed
-                ? 'border-emerald-500/40 bg-[#0C1B16] text-emerald-400'
-                : 'border-slate-800 bg-[#0F0F23] text-slate-400'
+                ? 'border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300'
+                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider">Task 0{idx + 1}</span>
-              {item.completed ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Clock3 className="h-5 w-5" />}
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Étape 0{idx + 1}</span>
+              {item.completed ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <Clock3 className="h-4 w-4 text-slate-400" />
+              )}
             </div>
-            <p className="mt-3 text-sm font-black text-white">{item.title}</p>
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-slate-900 dark:text-white">{item.title}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">{item.desc}</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Static settings directory cards */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
-          <h2 className="text-xl font-black text-white">⚙️ Configuration Settings</h2>
-          <p className="text-xs text-slate-400 leading-5">
-            Quick links to customize components in detail later from settings panel.
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Card 1: Configuration */}
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-3.5">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Paramètres Avancés</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+            Accédez directement aux sections du dashboard pour affiner vos réglages.
           </p>
-          <div className="grid gap-2">
+          <div className="space-y-2">
             <Link
               href="/hub/dashboard/settings?tab=store"
-              className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3.5 text-xs font-bold text-white hover:bg-white/10"
+              className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3.5 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
             >
-              <span>Store Profile settings</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Profil et identité de boutique</span>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </Link>
             <Link
               href="/hub/dashboard/settings?tab=theme"
-              className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3.5 text-xs font-bold text-white hover:bg-white/10"
+              className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3.5 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
             >
-              <span>Design presets customizer</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Personnalisateur de thèmes</span>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </Link>
             <Link
               href="/hub/dashboard/payment-config"
-              className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3.5 text-xs font-bold text-white hover:bg-white/10"
+              className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/50 px-3.5 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
             >
-              <span>Merchant payout setups</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Modalités de reversement</span>
+              <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
             </Link>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
-          <h2 className="text-xl font-black text-white">🏪 Storefront Status</h2>
-          <div className="rounded-2xl bg-white/5 p-4 flex items-center justify-between">
+        {/* Card 2: Status */}
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-3.5">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">État de la Vitrine</h2>
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 flex items-center justify-between border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
             <div>
-              <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">Visibility Status</span>
-              <span className="block mt-1 text-sm font-black text-white">
-                {isOnline ? '🟢 Published / Active' : '🟡 In Maintenance Mode'}
+              <span className="text-[10px] uppercase font-medium tracking-wider text-slate-400">Visibilité publique</span>
+              <span className="block mt-0.5 text-xs font-semibold text-slate-900 dark:text-white">
+                {isOnline ? '🟢 En ligne / Accessible' : '🟡 En mode maintenance'}
               </span>
             </div>
             <Link
               href={storefrontHref}
               target="_blank"
-              className="rounded-xl border border-slate-700 bg-transparent px-4 py-2 text-xs font-black text-white hover:bg-white/5"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
             >
-              Preview
+              Aperçu
             </Link>
           </div>
-          <p className="text-xs text-slate-400 leading-5">
-            Your storefront is currently mapped to: <code className="text-[#ff5f5f]">{store?.subdomain}.{platformDomain}</code>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+            Adresse : <code className="font-mono text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px]">{store?.subdomain}.{platformDomain}</code>
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-[#0F0F23] p-6 space-y-4">
-          <h2 className="text-xl font-black text-white">🛂 Identity & KYC</h2>
-          <div className="rounded-2xl bg-white/5 p-4 flex items-center justify-between">
+        {/* Card 3: Identity & KYC */}
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-3.5">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Identité & KYC</h2>
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 flex items-center justify-between border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
             <div>
-              <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">KYC Status</span>
-              <span className="block mt-1 text-sm font-black text-white">
+              <span className="text-[10px] uppercase font-medium tracking-wider text-slate-400">Statut de validation</span>
+              <span className="block mt-0.5 text-xs font-semibold text-slate-900 dark:text-white">
                 {verification?.status === 'approved'
-                  ? '✅ Profile Approved'
+                  ? 'Approuvé'
                   : verification?.status === 'pending'
-                    ? '⏳ Under Admin Review'
-                    : '❌ Unsubmitted / Rejected'}
+                    ? 'En cours d\'examen'
+                    : 'Non soumis / En attente'}
               </span>
             </div>
             <Link
               href="/hub/dashboard/kyc"
-              className="rounded-xl border border-slate-700 bg-transparent px-4 py-2 text-xs font-black text-white hover:bg-white/5"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
             >
-              Verify Settings
+              Gérer KYC
             </Link>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+            Les boutiques vérifiées bénéficient d&apos;une meilleure visibilité sur la place de marché.
+          </p>
         </div>
       </div>
 
       {/* FULLSCREEN INTERACTIVE WIZARD OVERLAY SHELL */}
       {showWizard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-lg">
-          <div role="dialog" aria-modal="true" aria-label="Store setup wizard" className="relative w-full max-w-4xl overflow-hidden rounded-[2.5rem] border border-slate-700 bg-[#0F0F23] text-white shadow-2xl ring-1 ring-white/10 flex flex-col md:flex-row h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div role="dialog" aria-modal="true" aria-label="Assistant d'intégration" className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl flex flex-col md:flex-row h-[90vh]">
             
             {/* Sidebar with Steps progress */}
-            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-800 bg-[#0B0B1A]/80 p-6 flex flex-col justify-between overflow-y-auto">
+            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 p-5 flex flex-col justify-between overflow-y-auto">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 font-black text-sm">
-                    <Store className="h-5 w-5 text-[#B91C1C]" /> Wizard Launcher
+                  <span className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-white">
+                    <Store className="h-4 w-4" /> Assistant de Lancement
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowWizard(false)}
-                    className="md:hidden text-slate-400 hover:text-white"
+                    className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-white"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="mt-8 space-y-2">
+                <div className="mt-6 space-y-1.5">
                   {[
-                    'Welcome Tour',
-                    'Store Basics',
-                    'Theme Customizer',
-                    'KYC Verification',
-                    'Add First Product',
-                    'Shipping & Payouts',
-                    'Launch Storefront!',
+                    'Introduction',
+                    'Identité Boutique',
+                    'Choix du Thème',
+                    'Documents KYC',
+                    'Premier Produit',
+                    'Livraison & Paiement',
+                    'Lancement !',
                   ].map((label, idx) => (
                     <button
                       key={label}
                       type="button"
                       onClick={() => setCurrentStep(idx)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors text-xs font-medium cursor-pointer ${
                         idx === currentStep
-                          ? 'bg-[#B91C1C]/15 text-[#ff5f5f]'
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-semibold shadow-2xs'
                           : idx < currentStep
-                            ? 'text-emerald-400 font-bold hover:bg-white/5'
-                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            ? 'text-emerald-700 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <span
-                        className={`h-5 w-5 flex items-center justify-center rounded-full text-[10px] font-black border ${
+                        className={`h-5 w-5 flex items-center justify-center rounded-lg text-[10px] font-semibold border ${
                           idx === currentStep
-                            ? 'border-[#B91C1C] bg-[#B91C1C] text-white'
+                            ? 'border-transparent bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-900'
                             : idx < currentStep
-                              ? 'border-emerald-500 bg-emerald-500 text-white'
-                              : 'border-slate-800'
+                              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-400'
                         }`}
                       >
                         {idx < currentStep ? '✓' : idx + 1}
                       </span>
-                      <span className="text-xs font-black">{label}</span>
+                      <span className="truncate">{label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Progress meter */}
-              <div className="mt-6 pt-4 border-t border-slate-800 text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-wider">Onboarding progress</span>
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800 text-slate-400">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 block">Progression</span>
+                <div className="mt-2 flex items-center gap-2.5">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-red-500 to-emerald-500 transition-all duration-500"
+                      className="h-full bg-slate-900 dark:bg-white transition-all duration-500"
                       style={{ width: `${(currentStep / 6) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-white">{Math.round((currentStep / 6) * 100)}%</span>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-white font-mono">{Math.round((currentStep / 6) * 100)}%</span>
                 </div>
               </div>
             </div>
 
             {/* Main Interactive Workspace Area */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900">
               {/* Header */}
-              <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#B91C1C]">
-                    Step 0{currentStep + 1} of 07
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Étape {currentStep + 1} sur 7
                   </span>
-                  <h2 className="text-xl font-black mt-1 text-white">
+                  <h2 className="text-base sm:text-lg font-semibold mt-0.5 text-slate-900 dark:text-white">
                     {
                       [
-                        'Welcome to PandaMarket',
-                        'Configure Store Basics',
-                        'Select Store Theme Design',
-                        'KYC Documents Submission',
-                        'List Your First Product',
-                        'Payments & Delivery Options',
-                        'Review and Launch Storefront',
+                        'Bienvenue sur PandaMarket',
+                        'Identité de votre Boutique',
+                        'Sélection du Thème Graphique',
+                        'Justificatifs d\'Identité (KYC)',
+                        'Ajout de votre Premier Produit',
+                        'Options de Livraison & Paiement',
+                        'Vérification et Mise en Ligne',
                       ][currentStep]
                     }
                   </h2>
@@ -780,32 +793,33 @@ export default function SellerOnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setShowWizard(false)}
-                  className="hidden md:block rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+                  className="hidden md:block rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-white transition-colors"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Step Forms */}
-              <div className="flex-1 p-8 overflow-y-auto space-y-6">
+              <div className="flex-1 p-6 sm:p-7 overflow-y-auto space-y-5">
                 {wizardError && (
-                  <div role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm font-bold text-red-300 flex items-center gap-2">
-                    <Info className="h-4 w-4" /> {wizardError}
+                  <div role="alert" className="rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3.5 text-xs font-medium text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                    <Info className="h-4 w-4 shrink-0" />
+                    <span>{wizardError}</span>
                   </div>
                 )}
 
                 {/* Step 1: Welcome & Intro */}
                 {currentStep === 0 && (
-                  <div className="space-y-6 text-center max-w-xl mx-auto py-6">
-                    <span className="text-6xl">🐼</span>
-                    <h3 className="text-2xl font-black">Let&apos;s configure {platformDomain}</h3>
-                    <p className="text-sm text-slate-400 leading-6">
-                      Welcome to your merchant command center. This quick interactive wizard will configure your public store basics, design layout theme, verify files, and add your first product.
+                  <div className="space-y-5 text-center max-w-lg mx-auto py-4">
+                    <span className="text-5xl block">🐼</span>
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Configurez votre boutique sur {platformDomain}</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+                      Cet assistant interactif vous aide à paramétrer votre identité, votre charte graphique, vos documents de vérification et vos premiers articles en toute sérénité.
                     </p>
-                    <div className="p-4 rounded-2xl bg-white/5 border border-slate-800 text-left flex items-start gap-3">
-                      <Sparkles className="h-5 w-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                      <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                        Progress is saved in real time. If you exit or lose connection, you can reload and resume setup exactly from this step.
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-left flex items-start gap-3 shadow-2xs">
+                      <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                        Votre progression est sauvegardée en temps réel. Vous pouvez quitter et revenir à tout moment exactement là où vous vous êtes arrêté.
                       </p>
                     </div>
                   </div>
@@ -814,58 +828,58 @@ export default function SellerOnboardingPage() {
                 {/* Step 2: Store Basics Form */}
                 {currentStep === 1 && (
                   <div className="space-y-4 max-w-lg mx-auto">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Store Name
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Nom de la Boutique <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
-                        placeholder="My Beautiful Store"
+                        placeholder="Ex: Maison de la Maroquinerie"
                         value={storeName}
                         onChange={(e) => setStoreName(e.target.value)}
-                        className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none shadow-2xs"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Subdomain Address
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Adresse sous-domaine
                       </label>
-                      <div className="flex rounded-2xl border border-slate-800 bg-white/5 overflow-hidden">
+                      <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden shadow-2xs">
                         <input
                           type="text"
                           readOnly
                           value={store?.subdomain || ''}
-                          className="flex-1 bg-transparent p-4 text-sm text-slate-400 focus:outline-none cursor-not-allowed"
+                          className="flex-1 bg-transparent px-3.5 py-2.5 text-xs text-slate-500 dark:text-slate-400 focus:outline-none cursor-not-allowed font-mono"
                         />
-                        <span className="bg-slate-800 p-4 text-sm font-bold text-slate-400">
+                        <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700 font-mono">
                           .{platformDomain}
                         </span>
                       </div>
                     </div>
 
                     {/* Logo uploaders */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                          Logo (Light background)
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                          Logo (Fond clair)
                         </label>
-                        <div className="relative rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[120px]">
+                        <div className="relative rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 text-center flex flex-col items-center justify-center min-h-[110px] shadow-2xs">
                           {logoUrl ? (
-                            <div className="space-y-2">
-                              <img src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt="Logo" className="h-10 object-contain" />
+                            <div className="space-y-1.5">
+                              <img src={logoUrl ? getResizedImageUrl(logoUrl, 'small') : ''} alt="Logo" className="h-9 object-contain mx-auto" />
                               <button
                                 type="button"
                                 onClick={() => setLogoUrl('')}
-                                className="block text-[10px] text-red-400 underline font-bold"
+                                className="block text-[11px] text-rose-600 hover:text-rose-700 font-medium"
                               >
-                                Delete
+                                Supprimer
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer space-y-2">
-                              <Upload className="h-6 w-6 text-slate-500 mx-auto" />
-                              <span className="block text-[10px] text-slate-400 font-bold">Choose File</span>
+                            <label className="cursor-pointer space-y-1.5 block">
+                              <Upload className="h-5 w-5 text-slate-400 mx-auto" />
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">Choisir un fichier</span>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -876,8 +890,8 @@ export default function SellerOnboardingPage() {
                                       setWizardError('');
                                       const url = await handleFileUpload(file, 'store_asset');
                                       setLogoUrl(url);
-                                    } catch (err) {
-                                      setWizardError('Failed to upload logo image');
+                                    } catch {
+                                      setWizardError('Échec du téléversement du logo');
                                     }
                                   }
                                 }}
@@ -888,26 +902,26 @@ export default function SellerOnboardingPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                          Logo (Dark background)
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                          Logo (Fond sombre)
                         </label>
-                        <div className="relative rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[120px]">
+                        <div className="relative rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 text-center flex flex-col items-center justify-center min-h-[110px] shadow-2xs">
                           {logoDarkUrl ? (
-                            <div className="space-y-2">
-                              <img src={logoDarkUrl ? getResizedImageUrl(logoDarkUrl, 'small') : ''} alt="Logo Dark" className="h-10 object-contain" />
+                            <div className="space-y-1.5">
+                              <img src={logoDarkUrl ? getResizedImageUrl(logoDarkUrl, 'small') : ''} alt="Logo Dark" className="h-9 object-contain mx-auto" />
                               <button
                                 type="button"
                                 onClick={() => setLogoDarkUrl('')}
-                                className="block text-[10px] text-red-400 underline font-bold"
+                                className="block text-[11px] text-rose-600 hover:text-rose-700 font-medium"
                               >
-                                Delete
+                                Supprimer
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer space-y-2">
-                              <Upload className="h-6 w-6 text-slate-500 mx-auto" />
-                              <span className="block text-[10px] text-slate-400 font-bold">Choose File</span>
+                            <label className="cursor-pointer space-y-1.5 block">
+                              <Upload className="h-5 w-5 text-slate-400 mx-auto" />
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">Choisir un fichier</span>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -918,8 +932,8 @@ export default function SellerOnboardingPage() {
                                       setWizardError('');
                                       const url = await handleFileUpload(file, 'store_asset');
                                       setLogoDarkUrl(url);
-                                    } catch (err) {
-                                      setWizardError('Failed to upload logo image');
+                                    } catch {
+                                      setWizardError('Échec du téléversement du logo');
                                     }
                                   }
                                 }}
@@ -935,7 +949,7 @@ export default function SellerOnboardingPage() {
 
                 {/* Step 3: Theme selection */}
                 {currentStep === 2 && (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-3 max-h-72 overflow-y-auto pr-1">
                       {Object.values(themes).slice(0, 6).map((theme) => {
                         const isSelected = selectedTheme === theme.id;
@@ -944,14 +958,16 @@ export default function SellerOnboardingPage() {
                             key={theme.id}
                             type="button"
                             onClick={() => setSelectedTheme(theme.id)}
-                            className={`rounded-2xl border p-4 text-left transition hover:border-[#B91C1C]/40 ${
-                              isSelected ? 'border-[#B91C1C] bg-[#B91C1C]/10' : 'border-slate-800 bg-white/5'
+                            className={`rounded-xl border p-3.5 text-left transition-colors shadow-2xs cursor-pointer ${
+                              isSelected
+                                ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800'
+                                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
                             }`}
                           >
-                            <Palette className="h-5 w-5 text-amber-400" />
-                            <h4 className="mt-3 text-sm font-black text-white">{theme.name}</h4>
-                            <p className="mt-1 text-[10px] text-slate-400 leading-normal">
-                              Preset colors: {theme.colorPresets.map((p) => p.name).join(', ')}
+                            <Palette className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                            <h4 className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{theme.name}</h4>
+                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                              Nuances : {theme.colorPresets.map((p) => p.name).join(', ')}
                             </p>
                           </button>
                         );
@@ -959,16 +975,16 @@ export default function SellerOnboardingPage() {
                     </div>
 
                     {/* Preset details preview */}
-                    <div className="rounded-2xl bg-white/5 border border-slate-800 p-4 flex items-center justify-between">
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 p-3.5 flex items-center justify-between shadow-2xs">
                       <div>
-                        <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">
-                          Active Theme Layout
+                        <span className="text-[10px] uppercase font-medium tracking-wider text-slate-400 block">
+                          Configuration du thème actif
                         </span>
-                        <p className="text-xs text-slate-200 mt-1 font-bold">
-                          Grid format: {themes[selectedTheme].layout.productGrid} Grid · Typography: {themes[selectedTheme].typography.fontFamily}
+                        <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 font-medium">
+                          Grille : {themes[selectedTheme].layout.productGrid} · Typographie : {themes[selectedTheme].typography.fontFamily}
                         </p>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1">
                         {themes[selectedTheme].colorPresets[0] &&
                           [
                             themes[selectedTheme].colorPresets[0].primary,
@@ -977,7 +993,7 @@ export default function SellerOnboardingPage() {
                           ].map((c) => (
                             <span
                               key={c}
-                              className="h-5 w-5 rounded-full border border-white/20"
+                              className="h-4 w-4 rounded-full border border-slate-300 dark:border-slate-700"
                               style={{ backgroundColor: c }}
                             />
                           ))}
@@ -989,48 +1005,48 @@ export default function SellerOnboardingPage() {
                 {/* Step 4: KYC identity documents upload */}
                 {currentStep === 3 && (
                   <div className="space-y-4 max-w-lg mx-auto">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Phone number
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Numéro de Téléphone
                       </label>
-                      <div className="flex rounded-2xl border border-slate-800 bg-white/5 overflow-hidden">
-                        <span className="bg-slate-800 p-4 text-sm font-bold text-slate-400 flex items-center gap-1.5">
-                          <Phone className="h-4 w-4" /> +216
+                      <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-2xs">
+                        <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-700">
+                          <Phone className="h-3.5 w-3.5" /> +216
                         </span>
                         <input
                           type="text"
                           placeholder="98765432"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          className="flex-1 bg-transparent p-4 text-sm text-white focus:outline-none"
+                          className="flex-1 bg-transparent px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white focus:outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                          RC (Registre de Commerce)
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                          Registre de Commerce (RC)
                         </label>
-                        <div className="rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[140px]">
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 text-center flex flex-col items-center justify-center min-h-[120px] shadow-2xs">
                           {rcFileUrl ? (
-                            <div className="space-y-2 text-center">
-                              <FileText className="h-8 w-8 text-emerald-400 mx-auto" />
-                              <span className="block text-[10px] text-emerald-400 font-bold truncate max-w-[140px]">
-                                Uploaded successfully
+                            <div className="space-y-1.5 text-center">
+                              <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                              <span className="block text-[11px] text-emerald-700 dark:text-emerald-300 font-medium truncate max-w-[130px]">
+                                Document téléversé
                               </span>
                               <button
                                 type="button"
                                 onClick={() => setRcFileUrl('')}
-                                className="text-[10px] text-red-400 underline font-bold"
+                                className="text-[10px] text-rose-600 hover:text-rose-700 font-medium"
                               >
-                                Replace file
+                                Remplacer
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer space-y-2">
-                              <Upload className="h-6 w-6 text-slate-500 mx-auto" />
-                              <span className="block text-[10px] text-slate-400 font-bold">Select business RC</span>
+                            <label className="cursor-pointer space-y-1.5 block">
+                              <Upload className="h-5 w-5 text-slate-400 mx-auto" />
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">Sélectionner le RC</span>
                               <input
                                 type="file"
                                 onChange={async (e) => {
@@ -1041,7 +1057,7 @@ export default function SellerOnboardingPage() {
                                       const url = await handleFileUpload(file, 'kyc_document');
                                       setRcFileUrl(url);
                                     } catch {
-                                      setWizardError('Failed to upload RC document');
+                                      setWizardError('Échec du téléversement du RC');
                                     }
                                   }
                                 }}
@@ -1052,29 +1068,29 @@ export default function SellerOnboardingPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                          CIN (Carte d&apos;Identité Nationale)
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                          Carte d&apos;Identité (CIN)
                         </label>
-                        <div className="rounded-2xl border border-dashed border-slate-800 bg-white/5 p-4 text-center flex flex-col items-center justify-center min-h-[140px]">
+                        <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 text-center flex flex-col items-center justify-center min-h-[120px] shadow-2xs">
                           {cinFileUrl ? (
-                            <div className="space-y-2 text-center">
-                              <FileText className="h-8 w-8 text-emerald-400 mx-auto" />
-                              <span className="block text-[10px] text-emerald-400 font-bold truncate max-w-[140px]">
-                                Uploaded successfully
+                            <div className="space-y-1.5 text-center">
+                              <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                              <span className="block text-[11px] text-emerald-700 dark:text-emerald-300 font-medium truncate max-w-[130px]">
+                                Document téléversé
                               </span>
                               <button
                                 type="button"
                                 onClick={() => setCinFileUrl('')}
-                                className="text-[10px] text-red-400 underline font-bold"
+                                className="text-[10px] text-rose-600 hover:text-rose-700 font-medium"
                               >
-                                Replace file
+                                Remplacer
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer space-y-2">
-                              <Upload className="h-6 w-6 text-slate-500 mx-auto" />
-                              <span className="block text-[10px] text-slate-400 font-bold">Select ID CIN</span>
+                            <label className="cursor-pointer space-y-1.5 block">
+                              <Upload className="h-5 w-5 text-slate-400 mx-auto" />
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">Sélectionner la CIN</span>
                               <input
                                 type="file"
                                 onChange={async (e) => {
@@ -1085,7 +1101,7 @@ export default function SellerOnboardingPage() {
                                       const url = await handleFileUpload(file, 'kyc_document');
                                       setCinFileUrl(url);
                                     } catch {
-                                      setWizardError('Failed to upload CIN document');
+                                      setWizardError('Échec du téléversement de la CIN');
                                     }
                                   }
                                 }}
@@ -1101,102 +1117,102 @@ export default function SellerOnboardingPage() {
 
                 {/* Step 5: Add First Product Form */}
                 {currentStep === 4 && (
-                  <div className="grid gap-4 md:grid-cols-[1fr_240px]">
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                            Product Title
+                  <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+                    <div className="space-y-3.5">
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Titre du Produit <span className="text-rose-500">*</span>
                           </label>
                           <input
                             type="text"
-                            placeholder="Handmade Ceramic Mug"
+                            placeholder="Ex: Tasse en céramique artisanale"
                             value={productTitle}
                             onChange={(e) => setProductTitle(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none shadow-2xs"
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                            Price (TND)
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Prix (TND) <span className="text-rose-500">*</span>
                           </label>
                           <input
                             type="text"
-                            placeholder="45.00"
+                            placeholder="45.000"
                             value={productPrice}
                             onChange={(e) => setProductPrice(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none shadow-2xs"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                            Marketplace Category
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Catégorie Marketplace
                           </label>
                           <select
                             value={selectedCategoryId}
                             onChange={(e) => setSelectedCategoryId(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none shadow-2xs"
                           >
                             {categories.map((c) => (
-                              <option key={c.id} value={c.id} className="bg-[#0F0F23] text-white">{c.name}</option>
+                              <option key={c.id} value={c.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{c.name}</option>
                             ))}
                           </select>
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                            Tags (comma separated)
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Tags (séparés par des virgules)
                           </label>
                           <input
                             type="text"
-                            placeholder="mug, clay, ceramic"
+                            placeholder="tasse, céramique, artisanat"
                             value={productTags}
                             onChange={(e) => setProductTags(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none shadow-2xs"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                           Description
                         </label>
                         <textarea
-                          placeholder="Describe your item details, dimensions, and unique features..."
+                          placeholder="Décrivez les spécificités, dimensions et détails de fabrication..."
                           value={productDescription}
                           onChange={(e) => setProductDescription(e.target.value)}
                           rows={2}
-                          className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none resize-none"
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none resize-none shadow-2xs"
                         />
                       </div>
                     </div>
 
                     {/* Thumbnail Image Dropzone */}
-                    <div className="space-y-2">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Product Photo
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Photo du Produit
                       </label>
-                      <div className="rounded-3xl border border-dashed border-slate-800 bg-white/5 p-6 text-center flex flex-col items-center justify-center h-[200px]">
+                      <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-4 text-center flex flex-col items-center justify-center h-[180px] shadow-2xs">
                         {productThumbnail ? (
-                          <div className="space-y-2">
-                            <img src={productThumbnail} alt="Thumbnail Preview" className="h-28 rounded-xl object-cover" />
+                          <div className="space-y-1.5">
+                            <img src={productThumbnail} alt="Thumbnail Preview" className="h-24 rounded-lg object-cover mx-auto" />
                             <button
                               type="button"
                               onClick={() => setProductThumbnail('')}
-                              className="block text-[10px] text-red-400 underline font-bold mx-auto"
+                              className="block text-[11px] text-rose-600 hover:text-rose-700 font-medium mx-auto"
                             >
-                              Delete
+                              Supprimer
                             </button>
                           </div>
                         ) : (
-                          <label className="cursor-pointer space-y-3">
-                            <Upload className="h-8 w-8 text-slate-500 mx-auto" />
-                            <span className="block text-xs text-slate-400 font-bold leading-normal">
-                              Upload Image
+                          <label className="cursor-pointer space-y-2 block">
+                            <Upload className="h-6 w-6 text-slate-400 mx-auto" />
+                            <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                              Téléverser une image
                             </span>
                             <input
                               type="file"
@@ -1209,7 +1225,7 @@ export default function SellerOnboardingPage() {
                                     const url = await handleFileUpload(file, 'product_image');
                                     setProductThumbnail(url);
                                   } catch {
-                                    setWizardError('Failed to upload product thumbnail image');
+                                    setWizardError('Échec du téléversement de la photo');
                                   }
                                 }
                               }}
@@ -1224,54 +1240,52 @@ export default function SellerOnboardingPage() {
 
                 {/* Step 6: Shipping & Payments config */}
                 {currentStep === 5 && (
-                  <div className="space-y-6 max-w-lg mx-auto">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Tunisian Shipping Fee Flat-Rate (TND)
+                  <div className="space-y-4 max-w-lg mx-auto">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Frais de livraison fixes (TND)
                       </label>
-                      <div className="flex rounded-2xl border border-slate-800 bg-white/5 overflow-hidden">
+                      <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-2xs">
                         <input
                           type="text"
                           value={shippingFee}
                           onChange={(e) => setShippingFee(e.target.value)}
-                          className="flex-1 bg-transparent p-4 text-sm text-white focus:outline-none"
+                          className="flex-1 bg-transparent px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-white focus:outline-none"
                         />
-                        <span className="bg-slate-800 p-4 text-sm font-bold text-slate-400">
+                        <span className="bg-slate-100 dark:bg-slate-800 px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700">
                           DT
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                        Payout Options
+                    <div className="space-y-3">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Modalités de Versement
                       </label>
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3 rounded-2xl bg-white/5 border border-slate-800 p-4 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={codEnabled}
-                            onChange={(e) => setCodEnabled(e.target.checked)}
-                            className="h-5 w-5 rounded border-slate-800 bg-transparent text-[#B91C1C] focus:ring-[#B91C1C]"
-                          />
-                          <div>
-                            <span className="block text-sm font-black text-white">Cash on Delivery (COD)</span>
-                            <span className="text-[10px] text-slate-400">Receive cash directly from logistics courier.</span>
-                          </div>
-                        </label>
-
-                        <div className="space-y-2">
-                          <span className="block text-xs font-black uppercase tracking-wider text-slate-400">
-                            Bank Account details (RIB)
-                          </span>
-                          <textarea
-                            placeholder="Enter your bank name, account holder, and 24-digit RIB code..."
-                            value={bankTransferDetails}
-                            onChange={(e) => setBankTransferDetails(e.target.value)}
-                            rows={3}
-                            className="w-full rounded-2xl border border-slate-800 bg-white/5 p-4 text-sm text-white placeholder:text-slate-500 focus:border-[#B91C1C] focus:outline-none resize-none"
-                          />
+                      <label className="flex items-center gap-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 p-3.5 cursor-pointer shadow-2xs">
+                        <input
+                          type="checkbox"
+                          checked={codEnabled}
+                          onChange={(e) => setCodEnabled(e.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                        />
+                        <div>
+                          <span className="block text-xs font-semibold text-slate-900 dark:text-white">Paiement à la livraison (COD)</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">Encaissement direct des fonds auprès de vos transporteurs.</span>
                         </div>
+                      </label>
+
+                      <div className="space-y-1.5">
+                        <span className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                          Coordonnées Bancaires (RIB)
+                        </span>
+                        <textarea
+                          placeholder="Banque, titulaire du compte et RIB à 20-24 chiffres..."
+                          value={bankTransferDetails}
+                          onChange={(e) => setBankTransferDetails(e.target.value)}
+                          rows={3}
+                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3.5 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none resize-none shadow-2xs"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1279,49 +1293,47 @@ export default function SellerOnboardingPage() {
 
                 {/* Step 7: Launch & Publish */}
                 {currentStep === 6 && (
-                  <div className="space-y-6 text-center max-w-xl mx-auto py-4">
-                    <span className="text-6xl animate-bounce block">🚀</span>
-                    <h3 className="text-3xl font-black text-white">Congratulations!</h3>
-                    <p className="text-sm text-slate-400 leading-6">
-                      Your settings are persisted, product is listed, and custom design is applied. You are ready to launch on {platformDomain}!
+                  <div className="space-y-4 text-center max-w-lg mx-auto py-2">
+                    <span className="text-5xl block">🚀</span>
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Félicitations !</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+                      Vos paramètres sont enregistrés, votre thème est appliqué et votre premier produit est prêt.
                     </p>
 
-                    <div className="p-5 rounded-3xl bg-white/5 border border-slate-800 flex items-center justify-between">
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between shadow-2xs">
                       <div className="text-left">
-                        <span className="block text-sm font-black text-white">Publish Storefront Online</span>
-                        <span className="text-[10px] text-slate-400 leading-normal">
-                          Verified stores go live instantly. Unverified profiles enter review queues.
+                        <span className="block text-xs font-semibold text-slate-900 dark:text-white">Publier la Boutique en Ligne</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                          Les profils vérifiés deviennent visibles immédiatement.
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => publishStoreToggle(!isOnline)}
-                        className={`rounded-2xl px-6 py-3.5 text-xs font-black text-white transition-all shadow-md ${
+                        className={`rounded-xl px-4 py-2 text-xs font-medium text-white transition shadow-2xs cursor-pointer ${
                           isOnline
                             ? 'bg-emerald-600 hover:bg-emerald-700'
-                            : 'bg-[#B91C1C] hover:bg-[#991B1B]'
+                            : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100'
                         }`}
                       >
-                        {isOnline ? '🟢 Published Live' : '🔴 Offline / Private'}
+                        {isOnline ? '🟢 Publiée / En ligne' : 'Activer la Vitrine'}
                       </button>
                     </div>
 
-                    <div className="flex gap-4 pt-2">
+                    <div className="flex gap-3 pt-2">
                       <Link
                         href={storefrontHref}
                         target="_blank"
-                        className="flex-1 rounded-2xl bg-white/10 py-4 text-sm font-black text-white hover:bg-white/20 flex items-center justify-center gap-2"
+                        className="flex-1 rounded-xl bg-slate-900 dark:bg-white py-2.5 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 flex items-center justify-center gap-1.5 shadow-2xs"
                       >
-                        Preview Live Store <ExternalLink className="h-4 w-4" />
+                        Voir la Vitrine <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
                       <button
                         type="button"
-                        onClick={() => {
-                          setCurrentStep(0);
-                        }}
-                        className="rounded-2xl border border-slate-800 bg-transparent px-6 py-4 text-sm font-black text-slate-400 hover:text-white flex items-center gap-2"
+                        onClick={() => setCurrentStep(0)}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 shadow-2xs"
                       >
-                        <RotateCcw className="h-4 w-4" /> Restart Guide
+                        <RotateCcw className="h-3.5 w-3.5" /> Recommencer
                       </button>
                     </div>
                   </div>
@@ -1330,16 +1342,16 @@ export default function SellerOnboardingPage() {
 
               {/* Speech Bubble Guide Panel (Coachmarks) */}
               {showCoachmark && (
-                <div className="m-6 p-4 rounded-2xl bg-gradient-to-br from-[#1C0D0D] to-[#2B0F0F] border border-[#B91C1C]/25 text-left flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#B91C1C]/15 text-[#ff5f5f]">
+                <div className="mx-6 mb-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-left flex items-start justify-between gap-3 shadow-2xs">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-sm">
                       🐼
                     </span>
-                    <div>
-                      <span className="block text-xs font-black uppercase tracking-wider text-[#ff5f5f]">
-                        Panda Launch Advisor
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                        Conseiller Panda
                       </span>
-                      <p className="mt-1 text-sm text-slate-200 leading-6 font-semibold">
+                      <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                         {stepCoachmarks[currentStep]}
                       </p>
                     </div>
@@ -1347,35 +1359,35 @@ export default function SellerOnboardingPage() {
                   <button
                     type="button"
                     onClick={() => setShowCoachmark(false)}
-                    className="text-slate-500 hover:text-white shrink-0"
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0 p-1"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               )}
 
               {/* Bottom Navigation Buttons */}
-              <div className="p-6 border-t border-slate-800 bg-[#0B0B1A]/80 flex items-center justify-between">
+              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between">
                 <div>
                   {!showCoachmark && (
                     <button
                       type="button"
                       onClick={() => setShowCoachmark(true)}
-                      className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
+                      className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
                     >
-                      <HelpCircle className="h-4 w-4" /> Show advisor help
+                      <HelpCircle className="h-3.5 w-3.5" /> Aide du conseiller
                     </button>
                   )}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2.5">
                   {currentStep > 0 && currentStep < 6 && (
                     <button
                       type="button"
                       onClick={() => setCurrentStep((prev) => prev - 1)}
-                      className="rounded-2xl border border-slate-800 bg-transparent px-6 py-3.5 text-xs font-black text-slate-300 hover:bg-white/5 flex items-center gap-2"
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition shadow-2xs"
                     >
-                      <ChevronLeft className="h-4 w-4" /> Back
+                      <ChevronLeft className="h-3.5 w-3.5" /> Précédent
                     </button>
                   )}
 
@@ -1391,15 +1403,15 @@ export default function SellerOnboardingPage() {
                         else if (currentStep === 4) await saveFirstProduct();
                         else if (currentStep === 5) await savePaymentsAndShipping();
                       }}
-                      className="rounded-2xl bg-[#B91C1C] px-6 py-3.5 text-xs font-black text-white hover:bg-[#991B1B] disabled:opacity-50 flex items-center gap-2"
+                      className="rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                     >
                       {savingStep ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Enregistrement...
                         </>
                       ) : (
                         <>
-                          Save & Continue <ChevronRight className="h-4 w-4" />
+                          Enregistrer & Continuer <ChevronRight className="h-3.5 w-3.5" />
                         </>
                       )}
                     </button>
@@ -1407,9 +1419,9 @@ export default function SellerOnboardingPage() {
                     <button
                       type="button"
                       onClick={() => setShowWizard(false)}
-                      className="rounded-2xl bg-emerald-600 px-6 py-3.5 text-xs font-black text-white hover:bg-emerald-700 flex items-center gap-2"
+                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-medium text-white flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                     >
-                      Complete & Exit <Check className="h-4 w-4" />
+                      Terminer & Fermer <Check className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
