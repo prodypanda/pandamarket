@@ -86,32 +86,32 @@ function getOrderTotal(order: Order): number {
   return toNumber(order.total_amount ?? order.total);
 }
 
-const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  pending: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  processing: { bg: 'bg-blue-50', text: 'text-blue-700' },
-  payment_required: { bg: 'bg-red-50', text: 'text-red-700' },
-  fulfilled: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  delivered: { bg: 'bg-green-50', text: 'text-green-700' },
-  cancelled: { bg: 'bg-gray-100', text: 'text-gray-600' },
-  refunded: { bg: 'bg-violet-50', text: 'text-violet-700' },
+const ORDER_STATUS_CLASSES: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800',
+  processing: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800',
+  payment_required: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800',
+  fulfilled: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800',
+  delivered: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800',
+  cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
+  refunded: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800',
 };
 
 const STORE_STATUS_BADGES: Record<string, { className: string; dotClassName: string }> = {
   verified: {
-    className: 'bg-emerald-500/20 text-emerald-200',
-    dotClassName: 'bg-emerald-300',
+    className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
+    dotClassName: 'bg-emerald-500',
   },
   maintenance: {
-    className: 'bg-amber-500/20 text-amber-200',
-    dotClassName: 'bg-amber-300',
+    className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
+    dotClassName: 'bg-amber-500',
   },
   unverified: {
-    className: 'bg-slate-500/30 text-slate-200',
-    dotClassName: 'bg-slate-300',
+    className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+    dotClassName: 'bg-slate-400',
   },
   suspended: {
-    className: 'bg-red-500/20 text-red-200',
-    dotClassName: 'bg-red-300',
+    className: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800',
+    dotClassName: 'bg-rose-500',
   },
 };
 
@@ -131,7 +131,7 @@ function markWelcomeModalSeen(storeId: string): void {
   try {
     window.localStorage.setItem(getWelcomeStorageKey(storeId), 'true');
   } catch {
-    // Ignore storage failures so dismissing the modal never breaks the dashboard.
+    // Ignore storage failures
   }
 }
 
@@ -197,7 +197,6 @@ export default function DashboardOverview() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Calculate date_from for 30-day chart
         const dateFrom = new Date();
         dateFrom.setDate(dateFrom.getDate() - 30);
         const dateFromStr = dateFrom.toISOString().slice(0, 10);
@@ -276,7 +275,7 @@ export default function DashboardOverview() {
   const maxSales = useMemo(() => Math.max(...salesData.map((d) => d.total), 1), [salesData]);
   const totalRevenue30d = useMemo(() => salesData.reduce((s, d) => s + d.total, 0), [salesData]);
   const totalOrders30d = useMemo(() => salesData.reduce((s, d) => s + d.count, 0), [salesData]);
-  // Build the storefront URL: custom domain → subdomain.garbage.team → hub fallback
+  
   const platformDomain = (process.env.NEXT_PUBLIC_MARKETPLACE_DOMAIN || 'garbage.team').replace(/^https?:\/\//i, '');
   const storefrontHref = store?.custom_domain
     ? `https://${store.custom_domain}`
@@ -332,225 +331,268 @@ export default function DashboardOverview() {
       value: loading ? '—' : formatPrice(wallet?.total_earned),
       hint: t('dashboardPages.overview.revenueLast30Days', { amount: formatPrice(totalRevenue30d) }),
       icon: DollarSign,
-      gradient: 'from-amber-500 to-teal-600',
     },
     {
       name: t('dashboardPages.overview.activeProducts'),
       value: loading ? '—' : String(productCount),
       hint: productCount > 0 ? t('dashboardPages.overview.catalogAvailable') : t('dashboardPages.overview.addFirstListing'),
       icon: Package,
-      gradient: 'from-blue-500 to-indigo-600',
     },
     {
       name: t('dashboardPages.overview.totalOrders'),
       value: loading ? '—' : String(orderCount),
       hint: t('dashboardPages.overview.ordersLast30Days', { count: totalOrders30d }),
       icon: ShoppingCart,
-      gradient: 'from-violet-500 to-purple-600',
     },
     {
       name: t('dashboardPages.overview.availableBalance'),
       value: loading ? '—' : formatPrice(wallet?.balance),
       hint: t('dashboardPages.overview.pendingBalance', { amount: formatPrice(wallet?.pending_balance) }),
       icon: Wallet,
-      gradient: 'from-amber-500 to-orange-600',
     },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Welcome Modal */}
       {showWelcomeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-          <div role="dialog" aria-modal="true" aria-labelledby="seller-welcome-title" className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-950/30">
-            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[#B91C1C]/10 blur-3xl" />
-            <div className="relative p-6 sm:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="seller-welcome-title" className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 sm:p-7">
+            <button
+              type="button"
+              onClick={dismissWelcomeModal}
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              aria-label={t('dashboardPages.overview.closeWelcomeAria')}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              <Store className="h-3.5 w-3.5" />
+              {t('dashboardPages.overview.welcomeSeller')}
+            </div>
+            <h2 id="seller-welcome-title" className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+              {t('dashboardPages.overview.launchStepsTitle', { name: store?.name || t('dashboardPages.overview.yourStore') })}
+            </h2>
+            <p className="mt-1.5 text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400">
+              {t('dashboardPages.overview.welcomeBody')}
+            </p>
+            <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+              {setupSteps.map((step, index) => (
+                <Link
+                  key={step.label}
+                  href={step.href}
+                  onClick={dismissWelcomeModal}
+                  className="group flex items-start gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-3.5 transition-colors hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-850 shadow-2xs"
+                >
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-semibold ${step.completed ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'}`}>
+                    {step.completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-300">{step.label}</span>
+                    <span className="mt-0.5 block text-[11px] font-normal leading-4 text-slate-500 dark:text-slate-400">{step.description}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+              <p className="text-xs text-slate-400">{t('dashboardPages.overview.welcomeFooter')}</p>
               <button
                 type="button"
                 onClick={dismissWelcomeModal}
-                className="absolute right-5 top-5 rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-900"
-                aria-label={t('dashboardPages.overview.closeWelcomeAria')}
+                className="inline-flex items-center justify-center rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 dark:hover:bg-slate-100 shadow-2xs"
               >
-                <X className="h-4 w-4" />
+                {t('dashboardPages.overview.getStarted')}
               </button>
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C]/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-[#B91C1C]">
-                <Store className="h-4 w-4" />
-                {t('dashboardPages.overview.welcomeSeller')}
-              </div>
-              <h2 id="seller-welcome-title" className="mt-4 text-3xl font-black tracking-tight text-gray-900">
-                {t('dashboardPages.overview.launchStepsTitle', { name: store?.name || t('dashboardPages.overview.yourStore') })}
-              </h2>
-              <p className="mt-3 text-sm font-semibold leading-6 text-gray-500">
-                {t('dashboardPages.overview.welcomeBody')}
-              </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {setupSteps.map((step, index) => (
-                  <Link
-                    key={step.label}
-                    href={step.href}
-                    onClick={dismissWelcomeModal}
-                    className="group flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#B91C1C]/30 hover:bg-white hover:shadow-md"
-                  >
-                    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-black ${step.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-500 ring-1 ring-gray-200'}`}>
-                      {step.completed ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-                    </span>
-                    <span>
-                      <span className="block text-sm font-black text-gray-900 group-hover:text-[#B91C1C]">{step.label}</span>
-                      <span className="mt-1 block text-xs font-semibold leading-5 text-gray-500">{step.description}</span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-bold text-gray-400">{t('dashboardPages.overview.welcomeFooter')}</p>
-                <button type="button" onClick={dismissWelcomeModal} className="inline-flex items-center justify-center rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B]">
-                  {t('dashboardPages.overview.getStarted')}
-                </button>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-900 p-6 text-white shadow-2xl shadow-slate-900/10">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-amber-500/10 blur-[80px]" />
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex items-center gap-5">
-            {/* Store logo */}
-            {store?.settings?.logo_url ? (
-              <div className="hidden h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white shadow-xl sm:flex">
-                <img src={store.settings.logo_url ? getResizedImageUrl(store.settings.logo_url, 'medium') : ''} alt="" className="h-full w-full object-contain" />
-              </div>
-            ) : (
-              <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 sm:flex">
-                <Store className="h-7 w-7 text-amber-200" />
-              </div>
-            )}
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-amber-100">
-                <Store className="h-4 w-4" />
-                {t('dashboardPages.overview.sellerCommandCenter')}
-                {storeStatusBadge && (
-                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${storeStatusBadge.className}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${storeStatusBadge.dotClassName} ${store?.status === 'verified' ? 'animate-pulse' : ''}`} />
-                    {storeStatusLabel(store?.status ?? '')}
-                  </span>
-                )}
-              </div>
-              <h1 className="mt-3 text-3xl font-black tracking-tight">{store?.name || t('dashboardPages.overview.title')}</h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-amber-50/70">{t('dashboardPages.overview.heroSubtitle')}</p>
+      {/* Header Banner */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex items-center gap-4">
+          {store?.settings?.logo_url ? (
+            <div className="hidden h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs sm:flex">
+              <img src={store.settings.logo_url ? getResizedImageUrl(store.settings.logo_url, 'medium') : ''} alt="" className="h-full w-full object-contain" />
             </div>
+          ) : (
+            <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 sm:flex">
+              <Store className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <Store className="h-3 w-3" />
+                {t('dashboardPages.overview.sellerCommandCenter')}
+              </span>
+              {storeStatusBadge && (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${storeStatusBadge.className}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${storeStatusBadge.dotClassName}`} />
+                  {storeStatusLabel(store?.status ?? '')}
+                </span>
+              )}
+            </div>
+            <h1 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
+              {store?.name || t('dashboardPages.overview.title')}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              {t('dashboardPages.overview.heroSubtitle')}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/hub/dashboard/ads" className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-amber-600 shadow-sm">
-              {t('dashboardPages.overview.pandaAds')} <Megaphone className="h-4 w-4" />
-            </Link>
-            <Link href={storefrontHref} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:bg-amber-50">
-              {t('dashboardPages.overview.viewStore')} <ExternalLink className="h-4 w-4" />
-            </Link>
-            <Link href="/hub/dashboard/products" className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#991B1B]">
-              {t('dashboardPages.overview.addProduct')} <Plus className="h-4 w-4" />
-            </Link>
-          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2.5 shrink-0">
+          <Link
+            href="/hub/dashboard/ads"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs"
+          >
+            <Megaphone className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+            <span>{t('dashboardPages.overview.pandaAds')}</span>
+          </Link>
+          <Link
+            href={storefrontHref}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs"
+          >
+            <span>{t('dashboardPages.overview.viewStore')}</span>
+            <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+          </Link>
+          <Link
+            href="/hub/dashboard/products"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 dark:hover:bg-slate-100 shadow-2xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>{t('dashboardPages.overview.addProduct')}</span>
+          </Link>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: t('dashboardPages.overview.quickProducts'), icon: Package, href: '/hub/dashboard/products', color: 'text-blue-600 bg-blue-50' },
-          { label: t('dashboardPages.overview.quickOrders'), icon: ShoppingCart, href: '/hub/dashboard/orders', color: 'text-violet-600 bg-violet-50' },
-          { label: t('dashboardPages.overview.quickAds'), icon: Megaphone, href: '/hub/dashboard/ads', color: 'text-amber-600 bg-amber-50' },
-          { label: t('dashboardPages.overview.quickAnalytics'), icon: BarChart3, href: '/hub/dashboard/analytics', color: 'text-emerald-600 bg-emerald-50' },
-          { label: t('dashboardPages.overview.quickSettings'), icon: Settings, href: '/hub/dashboard/settings', color: 'text-gray-600 bg-gray-100' },
+          { label: t('dashboardPages.overview.quickProducts'), icon: Package, href: '/hub/dashboard/products' },
+          { label: t('dashboardPages.overview.quickOrders'), icon: ShoppingCart, href: '/hub/dashboard/orders' },
+          { label: t('dashboardPages.overview.quickAds'), icon: Megaphone, href: '/hub/dashboard/ads' },
+          { label: t('dashboardPages.overview.quickAnalytics'), icon: BarChart3, href: '/hub/dashboard/analytics' },
+          { label: t('dashboardPages.overview.quickSettings'), icon: Settings, href: '/hub/dashboard/settings' },
         ].map((action) => (
-          <Link key={action.label} href={action.href} className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-            <div className={`rounded-xl p-2.5 ${action.color} transition-transform group-hover:scale-110`}>
-              <action.icon className="h-5 w-5" />
+          <Link
+            key={action.label}
+            href={action.href}
+            className="group flex items-center gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-2xs transition hover:border-slate-300 dark:hover:border-slate-700"
+          >
+            <div className="rounded-lg p-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+              <action.icon className="h-4 w-4" />
             </div>
-            <span className="text-sm font-bold text-gray-700">{action.label}</span>
-            <ArrowRight className="ml-auto h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-1" />
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{action.label}</span>
+            <ArrowRight className="ml-auto h-3.5 w-3.5 text-slate-400 transition-transform group-hover:translate-x-0.5" />
           </Link>
         ))}
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <div key={stat.name} className="group relative overflow-hidden bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-0.5">
+          <div
+            key={stat.name}
+            className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition"
+          >
             <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{stat.name}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{stat.name}</p>
                 {loading ? (
-                  <div className="h-9 w-28 bg-gray-100 rounded-lg animate-pulse mt-2" />
+                  <div className="h-7 w-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mt-1.5" />
                 ) : (
-                  <p className="text-2xl font-black text-gray-900 mt-2">{stat.value}</p>
+                  <p className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mt-1.5">{stat.value}</p>
                 )}
-                <p className="mt-2 text-[11px] font-semibold text-gray-400">{stat.hint}</p>
+                <p className="mt-1 text-[11px] font-normal text-slate-400 dark:text-slate-500 truncate">{stat.hint}</p>
               </div>
-              <div className={`rounded-xl bg-gradient-to-br ${stat.gradient} p-3 text-white shadow-lg`}>
-                <stat.icon className="h-5 w-5" />
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+                <stat.icon className="h-4 w-4" />
               </div>
             </div>
-            <div className={`absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${stat.gradient} opacity-0 transition-opacity group-hover:opacity-100`} />
           </div>
         ))}
       </div>
 
       {/* Launch Readiness + Store Health */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        {/* Launch Readiness */}
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.launchReadiness')}</h3>
-              <p className="mt-1 text-sm font-semibold text-gray-500">{t('dashboardPages.overview.stepsCompleted', { done: completedSetupSteps, total: setupSteps.length })}</p>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.overview.launchReadiness')}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                {t('dashboardPages.overview.stepsCompleted', { done: completedSetupSteps, total: setupSteps.length })}
+              </p>
             </div>
             <div className="text-right">
-              <p className={`text-3xl font-black ${setupPercent === 100 ? 'text-[#B91C1C]' : 'text-amber-500'}`}>{setupPercent}%</p>
-              <p className="text-xs font-black uppercase tracking-wide text-gray-400">{setupPercent === 100 ? t('dashboardPages.overview.ready') : t('dashboardPages.overview.inProgress')}</p>
+              <p className="text-xl font-semibold text-slate-900 dark:text-white">{setupPercent}%</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                {setupPercent === 100 ? t('dashboardPages.overview.ready') : t('dashboardPages.overview.inProgress')}
+              </p>
             </div>
           </div>
-          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-gray-100">
-            <div className={`h-full rounded-full transition-all duration-700 ${setupPercent === 100 ? 'bg-[#B91C1C]' : 'bg-gradient-to-r from-amber-400 to-amber-500'}`} style={{ width: `${setupPercent}%` }} />
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${setupPercent === 100 ? 'bg-emerald-500' : 'bg-slate-900 dark:bg-white'}`}
+              style={{ width: `${setupPercent}%` }}
+            />
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2.5 sm:grid-cols-2">
             {setupSteps.map((step) => (
-              <Link key={step.label} href={step.href} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-[#B91C1C]/30 hover:bg-amber-50/40">
-                <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${step.completed ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {step.completed ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+              <Link
+                key={step.label}
+                href={step.href}
+                className="flex items-center gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-3.5 transition hover:bg-white dark:hover:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
+              >
+                <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${step.completed ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'}`}>
+                  {step.completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
                 </span>
-                <span>
-                  <span className="block text-sm font-black text-gray-900">{step.label}</span>
-                  <span className="block text-xs font-semibold text-gray-500">{step.description}</span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold text-slate-900 dark:text-white truncate">{step.label}</span>
+                  <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400 truncate">{step.description}</span>
                 </span>
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.storeHealth')}</h3>
-          <div className="mt-5 space-y-3">
-            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><ShieldCheck className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.verification')}</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${verification?.status === 'approved' || store?.is_verified ? 'bg-amber-100 text-amber-700' : 'bg-amber-100 text-amber-700'}`}>
+        {/* Store Health */}
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xs space-y-3.5">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.overview.storeHealth')}</h3>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/60 dark:border-slate-700/60">
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                <ShieldCheck className="h-4 w-4 text-slate-400" />
+                {t('dashboardPages.overview.verification')}
+              </span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${verification?.status === 'approved' || store?.is_verified ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
                 {verification?.status === 'approved' || store?.is_verified ? t('dashboardPages.overview.approved') : verification?.status || t('dashboardPages.overview.notSubmitted')}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><CreditCard className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.payments')}</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${store?.payment_config ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/60 dark:border-slate-700/60">
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                <CreditCard className="h-4 w-4 text-slate-400" />
+                {t('dashboardPages.overview.payments')}
+              </span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${store?.payment_config ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}>
                 {store?.payment_config ? t('dashboardPages.overview.configured') : t('dashboardPages.overview.marketplaceDefault')}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
-              <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-600"><Settings className="h-4 w-4 text-gray-400" /> {t('dashboardPages.overview.storeStatus')}</span>
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">{store?.status ? storeStatusLabel(store.status) : t('dashboardPages.common.active')}</span>
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/60 dark:border-slate-700/60">
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                <Settings className="h-4 w-4 text-slate-400" />
+                {t('dashboardPages.overview.storeStatus')}
+              </span>
+              <span className="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-[10px] font-medium">
+                {store?.status ? storeStatusLabel(store.status) : t('dashboardPages.common.active')}
+              </span>
             </div>
             {completedSetupSteps < setupSteps.length && (
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
-                <AlertCircle className="mb-2 h-4 w-4" />
-                {t('dashboardPages.overview.finishSetupHint')}
+              <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/30 p-3 text-xs font-normal text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                <span>{t('dashboardPages.overview.finishSetupHint')}</span>
               </div>
             )}
           </div>
@@ -559,25 +601,28 @@ export default function DashboardOverview() {
 
       {/* Sales Chart + Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
+        {/* Sales Chart */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.sales30Days')}</h3>
-              <p className="mt-0.5 text-xs text-gray-400">{t('dashboardPages.overview.ordersAndRevenue', { count: totalOrders30d, revenue: formatPrice(totalRevenue30d) })}</p>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.overview.sales30Days')}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                {t('dashboardPages.overview.ordersAndRevenue', { count: totalOrders30d, revenue: formatPrice(totalRevenue30d) })}
+              </p>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-bold text-[#B91C1C]">
-              <TrendingUp className="h-4 w-4" />
-              {formatPrice(totalRevenue30d)}
+            <div className="flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 font-mono">
+              <TrendingUp className="h-3.5 w-3.5 text-slate-500" />
+              <span>{formatPrice(totalRevenue30d)}</span>
             </div>
           </div>
           {loading ? (
-            <div className="h-52 bg-gray-50 rounded-lg animate-pulse" />
+            <div className="h-52 bg-slate-100 dark:bg-slate-800/50 rounded-lg animate-pulse" />
           ) : (
             <>
-              <div className="relative h-52 flex items-end gap-[2px]">
+              <div className="relative h-52 flex items-end gap-[3px] pt-4">
                 {/* Horizontal grid lines */}
                 {[0.25, 0.5, 0.75, 1].map((pct) => (
-                  <div key={pct} className="pointer-events-none absolute left-0 right-0 border-t border-gray-100" style={{ bottom: `${pct * 100}%` }} />
+                  <div key={pct} className="pointer-events-none absolute left-0 right-0 border-t border-slate-100 dark:border-slate-800" style={{ bottom: `${pct * 100}%` }} />
                 ))}
                 {salesData.map((day, i) => {
                   const height = maxSales > 0 ? (day.total / maxSales) * 100 : 0;
@@ -591,17 +636,17 @@ export default function DashboardOverview() {
                       <div
                         className={`w-full rounded-t-sm transition-all duration-300 ${
                           isToday
-                            ? 'bg-gradient-to-t from-[#B91C1C] to-[#1EE69A] shadow-sm shadow-amber-500/20'
-                            : 'bg-[#B91C1C]/30 group-hover:bg-[#B91C1C]/60'
+                            ? 'bg-slate-900 dark:bg-white shadow-2xs'
+                            : 'bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-400 dark:group-hover:bg-slate-500'
                         }`}
                         style={{ height: `${Math.max(height, 2)}%` }}
                       />
                       {/* Tooltip on hover */}
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                        <div className="bg-gray-900 text-white text-xs rounded-xl px-3 py-2 whitespace-nowrap shadow-xl">
-                          <p className="font-bold">{new Date(day.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</p>
-                          <p className="text-[#B91C1C] font-black">{formatPrice(day.total)}</p>
-                          <p className="text-gray-400">{t('dashboardPages.overview.ordersCount', { count: day.count })}</p>
+                        <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs rounded-xl px-3 py-2 whitespace-nowrap shadow-xl border border-slate-800 dark:border-slate-200">
+                          <p className="font-semibold">{new Date(day.date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</p>
+                          <p className="font-semibold">{formatPrice(day.total)}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500">{t('dashboardPages.overview.ordersCount', { count: day.count })}</p>
                         </div>
                       </div>
                     </div>
@@ -609,7 +654,7 @@ export default function DashboardOverview() {
                 })}
               </div>
               {/* X-axis labels */}
-              <div className="flex justify-between mt-2 text-[10px] text-gray-400 font-medium">
+              <div className="flex justify-between mt-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 <span>{salesData[0] && new Date(salesData[0].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
                 <span>{salesData[14] && new Date(salesData[14].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
                 <span>{t('dashboardPages.overview.today')}</span>
@@ -619,48 +664,53 @@ export default function DashboardOverview() {
         </div>
 
         {/* Recent Orders */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.overview.recentOrders')}</h3>
-            <Link href="/hub/dashboard/orders" className="text-xs font-bold text-[#B91C1C] hover:underline">{t('dashboardPages.overview.viewAll')} →</Link>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.overview.recentOrders')}</h3>
+            <Link href="/hub/dashboard/orders" className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {t('dashboardPages.overview.viewAll')} →
+            </Link>
           </div>
           {loading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-gray-100 rounded-xl animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" />
-                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-3/4" />
+                    <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded animate-pulse w-1/2" />
                   </div>
                 </div>
               ))}
             </div>
           ) : recentOrders.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {recentOrders.map((order) => {
-                const statusInfo = ORDER_STATUS_COLORS[order.status] || { bg: 'bg-gray-100', text: 'text-gray-600' };
+                const statusClass = ORDER_STATUS_CLASSES[order.status] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
                 return (
                   <li key={order.id}>
-                    <Link href={`/hub/dashboard/orders/${order.id}`} className="flex items-center justify-between rounded-xl p-3 transition-all hover:bg-gray-50 group">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 font-mono text-[10px] font-bold">
+                    <Link
+                      href={`/hub/dashboard/orders/${order.id}`}
+                      className="flex items-center justify-between rounded-xl p-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-mono text-[10px] font-semibold border border-slate-200/60 dark:border-slate-700">
                           #{order.id.slice(-4)}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-[#B91C1C] transition-colors">
+                          <p className="text-xs font-medium text-slate-900 dark:text-white truncate group-hover:text-slate-700 dark:group-hover:text-slate-300">
                             {order.customer_email || t('dashboardPages.overview.customer')}
                           </p>
-                          <p className="text-[11px] text-gray-400">
-                            {new Date(order.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          <p className="text-[10px] text-slate-400">
+                            {new Date(order.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusInfo.bg} ${statusInfo.text}`}>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass}`}>
                           {orderStatusLabel(order.status)}
                         </span>
-                        <span className="text-sm font-black text-gray-900">{formatPrice(getOrderTotal(order))}</span>
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatPrice(getOrderTotal(order))}</span>
                       </div>
                     </Link>
                   </li>
@@ -668,10 +718,10 @@ export default function DashboardOverview() {
               })}
             </ul>
           ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <ShoppingCart className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm font-semibold text-gray-400">{t('dashboardPages.overview.noOrders')}</p>
-              <p className="mt-1 text-xs text-gray-300">{t('dashboardPages.overview.noOrdersHint')}</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <ShoppingCart className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('dashboardPages.overview.noOrders')}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{t('dashboardPages.overview.noOrdersHint')}</p>
             </div>
           )}
         </div>
