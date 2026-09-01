@@ -5,7 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign } from 'lucide-react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy } from 'lucide-react';
 import { SellerOrderDrawer } from '@/components/dashboard/orders/SellerOrderDrawer';
 
 export type OrdersMainTab = 'all_orders' | 'cod_radar' | 'rto_returns' | 'courier_settlements';
@@ -1303,6 +1303,17 @@ export default function OrdersPage() {
   const [reconcileStatus, setReconcileStatus] = useState<'pending' | 'settled' | 'disputed'>('settled');
   const [reconcileNotes, setReconcileNotes] = useState('');
   const [savingSettlement, setSavingSettlement] = useState(false);
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
+
+  const handleCopyOrderId = (id: string) => {
+    try {
+      navigator.clipboard.writeText(id);
+      setCopiedOrderId(id);
+      setTimeout(() => setCopiedOrderId(null), 2000);
+    } catch {
+      // fallback
+    }
+  };
 
 
   const fetchOrders = useCallback(async () => {
@@ -2805,9 +2816,22 @@ export default function OrdersPage() {
                       {visibleColumns.id && (
                         <td className="px-5 py-3.5">
                           <div className="flex flex-col gap-1">
-                            <span className="inline-flex w-fit items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-                              #{order.id.slice(-8).toUpperCase()}
-                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyOrderId(order.id);
+                              }}
+                              className="inline-flex w-fit items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                              title="Copier l'identifiant complet"
+                            >
+                              <span>#{order.id.slice(-8).toUpperCase()}</span>
+                              {copiedOrderId === order.id ? (
+                                <span className="text-[10px] text-emerald-600 font-sans font-medium">Copié !</span>
+                              ) : (
+                                <Copy className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              )}
+                            </button>
                             {openReportCount > 0 && (
                               <span className="inline-flex w-fit rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 border border-rose-200/60">
                                 {t('dashboardPages.orders.disputeCount', { count: openReportCount })}
