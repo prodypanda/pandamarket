@@ -1370,6 +1370,32 @@ export default function OrdersPage() {
   }, [orders]);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (fulfillOrderTarget) setFulfillOrderTarget(null);
+        else if (deliveryProofTarget) setDeliveryProofTarget(null);
+        else if (refundOrderTarget) setRefundOrderTarget(null);
+        else if (bulkFulfillmentTargets.length > 0) {
+          setBulkFulfillmentTargets([]);
+          setBulkFulfillmentDrafts({});
+        } else if (rtoOrderTarget) setRtoOrderTarget(null);
+        else if (reconcileOrderTarget) setReconcileOrderTarget(null);
+        else if (selectedOrder) setSelectedOrder(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    fulfillOrderTarget,
+    deliveryProofTarget,
+    refundOrderTarget,
+    bulkFulfillmentTargets.length,
+    rtoOrderTarget,
+    reconcileOrderTarget,
+    selectedOrder,
+  ]);
+
+  useEffect(() => {
     let active = true;
     async function fetchMarketplaceSettings() {
       try {
@@ -2280,6 +2306,31 @@ export default function OrdersPage() {
     }
   };
 
+  const exportSettlementsCsv = () => {
+    if (settlements.length === 0) return;
+    const rows = [
+      ['ID Commande', 'Transporteur', 'N° Suivi', 'Montant Collecté (TND)', 'Frais Livraison (TND)', 'Net Vendeur (TND)', 'Statut', 'Référence Rapprochement'],
+      ...settlements.map((st) => [
+        `#${st.order_id.slice(-8).toUpperCase()}`,
+        st.carrier,
+        st.tracking_number || '',
+        String(st.collected_amount),
+        String(st.courier_fee),
+        String(st.net_payout),
+        st.status,
+        st.settlement_reference || '',
+      ]),
+    ];
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map((e) => e.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `rapprochements-transporteurs-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getRtoLabel = (code?: string | null) => {
     switch (code) {
       case 'client_refused': return t('dashboardPages.orders.rtoReasonClientRefused');
@@ -2522,7 +2573,28 @@ export default function OrdersPage() {
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs"
               >
                 <Filter className="h-3.5 w-3.5 text-slate-400" />
-                {t('dashboardPages.orders.advanced')}
+                <span>{t('dashboardPages.orders.advanced')}</span>
+                {[
+                  Boolean(customerFilter),
+                  Boolean(productFilter),
+                  Boolean(channelFilter),
+                  Boolean(countryFilter),
+                  Boolean(hasDisputeFilter),
+                  Boolean(dateFrom),
+                  Boolean(dateTo),
+                ].filter(Boolean).length > 0 && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+                    {[
+                      Boolean(customerFilter),
+                      Boolean(productFilter),
+                      Boolean(channelFilter),
+                      Boolean(countryFilter),
+                      Boolean(hasDisputeFilter),
+                      Boolean(dateFrom),
+                      Boolean(dateTo),
+                    ].filter(Boolean).length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -3354,6 +3426,16 @@ export default function OrdersPage() {
                   <option value="settled">{t('dashboardPages.orders.settlementStatusSettled')}</option>
                   <option value="disputed">{t('dashboardPages.orders.settlementStatusDisputed')}</option>
                 </select>
+
+                <button
+                  type="button"
+                  onClick={exportSettlementsCsv}
+                  disabled={settlements.length === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-normal text-slate-700 dark:text-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Exporter CSV</span>
+                </button>
               </div>
             </div>
 
@@ -3510,35 +3592,35 @@ export default function OrdersPage() {
       )}
 
       {refundOrderTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-100 dark:border-slate-800">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.refundRequestTitle')}</h2>
-                <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{refundOrderTarget.id.slice(-8).toUpperCase()}</p>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.orders.refundRequestTitle')}</h2>
+                <p className="mt-1 inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">#{refundOrderTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setRefundOrderTarget(null)}
                 disabled={refundingOrderId === refundOrderTarget.id}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4.5 w-4.5" />
               </button>
             </div>
             <div className="space-y-4">
-              <div className="grid gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm sm:grid-cols-2">
+              <div className="grid gap-3 rounded-xl border border-rose-200/60 bg-rose-50/60 dark:bg-rose-950/40 p-3.5 text-xs sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-red-700">{t('dashboardPages.orders.storeTotal')}</p>
-                  <p className="mt-1 font-black text-red-950">{formatMoney(refundOrderTarget.store_total ?? refundOrderTarget.total, refundOrderTarget.currency || 'TND')}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-rose-700 dark:text-rose-400">{t('dashboardPages.orders.storeTotal')}</p>
+                  <p className="mt-1 font-semibold text-slate-900 dark:text-white font-mono">{formatMoney(refundOrderTarget.store_total ?? refundOrderTarget.total, refundOrderTarget.currency || 'TND')}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-red-700">{t('dashboardPages.orders.refundableRemaining')}</p>
-                  <p className="mt-1 font-black text-red-950">{formatMoney(refundableRemaining(refundOrderTarget), refundOrderTarget.currency || 'TND')}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-rose-700 dark:text-rose-400">{t('dashboardPages.orders.refundableRemaining')}</p>
+                  <p className="mt-1 font-semibold text-slate-900 dark:text-white font-mono">{formatMoney(refundableRemaining(refundOrderTarget), refundOrderTarget.currency || 'TND')}</p>
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.amount')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.amount')}</label>
                 <input
                   type="number"
                   min="0"
@@ -3547,16 +3629,16 @@ export default function OrdersPage() {
                   value={refundAmount}
                   onChange={(event) => setRefundAmount(event.target.value)}
                   disabled={refundingOrderId === refundOrderTarget.id}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.reason')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.reason')}</label>
                 <select
                   value={refundReasonCode}
                   onChange={(event) => setRefundReasonCode(event.target.value)}
                   disabled={refundingOrderId === refundOrderTarget.id}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 >
                   {REFUND_REASON_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
@@ -3564,26 +3646,26 @@ export default function OrdersPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.internalNote')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.internalNote')}</label>
                 <textarea
                   value={refundReason}
                   onChange={(event) => setRefundReason(event.target.value)}
                   disabled={refundingOrderId === refundOrderTarget.id}
-                  rows={4}
+                  rows={3}
                   maxLength={1000}
                   placeholder={t('dashboardPages.orders.refundNotePlaceholder')}
-                  className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
+                  className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 />
               </div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300 font-normal">
                 {t('dashboardPages.orders.refundDisclaimer')}
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-2">
                 <button
                   type="button"
                   onClick={() => setRefundOrderTarget(null)}
                   disabled={refundingOrderId === refundOrderTarget.id}
-                  className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-50 shadow-2xs"
                 >
                   {t('dashboardPages.common.cancel')}
                 </button>
@@ -3591,9 +3673,9 @@ export default function OrdersPage() {
                   type="button"
                   onClick={() => void submitRefundRequest()}
                   disabled={refundingOrderId === refundOrderTarget.id}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
                 >
-                  {refundingOrderId === refundOrderTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                  {refundingOrderId === refundOrderTarget.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
                   {t('dashboardPages.orders.saveRequest')}
                 </button>
               </div>
@@ -3603,40 +3685,40 @@ export default function OrdersPage() {
       )}
 
       {deliveryProofTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-100 dark:border-slate-800">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.deliveryProofTitle')}</h2>
-                <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{deliveryProofTarget.id.slice(-8).toUpperCase()}</p>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.orders.deliveryProofTitle')}</h2>
+                <p className="mt-1 inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">#{deliveryProofTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setDeliveryProofTarget(null)}
                 disabled={submittingDeliveryProofId === deliveryProofTarget.id}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4.5 w-4.5" />
               </button>
             </div>
             <div className="space-y-4">
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300 font-normal">
                 {t('dashboardPages.orders.deliveryProofDesc')}
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.receivedBy')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.receivedBy')}</label>
                 <input
                   value={deliveryProofReceivedBy}
                   onChange={(event) => setDeliveryProofReceivedBy(event.target.value)}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
                   placeholder={t('dashboardPages.orders.receivedByPlaceholder')}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.proofFile')}</label>
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm font-black text-gray-600 hover:border-[#B91C1C] hover:bg-red-50/40">
-                  <Upload className="h-4 w-4" />
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.proofFile')}</label>
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-4 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-slate-400 transition-colors">
+                  <Upload className="h-4 w-4 text-slate-400" />
                   {deliveryProofFile ? deliveryProofFile.name : t('dashboardPages.orders.chooseImageOrPdf')}
                   <input
                     type="file"
@@ -3646,26 +3728,26 @@ export default function OrdersPage() {
                     className="hidden"
                   />
                 </label>
-                <p className="mt-1 text-xs font-semibold text-gray-400">{t('dashboardPages.orders.proofFileHint')}</p>
+                <p className="mt-1 text-[10px] text-slate-400 font-normal">{t('dashboardPages.orders.proofFileHint')}</p>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.deliveryNote')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.deliveryNote')}</label>
                 <textarea
                   value={deliveryProofNote}
                   onChange={(event) => setDeliveryProofNote(event.target.value)}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
-                  rows={4}
+                  rows={3}
                   maxLength={1000}
                   placeholder={t('dashboardPages.orders.deliveryNotePlaceholder')}
-                  className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-50"
+                  className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 />
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-2">
                 <button
                   type="button"
                   onClick={() => setDeliveryProofTarget(null)}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
-                  className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-50 shadow-2xs"
                 >
                   {t('dashboardPages.common.cancel')}
                 </button>
@@ -3673,9 +3755,9 @@ export default function OrdersPage() {
                   type="button"
                   onClick={() => void submitDeliveryProof()}
                   disabled={submittingDeliveryProofId === deliveryProofTarget.id}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
                 >
-                  {submittingDeliveryProofId === deliveryProofTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {submittingDeliveryProofId === deliveryProofTarget.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                   {t('dashboardPages.orders.confirmDelivery')}
                 </button>
               </div>
@@ -3685,12 +3767,12 @@ export default function OrdersPage() {
       )}
 
       {bulkFulfillmentTargets.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-100 bg-gray-50/70 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-800 flex flex-col">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-5">
               <div>
-                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.bulkFulfillmentTitle')}</h2>
-                <p className="mt-1 text-sm font-semibold text-gray-500">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.orders.bulkFulfillmentTitle')}</h2>
+                <p className="mt-0.5 text-xs text-slate-500 font-normal">
                   {t('dashboardPages.orders.bulkFulfillmentReady', { count: bulkFulfillmentTargets.length })}
                 </p>
               </div>
@@ -3701,19 +3783,19 @@ export default function OrdersPage() {
                   setBulkFulfillmentDrafts({});
                 }}
                 disabled={bulkFulfilling}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4.5 w-4.5" />
               </button>
             </div>
-            <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6">
-              <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-amber-700">{t('dashboardPages.orders.applyCarrierToAll')}</label>
+            <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-5 space-y-4">
+              <div className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3.5">
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-500">{t('dashboardPages.orders.applyCarrierToAll')}</label>
                 <select
                   onChange={(event) => applyCarrierToBulkFulfillment(event.target.value)}
                   defaultValue=""
                   disabled={bulkFulfilling}
-                  className="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-200/40 disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                 >
                   <option value="">{t('dashboardPages.orders.select')}</option>
                   {CARRIER_OPTIONS.map((option) => (
@@ -3726,22 +3808,22 @@ export default function OrdersPage() {
                 {bulkFulfillmentTargets.map((order) => {
                   const draft = bulkFulfillmentDrafts[order.id] || { carrier: '', trackingNumber: '' };
                   return (
-                    <div key={order.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div key={order.id} className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="font-mono text-xs font-black text-gray-500">#{order.id.slice(-8).toUpperCase()}</p>
-                          <p className="mt-1 text-sm font-black text-gray-900">{customerName(order, t)}</p>
+                          <p className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">#{order.id.slice(-8).toUpperCase()}</p>
+                          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{customerName(order, t)}</p>
                         </div>
-                        <span className="text-sm font-black text-gray-900">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white font-mono">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div>
-                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.carrier')}</label>
+                          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.carrier')}</label>
                           <select
                             value={draft.carrier}
                             onChange={(event) => updateBulkFulfillmentDraft(order.id, 'carrier', event.target.value)}
                             disabled={bulkFulfilling}
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-[#B91C1C] disabled:opacity-50"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 disabled:opacity-50"
                           >
                             <option value="">{t('dashboardPages.orders.select')}</option>
                             {CARRIER_OPTIONS.map((option) => (
@@ -3751,23 +3833,23 @@ export default function OrdersPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.trackingNumber')}</label>
+                          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.trackingNumber')}</label>
                           <input
                             value={draft.trackingNumber}
                             onChange={(event) => updateBulkFulfillmentDraft(order.id, 'trackingNumber', event.target.value)}
                             disabled={bulkFulfilling}
                             placeholder={t('dashboardPages.orders.trackingNumberPlaceholder')}
-                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-[#B91C1C] disabled:opacity-50"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-normal text-slate-800 dark:text-slate-200 outline-none focus:border-slate-400 disabled:opacity-50"
                           />
                           {getTrackingUrl(draft.carrier, draft.trackingNumber) && (
                             <a
                               href={getTrackingUrl(draft.carrier, draft.trackingNumber)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="mt-1.5 inline-flex items-center gap-1 text-xs font-black text-amber-700 hover:text-amber-800"
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900"
                             >
                               {t('dashboardPages.orders.preview')}
-                              <ExternalLink className="h-3 w-3" />
+                              <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           )}
                         </div>
@@ -3777,7 +3859,7 @@ export default function OrdersPage() {
                 })}
               </div>
             </div>
-            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/70 p-6 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -3785,7 +3867,7 @@ export default function OrdersPage() {
                   setBulkFulfillmentDrafts({});
                 }}
                 disabled={bulkFulfilling}
-                className="rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-50 shadow-2xs"
               >
                 {t('dashboardPages.common.cancel')}
               </button>
@@ -3793,9 +3875,9 @@ export default function OrdersPage() {
                 type="button"
                 onClick={() => void submitBulkFulfillment()}
                 disabled={bulkFulfilling}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
               >
-                {bulkFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                {bulkFulfilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
                 {t('dashboardPages.orders.confirmShipments', { count: bulkFulfillmentTargets.length })}
               </button>
             </div>
@@ -3804,28 +3886,28 @@ export default function OrdersPage() {
       )}
 
       {fulfillOrderTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-100 dark:border-slate-800">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.markAsShipped')}</h2>
-                <p className="mt-1 inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-xs font-bold text-gray-600">#{fulfillOrderTarget.id.slice(-8).toUpperCase()}</p>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.orders.markAsShipped')}</h2>
+                <p className="mt-1 inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">#{fulfillOrderTarget.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setFulfillOrderTarget(null)}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4.5 w-4.5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.carrier')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.carrier')}</label>
                 <select
                   value={carrier}
                   onChange={(event) => setCarrier(event.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                 >
                   <option value="">{t('dashboardPages.orders.selectCarrier')}</option>
                   {CARRIER_OPTIONS.map((option) => (
@@ -3835,33 +3917,33 @@ export default function OrdersPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.trackingNumber')}</label>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.trackingNumber')}</label>
                 <input
                   value={trackingNumber}
                   onChange={(event) => setTrackingNumber(event.target.value)}
                   placeholder={t('dashboardPages.orders.trackingNumberPlaceholder')}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                 />
                 {getTrackingUrl(carrier, trackingNumber) && (
                   <a
                     href={getTrackingUrl(carrier, trackingNumber)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-black text-amber-700 hover:text-amber-800"
+                    className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900"
                   >
                     {t('dashboardPages.orders.previewTrackingLink')}
-                    <ExternalLink className="h-3 w-3" />
+                    <ExternalLink className="h-2.5 w-2.5" />
                   </a>
                 )}
               </div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs text-amber-800 dark:text-amber-300 font-normal">
                 {t('dashboardPages.orders.fulfillDisclaimer')}
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-2">
                 <button
                   type="button"
                   onClick={() => setFulfillOrderTarget(null)}
-                  className="rounded-2xl border border-gray-200 px-5 py-3 text-sm font-black text-gray-600 transition hover:bg-gray-50"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 shadow-2xs"
                 >
                   {t('dashboardPages.common.cancel')}
                 </button>
@@ -3869,10 +3951,139 @@ export default function OrdersPage() {
                   type="button"
                   onClick={() => void fulfillOrder()}
                   disabled={fulfillingId === fulfillOrderTarget.id}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
                 >
-                  {fulfillingId === fulfillOrderTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                  {fulfillingId === fulfillOrderTarget.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
                   {t('dashboardPages.orders.confirmShipment')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reconcileOrderTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-100 dark:border-slate-800">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Rapprochement Règlement Transporteur</h2>
+                <p className="mt-1 inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  #{reconcileOrderTarget.id.slice(-8).toUpperCase()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReconcileOrderTarget(null)}
+                disabled={savingSettlement}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.carrier')}</label>
+                  <select
+                    value={reconcileCarrier}
+                    onChange={(e) => setReconcileCarrier(e.target.value)}
+                    disabled={savingSettlement}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
+                  >
+                    <option value="aramex">Aramex</option>
+                    <option value="laposte">La Poste Tunisienne</option>
+                    <option value="first_delivery">First Delivery</option>
+                    <option value="livri">Livri</option>
+                    <option value="own_fleet">{t('dashboardPages.orders.ownFleet')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementStatusHeader')}</label>
+                  <select
+                    value={reconcileStatus}
+                    onChange={(e) => setReconcileStatus(e.target.value as 'pending' | 'settled' | 'disputed')}
+                    disabled={savingSettlement}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-700 dark:text-slate-200 outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
+                  >
+                    <option value="pending">{t('dashboardPages.orders.settlementAwaitingTransfer')}</option>
+                    <option value="settled">{t('dashboardPages.orders.settlementStatusSettled')}</option>
+                    <option value="disputed">{t('dashboardPages.orders.settlementStatusDisputed')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-3.5 text-xs">
+                <div>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.settlementCollectedFromCustomer')}</span>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={reconcileCollectedAmount}
+                    onChange={(e) => setReconcileCollectedAmount(e.target.value)}
+                    disabled={savingSettlement}
+                    className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-mono font-semibold text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Frais Colis</span>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={reconcileCourierFee}
+                    onChange={(e) => setReconcileCourierFee(e.target.value)}
+                    disabled={savingSettlement}
+                    className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-mono font-semibold text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">{t('dashboardPages.orders.settlementNetToVendor')}</span>
+                  <p className="mt-2 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                    +{formatMoney((parseFloat(reconcileCollectedAmount) || 0) - (parseFloat(reconcileCourierFee) || 0))}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">Référence Virement / Bordereau</label>
+                <input
+                  value={reconcileRef}
+                  onChange={(e) => setReconcileRef(e.target.value)}
+                  disabled={savingSettlement}
+                  placeholder="Ex: VIR-ARAMEX-2026-08"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-400">Note interne</label>
+                <textarea
+                  value={reconcileNotes}
+                  onChange={(e) => setReconcileNotes(e.target.value)}
+                  disabled={savingSettlement}
+                  rows={2}
+                  placeholder="Notes ou détails sur l'écart de rapprochement..."
+                  className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-normal text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReconcileOrderTarget(null)}
+                  disabled={savingSettlement}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 shadow-2xs"
+                >
+                  {t('dashboardPages.common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveCourierSettlement()}
+                  disabled={savingSettlement}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 disabled:opacity-60 shadow-2xs"
+                >
+                  {savingSettlement ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <DollarSign className="h-3.5 w-3.5" />}
+                  Enregistrer
                 </button>
               </div>
             </div>
