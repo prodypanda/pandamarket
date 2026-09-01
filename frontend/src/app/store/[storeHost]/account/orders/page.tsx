@@ -75,23 +75,23 @@ const statusLabel = (status: string) => {
 
 const statusColor = (status: string) => {
   switch (status) {
-    case 'payment_required': return 'bg-orange-100 text-orange-800';
-    case 'processing': return 'bg-blue-100 text-blue-800';
-    case 'partially_shipped': return 'bg-violet-100 text-violet-800';
-    case 'fulfilled': return 'bg-purple-100 text-purple-800';
-    case 'partially_delivered': return 'bg-emerald-100 text-emerald-800';
-    case 'delivered': return 'bg-emerald-100 text-emerald-800';
-    case 'cancelled': return 'bg-red-100 text-red-800';
-    case 'refunded': return 'bg-gray-100 text-gray-700';
-    default: return 'bg-amber-100 text-amber-800';
+    case 'payment_required': return 'bg-orange-50 text-orange-800 border-orange-200/60';
+    case 'processing': return 'bg-sky-50 text-sky-800 border-sky-200/60';
+    case 'partially_shipped': return 'bg-indigo-50 text-indigo-800 border-indigo-200/60';
+    case 'fulfilled': return 'bg-purple-50 text-purple-800 border-purple-200/60';
+    case 'partially_delivered': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'delivered': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'cancelled': return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
+    case 'refunded': return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
+    default: return 'bg-amber-50 text-amber-800 border-amber-200/60';
   }
 };
 
 const paymentStatusLabel = (paymentStatus: string) => {
   const labels: Record<string, string> = {
     captured: 'Payée',
-    pending: 'Paiement en attente',
-    failed: 'Paiement échoué',
+    pending: 'En attente',
+    failed: 'Échoué',
     refunded: 'Remboursée',
   };
   return labels[paymentStatus] || paymentStatus;
@@ -99,7 +99,7 @@ const paymentStatusLabel = (paymentStatus: string) => {
 
 const packageStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
-    pending: 'En attente de préparation',
+    pending: 'En attente',
     preparing: 'En préparation',
     shipped: 'Expédié',
     delivered: 'Livré',
@@ -110,11 +110,11 @@ const packageStatusLabel = (status: string) => {
 
 const packageStatusColor = (status: string) => {
   switch (status) {
-    case 'delivered': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'shipped': return 'bg-purple-50 text-purple-700 border-purple-200';
-    case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'cancelled': return 'bg-red-50 text-red-700 border-red-200';
-    default: return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'delivered': return 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+    case 'shipped': return 'bg-purple-50 text-purple-800 border-purple-200/60';
+    case 'preparing': return 'bg-sky-50 text-sky-800 border-sky-200/60';
+    case 'cancelled': return 'bg-zinc-100 text-zinc-600 border-zinc-200/80';
+    default: return 'bg-amber-50 text-amber-800 border-amber-200/60';
   }
 };
 
