@@ -873,12 +873,19 @@ export default function ProductsPage() {
   // -----------------------------------------------------------------------
   // KEYBOARD SHORTCUTS
   // -----------------------------------------------------------------------
+  // KEYBOARD SHORTCUTS
+  // -----------------------------------------------------------------------
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showMatrixModal) setShowMatrixModal(false);
         else if (showSmartFillModal) setShowSmartFillModal(false);
         else if (showMediaPicker) setShowMediaPicker(false);
+        else if (showBulkPriceModal) setShowBulkPriceModal(false);
+        else if (showBulkAiCategoryModal) setShowBulkAiCategoryModal(false);
+        else if (showBulkCategoryModal) setShowBulkCategoryModal(false);
+        else if (showBulkStockModal) setShowBulkStockModal(false);
+        else if (showBulkDeleteModal) setShowBulkDeleteModal(false);
         else if (showDrawer) resetForm();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -890,7 +897,19 @@ export default function ProductsPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDrawer, showMatrixModal, showSmartFillModal, showMediaPicker, form, editingProduct]);
+  }, [
+    showDrawer,
+    showMatrixModal,
+    showSmartFillModal,
+    showMediaPicker,
+    showBulkPriceModal,
+    showBulkAiCategoryModal,
+    showBulkCategoryModal,
+    showBulkStockModal,
+    showBulkDeleteModal,
+    form,
+    editingProduct,
+  ]);
 
   // -----------------------------------------------------------------------
   // DATA FETCHING
@@ -5544,22 +5563,22 @@ export default function ProductsPage() {
                               {/* Vertical divider line */}
                               <div className="absolute inset-y-0 w-0.5 bg-white/80 shadow-lg" />
                               {/* Circular handle */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-px h-9 w-9 rounded-full bg-white text-slate-900 shadow-2xl flex items-center justify-center border-2 border-purple-600 ring-4 ring-purple-400/20">
-                                <ArrowLeftRight className="w-4 h-4 text-purple-700" />
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-px h-8 w-8 rounded-full bg-white text-slate-900 shadow-md flex items-center justify-center border border-slate-300 ring-2 ring-slate-900/10">
+                                <ArrowLeftRight className="w-3.5 h-3.5 text-slate-700" />
                               </div>
                             </div>
 
                             {/* Floating Badges */}
-                            <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-wider shadow">
-                              ◀ AVANT (Photo Brute)
+                            <div className="absolute top-3 left-3 z-20 px-2 py-0.5 rounded-md bg-slate-950/70 backdrop-blur-xs text-[10px] font-medium text-white shadow-2xs">
+                              ◀ AVANT
                             </div>
-                            <div className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg bg-purple-900/80 backdrop-blur-md text-[10px] font-black text-yellow-300 uppercase tracking-wider shadow flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-yellow-300" />
-                              APRÈS (Studio IA 4K) ▶
+                            <div className="absolute top-3 right-3 z-20 px-2 py-0.5 rounded-md bg-slate-900/90 backdrop-blur-xs text-[10px] font-medium text-white shadow-2xs flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-slate-300" />
+                              APRÈS (Studio IA) ▶
                             </div>
 
                             {/* Live Percentage Indicator */}
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-mono text-white/90">
+                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 rounded-full bg-slate-950/60 backdrop-blur-xs text-[10px] font-mono text-white/90">
                               {Math.round(studioSliderPos)}% / {100 - Math.round(studioSliderPos)}%
                             </div>
                           </div>
@@ -5569,9 +5588,9 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => setStudioZoomEnabled((curr) => !curr)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors shadow-2xs ${
                                 studioZoomEnabled
-                                  ? 'bg-purple-600 text-white border-purple-600'
+                                  ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
                                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                               }`}
                             >
@@ -5587,7 +5606,7 @@ export default function ProductsPage() {
                                   setSuccess('Image studio appliquée comme vignette principale !');
                                 }
                               }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 shadow-md shadow-purple-500/20"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 shadow-2xs transition"
                             >
                               <Check className="w-3.5 h-3.5" />
                               <span>Appliquer comme Vignette</span>
@@ -5793,17 +5812,17 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => void handleGenerateSeoWithAi()}
                           disabled={seoAiGenerating || (!form.title && !form.description)}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white font-black text-xs shadow-md shadow-purple-600/25 hover:scale-105 disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs shadow-2xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition whitespace-nowrap"
                         >
                           {seoAiGenerating ? (
                             <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Optimisation IA en cours...</span>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Optimisation IA...</span>
                             </>
                           ) : (
                             <>
-                              <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                              <span>✨ Optimiser le SEO par l&apos;IA</span>
+                              <Sparkles className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
+                              <span>Optimiser le SEO par l&apos;IA</span>
                             </>
                           )}
                         </button>
@@ -6206,31 +6225,38 @@ export default function ProductsPage() {
 
               {/* LIVE STORE PREVIEW COLLAPSIBLE SIDEBAR */}
               {showLivePreview && (
-                <div className="hidden lg:block w-72 flex-shrink-0 border-l border-slate-100 dark:border-slate-800 pl-6 space-y-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <div className="hidden lg:block w-72 shrink-0 border-l border-slate-100 dark:border-slate-800 pl-6 space-y-3">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                     Aperçu Vitrine Acheteur
                   </span>
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 shadow-md">
-                    <div className="aspect-square w-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+                    <div className="aspect-square w-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
                       {form.thumbnail ? (
                         <img src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''} alt="Aperçu" className="h-full w-full object-cover" />
                       ) : (
-                        <Package className="w-10 h-10 text-slate-300" />
+                        <Package className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                       )}
                     </div>
-                    <div className="p-4 space-y-2 text-xs">
-                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+                    <div className="p-3.5 space-y-2 text-xs">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium border bg-slate-50 text-slate-700 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
                         {form.type}
                       </span>
-                      <p className="font-bold text-slate-900 dark:text-white line-clamp-2">
+                      <p className="font-semibold text-slate-900 dark:text-white line-clamp-2">
                         {form.title || 'Titre de votre produit'}
                       </p>
-                      <p className="text-base font-black text-slate-900 dark:text-white">
-                        {form.price ? formatPrice(form.price) : '0.000 TND'}
-                      </p>
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>En stock: {form.inventory_quantity || 0}</span>
-                        <span className="text-emerald-600 font-bold">Livraison Rapide</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {form.price ? formatPrice(form.price) : '0.000 TND'}
+                        </span>
+                        {form.compare_at_price && parseFloat(form.compare_at_price) > parseFloat(form.price || '0') && (
+                          <span className="text-xs text-slate-400 line-through">
+                            {formatPrice(form.compare_at_price)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>Stock : {form.inventory_quantity || 0}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">En ligne</span>
                       </div>
                     </div>
                   </div>
@@ -7159,7 +7185,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setShowSmartFillModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                 >
                   Fermer
                 </button>
@@ -7167,38 +7193,40 @@ export default function ProductsPage() {
                   type="button"
                   onClick={applySelectedSmartFill}
                   disabled={!smartFillSuggestions}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white text-xs font-black shadow-lg shadow-purple-600/25 hover:scale-105 disabled:opacity-50 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
                 >
-                  <Check className="w-4 h-4 text-yellow-300" />
-                  <span>✨ Tout Appliquer à la Fiche Produit</span>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Appliquer à la Fiche Produit</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}{/* ========================================================================= */}
+      )}
+
+      {/* ========================================================================= */}
       {/* 8. MEDIA PICKER MODAL */}
       {/* ========================================================================= */}
       {showMediaPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-base font-black text-slate-900">Médiathèque Boutique</h3>
-                <p className="text-xs text-slate-400 font-medium">Réutilisez une photo déjà téléversée</p>
+                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">Médiathèque Boutique</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Sélectionnez une image déjà téléversée</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMediaPicker(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">
               {mediaItems.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400 font-semibold">
+                <div className="py-16 text-center text-xs text-slate-400 font-medium">
                   Aucune photo enregistrée dans la médiathèque.
                 </div>
               ) : (
@@ -7215,7 +7243,7 @@ export default function ProductsPage() {
                         }
                         setShowMediaPicker(false);
                       }}
-                      className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-[#B91C1C] transition-all bg-slate-100"
+                      className="aspect-square rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-700 hover:border-slate-900 dark:hover:border-white transition-colors bg-slate-50 dark:bg-slate-800"
                     >
                       <img src={item.url ? getResizedImageUrl(item.url, 'medium') : ''} alt="Media" className="h-full w-full object-cover" />
                     </button>
@@ -7230,18 +7258,18 @@ export default function ProductsPage() {
       {/* 9. BULK PRICE ADJUSTMENT MODAL */}
       {/* ========================================================================= */}
       {showBulkPriceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-purple-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
-                  <Coins className="w-5 h-5 text-amber-300" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Coins className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                     Ajustement & Promotions Groupées
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Appliquer sur <strong>{selectedIds.size}</strong> produit(s) sélectionné(s)
                   </p>
                 </div>
@@ -7249,56 +7277,56 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkPriceModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Action Type Tabs */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
               <button
                 type="button"
                 onClick={() => {
                   setBulkPriceActionType('apply_discount');
                   if (bulkPriceValue.startsWith('-')) setBulkPriceValue(bulkPriceValue.replace('-', ''));
                 }}
-                className={`py-2 rounded-lg font-black transition-all ${
+                className={`py-1.5 rounded-md font-medium text-xs transition-colors ${
                   bulkPriceActionType === 'apply_discount'
-                    ? 'bg-rose-600 text-white shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                🏷️ Soldes / Barré
+                Soldes / Barré
               </button>
               <button
                 type="button"
                 onClick={() => setBulkPriceActionType('adjust_price')}
-                className={`py-2 rounded-lg font-black transition-all ${
+                className={`py-1.5 rounded-md font-medium text-xs transition-colors ${
                   bulkPriceActionType === 'adjust_price'
-                    ? 'bg-purple-600 text-white shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                📊 Prix Catalogue
+                Prix Catalogue
               </button>
               <button
                 type="button"
                 onClick={() => setBulkPriceActionType('clear_discount')}
-                className={`py-2 rounded-lg font-black transition-all ${
+                className={`py-1.5 rounded-md font-medium text-xs transition-colors ${
                   bulkPriceActionType === 'clear_discount'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                ❌ Retirer Soldes
+                Retirer Soldes
               </button>
             </div>
 
             {bulkPriceActionType === 'clear_discount' ? (
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 space-y-2">
-                <p className="font-bold">⚠️ Réinitialisation des prix barrés</p>
-                <p>
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
+                <p className="font-semibold text-slate-900 dark:text-white">Réinitialisation des prix barrés</p>
+                <p className="text-slate-500 dark:text-slate-400">
                   Cette action supprimera le prix d&apos;origine/barré sur les <strong>{selectedIds.size}</strong> produits sélectionnés.
                   Les clients verront le prix catalogue normal sans badge promotionnel.
                 </p>
@@ -7306,13 +7334,13 @@ export default function ProductsPage() {
             ) : (
               <>
                 {/* Unit / Mode Selector */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                   <button
                     type="button"
                     onClick={() => setBulkPriceMode('percent')}
-                    className={`py-1.5 rounded-lg text-xs font-black transition-all ${
+                    className={`py-1 rounded-md text-xs font-medium transition-colors ${
                       bulkPriceMode === 'percent'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -7321,9 +7349,9 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={() => setBulkPriceMode('fixed')}
-                    className={`py-1.5 rounded-lg text-xs font-black transition-all ${
+                    className={`py-1 rounded-md text-xs font-medium transition-colors ${
                       bulkPriceMode === 'fixed'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -7332,19 +7360,19 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Strategy Presets */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    ⚡ Raccourcis Rapides :
+                <div className="space-y-1">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Raccourcis Rapides :
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {(bulkPriceActionType === 'apply_discount'
                       ? [
-                          { label: '🏷️ -10% Soldes', mode: 'percent', val: '10' },
-                          { label: '🏷️ -20% Soldes', mode: 'percent', val: '20' },
-                          { label: '🔥 -30% Déstockage', mode: 'percent', val: '30' },
-                          { label: '⚡ -50% Flash', mode: 'percent', val: '50' },
-                          { label: '🏷️ -5.000 DT', mode: 'fixed', val: '5' },
-                          { label: '🏷️ -10.000 DT', mode: 'fixed', val: '10' },
+                          { label: '-10% Soldes', mode: 'percent', val: '10' },
+                          { label: '-20% Soldes', mode: 'percent', val: '20' },
+                          { label: '-30% Déstockage', mode: 'percent', val: '30' },
+                          { label: '-50% Flash', mode: 'percent', val: '50' },
+                          { label: '-5.000 DT', mode: 'fixed', val: '5' },
+                          { label: '-10.000 DT', mode: 'fixed', val: '10' },
                         ]
                       : [
                           { label: '+10% Inflation', mode: 'percent', val: '10' },
@@ -7360,7 +7388,7 @@ export default function ProductsPage() {
                           setBulkPriceMode(chip.mode as any);
                           setBulkPriceValue(chip.val);
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-rose-300 hover:text-rose-600"
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                       >
                         {chip.label}
                       </button>
@@ -7369,8 +7397,8 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Value Input */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                     {bulkPriceActionType === 'apply_discount'
                       ? `Taux de réduction (${bulkPriceMode === 'percent' ? '%' : 'TND'})`
                       : `Valeur d'ajustement (${bulkPriceMode === 'percent' ? '%' : 'TND'})`} :
@@ -7382,30 +7410,30 @@ export default function ProductsPage() {
                       value={bulkPriceValue}
                       onChange={(e) => setBulkPriceValue(e.target.value)}
                       placeholder={bulkPriceMode === 'percent' ? '20' : '5.000'}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-purple-600"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-xs outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                     />
-                    <span className="absolute right-3.5 top-3 text-xs font-black text-slate-400">
+                    <span className="absolute right-3 top-2 text-xs font-medium text-slate-400">
                       {bulkPriceMode === 'percent' ? '%' : 'TND'}
                     </span>
                   </div>
                   {bulkPriceActionType === 'apply_discount' && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-400 font-normal">
                       Le prix actuel sera conservé en <strong>prix barré d&apos;origine</strong> et le nouveau prix réduit sera calculé automatiquement.
                     </p>
                   )}
                 </div>
 
-                {/* Smart Rounding Checkbox (for direct price adjust) */}
+                {/* Smart Rounding Checkbox */}
                 {bulkPriceActionType === 'adjust_price' && (
-                  <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">
+                  <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={bulkPriceRoundToNine}
                       onChange={(e) => setBulkPriceRoundToNine(e.target.checked)}
-                      className="rounded text-purple-600 focus:ring-purple-500"
+                      className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                     />
                     <div className="text-xs">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">Arrondir au 0.900 le plus proche</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">Arrondir au 0.900 le plus proche</span>
                       <p className="text-[11px] text-slate-400">Ex: 19.450 DT deviendra 19.900 DT pour un effet psychologique.</p>
                     </div>
                   </label>
@@ -7414,8 +7442,8 @@ export default function ProductsPage() {
             )}
 
             {/* Live Simulation Preview */}
-            <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2">
-              <span className="text-[10px] font-black uppercase text-purple-900 dark:text-purple-300">
+            <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                 Aperçu de la simulation (sur les 3 premiers articles) :
               </span>
               <div className="space-y-1.5 text-xs">
@@ -7428,9 +7456,9 @@ export default function ProductsPage() {
 
                     if (bulkPriceActionType === 'clear_discount') {
                       return (
-                        <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
-                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{formatPrice(String(p.price))} (Prix unique)</span>
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                          <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
+                          <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{formatPrice(String(p.price))} (Prix unique)</span>
                         </div>
                       );
                     }
@@ -7441,13 +7469,13 @@ export default function ProductsPage() {
                       const discountPct = Math.round(((currentP - nextP) / currentP) * 100);
 
                       return (
-                        <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{p.title}</span>
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                          <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{p.title}</span>
                           <div className="flex items-center gap-1.5 font-mono text-xs">
                             <span className="text-slate-400 line-through text-[11px]">{formatPrice(String(p.price))}</span>
-                            <span>→</span>
-                            <span className="font-black text-rose-600 dark:text-rose-400">{formatPrice(nextP.toString())}</span>
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                            <span className="text-slate-400">→</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{formatPrice(nextP.toString())}</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                               -{discountPct}%
                             </span>
                           </div>
@@ -7462,14 +7490,13 @@ export default function ProductsPage() {
                     if (bulkPriceRoundToNine) {
                       nextP = Math.max(0.9, Math.floor(nextP) + 0.9);
                     }
-                    const isReduction = nextP < currentP;
                     return (
-                      <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700">
-                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
-                        <div className="flex items-center gap-2 font-mono">
+                      <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                        <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{p.title}</span>
+                        <div className="flex items-center gap-2 font-mono text-xs">
                           <span className="text-slate-400 line-through text-[11px]">{formatPrice(String(p.price))}</span>
-                          <span>→</span>
-                          <span className={`font-black ${isReduction ? 'text-emerald-600 dark:text-emerald-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                          <span className="text-slate-400">→</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">
                             {formatPrice(nextP.toString())}
                           </span>
                         </div>
@@ -7480,11 +7507,11 @@ export default function ProductsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 border-t border-purple-100 dark:border-slate-800 pt-3">
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => setShowBulkPriceModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 Annuler
               </button>
@@ -7509,12 +7536,14 @@ export default function ProductsPage() {
                   }
                 }}
                 disabled={bulkActionLoading || (bulkPriceActionType !== 'clear_discount' && !bulkPriceValue)}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white font-black text-xs shadow-md shadow-purple-600/20 hover:scale-105 disabled:opacity-50 transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
               >
-                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
-                {bulkPriceActionType === 'clear_discount'
-                  ? `Supprimer Soldes (${selectedIds.size} produits)`
-                  : `Appliquer (${selectedIds.size} produits)`}
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>
+                  {bulkPriceActionType === 'clear_discount'
+                    ? `Supprimer Soldes (${selectedIds.size})`
+                    : `Appliquer (${selectedIds.size})`}
+                </span>
               </button>
             </div>
           </div>
@@ -7525,24 +7554,24 @@ export default function ProductsPage() {
       {/* 9.5. BULK AI CATEGORY CLASSIFICATION MODAL */}
       {/* ========================================================================= */}
       {showBulkAiCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-2xl rounded-3xl border border-amber-300/60 dark:border-amber-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-amber-100 dark:border-slate-800 pb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300 dark:border-amber-700/60 text-amber-600 dark:text-amber-400 shadow-sm">
-                  <Sparkles className="w-5 h-5 animate-pulse" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     Classification IA en Masse des Produits
                     {aiTokensBalance !== null && (
-                      <span className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                         ⚡ {aiTokensBalance} jetons dispo
                       </span>
                     )}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     L&apos;IA va classifier <strong>{selectedIds.size}</strong> produit(s) sélectionné(s) dans le Hub & la Vitrine
                   </p>
                 </div>
@@ -7550,9 +7579,9 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkAiCategoryModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -7560,11 +7589,11 @@ export default function ProductsPage() {
             <div className="space-y-4 overflow-y-auto flex-1 pr-1">
               {bulkAiProgress === null ? (
                 <>
-                  <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 text-xs space-y-2">
-                    <p className="font-bold text-amber-950 dark:text-amber-200">
-                      💡 Comment fonctionne la classification en masse :
+                  <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 text-xs space-y-1.5">
+                    <p className="font-semibold text-slate-900 dark:text-white">
+                      Comment fonctionne la classification en masse :
                     </p>
-                    <ul className="list-disc list-inside space-y-1 text-amber-900/80 dark:text-amber-300/80">
+                    <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400">
                       <li>Analyse individuelle du titre et des données de chaque produit sélectionné.</li>
                       <li>Attribution automatique de la catégorie Marketplace Hub standardisée la plus précise.</li>
                       <li>Création ou association intelligente à la catégorie et sous-catégorie Vitrine de votre boutique.</li>
@@ -7572,20 +7601,20 @@ export default function ProductsPage() {
                     </ul>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                  <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 flex items-center justify-between">
+                    <label className="flex items-center gap-2.5 text-xs font-medium text-slate-800 dark:text-slate-200 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={bulkAiAutoApply}
                         onChange={(e) => setBulkAiAutoApply(e.target.checked)}
-                        className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-4 h-4 cursor-pointer"
                       />
                       <span>Enregistrer et appliquer directement les nouvelles catégories en base de données</span>
                     </label>
                   </div>
 
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800/60 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                       Produits inclus dans ce lot ({selectedIds.size}) :
                     </div>
                     <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -7593,7 +7622,7 @@ export default function ProductsPage() {
                         .filter((p) => selectedIds.has(p.id))
                         .map((p) => (
                           <div key={p.id} className="p-2.5 flex items-center justify-between gap-3">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{p.title}</span>
                             <span className="text-[11px] text-slate-400 shrink-0">
                               {p.marketplace_category_name || p.category || 'Non catégorisé'}
                             </span>
@@ -7604,25 +7633,25 @@ export default function ProductsPage() {
                 </>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        Classification par lot terminée !
+                      <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Classification par lot terminée !</span>
                       </p>
                       <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400">
                         {bulkAiProgress.total_processed} produit(s) analysé(s) • {bulkAiProgress.tokens_consumed} jetons consommés
                       </p>
                     </div>
                     {bulkAiProgress.results.every((r) => r.applied) && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-600 text-white">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-700 text-white">
                         ✓ Enregistré
                       </span>
                     )}
                   </div>
 
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800/60 text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                  <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center justify-between">
                       <span>Rapport Détaillé Avant ➔ Après</span>
                       <span>{bulkAiProgress.results.length} éléments</span>
                     </div>
@@ -7630,17 +7659,17 @@ export default function ProductsPage() {
                       {bulkAiProgress.results.map((res) => (
                         <div key={res.product_id} className="p-3 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 dark:text-white truncate">{res.title}</span>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">{res.title}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                               {Math.round(res.confidence * 100)}% Confiance
                             </span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                             <div className="text-slate-500">
-                              <span className="font-semibold">🌐 Hub :</span> {res.suggested_marketplace_category_path}
+                              <span className="font-medium">🌐 Hub :</span> {res.suggested_marketplace_category_path}
                             </div>
                             <div className="text-slate-500">
-                              <span className="font-semibold">🏪 Vitrine :</span> {res.suggested_storefront_category_name}
+                              <span className="font-medium">🏪 Vitrine :</span> {res.suggested_storefront_category_name}
                             </div>
                           </div>
                           {res.reason && (
@@ -7655,11 +7684,11 @@ export default function ProductsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-2 border-t border-amber-100 dark:border-slate-800 pt-3 shrink-0">
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowBulkAiCategoryModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 {bulkAiProgress ? 'Fermer' : 'Annuler'}
               </button>
@@ -7669,12 +7698,12 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => void handleBulkAiCategorize(bulkAiAutoApply)}
                   disabled={bulkAiLoading}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md shadow-amber-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
                 >
                   {bulkAiLoading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Traitement en cours...</>
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> <span>Classification en cours...</span></>
                   ) : (
-                    <><Sparkles className="w-4 h-4" /> Lancer la Classification ({selectedIds.size} produits)</>
+                    <><Sparkles className="w-3.5 h-3.5" /> <span>Lancer la Classification ({selectedIds.size})</span></>
                   )}
                 </button>
               )}
@@ -7687,18 +7716,18 @@ export default function ProductsPage() {
       {/* 10. BULK CATEGORY ASSIGNMENT MODAL */}
       {/* ========================================================================= */}
       {showBulkCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-indigo-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-                  <Tag className="w-5 h-5 text-white" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                     Assignation Groupée de Catégorie
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Déplacer <strong>{selectedIds.size}</strong> produit(s) dans une nouvelle catégorie
                   </p>
                 </div>
@@ -7706,9 +7735,9 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkCategoryModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -7736,11 +7765,11 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-indigo-100 dark:border-slate-800 pt-3">
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => setShowBulkCategoryModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 Annuler
               </button>
@@ -7754,10 +7783,10 @@ export default function ProductsPage() {
                   })
                 }
                 disabled={bulkActionLoading || (!bulkMarketplaceCategoryId && !bulkStorefrontCategoryId)}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
               >
-                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
-                Assigner aux {selectedIds.size} produit(s)
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>Assigner ({selectedIds.size})</span>
               </button>
             </div>
           </div>
@@ -7768,18 +7797,18 @@ export default function ProductsPage() {
       {/* 11. BULK STOCK ADJUSTMENT MODAL */}
       {/* ========================================================================= */}
       {showBulkStockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-blue-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
-                  <Layers className="w-5 h-5 text-white" />
+                <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                  <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                     Mise à Jour Groupée du Stock
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                     Ajuster l&apos;inventaire de <strong>{selectedIds.size}</strong> produit(s)
                   </p>
                 </div>
@@ -7787,19 +7816,19 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowBulkStockModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
               <button
                 type="button"
                 onClick={() => setBulkStockMode('set')}
-                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                className={`py-1 rounded-md text-xs font-medium transition-colors ${
                   bulkStockMode === 'set'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
@@ -7808,9 +7837,9 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setBulkStockMode('delta')}
-                className={`py-2 rounded-lg text-xs font-black transition-all ${
+                className={`py-1 rounded-md text-xs font-medium transition-colors ${
                   bulkStockMode === 'delta'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
@@ -7818,8 +7847,8 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                 {bulkStockMode === 'set' ? 'Quantité en stock à fixer :' : 'Quantité à ajouter ou déduire (+/-) :'}
               </label>
               <input
@@ -7827,15 +7856,15 @@ export default function ProductsPage() {
                 value={bulkStockValue}
                 onChange={(e) => setBulkStockValue(e.target.value)}
                 placeholder={bulkStockMode === 'set' ? '20' : '+10 ou -5'}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm outline-none focus:border-blue-600"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-xs outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-blue-100 dark:border-slate-800 pt-3">
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => setShowBulkStockModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 Annuler
               </button>
@@ -7849,10 +7878,10 @@ export default function ProductsPage() {
                   })
                 }
                 disabled={bulkActionLoading || !bulkStockValue}
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/20 disabled:opacity-50 transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
               >
-                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : <Check className="w-4 h-4 inline mr-1" />}
-                Mettre à jour le stock
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>Mettre à jour le stock</span>
               </button>
             </div>
           </div>
@@ -7863,31 +7892,31 @@ export default function ProductsPage() {
       {/* 12. BULK DELETE CONFIRMATION MODAL */}
       {/* ========================================================================= */}
       {showBulkDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-red-200 dark:border-red-900/60 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">
-                <AlertTriangle className="w-6 h-6" />
+              <div className="p-2 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                   Suppression Groupée Définitive
                 </h3>
-                <p className="text-xs text-red-600 dark:text-red-400 font-bold">
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
                   Attention : Cette opération est irréversible !
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer définitivement <strong>{selectedIds.size}</strong> produit(s) ? Leurs variantes, images et historiques associés seront également effacés.
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+              Êtes-vous sûr de vouloir supprimer définitivement <strong>{selectedIds.size}</strong> produit(s) ? Leurs déclinaisons, images et historiques associés seront également effacés.
             </p>
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => setShowBulkDeleteModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 Annuler
               </button>
@@ -7895,9 +7924,9 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => void executeBatchAction({ type: 'delete' })}
                 disabled={bulkActionLoading}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md shadow-red-600/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs disabled:opacity-50 transition shadow-2xs"
               >
-                {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 <span>Confirmer la suppression ({selectedIds.size})</span>
               </button>
             </div>
