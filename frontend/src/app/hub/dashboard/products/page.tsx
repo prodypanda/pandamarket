@@ -3786,32 +3786,32 @@ export default function ProductsPage() {
 
                 {/* TAB BUNDLE: PACK / BUNDLE BUILDER */}
                 {drawerTab === 'bundle' && (
-                  <div className="space-y-6 animate-in fade-in duration-150">
+                  <div className="space-y-5 animate-in fade-in duration-150">
                     {/* Intro Banner */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-transparent dark:from-purple-950/40 border border-purple-200 dark:border-purple-900/50 flex items-start gap-3.5">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white font-black shadow-sm shadow-purple-500/30">
-                        📦
-                      </span>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+                        <Package className="w-4 h-4" />
+                      </div>
                       <div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                           Constructeur de Pack Promotionnel & Offres Groupées
                         </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                           Sélectionnez les articles de votre catalogue composant ce pack. PandaMarket calculera automatiquement la valeur totale, la remise accordée et le stock direct disponible.
                         </p>
                       </div>
                     </div>
 
                     {/* Component Picker Card */}
-                    <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-4">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shadow-2xs">
+                      <h5 className="text-xs font-semibold text-slate-900 dark:text-white">
                         1. Ajouter un composant depuis votre catalogue
                       </h5>
 
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                         {/* Product Selector */}
                         <div className="sm:col-span-6 space-y-1">
-                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
                             Article du Catalogue *
                           </label>
                           <select
@@ -3820,7 +3820,7 @@ export default function ProductsPage() {
                               setSelectedBundleProductId(e.target.value);
                               setSelectedBundleVariantId('');
                             }}
-                            className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                            className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           >
                             <option value="">-- Choisir un produit ({availableBundleProducts.length} disponibles) --</option>
                             {availableBundleProducts.map((p) => (
@@ -3833,14 +3833,14 @@ export default function ProductsPage() {
 
                         {/* Variant Selector (if product has variants) */}
                         <div className="sm:col-span-3 space-y-1">
-                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
                             Variante (Optionnelle)
                           </label>
                           <select
                             value={selectedBundleVariantId}
                             onChange={(e) => setSelectedBundleVariantId(e.target.value)}
                             disabled={!activeComponentProduct || !activeComponentProduct.variants?.length}
-                            className="w-full px-3 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600 disabled:opacity-50"
+                            className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:opacity-50 shadow-2xs"
                           >
                             <option value="">Produit standard / Défaut</option>
                             {(activeComponentProduct?.variants || []).map((v) => (
@@ -3853,7 +3853,7 @@ export default function ProductsPage() {
 
                         {/* Quantity */}
                         <div className="sm:col-span-1 space-y-1">
-                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
                             Qté
                           </label>
                           <input
@@ -3861,7 +3861,7 @@ export default function ProductsPage() {
                             min="1"
                             value={bundleItemQuantity}
                             onChange={(e) => setBundleItemQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                            className="w-full px-2 py-2.5 text-center text-xs font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                            className="w-full px-2 py-2 text-center text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none transition focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           />
                         </div>
 
@@ -3871,9 +3871,9 @@ export default function ProductsPage() {
                             type="button"
                             onClick={handleAddBundleItem}
                             disabled={!activeComponentProduct}
-                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 transition-colors disabled:opacity-50 shadow-sm"
+                            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition disabled:opacity-50 shadow-2xs"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
                             <span>Ajouter</span>
                           </button>
                         </div>
@@ -3883,23 +3883,23 @@ export default function ProductsPage() {
                     {/* Bundle Components List */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h5 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        <h5 className="text-xs font-semibold text-slate-900 dark:text-white">
                           2. Composition du Pack ({form.bundle_items.length} article{form.bundle_items.length > 1 ? 's' : ''})
                         </h5>
                         {form.bundle_items.length > 0 && (
-                          <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
-                            Valeur au détail : {bundleMetrics.originalSum.toFixed(3)} TND
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                            Valeur au détail : <strong className="text-slate-900 dark:text-white">{bundleMetrics.originalSum.toFixed(3)} TND</strong>
                           </span>
                         )}
                       </div>
 
                       {form.bundle_items.length === 0 ? (
-                        <div className="text-center py-8 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
-                          <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <div className="text-center py-8 px-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                          <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
                             Aucun composant dans ce pack pour le moment.
                           </p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
+                          <p className="text-[11px] text-slate-400 font-normal mt-0.5">
                             Sélectionnez et ajoutez les articles ci-dessus pour composer votre pack promotionnel.
                           </p>
                         </div>
@@ -3915,10 +3915,10 @@ export default function ProductsPage() {
                             return (
                               <div
                                 key={`${item.product_id}-${item.variant_id || 'base'}-${idx}`}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs"
+                                className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs"
                               >
                                 {/* Thumbnail */}
-                                <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700">
+                                <div className="relative h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700">
                                   {item.product_thumbnail ? (
                                     <img
                                       src={getResizedImageUrl(item.product_thumbnail, 'small')}
@@ -3927,24 +3927,24 @@ export default function ProductsPage() {
                                     />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                      <Package className="w-5 h-5" />
+                                      <Package className="w-4 h-4" />
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Title & Variant */}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  <p className="text-xs font-medium text-slate-900 dark:text-white truncate">
                                     {item.product_title || 'Article du catalogue'}
                                   </p>
                                   <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                     {item.variant_title && (
-                                      <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">
                                         Variante: {item.variant_title}
                                       </span>
                                     )}
                                     <span>Prix unitaire: {unitPrice.toFixed(3)} TND</span>
-                                    <span>• Stock dispo: {stock}</span>
+                                    <span>• Stock: {stock}</span>
                                   </div>
                                 </div>
 
@@ -3953,17 +3953,17 @@ export default function ProductsPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleBundleQtyChange(idx, -1)}
-                                    className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-l-lg"
+                                    className="px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-l-lg"
                                   >
                                     -
                                   </button>
-                                  <span className="px-2 py-1 text-xs font-black font-mono">
+                                  <span className="px-2 py-0.5 text-xs font-medium font-mono">
                                     {item.quantity || 1}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => handleBundleQtyChange(idx, 1)}
-                                    className="px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-r-lg"
+                                    className="px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-r-lg"
                                   >
                                     +
                                   </button>
@@ -3971,7 +3971,7 @@ export default function ProductsPage() {
 
                                 {/* Subtotal */}
                                 <div className="text-right min-w-[75px]">
-                                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                                  <span className="text-xs font-semibold text-slate-900 dark:text-white">
                                     {lineTotal.toFixed(3)} TND
                                   </span>
                                 </div>
@@ -3980,10 +3980,10 @@ export default function ProductsPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveBundleItem(idx)}
-                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
                                   title="Supprimer ce composant"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             );
@@ -3994,31 +3994,25 @@ export default function ProductsPage() {
 
                     {/* Real-time Pack Metrics & Discount Engine */}
                     {form.bundle_items.length > 0 && (
-                      <div className="p-5 rounded-2xl border border-purple-200 dark:border-purple-900/50 bg-gradient-to-br from-purple-50/60 to-indigo-50/40 dark:from-purple-950/20 dark:to-indigo-950/20 space-y-4">
+                      <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-3.5">
                         <div className="flex items-center justify-between">
-                          <h5 className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-200">
+                          <h5 className="text-xs font-semibold text-slate-900 dark:text-white">
                             3. Tarification & Remise Promotionnelle du Pack
                           </h5>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                            bundleMetrics.packStock === 0
-                              ? 'bg-red-600 text-white'
-                              : bundleMetrics.packStock <= 3
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-purple-600 text-white'
-                          }`}>
-                            📦 Stock Automatique : {bundleMetrics.packStock} packs
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                            Stock Disponible : {bundleMetrics.packStock} packs
                           </span>
                         </div>
 
                         {bundleMetrics.bottleneckItem && bundleMetrics.packStock <= 3 && (
                           <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs ${
                             bundleMetrics.packStock === 0
-                              ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-                              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                              ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300'
+                              : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300'
                           }`}>
                             <AlertTriangle className="w-4 h-4 shrink-0" />
                             <span>
-                              <strong>Facteur limitant de stock :</strong> L&apos;article <em>« {bundleMetrics.bottleneckItem.product_title} »</em> (Stock : {bundleMetrics.bottleneckItem.variant_inventory_quantity !== undefined ? bundleMetrics.bottleneckItem.variant_inventory_quantity : (bundleMetrics.bottleneckItem.product_inventory_quantity || 0)}) plafonne la disponibilité du pack à {bundleMetrics.packStock} unité{bundleMetrics.packStock > 1 ? 's' : ''}.
+                              <strong>Facteur limitant :</strong> L&apos;article <em>« {bundleMetrics.bottleneckItem.product_title} »</em> (Stock : {bundleMetrics.bottleneckItem.variant_inventory_quantity !== undefined ? bundleMetrics.bottleneckItem.variant_inventory_quantity : (bundleMetrics.bottleneckItem.product_inventory_quantity || 0)}) plafonne la disponibilité du pack à {bundleMetrics.packStock} unité{bundleMetrics.packStock > 1 ? 's' : ''}.
                             </span>
                           </div>
                         )}
@@ -4033,22 +4027,22 @@ export default function ProductsPage() {
                                 compare_at_price: bundleMetrics.originalSum > 0 ? bundleMetrics.originalSum.toFixed(3) : c.compare_at_price,
                               }));
                             }}
-                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-colors ${
                               form.bundle_pricing_type === 'percentage'
-                                ? 'border-purple-600 bg-white dark:bg-slate-800 shadow-sm'
+                                ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-2xs'
                                 : 'border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50'
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <Tag className="w-3.5 h-3.5 text-purple-600" />
+                              <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Tag className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                                 Mode Remise en Pourcentage (%)
                               </span>
                               <input
                                 type="radio"
                                 checked={form.bundle_pricing_type === 'percentage'}
                                 onChange={() => {}}
-                                className="text-purple-600 focus:ring-purple-500"
+                                className="text-slate-900 focus:ring-slate-900"
                               />
                             </div>
                             <div className="space-y-1">
@@ -4070,11 +4064,11 @@ export default function ProductsPage() {
                                     }));
                                   }}
                                   placeholder="Ex: 20"
-                                  className="w-24 px-3 py-1.5 text-xs font-black rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                                  className="w-24 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                 />
-                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">% de réduction</span>
+                                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">% de réduction</span>
                               </div>
-                              <p className="text-[10px] text-slate-400">Le prix de vente est calculé automatiquement d&apos;après le total.</p>
+                              <p className="text-[10px] text-slate-400 font-normal">Le prix de vente est calculé automatiquement d&apos;après le total.</p>
                             </div>
                           </div>
 
@@ -4086,22 +4080,22 @@ export default function ProductsPage() {
                                 compare_at_price: bundleMetrics.originalSum > 0 ? bundleMetrics.originalSum.toFixed(3) : c.compare_at_price,
                               }));
                             }}
-                            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                            className={`p-3.5 rounded-xl border cursor-pointer transition-colors ${
                               form.bundle_pricing_type === 'fixed'
-                                ? 'border-purple-600 bg-white dark:bg-slate-800 shadow-sm'
+                                ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-2xs'
                                 : 'border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50'
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <Coins className="w-3.5 h-3.5 text-purple-600" />
+                              <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Coins className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                                 Mode Prix Fixe du Pack (TND)
                               </span>
                               <input
                                 type="radio"
                                 checked={form.bundle_pricing_type === 'fixed'}
                                 onChange={() => {}}
-                                className="text-purple-600 focus:ring-purple-500"
+                                className="text-slate-900 focus:ring-slate-900"
                               />
                             </div>
                             <div className="space-y-1">
@@ -4121,32 +4115,32 @@ export default function ProductsPage() {
                                     }));
                                   }}
                                   placeholder="0.000"
-                                  className="w-28 px-3 py-1.5 text-xs font-black rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:border-purple-600"
+                                  className="w-28 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                 />
-                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">TND</span>
+                                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">TND</span>
                               </div>
-                              <p className="text-[10px] text-slate-400">Prix barré = Valeur totale des composants ({bundleMetrics.originalSum.toFixed(3)} TND).</p>
+                              <p className="text-[10px] text-slate-400 font-normal">Prix barré = Valeur totale des composants ({bundleMetrics.originalSum.toFixed(3)} TND).</p>
                             </div>
                           </div>
                         </div>
 
                         {/* Summary Pill Bar */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs shadow-2xs">
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Séparé</span>
-                            <span className="font-black text-slate-600 dark:text-slate-300 line-through">
+                            <span className="text-[10px] uppercase font-medium text-slate-400 block">Total Séparé</span>
+                            <span className="font-semibold text-slate-500 dark:text-slate-400 line-through">
                               {bundleMetrics.originalSum.toFixed(3)} TND
                             </span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Prix du Pack Promo</span>
-                            <span className="font-black text-purple-700 dark:text-purple-300 text-sm">
+                            <span className="text-[10px] uppercase font-medium text-slate-400 block">Prix du Pack Promo</span>
+                            <span className="font-semibold text-slate-900 dark:text-white text-sm">
                               {parseFloat(form.price || '0').toFixed(3)} TND
                             </span>
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Économie Client</span>
-                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                            <span className="text-[10px] uppercase font-medium text-slate-400 block">Économie Client</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                               +{bundleMetrics.savingsAmount.toFixed(3)} TND ({bundleMetrics.savingsPct}%)
                             </span>
                           </div>
@@ -4249,21 +4243,21 @@ export default function ProductsPage() {
                       {/* Activation Header & Toggle */}
                       <div className="p-4 sm:p-5 flex items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-black text-lg shadow-sm shadow-amber-500/30">
-                            📦
-                          </span>
+                          <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+                            <Coins className="w-4 h-4" />
+                          </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                              <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                                 Prix de Gros & Remises par Volume (B2B)
                               </h4>
                               {form.wholesale_enabled && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                   Actif
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                               Offrez des tarifs dégressifs pour encourager les commandes en grande quantité
                             </p>
                           </div>
@@ -4296,11 +4290,11 @@ export default function ProductsPage() {
                             })
                           }
                           className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            form.wholesale_enabled ? 'bg-amber-600' : 'bg-slate-300 dark:bg-slate-700'
+                            form.wholesale_enabled ? 'bg-slate-900 dark:bg-white' : 'bg-slate-300 dark:bg-slate-700'
                           }`}
                         >
                           <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-slate-900 shadow ring-0 transition duration-200 ease-in-out ${
                               form.wholesale_enabled ? 'translate-x-5' : 'translate-x-0'
                             }`}
                           />
@@ -4312,20 +4306,20 @@ export default function ProductsPage() {
                         const ws = getWholesaleAnalysis();
 
                         return (
-                          <div className="p-4 sm:p-5 space-y-6 animate-in fade-in duration-200">
+                          <div className="p-4 sm:p-5 space-y-5 animate-in fade-in duration-200">
                             {/* Cost Price & Retail Margin Summary */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-200 dark:border-amber-900/50">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-700/60 shadow-2xs">
                               <div className="space-y-1">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                                   Prix Public Détail (Base B2C) :
                                 </span>
-                                <p className="text-base font-black text-slate-900 dark:text-white">
-                                  {ws.basePrice > 0 ? `${ws.basePrice.toFixed(3)} TND` : <span className="text-slate-400 text-xs italic">Non défini</span>}
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                  {ws.basePrice > 0 ? `${ws.basePrice.toFixed(3)} TND` : <span className="text-slate-400 text-xs italic font-normal">Non défini</span>}
                                 </p>
                               </div>
 
                               <div className="space-y-1">
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <label className="block text-[10px] font-medium uppercase tracking-wider text-slate-400">
                                   Coût de Revient / Achat (Optionnel) :
                                 </label>
                                 <div className="relative">
@@ -4336,34 +4330,34 @@ export default function ProductsPage() {
                                     value={form.cost_price}
                                     onChange={(e) => setForm((c) => ({ ...c, cost_price: e.target.value }))}
                                     placeholder="Ex: 12.500"
-                                    className="w-full px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                                    className="w-full px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                   />
-                                  <span className="absolute right-2.5 top-2 text-[10px] font-bold text-slate-400">TND</span>
+                                  <span className="absolute right-2.5 top-2 text-[10px] font-medium text-slate-400">TND</span>
                                 </div>
                               </div>
 
                               <div className="space-y-1">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                                   Marge Brute Vente Détail :
                                 </span>
                                 {ws.basePrice > 0 && ws.costPrice > 0 ? (
-                                  <p className={`text-xs font-black ${ws.basePrice >= ws.costPrice ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
+                                  <p className={`text-xs font-semibold ${ws.basePrice >= ws.costPrice ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
                                     +{(ws.basePrice - ws.costPrice).toFixed(3)} TND ({(((ws.basePrice - ws.costPrice) / ws.basePrice) * 100).toFixed(1)}%)
                                   </p>
                                 ) : (
-                                  <p className="text-xs text-slate-400 font-medium italic">Saisissez le coût de revient pour le calcul</p>
+                                  <p className="text-xs text-slate-400 font-normal italic">Saisissez le coût de revient pour le calcul</p>
                                 )}
                               </div>
                             </div>
 
                             {/* Incoherence & Tier Inversion Alert Box */}
                             {ws.hasErrors && (
-                              <div className="p-4 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-950/40 dark:border-red-900/60 space-y-2 animate-in fade-in">
-                                <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-black text-xs">
-                                  <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                              <div className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/60 dark:bg-rose-950/30 dark:border-rose-900/60 space-y-1.5 animate-in fade-in">
+                                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-semibold text-xs">
+                                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                                   <span>Incohérences de Paliers Grossistes Détectées :</span>
                                 </div>
-                                <ul className="text-xs text-red-600 dark:text-red-400 space-y-1 list-disc list-inside">
+                                <ul className="text-xs text-rose-600 dark:text-rose-400 space-y-0.5 list-disc list-inside font-normal">
                                   {ws.issues.map((issue, idx) => (
                                     <li key={idx}>{issue}</li>
                                   ))}
@@ -4373,8 +4367,8 @@ export default function ProductsPage() {
 
                             {/* 1-Click Smart Presets */}
                             <div className="space-y-2">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                ⚡ Modèles Stratégiques de Paliers Grossistes en 1 Clic :
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                                Modèles Stratégiques de Paliers Grossistes en 1 Clic :
                               </span>
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 {WHOLESALE_PRESETS.map((preset) => (
@@ -4382,15 +4376,15 @@ export default function ProductsPage() {
                                     key={preset.id}
                                     type="button"
                                     onClick={() => handleApplyWholesalePreset(preset)}
-                                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:bg-amber-50/80 hover:border-amber-400 dark:hover:bg-slate-800 transition-all text-left group shadow-xs"
+                                    className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-left shadow-2xs group"
                                   >
                                     <div className="flex items-center gap-1.5">
                                       <span className="text-base">{preset.icon}</span>
-                                      <span className="font-black text-xs text-slate-800 dark:text-slate-200 group-hover:text-amber-600 truncate">
+                                      <span className="font-semibold text-xs text-slate-900 dark:text-white group-hover:text-slate-600 dark:group-hover:text-slate-300 truncate">
                                         {preset.name}
                                       </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 truncate mt-1">{preset.desc}</p>
+                                    <p className="text-[10px] text-slate-400 truncate mt-0.5 font-normal">{preset.desc}</p>
                                   </button>
                                 ))}
                               </div>
@@ -4400,10 +4394,10 @@ export default function ProductsPage() {
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                                     Grille Tarifaire Wholesale B2B & Économies Grossistes
                                   </h4>
-                                  <p className="text-[11px] text-slate-400">
+                                  <p className="text-[11px] text-slate-400 font-normal">
                                     Définissez des prix dégressifs par palier de volume pour attirer les commandes groupées.
                                   </p>
                                 </div>
@@ -4421,7 +4415,7 @@ export default function ProductsPage() {
                                       ],
                                     }))
                                   }
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-all shadow-md shadow-amber-600/20"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs"
                                 >
                                   <Plus className="w-3.5 h-3.5" />
                                   <span>Ajouter un Palier</span>
@@ -4429,27 +4423,27 @@ export default function ProductsPage() {
                               </div>
 
                               {form.wholesale_price_tiers.length === 0 ? (
-                                <div className="text-center py-8 border-2 border-dashed border-amber-200 dark:border-amber-900/50 rounded-3xl p-6 bg-amber-50/20">
-                                  <Package className="w-8 h-8 text-amber-500 mx-auto mb-2 opacity-60" />
-                                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 bg-slate-50/30 dark:bg-slate-900/30">
+                                  <Package className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
                                     Aucun palier grossiste configuré.
                                   </p>
-                                  <p className="text-[11px] text-slate-400 mt-1">
+                                  <p className="text-[11px] text-slate-400 font-normal mt-0.5">
                                     Cliquez sur un modèle en 1 clic ci-dessus ou sur &quot;Ajouter un Palier&quot; pour débuter.
                                   </p>
                                 </div>
                               ) : (
-                                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+                                <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-2xs">
                                   <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-black uppercase text-[10px]">
+                                    <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-medium uppercase text-[10px]">
                                       <tr>
-                                        <th className="px-3.5 py-3">Palier (Qté Min.)</th>
-                                        <th className="px-3.5 py-3">Prix Unitaire B2B</th>
-                                        <th className="px-3.5 py-3">Remise Accordée</th>
-                                        <th className="px-3.5 py-3">Panier Min. (CA)</th>
-                                        <th className="px-3.5 py-3">Économie Client Pro</th>
-                                        <th className="px-3.5 py-3">Marge Brute B2B</th>
-                                        <th className="px-2 py-3 text-center">Action</th>
+                                        <th className="px-3.5 py-2.5">Palier (Qté Min.)</th>
+                                        <th className="px-3.5 py-2.5">Prix Unitaire B2B</th>
+                                        <th className="px-3.5 py-2.5">Remise Accordée</th>
+                                        <th className="px-3.5 py-2.5">Panier Min. (CA)</th>
+                                        <th className="px-3.5 py-2.5">Économie Client Pro</th>
+                                        <th className="px-3.5 py-2.5">Marge Brute B2B</th>
+                                        <th className="px-2 py-2.5 text-center">Action</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -4461,12 +4455,12 @@ export default function ProductsPage() {
                                             key={tier.idx}
                                             className={`transition-colors ${
                                               hasRowIssues
-                                                ? 'bg-red-50/50 dark:bg-red-950/20'
+                                                ? 'bg-rose-50/50 dark:bg-rose-950/20'
                                                 : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/50'
                                             }`}
                                           >
                                             {/* Minimum Quantity Input */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               <div className="flex items-center gap-1.5">
                                                 <input
                                                   type="number"
@@ -4482,14 +4476,14 @@ export default function ProductsPage() {
                                                       ),
                                                     }));
                                                   }}
-                                                  className="w-20 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-amber-500 font-mono"
+                                                  className="w-20 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 font-mono shadow-2xs"
                                                 />
-                                                <span className="text-slate-400 text-[11px] font-bold">unités</span>
+                                                <span className="text-slate-400 text-[11px] font-normal">unités</span>
                                               </div>
                                             </td>
 
                                             {/* Unit Price Input */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               <div className="flex items-center gap-1.5">
                                                 <input
                                                   type="number"
@@ -4506,17 +4500,17 @@ export default function ProductsPage() {
                                                       ),
                                                     }));
                                                   }}
-                                                  className="w-28 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:border-amber-500 font-mono"
+                                                  className="w-28 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 font-mono shadow-2xs"
                                                 />
-                                                <span className="text-slate-400 text-[11px] font-bold">TND</span>
+                                                <span className="text-slate-400 text-[11px] font-normal">TND</span>
                                               </div>
                                             </td>
 
                                             {/* Discount Badge */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               {tier.discountPct > 0 ? (
                                                 <div className="flex flex-col">
-                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 w-fit">
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 w-fit">
                                                     -{tier.discountPct.toFixed(1)}%
                                                   </span>
                                                   <span className="text-[10px] text-slate-400 mt-0.5 font-mono">
@@ -4524,18 +4518,18 @@ export default function ProductsPage() {
                                                   </span>
                                                 </div>
                                               ) : (
-                                                <span className="text-slate-400 text-[11px] italic">Pas de remise</span>
+                                                <span className="text-slate-400 text-[11px] italic font-normal">Pas de remise</span>
                                               )}
                                             </td>
 
                                             {/* Min Order Total (CA Panier) */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               {tier.minOrderTotal > 0 ? (
                                                 <div>
-                                                  <span className="font-black text-slate-900 dark:text-white font-mono text-xs block">
+                                                  <span className="font-semibold text-slate-900 dark:text-white font-mono text-xs block">
                                                     {tier.minOrderTotal.toFixed(3)} TND
                                                   </span>
-                                                  <span className="text-[10px] text-slate-400">
+                                                  <span className="text-[10px] text-slate-400 font-normal">
                                                     pour {tier.minQty} unités
                                                   </span>
                                                 </div>
@@ -4545,9 +4539,9 @@ export default function ProductsPage() {
                                             </td>
 
                                             {/* Total Customer Savings */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               {tier.minOrderSavings > 0 ? (
-                                                <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-xs">
+                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono text-xs">
                                                   +{tier.minOrderSavings.toFixed(3)} TND
                                                 </span>
                                               ) : (
@@ -4556,12 +4550,12 @@ export default function ProductsPage() {
                                             </td>
 
                                             {/* Margin Calculation */}
-                                            <td className="px-3.5 py-2.5">
+                                            <td className="px-3.5 py-2">
                                               {ws.costPrice > 0 && tier.unitPrice > 0 ? (
                                                 <div>
                                                   <span
-                                                    className={`font-black text-xs font-mono block ${
-                                                      tier.netMarginTnd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'
+                                                    className={`font-semibold text-xs font-mono block ${
+                                                      tier.netMarginTnd >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'
                                                     }`}
                                                   >
                                                     {tier.netMarginTnd > 0 ? `+${tier.netMarginTnd.toFixed(3)}` : tier.netMarginTnd.toFixed(3)} DT/u ({tier.netMarginPct.toFixed(0)}%)
@@ -4571,12 +4565,12 @@ export default function ProductsPage() {
                                                   </span>
                                                 </div>
                                               ) : (
-                                                <span className="text-slate-400 text-[11px] italic">Coût non saisi</span>
+                                                <span className="text-slate-400 text-[11px] italic font-normal">Coût non saisi</span>
                                               )}
                                             </td>
 
                                             {/* Delete Row Button */}
-                                            <td className="px-2 py-2.5 text-center">
+                                            <td className="px-2 py-2 text-center">
                                               <button
                                                 type="button"
                                                 onClick={() =>
@@ -4585,10 +4579,10 @@ export default function ProductsPage() {
                                                     wholesale_price_tiers: c.wholesale_price_tiers.filter((_, i) => i !== tier.idx),
                                                   }))
                                                 }
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
+                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
                                                 title="Supprimer ce palier"
                                               >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                               </button>
                                             </td>
                                           </tr>
@@ -4602,29 +4596,29 @@ export default function ProductsPage() {
 
                             {/* Interactive B2B Wholesale Cart Simulator */}
                             {form.wholesale_price_tiers.length > 0 && (
-                              <div className="p-5 rounded-3xl border border-amber-200 dark:border-amber-900/60 bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-slate-900/5 dark:bg-slate-800/40 space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-slate-700 pb-3">
+                              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-3.5 shadow-2xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-700 pb-3">
                                   <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-xl bg-amber-500 text-white">
-                                      <Coins className="w-4 h-4" />
+                                    <div className="p-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                                      <Coins className="w-3.5 h-3.5" />
                                     </div>
-                                    <h5 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                    <h5 className="text-xs font-semibold text-slate-900 dark:text-white">
                                       Simulateur de Commande Grossiste B2B (Aperçu Acheteur)
                                     </h5>
                                   </div>
 
                                   {/* Quick Qty Tester Chips */}
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] text-slate-400 font-bold">Tester quantité :</span>
+                                    <span className="text-[11px] text-slate-400 font-medium">Tester :</span>
                                     {[5, 10, 20, 50, 100].map((q) => (
                                       <button
                                         key={q}
                                         type="button"
                                         onClick={() => setB2bSimulatedQty(q)}
-                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                        className={`px-2 py-0.5 rounded-lg text-xs font-medium transition-colors ${
                                           b2bSimulatedQty === q
-                                            ? 'bg-amber-600 text-white shadow-xs'
-                                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                                         }`}
                                       >
                                         {q}
@@ -4634,29 +4628,29 @@ export default function ProductsPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 space-y-1">
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Quantité Achetée :</span>
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
+                                    <span className="text-[10px] font-medium uppercase text-slate-400">Quantité Achetée :</span>
                                     <div className="flex items-center gap-2">
                                       <input
                                         type="number"
                                         min="1"
                                         value={b2bSimulatedQty}
                                         onChange={(e) => setB2bSimulatedQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                        className="w-20 px-2.5 py-1 text-sm font-black rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                        className="w-20 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
                                       />
-                                      <span className="text-xs font-bold text-slate-500">unités</span>
+                                      <span className="text-xs font-normal text-slate-400">unités</span>
                                     </div>
                                   </div>
 
-                                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 space-y-1">
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Palier Déclenché :</span>
-                                    <p className="text-xs font-black text-slate-900 dark:text-white">
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
+                                    <span className="text-[10px] font-medium uppercase text-slate-400">Palier Déclenché :</span>
+                                    <p className="text-xs font-semibold text-slate-900 dark:text-white">
                                       {ws.simulation.appliedTier ? (
-                                        <span className="text-amber-600 dark:text-amber-400">
+                                        <span className="text-slate-900 dark:text-white">
                                           ≥ {ws.simulation.appliedTier.minQty} unités (-{ws.simulation.appliedTier.discountPct.toFixed(1)}%)
                                         </span>
                                       ) : (
-                                        <span className="text-slate-400 italic">Prix détail standard</span>
+                                        <span className="text-slate-400 italic font-normal">Prix détail standard</span>
                                       )}
                                     </p>
                                     <p className="text-[10px] font-mono text-slate-400">
@@ -4664,26 +4658,26 @@ export default function ProductsPage() {
                                     </p>
                                   </div>
 
-                                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 space-y-1">
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Facturé B2B :</span>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
+                                    <span className="text-[10px] font-medium uppercase text-slate-400">Total Facturé B2B :</span>
+                                    <p className="text-xs font-semibold text-slate-900 dark:text-white font-mono">
                                       {ws.simulation.total.toFixed(3)} TND
                                     </p>
                                     {ws.simulation.savings > 0 && (
-                                      <p className="text-[10px] font-bold text-emerald-600">
+                                      <p className="text-[10px] font-medium text-emerald-600">
                                         Économie client : -{ws.simulation.savings.toFixed(3)} DT
                                       </p>
                                     )}
                                   </div>
 
-                                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-slate-800 space-y-1">
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Marge Vendeur Réalisée :</span>
+                                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
+                                    <span className="text-[10px] font-medium uppercase text-slate-400">Marge Vendeur :</span>
                                     {ws.costPrice > 0 ? (
-                                      <p className={`text-sm font-black font-mono ${ws.simulation.margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                      <p className={`text-xs font-semibold font-mono ${ws.simulation.margin >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                         +{ws.simulation.margin.toFixed(3)} TND
                                       </p>
                                     ) : (
-                                      <p className="text-xs text-slate-400 italic">Coût non spécifié</p>
+                                      <p className="text-xs text-slate-400 italic font-normal">Coût non spécifié</p>
                                     )}
                                   </div>
                                 </div>
@@ -4696,18 +4690,18 @@ export default function ProductsPage() {
 
                     {/* 1-CLICK PRODUCT VARIANT MATRIX SECTION */}
                     {/* ========================================================================= */}
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm space-y-4 p-5">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs space-y-4 p-4 sm:p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-[#B91C1C]">
+                            <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                               <Sliders className="w-4 h-4" />
                             </span>
-                            <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                            <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                               Matrice de Déclinaisons & Variantes SKU
                             </h4>
                           </div>
-                          <p className="mt-0.5 text-xs text-slate-400 font-medium">
+                          <p className="mt-0.5 text-xs text-slate-400 font-normal">
                             Générez instantanément toutes les combinaisons de tailles, couleurs, pointures et formats en 1 clic.
                           </p>
                         </div>
@@ -4745,7 +4739,7 @@ export default function ProductsPage() {
                                 ],
                               }))
                             }
-                            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                           >
                             + Ligne Simple
                           </button>
@@ -4754,14 +4748,14 @@ export default function ProductsPage() {
 
                       {/* Mass Actions Bar when variants are selected */}
                       {form.variants.length > 0 && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-xs shadow-2xs">
                           <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-300">
+                            <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
                               <input
                                 type="checkbox"
                                 checked={selectedVariantIndexes.size === form.variants.length && form.variants.length > 0}
                                 onChange={handleSelectAllVariants}
-                                className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                                className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                               />
                               <span>
                                 {selectedVariantIndexes.size > 0
@@ -4781,12 +4775,12 @@ export default function ProductsPage() {
                                   placeholder="Prix groupé TND"
                                   value={batchVariantPrice}
                                   onChange={(e) => setBatchVariantPrice(e.target.value)}
-                                  className="w-28 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                  className="w-28 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={handleApplyBatchVariantPrice}
-                                  className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[11px] hover:bg-black"
+                                  className="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-[11px] hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs"
                                 >
                                   Appliquer Prix
                                 </button>
@@ -4800,12 +4794,12 @@ export default function ProductsPage() {
                                   placeholder="Prix barré groupé"
                                   value={batchVariantComparePrice}
                                   onChange={(e) => setBatchVariantComparePrice(e.target.value)}
-                                  className="w-28 px-2.5 py-1 text-xs font-bold rounded-lg border border-rose-200 bg-white"
+                                  className="w-28 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={handleApplyBatchVariantComparePrice}
-                                  className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700 shadow-xs"
+                                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-[11px] hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                                 >
                                   Appliquer Barré
                                 </button>
@@ -4818,12 +4812,12 @@ export default function ProductsPage() {
                                   placeholder="Stock groupé"
                                   value={batchVariantStock}
                                   onChange={(e) => setBatchVariantStock(e.target.value)}
-                                  className="w-24 px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                  className="w-24 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={handleApplyBatchVariantStock}
-                                  className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[11px] hover:bg-black"
+                                  className="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-[11px] hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs"
                                 >
                                   Appliquer Stock
                                 </button>
@@ -4832,7 +4826,7 @@ export default function ProductsPage() {
                               <button
                                 type="button"
                                 onClick={handleDeleteSelectedVariants}
-                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
                                 title="Supprimer la sélection"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -4844,16 +4838,16 @@ export default function ProductsPage() {
 
                       {/* Variant Matrix Table */}
                       {form.variants.length === 0 ? (
-                        <div className="py-10 text-center text-xs text-slate-400 space-y-2 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                        <div className="py-10 text-center text-xs text-slate-400 space-y-2 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                           <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-                          <p className="font-bold text-slate-600 dark:text-slate-400">Aucune variante configurée pour ce produit.</p>
-                          <p>Cliquez sur &quot;Générateur Matriciel 1-Clic&quot; pour combiner vos options ou ajoutez une ligne simple.</p>
+                          <p className="font-medium text-slate-700 dark:text-slate-300">Aucune variante configurée pour ce produit.</p>
+                          <p className="font-normal text-slate-400">Cliquez sur &quot;Générateur Matriciel 1-Clic&quot; pour combiner vos options ou ajoutez une ligne simple.</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                           <table className="w-full text-left text-xs">
                             <thead>
-                              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 text-slate-400 font-bold uppercase text-[10px]">
+                              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 text-slate-400 font-medium uppercase text-[10px]">
                                 <th className="py-2.5 pl-3 pr-2 w-8">#</th>
                                 <th className="py-2.5 px-3">Déclinaison & Attributs</th>
                                 <th className="py-2.5 px-3">Code SKU</th>
@@ -4872,7 +4866,7 @@ export default function ProductsPage() {
                                   <tr
                                     key={idx}
                                     className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${
-                                      isSelected ? 'bg-red-50/20 dark:bg-red-950/20' : ''
+                                      isSelected ? 'bg-slate-100/70 dark:bg-slate-800/70' : ''
                                     }`}
                                   >
                                     <td className="py-2.5 pl-3 pr-2">
@@ -4880,7 +4874,7 @@ export default function ProductsPage() {
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() => handleToggleSelectVariant(idx)}
-                                        className="rounded border-slate-300 text-[#B91C1C] focus:ring-[#B91C1C]"
+                                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                                       />
                                     </td>
 
@@ -4897,16 +4891,16 @@ export default function ProductsPage() {
                                               variants: c.variants.map((v, i) => (i === idx ? { ...v, title: val } : v)),
                                             }));
                                           }}
-                                          className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                          className="w-full px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                         />
                                         {optionTags.length > 0 && (
                                           <div className="flex flex-wrap items-center gap-1">
                                             {optionTags.map(([optName, optVal]) => (
                                               <span
                                                 key={optName}
-                                                className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                                                className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                                               >
-                                                <strong>{optName}:</strong> {optVal}
+                                                <strong className="font-semibold">{optName}:</strong> {optVal}
                                               </span>
                                             ))}
                                           </div>
@@ -4927,7 +4921,7 @@ export default function ProductsPage() {
                                           }));
                                         }}
                                         placeholder="SKU-AUTO"
-                                        className="w-full px-2.5 py-1 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                                        className="w-full px-2.5 py-1 text-xs font-mono font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                       />
                                     </td>
 
@@ -4944,7 +4938,7 @@ export default function ProductsPage() {
                                             variants: c.variants.map((v, i) => (i === idx ? { ...v, price: val } : v)),
                                           }));
                                         }}
-                                        className="w-full px-2.5 py-1 text-xs font-black rounded-lg border border-slate-200 bg-white"
+                                        className="w-full px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                       />
                                     </td>
 
@@ -4963,7 +4957,7 @@ export default function ProductsPage() {
                                               variants: c.variants.map((v, i) => (i === idx ? { ...v, compare_at_price: val } : v)),
                                             }));
                                           }}
-                                          className="w-full px-2 py-1 text-xs font-mono rounded-lg border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 placeholder:text-slate-300"
+                                          className="w-full px-2 py-1 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                         />
                                         {(() => {
                                           const p = parseFloat(variant.price);
@@ -4971,7 +4965,7 @@ export default function ProductsPage() {
                                           if (p > 0 && cp > p) {
                                             const pct = Math.round(((cp - p) / cp) * 100);
                                             return (
-                                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                                 -{pct}%
                                               </span>
                                             );
@@ -4996,7 +4990,7 @@ export default function ProductsPage() {
                                               ),
                                             }));
                                           }}
-                                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                                          className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium"
                                         >
                                           -
                                         </button>
@@ -5010,7 +5004,7 @@ export default function ProductsPage() {
                                               variants: c.variants.map((v, i) => (i === idx ? { ...v, inventory_quantity: val } : v)),
                                             }));
                                           }}
-                                          className="w-14 text-center px-1.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                          className="w-14 text-center px-1.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                                         />
                                         <button
                                           type="button"
@@ -5023,7 +5017,7 @@ export default function ProductsPage() {
                                               ),
                                             }));
                                           }}
-                                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"
+                                          className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium"
                                         >
                                           +
                                         </button>
@@ -5040,7 +5034,7 @@ export default function ProductsPage() {
                                             variants: c.variants.filter((_, i) => i !== idx),
                                           }))
                                         }
-                                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
                                         title="Supprimer cette déclinaison"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -5056,14 +5050,14 @@ export default function ProductsPage() {
 
                       {/* Cumulative Variant Statistics Summary */}
                       {form.variants.length > 0 && (
-                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-500 font-semibold">
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-500 font-medium">
                           <span>
-                            📊 <strong>{form.variants.length}</strong> déclinaisons configurées · Stock cumulé :{' '}
+                            <strong>{form.variants.length}</strong> déclinaisons configurées · Stock cumulé :{' '}
                             <strong>{form.variants.reduce((acc, v) => acc + (Number(v.inventory_quantity) || 0), 0)}</strong> unités
                           </span>
                           <span>
                             Valeur d&apos;inventaire :{' '}
-                            <strong>
+                            <strong className="text-slate-900 dark:text-white">
                               {formatPrice(
                                 form.variants.reduce((acc, v) => acc + (Number(v.price) || 0) * (Number(v.inventory_quantity) || 0), 0)
                               )}
@@ -5079,21 +5073,21 @@ export default function ProductsPage() {
                 {drawerTab === 'taxonomy' && (
                   <div className="space-y-5 animate-in fade-in duration-150">
                     {/* AI Auto-Classification Action Bar */}
-                    <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/40 bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 shadow-sm flex flex-wrap items-center justify-between gap-3.5">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 shadow-2xs flex flex-wrap items-center justify-between gap-3.5">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-300 dark:border-amber-700/50 flex items-center justify-center shrink-0 shadow-sm">
-                          <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                        <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+                          <Sparkles className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs font-black text-amber-950 dark:text-amber-100">Classification Automatique IA (NLP & Taxonomie)</p>
+                            <p className="text-xs font-semibold text-slate-900 dark:text-white">Classification Automatique IA (NLP & Taxonomie)</p>
                             {aiTokensBalance !== null && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60">
-                                ⚡ Solde : {aiTokensBalance} jetons
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                Solde : {aiTokensBalance} jetons
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-amber-800/80 dark:text-amber-300/70">Analyse le titre, la description, la marque et les attributs pour proposer le Top 3 des catégories optimales.</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">Analyse le titre, la description, la marque et les attributs pour proposer le Top 3 des catégories optimales.</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -5101,12 +5095,12 @@ export default function ProductsPage() {
                           type="button"
                           onClick={handleAiCategoryPick}
                           disabled={aiCategoryPicking || !form.title.trim()}
-                          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:from-amber-300 disabled:to-orange-300 text-white text-xs font-black shadow-md shadow-amber-600/20 hover:shadow-lg hover:shadow-amber-600/30 active:scale-95 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition shadow-2xs"
                         >
                           {aiCategoryPicking ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Classification en cours...</>
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Classification en cours...</>
                           ) : (
-                            <><Zap className="w-4 h-4" /> Détecter et Classer avec l&apos;IA (1 jeton)</>
+                            <><Sparkles className="w-3.5 h-3.5 text-slate-400" /> Détecter et Classer avec l&apos;IA</>
                           )}
                         </button>
                       </div>
@@ -5114,27 +5108,27 @@ export default function ProductsPage() {
 
                     {/* AI Category Interactive Top-3 Suggestions Panel */}
                     {aiCategoryCandidates.length > 0 && (
-                      <div className="space-y-3 p-4 rounded-2xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/40 dark:bg-amber-950/20 animate-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-3 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/20 animate-in slide-in-from-top-2 duration-200 shadow-2xs">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                            <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                            <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                            <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                               Suggestions IA Recommandées (Top 3)
                             </h4>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-500">
+                          <span className="text-[10px] text-slate-400 font-normal">
                             Cliquez sur une option pour l&apos;appliquer en 1 clic
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-1 gap-2.5">
                           {aiCategoryCandidates.map((candidate, idx) => {
                             const isApplied = appliedCandidateIndex === idx;
                             const confPct = Math.round(candidate.confidence * 100);
                             const confBadge = confPct >= 85
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                               : confPct >= 65
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                              ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800';
 
                             return (
@@ -5142,21 +5136,21 @@ export default function ProductsPage() {
                                 key={`candidate-${candidate.rank}-${idx}`}
                                 className={`p-3.5 rounded-xl border transition-all ${
                                   isApplied
-                                    ? 'border-emerald-500/80 bg-white dark:bg-slate-900 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                                    : 'border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-amber-300 dark:hover:border-amber-700'
+                                    ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-900 shadow-2xs ring-1 ring-slate-900/10'
+                                    : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                                 }`}
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                                   <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-900 text-white dark:bg-slate-700">
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-900 text-white dark:bg-slate-700">
                                       #{candidate.rank} {idx === 0 ? 'Recommandé' : idx === 1 ? 'Alternative' : 'Option Niche'}
                                     </span>
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${confBadge}`}>
-                                      🎯 {confPct}% Confiance
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${confBadge}`}>
+                                      {confPct}% Confiance
                                     </span>
                                     {!candidate.is_existing_storefront && (
-                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800">
-                                        ✨ Nouvelle sous-catégorie
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                        Nouvelle sous-catégorie
                                       </span>
                                     )}
                                   </div>
@@ -5164,14 +5158,14 @@ export default function ProductsPage() {
                                   <button
                                     type="button"
                                     onClick={() => void handleApplyCandidate(candidate, idx)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                                       isApplied
-                                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 cursor-default'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200 dark:border-slate-700'
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 cursor-default'
+                                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                                     }`}
                                   >
                                     {isApplied ? (
-                                      <><CheckCircle2 className="w-3.5 h-3.5 text-white" /> Sélectionné</>
+                                      <><CheckCircle2 className="w-3.5 h-3.5" /> Sélectionné</>
                                     ) : (
                                       <><Check className="w-3.5 h-3.5" /> Appliquer ce choix</>
                                     )}
@@ -5180,14 +5174,14 @@ export default function ProductsPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                                   <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">🌐 Fil Hub PandaMarket</p>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate" title={candidate.marketplace_category_path}>
+                                    <p className="text-[10px] font-medium text-slate-400 uppercase">Fil Hub PandaMarket</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={candidate.marketplace_category_path}>
                                       {candidate.marketplace_category_path}
                                     </p>
                                   </div>
                                   <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">🏪 Vitrine Boutique</p>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate" title={candidate.storefront_category_path}>
+                                    <p className="text-[10px] font-medium text-slate-400 uppercase">Vitrine Boutique</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={candidate.storefront_category_path}>
                                       {candidate.storefront_category_path}
                                     </p>
                                   </div>
@@ -5195,7 +5189,7 @@ export default function ProductsPage() {
 
                                 {candidate.reason && (
                                   <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                                    <span className="font-bold shrink-0">💡 Justification IA :</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300 shrink-0">Justification IA :</span>
                                     <span>{candidate.reason}</span>
                                   </p>
                                 )}
@@ -5208,12 +5202,12 @@ export default function ProductsPage() {
 
                     {/* AI Category Result Legacy Alert */}
                     {aiCategoryResult && !aiCategoryCandidates.length && (
-                      <div className={`p-3 rounded-xl border text-xs font-bold flex items-start gap-2 animate-in slide-in-from-top-2 duration-200 ${
+                      <div className={`p-3 rounded-xl border text-xs font-medium flex items-start gap-2 animate-in slide-in-from-top-2 duration-200 ${
                         aiCategoryResult.isNew
                           ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/80 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300'
-                          : 'border-blue-200 dark:border-blue-800/50 bg-blue-50/80 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}>
-                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
                         <span className="flex-1">{aiCategoryResult.message}</span>
                         <button type="button" onClick={() => setAiCategoryResult(null)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 shrink-0">
                           <X className="w-3.5 h-3.5" />
@@ -5246,18 +5240,18 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Add Storefront Category / Subcategory in 1-Click */}
-                    <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shadow-2xs">
                       <input
                         type="text"
                         value={newStorefrontCategory}
                         onChange={(e) => setNewStorefrontCategory(e.target.value)}
                         placeholder="Nom de la catégorie ou sous-catégorie..."
-                        className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700"
+                        className="flex-1 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                       />
                       <select
                         value={newStorefrontParent}
                         onChange={(e) => setNewStorefrontParent(e.target.value)}
-                        className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-300 max-w-[200px]"
+                        className="px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 max-w-[200px] outline-none focus:border-slate-400 shadow-2xs"
                       >
                         <option value="">Rayon racine</option>
                         {storefrontCategories.map((c) => (
@@ -5297,9 +5291,9 @@ export default function ProductsPage() {
                           setCreatingCategory(false);
                         }}
                         disabled={creatingCategory || !newStorefrontCategory.trim()}
-                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black disabled:opacity-50 shrink-0 cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 shrink-0 cursor-pointer transition shadow-2xs"
                       >
-                        {creatingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Créer'}
+                        {creatingCategory ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+ Créer'}
                       </button>
                     </div>
                   </div>
@@ -5310,23 +5304,23 @@ export default function ProductsPage() {
                   <div className="space-y-5 animate-in fade-in duration-150">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                           Description Commerciale & Fiche HTML
                         </h4>
-                        <p className="text-[11px] text-slate-400 font-medium">Structurez vos titres H3, paragraphes, listes et caractéristiques techniques</p>
+                        <p className="text-[11px] text-slate-400 font-normal">Structurez vos titres H3, paragraphes, listes et caractéristiques techniques</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => void handleEnhanceDescription()}
                         disabled={enhancingDescription || !form.title}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 shadow-2xs cursor-pointer"
                       >
-                        {enhancingDescription ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-600" />}
+                        {enhancingDescription ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-slate-400" />}
                         <span>Sublimer avec l&apos;IA (Description & Attributs)</span>
                       </button>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
                       <ProductDescriptionEditor
                         value={form.description}
                         onChange={(val) => setForm((c) => ({ ...c, description: val }))}
@@ -5335,28 +5329,28 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Attributes & Technical Specs */}
-                    <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-3">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-3 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300 block">
-                            📋 Attributs & Caractéristiques Techniques
+                          <span className="text-xs font-semibold text-slate-900 dark:text-white block">
+                            Attributs & Caractéristiques Techniques
                           </span>
-                          <p className="text-[10px] text-slate-400">Propriétés clés affichées dans la fiche produit (Matière, Origine, Dimensions, etc.)</p>
+                          <p className="text-[10px] text-slate-400 font-normal">Propriétés clés affichées dans la fiche produit (Matière, Origine, Dimensions, etc.)</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => void handleExtractAttributesWithAi()}
                             disabled={extractingAttributes || !form.title}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-black rounded-xl bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900 transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer shadow-2xs"
                           >
-                            {extractingAttributes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />}
-                            <span>✨ Générer les Attributs par l&apos;IA</span>
+                            {extractingAttributes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-slate-400" />}
+                            <span>Générer les Attributs par l&apos;IA</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setForm((c) => ({ ...c, attributes: [...c.attributes, { name: '', value: '' }] }))}
-                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-300 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
                           >
                             + Ajouter un attribut
                           </button>
@@ -5378,7 +5372,7 @@ export default function ProductsPage() {
                                     attributes: c.attributes.map((a, i) => (i === idx ? { ...a, name: val } : a)),
                                   }));
                                 }}
-                                className="w-1/3 px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                className="w-1/3 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                               />
                               <input
                                 type="text"
@@ -5391,7 +5385,7 @@ export default function ProductsPage() {
                                     attributes: c.attributes.map((a, i) => (i === idx ? { ...a, value: val } : a)),
                                   }));
                                 }}
-                                className="flex-1 px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                                className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                               />
                               <button
                                 type="button"
@@ -5401,7 +5395,7 @@ export default function ProductsPage() {
                                     attributes: c.attributes.filter((_, i) => i !== idx),
                                   }))
                                 }
-                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -5415,15 +5409,15 @@ export default function ProductsPage() {
 
                 {/* TAB 5: PHOTO STUDIO & AI GENERATOR */}
                 {drawerTab === 'media' && (
-                  <div className="space-y-6 animate-in fade-in duration-150">
+                  <div className="space-y-5 animate-in fade-in duration-150">
                     {/* Main Thumbnail Section */}
-                    <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-4">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 shadow-2xs">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                          <h4 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                          <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                             Image Principale / Vignette Produit
                           </h4>
-                          <p className="text-[11px] text-slate-400 font-medium">Photo de couverture affichée sur la marketplace</p>
+                          <p className="text-[11px] text-slate-400 font-normal">Photo de couverture affichée sur la marketplace</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -5432,11 +5426,11 @@ export default function ProductsPage() {
                               setMediaPickerTarget('thumbnail');
                               setShowMediaPicker(true);
                             }}
-                            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-sm"
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                           >
                             Médiathèque
                           </button>
-                          <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black shadow-sm">
+                          <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs">
                             {uploadingImage ? 'Envoi...' : 'Téléverser'}
                             <input
                               type="file"
@@ -5449,40 +5443,40 @@ export default function ProductsPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <div className="h-28 w-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                        <div className="h-24 w-24 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
                           {form.thumbnail ? (
                             <img src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''} alt="Vignette" className="h-full w-full object-cover" />
                           ) : (
-                            <ImageIcon className="w-8 h-8 text-slate-300" />
+                            <ImageIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                           )}
                         </div>
                         <div className="text-xs space-y-1">
-                          <p className="font-bold text-slate-800 dark:text-slate-200">Format recommandé : JPG / PNG / WebP</p>
-                          <p className="text-slate-400">Dimensions optimales : 1000x1000px avec fond neutre.</p>
+                          <p className="font-medium text-slate-800 dark:text-slate-200">Format recommandé : JPG / PNG / WebP</p>
+                          <p className="text-slate-400 font-normal">Dimensions optimales : 1000x1000px avec fond neutre.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* INTERACTIVE COMPARISON SLIDER & ASPECT RATIOS */}
                     {form.thumbnail && (
-                      <div className="p-5 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-gradient-to-b from-purple-50/40 to-slate-50/50 dark:from-purple-950/20 dark:to-slate-900 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-100 dark:border-slate-800 pb-3">
+                      <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 space-y-3.5 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700 pb-3">
                           <div className="flex items-center gap-2">
-                            <span className="p-1.5 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                              <Crop className="w-4 h-4" />
-                            </span>
+                            <div className="p-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
+                              <Crop className="w-3.5 h-3.5" />
+                            </div>
                             <div>
-                              <h4 className="text-xs font-black uppercase text-purple-900 dark:text-purple-300">
+                              <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                                 Comparateur Avant / Après & Cadrage Ratios
                               </h4>
-                              <p className="text-[10px] text-slate-400 font-medium">
+                              <p className="text-[10px] text-slate-400 font-normal">
                                 Glissez le curseur central pour inspecter le détourage et les reflets du fond IA
                               </p>
                             </div>
                           </div>
 
                           {/* Aspect Ratio Selector */}
-                          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
                             {[
                               { id: '1:1', label: '1:1 Carré', desc: 'Marketplace' },
                               { id: '4:5', label: '4:5 Portrait', desc: 'Story & Social' },
@@ -5493,10 +5487,10 @@ export default function ProductsPage() {
                                 key={ratio.id}
                                 type="button"
                                 onClick={() => setStudioAspectRatio(ratio.id as any)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                                   studioAspectRatio === ratio.id
-                                    ? 'bg-purple-600 text-white shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                                 title={ratio.desc}
                               >
@@ -5524,7 +5518,7 @@ export default function ProductsPage() {
                               }
                             }}
                             style={{ touchAction: 'none' }}
-                            className={`relative select-none overflow-hidden rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-slate-950 shadow-2xl cursor-ew-resize transition-all duration-300 ${
+                            className={`relative select-none overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-950 shadow-md cursor-ew-resize transition-all duration-300 ${
                               studioAspectRatio === '4:5'
                                 ? 'aspect-[4/5] w-full max-w-sm'
                                 : studioAspectRatio === '16:9'
@@ -5620,7 +5614,7 @@ export default function ProductsPage() {
                                   setSuccess('Photo studio ajoutée à la galerie !');
                                 }
                               }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>Ajouter à la Galerie</span>
@@ -5629,7 +5623,7 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => handleDownloadImage(processedStudioImage || form.thumbnail)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
                               title="Télécharger l'image studio en haute définition"
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -5644,7 +5638,7 @@ export default function ProductsPage() {
                                   setForm((c) => ({ ...c, thumbnail: rawOriginalImage }));
                                   setSuccess("Image d'origine rétablie.");
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
                                 <span>Rétablir Original</span>
@@ -5655,8 +5649,8 @@ export default function ProductsPage() {
 
                         {/* Studio History Variations Carousel */}
                         {studioHistory.length > 0 && (
-                          <div className="pt-3 border-t border-purple-100 dark:border-slate-800 space-y-2">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                          <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700 space-y-2">
+                            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                               Historique des décors générés ({studioHistory.length}) :
                             </span>
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -5667,16 +5661,16 @@ export default function ProductsPage() {
                                     setProcessedStudioImage(item.imageUrl);
                                     setStudioSliderPos(50);
                                   }}
-                                  className={`flex-shrink-0 cursor-pointer p-1.5 rounded-xl border transition-all flex items-center gap-2 ${
+                                  className={`shrink-0 cursor-pointer p-1.5 rounded-xl border transition-all flex items-center gap-2 ${
                                     processedStudioImage === item.imageUrl
-                                      ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 ring-2 ring-purple-500/20'
-                                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400'
+                                      ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 shadow-2xs'
+                                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-400'
                                   }`}
                                 >
-                                  <img src={item.imageUrl} alt={item.presetName} className="h-10 w-10 rounded-lg object-cover" />
+                                  <img src={item.imageUrl} alt={item.presetName} className="h-9 w-9 rounded-lg object-cover" />
                                   <div className="text-[11px] pr-1">
-                                    <p className="font-bold text-slate-800 dark:text-slate-200">{item.presetName}</p>
-                                    <p className="text-[9px] text-slate-400">{item.timestamp}</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-200">{item.presetName}</p>
+                                    <p className="text-[9px] text-slate-400 font-normal">{item.timestamp}</p>
                                   </div>
                                 </div>
                               ))}
@@ -5687,11 +5681,11 @@ export default function ProductsPage() {
                     )}
 
                     {/* AI Photo Studio Presets */}
-                    <div className="p-5 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-4">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3.5 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-purple-600" />
-                          <h4 className="text-xs font-black uppercase text-purple-900 dark:text-purple-300">
+                          <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                          <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                             Studio Photo IA & Décors Publicitaires
                           </h4>
                         </div>
@@ -5700,7 +5694,7 @@ export default function ProductsPage() {
                             type="button"
                             onClick={() => void handlePhotoStudioEnhance()}
                             disabled={photoStudioLoading || !form.thumbnail}
-                            className="px-3 py-1 text-[11px] font-bold rounded-lg bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 shadow-sm disabled:opacity-50"
+                            className="px-3 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition shadow-2xs disabled:opacity-50"
                           >
                             {photoStudioLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : '✨ Sublimer 4K'}
                           </button>
@@ -5708,41 +5702,41 @@ export default function ProductsPage() {
                             type="button"
                             onClick={() => void handlePhotoStudioGenerateGallery()}
                             disabled={photoStudioLoading || !form.title}
-                            className="px-3 py-1 text-[11px] font-bold rounded-lg bg-purple-600 text-white hover:bg-purple-700 shadow-sm disabled:opacity-50"
+                            className="px-3 py-1 text-[11px] font-medium rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50"
                           >
                             {photoStudioLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : '🎨 Générer Mockups'}
                           </button>
                         </div>
                       </div>
 
-                      <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed font-medium">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
                         Détourez et intégrez instantanément votre produit dans un décor studio haut de gamme en 1 clic :
                       </p>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                         {STUDIO_PRESETS.map((preset) => (
                           <button
                             key={preset.id}
                             type="button"
                             disabled={photoStudioLoading || !form.thumbnail}
                             onClick={() => void handlePhotoStudioReplaceBackground(preset.id)}
-                            className="p-3 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-white dark:bg-slate-800 text-left hover:border-purple-400 hover:shadow-md transition-all disabled:opacity-50 space-y-1"
+                            className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800 text-left hover:border-slate-400 dark:hover:border-slate-600 transition disabled:opacity-50 space-y-1 shadow-2xs"
                           >
-                            <span className="text-xl">{preset.icon}</span>
-                            <p className="font-black text-xs text-slate-900 dark:text-white">{preset.name}</p>
-                            <p className="text-[10px] text-slate-400 leading-tight">{preset.desc}</p>
+                            <span className="text-lg">{preset.icon}</span>
+                            <p className="font-semibold text-xs text-slate-900 dark:text-white">{preset.name}</p>
+                            <p className="text-[10px] text-slate-400 leading-tight font-normal">{preset.desc}</p>
                           </button>
                         ))}
                       </div>
                     </div>
 
                     {/* Multi-Image Gallery */}
-                    <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3 shadow-2xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white">
                           Galerie Multi-Photos & Vues Supplémentaires ({form.gallery_images.length})
                         </span>
-                        <label className="cursor-pointer px-3 py-1 text-xs font-bold rounded-xl border border-slate-200 bg-white hover:bg-slate-50">
+                        <label className="cursor-pointer px-3 py-1 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs">
                           + Ajouter des photos
                           <input
                             type="file"
@@ -5754,9 +5748,9 @@ export default function ProductsPage() {
                         </label>
                       </div>
 
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-2.5">
                         {form.gallery_images.map((url, idx) => (
-                          <div key={idx} className="relative group h-20 w-20 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                          <div key={idx} className="relative group h-16 w-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
                             <img src={url} alt="Galerie" className="h-full w-full object-cover" />
                             <button
                               type="button"
@@ -5766,7 +5760,7 @@ export default function ProductsPage() {
                                   gallery_images: c.gallery_images.filter((_, i) => i !== idx),
                                 }))
                               }
-                              className="absolute top-1 right-1 p-1 rounded-md bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 p-1 rounded-md bg-slate-900/80 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -5788,21 +5782,21 @@ export default function ProductsPage() {
                   const productUrl = `pandamarket.tn/store/boutique/${form.slug || 'mon-produit'}`;
 
                   return (
-                    <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="space-y-5 animate-in fade-in duration-200">
                       {/* Top Header & AI 1-Click Optimize Button */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-200 dark:border-purple-900/50">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 shadow-2xs">
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 text-white shadow-md shadow-purple-500/20">
-                            <GlobeIcon className="w-6 h-6 text-yellow-300" />
+                          <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+                            <GlobeIcon className="w-4 h-4" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                               <span>Optimisation Référencement Naturel (SEO) & Social</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${seo.gradeColor}`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${seo.gradeColor}`}>
                                 Score : {seo.score} / 100
                               </span>
                             </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                               Maximisez votre visibilité sur Google, Facebook et WhatsApp pour attirer du trafic organique gratuit.
                             </p>
                           </div>
@@ -5821,7 +5815,7 @@ export default function ProductsPage() {
                             </>
                           ) : (
                             <>
-                              <Sparkles className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
+                              <Sparkles className="w-3.5 h-3.5 text-slate-400" />
                               <span>Optimiser le SEO par l&apos;IA</span>
                             </>
                           )}
@@ -5831,28 +5825,28 @@ export default function ProductsPage() {
                       {/* Dynamic Score Gauge & Audit Checklist */}
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Gauge Card */}
-                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col items-center justify-center text-center space-y-3">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center text-center space-y-2.5 shadow-2xs">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                             Jauge de Performance SEO
                           </span>
                           <div className="relative flex items-center justify-center">
-                            <div className="w-24 h-24 rounded-full border-8 border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                              <span className="text-2xl font-black text-slate-900 dark:text-white">
+                            <div className="w-20 h-20 rounded-full border-4 border-slate-100 dark:border-slate-800 flex items-center justify-center">
+                              <span className="text-xl font-semibold text-slate-900 dark:text-white">
                                 {seo.score}%
                               </span>
                             </div>
                           </div>
-                          <div className={`px-3 py-1 rounded-xl text-xs font-black border ${seo.gradeColor}`}>
+                          <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${seo.gradeColor}`}>
                             {seo.gradeLabel}
                           </div>
-                          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                             <div
                               className={`h-full transition-all duration-500 ${
                                 seo.score >= 85
                                   ? 'bg-emerald-500'
                                   : seo.score >= 60
                                   ? 'bg-amber-500'
-                                  : 'bg-red-500'
+                                  : 'bg-rose-500'
                               }`}
                               style={{ width: `${seo.score}%` }}
                             />
@@ -5860,80 +5854,80 @@ export default function ProductsPage() {
                         </div>
 
                         {/* SEO Audit Checklist (2 cols on lg) */}
-                        <div className="lg:col-span-2 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                            📋 Diagnostic en Temps Réel & Recommandations :
+                        <div className="lg:col-span-2 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5 shadow-2xs">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 block">
+                            Diagnostic en Temps Réel & Recommandations :
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             {/* Title check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.title.status === 'pass' ? '✅' : seo.checks.title.status === 'warn' ? '⚠️' : '❌'}
                               </span>
                               <div>
                                 <div className="flex items-center justify-between gap-2">
-                                  <strong className="text-slate-900 dark:text-white">Titre SEO Google</strong>
-                                  <span className="font-mono text-[10px] text-slate-400 font-bold">{seo.checks.title.count}/60</span>
+                                  <strong className="text-slate-900 dark:text-white font-medium">Titre SEO Google</strong>
+                                  <span className="font-mono text-[10px] text-slate-400">{seo.checks.title.count}/60</span>
                                 </div>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.title.message}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.title.message}</p>
                               </div>
                             </div>
 
                             {/* Meta desc check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.description.status === 'pass' ? '✅' : seo.checks.description.status === 'warn' ? '⚠️' : '❌'}
                               </span>
                               <div>
                                 <div className="flex items-center justify-between gap-2">
-                                  <strong className="text-slate-900 dark:text-white">Méta-Description</strong>
-                                  <span className="font-mono text-[10px] text-slate-400 font-bold">{seo.checks.description.count}/160</span>
+                                  <strong className="text-slate-900 dark:text-white font-medium">Méta-Description</strong>
+                                  <span className="font-mono text-[10px] text-slate-400">{seo.checks.description.count}/160</span>
                                 </div>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.description.message}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.description.message}</p>
                               </div>
                             </div>
 
                             {/* Tags check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.tags.status === 'pass' ? '✅' : seo.checks.tags.status === 'warn' ? '⚠️' : '❌'}
                               </span>
                               <div>
-                                <strong className="text-slate-900 dark:text-white">Mots-Clés E-commerce</strong>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.tags.message}</p>
+                                <strong className="text-slate-900 dark:text-white font-medium">Mots-Clés E-commerce</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.tags.message}</p>
                               </div>
                             </div>
 
                             {/* Image check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.image.status === 'pass' ? '✅' : '❌'}
                               </span>
                               <div>
-                                <strong className="text-slate-900 dark:text-white">Image de Couverture Sociale</strong>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.image.message}</p>
+                                <strong className="text-slate-900 dark:text-white font-medium">Image de Couverture Sociale</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.image.message}</p>
                               </div>
                             </div>
 
                             {/* Slug check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.slug.status === 'pass' ? '✅' : '❌'}
                               </span>
                               <div>
-                                <strong className="text-slate-900 dark:text-white">Permalien / Slug URL</strong>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.slug.message}</p>
+                                <strong className="text-slate-900 dark:text-white font-medium">Permalien / Slug URL</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.slug.message}</p>
                               </div>
                             </div>
 
                             {/* Content check */}
-                            <div className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
-                              <span className="mt-0.5 text-sm">
+                            <div className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-2">
+                              <span className="mt-0.5 text-xs">
                                 {seo.checks.content.status === 'pass' ? '✅' : seo.checks.content.status === 'warn' ? '⚠️' : '❌'}
                               </span>
                               <div>
-                                <strong className="text-slate-900 dark:text-white">Richesse de Description</strong>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{seo.checks.content.message}</p>
+                                <strong className="text-slate-900 dark:text-white font-medium">Richesse de Description</strong>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{seo.checks.content.message}</p>
                               </div>
                             </div>
                           </div>
@@ -5945,16 +5939,16 @@ export default function ProductsPage() {
                         {/* Title Input */}
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                              Titre SEO (Meta Title) - Balise &lt;title&gt; :
+                            <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              Titre SEO (Meta Title) :
                             </label>
                             <span
-                              className={`font-mono text-[11px] font-bold ${
+                              className={`font-mono text-[11px] font-medium ${
                                 seo.checks.title.count > 65
-                                  ? 'text-red-500'
+                                  ? 'text-rose-500'
                                   : seo.checks.title.count >= 40
                                   ? 'text-emerald-600'
-                                  : 'text-amber-500'
+                                  : 'text-slate-400'
                               }`}
                             >
                               {seo.checks.title.count} / 60 caractères
@@ -5965,9 +5959,9 @@ export default function ProductsPage() {
                             value={form.seo_title}
                             onChange={(e) => setForm((c) => ({ ...c, seo_title: e.target.value }))}
                             placeholder={form.title || 'Ex: Montre Automatique Homme Cuir Luxe | PandaMarket'}
-                            className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600"
+                            className="w-full px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           />
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-slate-400 font-normal">
                             Conseil : Placez les mots-clés principaux en premier, suivis du nom de votre boutique.
                           </p>
                         </div>
@@ -5975,10 +5969,10 @@ export default function ProductsPage() {
                         {/* Tags Input */}
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                               Mots-Clés E-commerce & Recherche :
                             </label>
-                            <span className="font-mono text-[11px] font-bold text-purple-600">
+                            <span className="font-mono text-[11px] font-medium text-slate-400">
                               {seo.tagsCount} tag(s)
                             </span>
                           </div>
@@ -5987,9 +5981,9 @@ export default function ProductsPage() {
                             value={form.tags}
                             onChange={(e) => setForm((c) => ({ ...c, tags: e.target.value }))}
                             placeholder="running, baskets homme, respirant, sport, italie"
-                            className="w-full px-4 py-2.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600"
+                            className="w-full px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           />
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-slate-400 font-normal">
                             Séparez les mots-clés par des virgules pour faciliter la recherche client.
                           </p>
                         </div>
@@ -5997,16 +5991,16 @@ export default function ProductsPage() {
                         {/* Meta Description Input */}
                         <div className="lg:col-span-2 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                               Méta-Description SEO (Affichée sous le titre dans les résultats Google) :
                             </label>
                             <span
-                              className={`font-mono text-[11px] font-bold ${
+                              className={`font-mono text-[11px] font-medium ${
                                 seo.checks.description.count > 165
-                                  ? 'text-red-500'
+                                  ? 'text-rose-500'
                                   : seo.checks.description.count >= 120
                                   ? 'text-emerald-600'
-                                  : 'text-amber-500'
+                                  : 'text-slate-400'
                               }`}
                             >
                               {seo.checks.description.count} / 160 caractères
@@ -6017,36 +6011,36 @@ export default function ProductsPage() {
                             value={form.seo_description}
                             onChange={(e) => setForm((c) => ({ ...c, seo_description: e.target.value }))}
                             placeholder="Rédigez un résumé attrayant incitant les clients à cliquer sur votre lien dans les résultats Google..."
-                            className="w-full p-3.5 text-xs font-medium rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-purple-600 leading-relaxed"
+                            className="w-full p-3.5 text-xs font-normal rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs leading-relaxed"
                           />
                         </div>
                       </div>
 
                       {/* Multi-Platform Snippet Previews */}
-                      <div className="p-5 rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                      <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 space-y-3.5 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-3">
                           <div className="flex items-center gap-2">
-                            <Eye className="w-4 h-4 text-purple-600" />
-                            <h5 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                            <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                            <h5 className="text-xs font-semibold text-slate-900 dark:text-white">
                               Aperçus Réalistes en Direct :
                             </h5>
                           </div>
 
                           {/* Preview Platform Tabs */}
-                          <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
                             {[
-                              { id: 'google', label: '🔍 Google Search' },
-                              { id: 'whatsapp', label: '📱 WhatsApp' },
-                              { id: 'facebook', label: '📘 Facebook' },
-                              { id: 'twitter', label: '🐦 X / Twitter' },
+                              { id: 'google', label: 'Google Search' },
+                              { id: 'whatsapp', label: 'WhatsApp' },
+                              { id: 'facebook', label: 'Facebook' },
+                              { id: 'twitter', label: 'X / Twitter' },
                             ].map((tab) => (
                               <button
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setSeoPreviewTab(tab.id as any)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                                   seoPreviewTab === tab.id
-                                    ? 'bg-purple-600 text-white shadow-xs'
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                                 }`}
                               >
@@ -6058,14 +6052,14 @@ export default function ProductsPage() {
 
                         {/* 1. Google SERP Preview Card */}
                         {seoPreviewTab === 'google' && (
-                          <div className="p-5 rounded-2xl bg-white dark:bg-[#202124] border border-slate-200 dark:border-[#3c4043] shadow-xs space-y-2 max-w-2xl font-sans">
+                          <div className="p-4 rounded-xl bg-white dark:bg-[#202124] border border-slate-200 dark:border-[#3c4043] shadow-2xs space-y-2 max-w-2xl font-sans">
                             {/* Breadcrumbs */}
                             <div className="flex items-center gap-2 text-xs">
-                              <div className="w-6 h-6 rounded-full bg-red-600 text-white font-black flex items-center justify-center text-[10px]">
+                              <div className="w-5 h-5 rounded-full bg-slate-900 text-white font-medium flex items-center justify-center text-[10px]">
                                 P
                               </div>
                               <div className="truncate">
-                                <span className="font-bold text-[#202124] dark:text-[#dadce0] text-xs">PandaMarket</span>
+                                <span className="font-semibold text-[#202124] dark:text-[#dadce0] text-xs">PandaMarket</span>
                                 <span className="text-[#5f6368] dark:text-[#9aa0a6] text-[11px] block truncate">
                                   https://{productUrl}
                                 </span>
@@ -6073,19 +6067,19 @@ export default function ProductsPage() {
                             </div>
 
                             {/* Google Title Link */}
-                            <h3 className="text-base sm:text-lg text-[#1a0dab] dark:text-[#8ab4f8] hover:underline font-medium cursor-pointer leading-snug">
+                            <h3 className="text-sm sm:text-base text-[#1a0dab] dark:text-[#8ab4f8] hover:underline font-medium cursor-pointer leading-snug">
                               {effectiveTitle}
                             </h3>
 
                             {/* Price & Rating Badge */}
                             <div className="flex items-center gap-2 text-xs text-[#70757a] dark:text-[#9aa0a6]">
-                              <span className="text-amber-500 font-bold">★★★★★ 4.9 (24 avis)</span>
+                              <span className="text-amber-500 font-medium">★★★★★ 4.9 (24 avis)</span>
                               <span>·</span>
-                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
                                 {formatPrice(form.price || '0')}
                               </span>
                               <span>·</span>
-                              <span className="text-emerald-600 font-bold">En stock</span>
+                              <span className="text-emerald-600 font-medium">En stock</span>
                             </div>
 
                             {/* Snippet Description */}
@@ -6097,10 +6091,10 @@ export default function ProductsPage() {
 
                         {/* 2. WhatsApp Preview Card */}
                         {seoPreviewTab === 'whatsapp' && (
-                          <div className="p-4 rounded-2xl bg-[#0b141a] max-w-md shadow-lg">
-                            <div className="p-3 rounded-xl bg-[#202c33] text-white space-y-2 border-l-4 border-[#00a884]">
+                          <div className="p-3.5 rounded-xl bg-[#0b141a] max-w-md shadow-md">
+                            <div className="p-3 rounded-lg bg-[#202c33] text-white space-y-2 border-l-4 border-emerald-500">
                               {form.thumbnail ? (
-                                <div className="h-40 w-full rounded-lg overflow-hidden bg-slate-800 relative">
+                                <div className="h-36 w-full rounded-lg overflow-hidden bg-slate-800 relative">
                                   <img
                                     src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                     alt={effectiveTitle}
@@ -6108,22 +6102,22 @@ export default function ProductsPage() {
                                   />
                                 </div>
                               ) : (
-                                <div className="h-32 w-full rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-xs">
+                                <div className="h-28 w-full rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-xs font-normal">
                                   Pas d&apos;image de couverture
                                 </div>
                               )}
-                              <h4 className="font-bold text-xs text-white line-clamp-1">{effectiveTitle}</h4>
-                              <p className="text-[11px] text-[#8696a0] line-clamp-2">{effectiveDesc}</p>
-                              <span className="text-[10px] text-[#00a884] font-mono block">pandamarket.tn</span>
+                              <h4 className="font-semibold text-xs text-white line-clamp-1">{effectiveTitle}</h4>
+                              <p className="text-[11px] text-[#8696a0] line-clamp-2 font-normal">{effectiveDesc}</p>
+                              <span className="text-[10px] text-emerald-400 font-mono block">pandamarket.tn</span>
                             </div>
                           </div>
                         )}
 
                         {/* 3. Facebook / OpenGraph Preview Card */}
                         {seoPreviewTab === 'facebook' && (
-                          <div className="max-w-lg rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+                          <div className="max-w-lg rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
                             {form.thumbnail ? (
-                              <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                              <div className="h-44 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
                                 <img
                                   src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                   alt={effectiveTitle}
@@ -6131,18 +6125,18 @@ export default function ProductsPage() {
                                 />
                               </div>
                             ) : (
-                              <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs">
+                              <div className="h-40 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs">
                                 Ajouter une photo de couverture pour le partage Facebook (1200x630px)
                               </div>
                             )}
                             <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 block">
                                 PANDAMARKET.TN
                               </span>
-                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                              <h4 className="font-semibold text-xs text-slate-900 dark:text-white line-clamp-1">
                                 {effectiveTitle}
                               </h4>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 font-normal">
                                 {effectiveDesc}
                               </p>
                             </div>
@@ -6151,9 +6145,9 @@ export default function ProductsPage() {
 
                         {/* 4. Twitter / X Card Preview */}
                         {seoPreviewTab === 'twitter' && (
-                          <div className="max-w-md rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-black shadow-md">
+                          <div className="max-w-md rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-black shadow-2xs">
                             {form.thumbnail && (
-                              <div className="h-44 w-full relative overflow-hidden bg-slate-900">
+                              <div className="h-40 w-full relative overflow-hidden bg-slate-900">
                                 <img
                                   src={form.thumbnail ? getResizedImageUrl(form.thumbnail, 'medium') : ''}
                                   alt={effectiveTitle}
@@ -6162,11 +6156,11 @@ export default function ProductsPage() {
                               </div>
                             )}
                             <div className="p-3 space-y-1">
-                              <span className="text-[10px] text-slate-500">pandamarket.tn</span>
-                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                              <span className="text-[10px] text-slate-500 font-mono">pandamarket.tn</span>
+                              <h4 className="font-semibold text-xs text-slate-900 dark:text-white line-clamp-1">
                                 {effectiveTitle}
                               </h4>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 font-normal">
                                 {effectiveDesc}
                               </p>
                             </div>
@@ -6180,34 +6174,34 @@ export default function ProductsPage() {
                 {/* TAB 7: DIGITAL DELIVERABLES */}
                 {drawerTab === 'digital' && (
                   <div className="space-y-5 animate-in fade-in duration-150">
-                    <div className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-4">
-                      <h4 className="text-xs font-black uppercase text-slate-800">
+                    <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3.5 shadow-2xs">
+                      <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                         Téléchargements Numériques & Fichiers Sécurisés
                       </h4>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Téléchargements Max Autorisés</label>
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Téléchargements Max Autorisés</label>
                           <input
                             type="number"
                             value={form.max_downloads}
                             onChange={(e) => setForm((c) => ({ ...c, max_downloads: e.target.value }))}
-                            className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white"
+                            className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Expiration du Lien (Heures)</label>
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Expiration du Lien (Heures)</label>
                           <input
                             type="number"
                             value={form.download_expires_hours}
                             onChange={(e) => setForm((c) => ({ ...c, download_expires_hours: e.target.value }))}
-                            className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white"
+                            className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Clés de Licence / Numéros de Série (Une clé par ligne)
                         </label>
                         <textarea
@@ -6215,7 +6209,7 @@ export default function ProductsPage() {
                           value={form.license_keys}
                           onChange={(e) => setForm((c) => ({ ...c, license_keys: e.target.value }))}
                           placeholder="XXXX-YYYY-ZZZZ-0001&#10;XXXX-YYYY-ZZZZ-0002"
-                          className="w-full p-3 font-mono text-xs font-bold rounded-xl border border-slate-200 bg-white"
+                          className="w-full p-3 font-mono text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
                         />
                       </div>
                     </div>
@@ -6624,49 +6618,49 @@ export default function ProductsPage() {
             </div>
 
             {/* Mode Selector & Language Selector Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
-              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setSmartFillMode('prompt')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     smartFillMode === 'prompt'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  ✍️ Mode Prompt Libre / Message Fournisseur
+                  Mode Prompt Libre / Message Fournisseur
                 </button>
                 <button
                   type="button"
                   onClick={() => setSmartFillMode('current')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     smartFillMode === 'current'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  📋 Champs de la Fiche Actuelle
+                  Champs de la Fiche Actuelle
                 </button>
               </div>
 
               {/* Language Selector */}
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Langue :</span>
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Langue :</span>
                 <div className="flex items-center gap-1">
                   {[
                     { id: 'fr', label: '🇫🇷 Français' },
-                    { id: 'ar', label: '🇹🇳 Darija / Arabe' },
+                    { id: 'ar', label: '🇹🇳 Arabe' },
                     { id: 'en', label: '🇬🇧 English' },
                   ].map((lang) => (
                     <button
                       key={lang.id}
                       type="button"
                       onClick={() => setSmartFillLanguage(lang.id as any)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                         smartFillLanguage === lang.id
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 border border-purple-300 dark:border-purple-700'
-                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {lang.label}
@@ -6680,14 +6674,14 @@ export default function ProductsPage() {
             {smartFillMode === 'prompt' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                    📝 Texte brut, description libre ou message fournisseur :
+                  <label className="block text-xs font-medium text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    Texte brut, description libre ou message fournisseur :
                   </label>
                   {smartFillSuggestions && (
                     <button
                       type="button"
                       onClick={() => setSmartFillActiveTab(smartFillActiveTab === 'input' ? 'preview' : 'input')}
-                      className="text-xs font-bold text-purple-600 hover:underline"
+                      className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:underline"
                     >
                       {smartFillActiveTab === 'input' ? 'Voir suggestions extraites →' : '← Modifier le texte brut'}
                     </button>
@@ -6700,7 +6694,7 @@ export default function ProductsPage() {
                     value={freePromptText}
                     onChange={(e) => setFreePromptText(e.target.value)}
                     placeholder="Collez ici votre texte brut... Ex: Je vends des baskets sport running respirantes pour homme et femme, pointures 40 à 45, semelle amortissante confort, importées d'Italie, prix 120dt..."
-                    className="w-full p-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 leading-relaxed"
+                    className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-normal outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 leading-relaxed shadow-2xs"
                   />
                   {freePromptText && (
                     <button
@@ -6716,8 +6710,8 @@ export default function ProductsPage() {
 
                 {/* 1-Click Quick Samples */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    💡 Exemples en 1-Clic pour tester :
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Exemples pour tester en 1 clic :
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     {[
@@ -6749,15 +6743,15 @@ export default function ProductsPage() {
                           setFreePromptText(sample.text);
                           void handleSmartFill(sample.text);
                         }}
-                        className="p-2 rounded-xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20 hover:bg-purple-100/70 dark:hover:bg-purple-900/40 text-left transition-all group"
+                        className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-400 dark:hover:border-slate-700 text-left transition shadow-2xs group"
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">{sample.icon}</span>
-                          <span className="font-bold text-xs text-purple-950 dark:text-purple-200 group-hover:text-purple-600 truncate">
+                          <span className="font-semibold text-xs text-slate-900 dark:text-white truncate">
                             {sample.label}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{sample.text}</p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5 font-normal">{sample.text}</p>
                       </button>
                     ))}
                   </div>
@@ -6769,17 +6763,17 @@ export default function ProductsPage() {
                     type="button"
                     onClick={() => void handleSmartFill()}
                     disabled={smartFillLoading || !freePromptText.trim()}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white font-black text-sm shadow-lg shadow-purple-600/25 hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs shadow-2xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition cursor-pointer"
                   >
                     {smartFillLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         <span>Extraction intelligente par l&apos;IA en cours...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 text-yellow-300" />
-                        <span>Analyser & Extraire la Fiche Complète (1-Clic)</span>
+                        <Sparkles className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Analyser & Extraire la Fiche Complète</span>
                       </>
                     )}
                   </button>
@@ -6789,24 +6783,24 @@ export default function ProductsPage() {
 
             {/* Input Section (Current Form Mode) */}
             {smartFillMode === 'current' && (
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3 shadow-2xs">
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-normal">
                   L&apos;IA utilisera le titre actuel (<strong>{form.title || 'Non renseigné'}</strong>), la description et l&apos;image actuelle de votre fiche produit pour enrichir et compléter tous les champs manquants.
                 </p>
                 <button
                   type="button"
                   onClick={() => void handleSmartFill()}
                   disabled={smartFillLoading || (!form.title && !form.description && !form.thumbnail)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-sm shadow-md shadow-purple-600/20 hover:opacity-95 disabled:opacity-50 transition-all"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs shadow-2xs hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition"
                 >
                   {smartFillLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Analyse de la fiche en cours...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-yellow-300" />
+                      <Sparkles className="w-3.5 h-3.5 text-slate-400" />
                       <span>Compléter & Enrichir la Fiche Produit Actuelle</span>
                     </>
                   )}
@@ -6816,13 +6810,13 @@ export default function ProductsPage() {
 
             {/* Extraction Results Preview Section */}
             {smartFillSuggestions && (
-              <div className="space-y-4 pt-4 border-t border-purple-100 dark:border-slate-800">
+              <div className="space-y-4 pt-4 border-t border-slate-200/80 dark:border-slate-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white font-black text-xs">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white font-semibold text-[10px]">
                       ✓
                     </span>
-                    <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                    <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
                       Fiche Produit Complète Extraite par l&apos;IA
                     </h4>
                   </div>
@@ -6842,11 +6836,11 @@ export default function ProductsPage() {
                           seo: true,
                         })
                       }
-                      className="text-[11px] font-bold text-purple-600 hover:underline"
+                      className="text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:underline"
                     >
                       Tout cocher
                     </button>
-                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -6861,84 +6855,84 @@ export default function ProductsPage() {
                           seo: false,
                         })
                       }
-                      className="text-[11px] font-bold text-slate-500 hover:underline"
+                      className="text-[11px] font-medium text-slate-400 hover:underline"
                     >
                       Tout décocher
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 text-xs">
                   {/* Title & Price Card */}
-                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.title}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, title: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                          📌 Titre Commercial Optimisé
+                        <span className="font-semibold uppercase text-slate-900 dark:text-white text-[10px]">
+                          Titre Commercial Optimisé
                         </span>
                       </label>
                       <button
                         type="button"
                         onClick={() => applySmartFillItem('title')}
-                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                        className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                       >
                         Appliquer
                       </button>
                     </div>
-                    <p className="p-3 rounded-xl bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white border border-purple-100 dark:border-slate-700">
+                    <p className="p-2.5 rounded-xl bg-white dark:bg-slate-900 font-semibold text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-2xs">
                       {smartFillSuggestions.suggested_title}
                     </p>
 
                     {/* Detected Price */}
-                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700 flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.price}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, price: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
-                          💰 Prix Détecté :
+                        <span className="font-medium text-slate-600 dark:text-slate-300 text-[10px]">
+                          Prix Détecté :
                         </span>
                       </label>
                       {smartFillSuggestions.suggested_price ? (
                         <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-black text-xs">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold text-xs border border-emerald-200 dark:border-emerald-800">
                             {Number(smartFillSuggestions.suggested_price).toFixed(3)} TND
                           </span>
                           <button
                             type="button"
                             onClick={() => applySmartFillItem('price')}
-                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px]"
+                            className="px-2 py-0.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-[10px] shadow-2xs"
                           >
                             Appliquer
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic text-[11px]">Non spécifié dans le texte</span>
+                        <span className="text-slate-400 italic text-[11px] font-normal">Non spécifié dans le texte</span>
                       )}
                     </div>
                   </div>
 
                   {/* Categories Card */}
-                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.categories}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, categories: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                          🌐 Catégorisation Hub & Vitrine
+                        <span className="font-semibold uppercase text-slate-900 dark:text-white text-[10px]">
+                          Catégorisation Hub & Vitrine
                         </span>
                       </label>
                       <button
@@ -6947,40 +6941,40 @@ export default function ProductsPage() {
                           applySmartFillItem('hub_category');
                           applySmartFillItem('storefront_category');
                         }}
-                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                        className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                       >
                         Appliquer les 2
                       </button>
                     </div>
 
                     <div className="space-y-2">
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-2xs">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Catégorie Hub :</span>
-                          <span className="font-bold text-slate-900 dark:text-white">
+                          <span className="text-[10px] text-slate-400 font-medium uppercase block">Catégorie Hub :</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">
                             {smartFillSuggestions.suggested_hub_category_name}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => applySmartFillItem('hub_category')}
-                          className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                          className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[10px] hover:bg-slate-200 transition"
                         >
                           Appliquer
                         </button>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-2xs">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Vitrine Boutique :</span>
-                          <span className="font-bold text-slate-900 dark:text-white">
+                          <span className="text-[10px] text-slate-400 font-medium uppercase block">Vitrine Boutique :</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">
                             {smartFillSuggestions.suggested_storefront_category}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => applySmartFillItem('storefront_category')}
-                          className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                          className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[10px] hover:bg-slate-200 transition"
                         >
                           Appliquer
                         </button>
@@ -6989,88 +6983,88 @@ export default function ProductsPage() {
                   </div>
 
                   {/* HTML Marketing Description Card */}
-                  <div className="lg:col-span-2 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-2">
+                  <div className="lg:col-span-2 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.description}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, description: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                          📄 Description Marketing HTML Complète
+                        <span className="font-semibold uppercase text-slate-900 dark:text-white text-[10px]">
+                          Description Marketing HTML Complète
                         </span>
                       </label>
                       <button
                         type="button"
                         onClick={() => applySmartFillItem('description')}
-                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                        className="px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                       >
                         Appliquer la description
                       </button>
                     </div>
                     <div
-                      className="p-3.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-purple-100 dark:border-slate-700 max-h-48 overflow-y-auto leading-relaxed prose prose-sm dark:prose-invert"
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto leading-relaxed prose prose-sm dark:prose-invert font-normal shadow-2xs"
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(smartFillSuggestions.suggested_description) }}
                     />
                   </div>
 
                   {/* Technical Attributes & Tags */}
-                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.attributes}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, attributes: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                          ⚙️ Caractéristiques Techniques ({smartFillSuggestions.suggested_attributes?.length || 0})
+                        <span className="font-semibold uppercase text-slate-900 dark:text-white text-[10px]">
+                          Caractéristiques Techniques ({smartFillSuggestions.suggested_attributes?.length || 0})
                         </span>
                       </label>
                       <button
                         type="button"
                         onClick={() => applySmartFillItem('attributes')}
-                        className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                        className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                       >
                         Appliquer
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 min-h-12 items-center">
+                    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 min-h-10 items-center shadow-2xs">
                       {smartFillSuggestions.suggested_attributes && smartFillSuggestions.suggested_attributes.length > 0 ? (
                         smartFillSuggestions.suggested_attributes.map((attr, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
                           >
-                            <strong className="text-purple-600 dark:text-purple-400 mr-1">{attr.name}:</strong> {attr.value}
+                            <strong className="text-slate-900 dark:text-white mr-1">{attr.name}:</strong> {attr.value}
                           </span>
                         ))
                       ) : (
-                        <span className="text-slate-400 italic text-[11px]">Aucun attribut spécifique détecté</span>
+                        <span className="text-slate-400 italic text-[11px] font-normal">Aucun attribut spécifique détecté</span>
                       )}
                     </div>
 
                     {/* Tags */}
-                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700 flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.tags}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, tags: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
-                          🏷️ Tags E-commerce ({smartFillSuggestions.suggested_tags?.length || 0})
+                        <span className="font-medium text-slate-600 dark:text-slate-300 text-[10px]">
+                          Tags E-commerce ({smartFillSuggestions.suggested_tags?.length || 0})
                         </span>
                       </label>
                       <button
                         type="button"
                         onClick={() => applySmartFillItem('tags')}
-                        className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                        className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[10px] hover:bg-slate-200 transition"
                       >
                         Appliquer
                       </button>
@@ -7079,7 +7073,7 @@ export default function ProductsPage() {
                       {smartFillSuggestions.suggested_tags?.map((t, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                          className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                         >
                           #{t}
                         </span>
@@ -7088,7 +7082,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Variants & SEO Card */}
-                  <div className="p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
                     {/* Variants */}
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -7096,31 +7090,31 @@ export default function ProductsPage() {
                           type="checkbox"
                           checked={selectedFieldsToApply.variants}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, variants: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-purple-900 dark:text-purple-300 text-[10px]">
-                          🔀 Déclinaisons & Variantes Détectées
+                        <span className="font-semibold uppercase text-slate-900 dark:text-white text-[10px]">
+                          Déclinaisons & Variantes Détectées
                         </span>
                       </label>
                       {smartFillSuggestions.suggested_variants && smartFillSuggestions.suggested_variants.length > 0 && (
                         <button
                           type="button"
                           onClick={() => applySmartFillItem('variants')}
-                          className="px-2.5 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700"
+                          className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs"
                         >
                           Générer Déclinaisons
                         </button>
                       )}
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 space-y-1.5 min-h-12">
+                    <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5 min-h-10 shadow-2xs">
                       {smartFillSuggestions.suggested_variants && smartFillSuggestions.suggested_variants.length > 0 ? (
                         smartFillSuggestions.suggested_variants.map((v, idx) => (
                           <div key={idx} className="flex items-center gap-1.5 text-xs">
-                            <span className="font-black text-purple-700 dark:text-purple-300">{v.name} :</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{v.name} :</span>
                             <div className="flex flex-wrap gap-1">
                               {v.values.map((val, vi) => (
-                                <span key={vi} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] font-bold">
+                                <span key={vi} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-medium border border-slate-200 dark:border-slate-700">
                                   {val}
                                 </span>
                               ))}
@@ -7128,37 +7122,37 @@ export default function ProductsPage() {
                           </div>
                         ))
                       ) : (
-                        <span className="text-slate-400 italic text-[11px]">Produit unique (pas de tailles/couleurs multiples détectées)</span>
+                        <span className="text-slate-400 italic text-[11px] font-normal">Produit unique (pas de tailles/couleurs multiples détectées)</span>
                       )}
                     </div>
 
                     {/* SEO */}
-                    <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700 flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedFieldsToApply.seo}
                           onChange={(e) => setSelectedFieldsToApply((c) => ({ ...c, seo: e.target.checked }))}
-                          className="rounded text-purple-600"
+                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
-                        <span className="font-black uppercase text-slate-600 dark:text-slate-300 text-[10px]">
-                          🔍 Balises SEO Google
+                        <span className="font-medium text-slate-600 dark:text-slate-300 text-[10px]">
+                          Balises SEO Google
                         </span>
                       </label>
                       <button
                         type="button"
                         onClick={() => applySmartFillItem('seo')}
-                        className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-[10px]"
+                        className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[10px] hover:bg-slate-200 transition"
                       >
                         Appliquer
                       </button>
                     </div>
 
-                    <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-purple-100 dark:border-slate-700 space-y-1">
-                      <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 truncate">
+                    <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1 shadow-2xs">
+                      <p className="text-[11px] font-semibold text-slate-900 dark:text-white truncate">
                         {smartFillSuggestions.suggested_seo_title}
                       </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 font-normal">
                         {smartFillSuggestions.suggested_seo_description}
                       </p>
                     </div>
@@ -7168,15 +7162,15 @@ export default function ProductsPage() {
             )}
 
             {/* Modal Footer Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-purple-100 dark:border-slate-800 pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200/80 dark:border-slate-800 pt-4">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => void handleSmartFill()}
                   disabled={smartFillLoading || (smartFillMode === 'prompt' && !freePromptText.trim())}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-2xs"
                 >
-                  {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-600" />}
+                  {smartFillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-slate-400" />}
                   <span>Régénérer d&apos;autres propositions</span>
                 </button>
               </div>
