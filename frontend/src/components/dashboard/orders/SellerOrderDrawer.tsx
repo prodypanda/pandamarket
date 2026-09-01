@@ -32,6 +32,7 @@ import {
   Package,
   Search,
   ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { getResizedImageUrl } from '@/lib/image-url';
@@ -168,11 +169,38 @@ export function SellerOrderDrawer({
   const [updatingCodStatus, setUpdatingCodStatus] = useState(false);
   const [codFeedback, setCodFeedback] = useState('');
 
+  // Copy Feedback State
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
   useEffect(() => {
     setSellerNote(order.seller_note?.body || '');
     setNoteFeedback('');
     setOrderEditFeedback(null);
   }, [order]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAddProductModal) {
+          setShowAddProductModal(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddProductModal, onClose]);
+
+  const copyToClipboard = async (text: string, fieldName: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // fallback
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -467,79 +495,82 @@ export function SellerOrderDrawer({
               {activeTab === 'overview' && (
                 <div className="space-y-5">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
-                      <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.status')}</p>
+                    <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.status')}</p>
                       {(() => {
                         const store = storeOrderStatus(order, t);
                         return (
-                          <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${store.color}`}>
+                          <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${store.color}`}>
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                             {store.label}
                           </span>
                         );
                       })()}
-                      <p className="mt-2 text-[10px] font-bold text-gray-400">
+                      <p className="mt-2 text-[10px] font-normal text-slate-400">
                         {t('dashboardPages.orders.marketplaceStatus')}: {statusLabel(order.status, t)}
                       </p>
                       {toNumber(order.other_pending_stores) > 0 && (
-                        <p className="mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 p-1.5 rounded-lg border border-amber-200/60">
+                        <p className="mt-1 text-[10px] font-normal text-amber-700 bg-amber-50 dark:bg-amber-950/40 p-1.5 rounded-lg border border-amber-200/60">
                           {t('dashboardPages.orders.waitingOtherStores', { count: toNumber(order.other_pending_stores) })}
                         </p>
                       )}
                     </div>
 
-                    <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
-                      <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.paymentStatus')}</p>
-                      <span className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${paymentStatusColor(order.payment_status)}`}>
+                    <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.paymentStatus')}</p>
+                      <span className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${paymentStatusColor(order.payment_status)}`}>
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                         {paymentStatusLabel(order.payment_status, t)}
                       </span>
-                      <p className="mt-2 text-xs font-bold text-gray-600 capitalize">
+                      <p className="mt-2 text-xs font-normal text-slate-600 dark:text-slate-300 capitalize">
                         Mode : {order.payment_gateway?.replace('_', ' ') || '—'}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
-                      <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.fulfillment')}</p>
-                      <span className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${fulfillmentColor(order.fulfillment_status)}`}>
+                    <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.fulfillment')}</p>
+                      <span className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${fulfillmentColor(order.fulfillment_status)}`}>
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                         {fulfillmentLabel(order.fulfillment_status, t)}
                       </span>
-                      <p className="mt-2 text-xs font-bold text-gray-600">
+                      <p className="mt-2 text-xs font-normal text-slate-600 dark:text-slate-300">
                         {order.carrier ? `Transporteur : ${order.carrier}` : 'Non assigné'}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
-                      <p className="text-xs font-black uppercase tracking-wide text-gray-400">{t('dashboardPages.orders.yourTotal')}</p>
-                      <p className="mt-2 text-lg font-black text-gray-900">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</p>
-                      <p className="mt-1 text-[11px] font-semibold text-gray-500">
+                    <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.yourTotal')}</p>
+                      <p className="mt-2 text-base font-bold text-slate-900 dark:text-white">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</p>
+                      <p className="mt-1 text-[11px] font-normal text-slate-400">
                         Dont livraison : {formatMoney(order.store_shipping_total ?? order.shipping_total, order.currency || 'TND')}
                       </p>
                     </div>
                   </div>
 
                   {/* Timeline */}
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                      <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.orderTimeline')}</h3>
-                      <span className="rounded-full bg-gray-50 px-3 py-1 text-xs font-bold text-gray-500">
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.orderTimeline')}</h3>
+                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                         {t('dashboardPages.orders.timelineProgress', { done: buildOrderTimeline(order, t).filter((step) => step.state === 'done').length, total: buildOrderTimeline(order, t).length })}
                       </span>
                     </div>
                     <div className="space-y-3">
                       {buildOrderTimeline(order, t).map((step, index, steps) => (
                         <div key={`${step.label}-${index}`} className="relative flex gap-3">
-                          {index < steps.length - 1 && <div className="absolute left-[16px] top-7 h-full w-px bg-gray-100" />}
-                          <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                          {index < steps.length - 1 && <div className="absolute left-[14px] top-7 h-full w-px bg-slate-200 dark:bg-slate-700" />}
+                          <div className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
                             step.state === 'done'
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                               : step.state === 'current'
-                              ? 'border-amber-500 bg-amber-50 text-amber-700 ring-4 ring-amber-100'
-                              : 'border-gray-200 bg-gray-50 text-gray-400'
+                              ? 'border-slate-900 bg-slate-900 text-white'
+                              : 'border-slate-200 bg-slate-50 text-slate-400'
                           }`}>
-                            {step.state === 'done' ? <Check className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                            {step.state === 'done' ? <Check className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
                           </div>
                           <div className="min-w-0 flex-1 pb-3">
-                            <p className="text-xs font-black text-gray-900">{step.label}</p>
-                            <p className="text-[11px] font-semibold text-gray-500">{step.description}</p>
+                            <p className="text-xs font-semibold text-slate-900 dark:text-white">{step.label}</p>
+                            <p className="text-[11px] font-normal text-slate-400">{step.description}</p>
                           </div>
                         </div>
                       ))}
@@ -548,58 +579,91 @@ export function SellerOrderDrawer({
 
                   {/* Customer & Address grid */}
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
                       <div className="flex items-center gap-2 mb-3">
-                        <Mail className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.customer')}</h3>
+                        <Mail className="h-4 w-4 text-slate-500" />
+                        <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.customer')}</h3>
                       </div>
-                      <div className="space-y-2 text-sm">
-                        <p className="font-extrabold text-gray-900">{customerName()}</p>
-                        <p className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600">
-                          <Mail className="h-3.5 w-3.5 text-gray-400" />
-                          {order.customer_email || t('dashboardPages.orders.emailUnavailable')}
-                        </p>
-                        <p className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600">
-                          <Phone className="h-3.5 w-3.5 text-gray-400" />
-                          {order.customer_phone || t('dashboardPages.orders.phoneUnavailable')}
-                        </p>
-                        <div className="mt-4 grid grid-cols-3 gap-2">
-                          <div className="rounded-xl bg-gray-50 p-2.5">
-                            <p className="text-[10px] font-black uppercase text-gray-400">{t('dashboardPages.orders.orders')}</p>
-                            <p className="mt-1 text-sm font-black text-gray-900">{toNumber(order.customer_order_count)}</p>
+                      <div className="space-y-2 text-xs">
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm">{customerName()}</p>
+                        <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1.5 font-normal">
+                            <Mail className="h-3.5 w-3.5 text-slate-400" />
+                            {order.customer_email || t('dashboardPages.orders.emailUnavailable')}
+                          </span>
+                          {order.customer_email && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(order.customer_email!, 'email')}
+                              className="p-1 text-slate-400 hover:text-slate-700 rounded-md transition-colors"
+                              title="Copier l'email"
+                            >
+                              {copiedField === 'email' ? <span className="text-[10px] text-emerald-600 font-medium">Copié !</span> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                          <span className="inline-flex items-center gap-1.5 font-mono">
+                            <Phone className="h-3.5 w-3.5 text-slate-400" />
+                            {order.customer_phone || t('dashboardPages.orders.phoneUnavailable')}
+                          </span>
+                          {order.customer_phone && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(order.customer_phone!, 'phone')}
+                              className="p-1 text-slate-400 hover:text-slate-700 rounded-md transition-colors"
+                              title="Copier le numéro"
+                            >
+                              {copiedField === 'phone' ? <span className="text-[10px] text-emerald-600 font-medium">Copié !</span> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-4 grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.orders')}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">{toNumber(order.customer_order_count)}</p>
                           </div>
-                          <div className="rounded-xl bg-gray-50 p-2.5">
-                            <p className="text-[10px] font-black uppercase text-gray-400">LTV</p>
-                            <p className="mt-1 text-sm font-black text-gray-900">{formatMoney(order.customer_lifetime_value ?? 0, order.currency || 'TND')}</p>
+                          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">LTV</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">{formatMoney(order.customer_lifetime_value ?? 0, order.currency || 'TND')}</p>
                           </div>
-                          <div className="rounded-xl bg-gray-50 p-2.5">
-                            <p className="text-[10px] font-black uppercase text-gray-400">{t('dashboardPages.orders.lastOrder')}</p>
-                            <p className="mt-1 text-xs font-black text-gray-900">{formatDateTime(order.customer_last_order_at, locale)}</p>
+                          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('dashboardPages.orders.lastOrder')}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">{formatDateTime(order.customer_last_order_at, locale)}</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
                       <div className="flex items-center gap-2 mb-3">
-                        <MapPin className="h-4 w-4 text-[#B91C1C]" />
-                        <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.deliveryAddress')}</h3>
+                        <MapPin className="h-4 w-4 text-slate-500" />
+                        <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.deliveryAddress')}</h3>
                       </div>
                       {order.shipping_address ? (
-                        <div className="space-y-1 text-xs font-semibold text-gray-600">
-                          <p className="font-bold text-gray-900 text-sm">
+                        <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300 font-normal">
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">
                             {[order.shipping_address.first_name, order.shipping_address.last_name].filter(Boolean).join(' ')}
                           </p>
                           <p>{order.shipping_address.address_line_1}</p>
                           {order.shipping_address.address_line_2 && <p>{order.shipping_address.address_line_2}</p>}
                           <p>{[order.shipping_address.postal_code, order.shipping_address.city].filter(Boolean).join(' ')}</p>
-                          <p>{order.shipping_address.country || 'Tunisie (TN)'}</p>
+                          <p className="text-slate-400">{order.shipping_address.country || 'Tunisie (TN)'}</p>
                           {order.shipping_address.phone && (
-                            <p className="font-mono text-gray-800 font-bold mt-1">📞 {order.shipping_address.phone}</p>
+                            <div className="flex items-center justify-between font-mono font-medium text-slate-800 dark:text-slate-200 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <span>📞 {order.shipping_address.phone}</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(order.shipping_address!.phone!, 'shipping_phone')}
+                                className="p-1 text-slate-400 hover:text-slate-700 rounded-md transition-colors"
+                              >
+                                {copiedField === 'shipping_phone' ? <span className="text-[10px] text-emerald-600 font-medium">Copié !</span> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs font-semibold text-gray-500">{t('dashboardPages.orders.noAddressRequired')}.</p>
+                        <p className="text-xs text-slate-400 font-normal">{t('dashboardPages.orders.noAddressRequired')}.</p>
                       )}
                     </div>
                   </div>
@@ -615,18 +679,18 @@ export function SellerOrderDrawer({
                 return (
                   <div className="space-y-5">
                     {/* Notice */}
-                    <div className={`p-4 rounded-2xl border text-xs font-medium ${
-                      isEditable ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-gray-100 border-gray-200 text-gray-700'
+                    <div className={`p-3.5 rounded-xl border text-xs font-normal ${
+                      isEditable ? 'bg-sky-50/60 border-sky-200/70 text-sky-900' : 'bg-slate-50 border-slate-200/80 text-slate-600'
                     }`}>
                       {isEditable ? (
                         <div className="flex items-start gap-2.5">
-                          <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
                           <div>
-                            <p className="font-bold">{t('dashboardPages.orders.drawerEditActive')}</p>
-                            <p className="mt-0.5">
+                            <p className="font-semibold">{t('dashboardPages.orders.drawerEditActive')}</p>
+                            <p className="mt-0.5 text-sky-800">
                               {t('dashboardPages.orders.drawerEditHint')}
                               {order.payment_status === 'captured' && (
-                                <strong className="block mt-1 text-blue-950 font-bold">
+                                <strong className="block mt-1 text-sky-950 font-semibold">
                                   {t('dashboardPages.orders.drawerCapturedEditNotice')}
                                 </strong>
                               )}
@@ -634,7 +698,7 @@ export function SellerOrderDrawer({
                           </div>
                         </div>
                       ) : (
-                        <p className="font-bold text-gray-600">
+                        <p className="font-medium text-slate-600">
                           🔒 Cette commande ne peut plus être modifiée car elle est déjà {order.fulfillment_status === 'shipped' ? 'expédiée' : order.fulfillment_status === 'delivered' ? 'livrée' : 'clôturée'}.
                         </p>
                       )}
@@ -642,7 +706,7 @@ export function SellerOrderDrawer({
 
                     {/* Top bar with Add Item button */}
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black text-gray-900">Articles de votre boutique ({items.length})</h3>
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Articles de votre boutique ({items.length})</h3>
                       {isEditable && (
                         <button
                           type="button"
@@ -650,20 +714,20 @@ export function SellerOrderDrawer({
                             setShowAddProductModal(true);
                             fetchStoreProductsForPicker();
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-black text-white hover:bg-emerald-700 transition shadow-xs"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 transition shadow-2xs"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
                           Ajouter un article
                         </button>
                       )}
                     </div>
 
                     {/* Items List */}
-                    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100 shadow-xs">
+                    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-2xs">
                       {items.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400">
-                          <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm font-bold">Aucun article dans cette commande.</p>
+                        <div className="p-8 text-center text-slate-400">
+                          <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                          <p className="text-xs font-medium">Aucun article dans cette commande.</p>
                         </div>
                       ) : (
                         items.map((item) => {
@@ -673,22 +737,22 @@ export function SellerOrderDrawer({
                           return (
                             <div key={item.id || `${item.product_id}-${item.variant_id}`} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-100 border border-gray-200">
+                                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
                                   {item.thumbnail ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={getResizedImageUrl(item.thumbnail, 'large')} alt={item.product_title || ''} className="h-full w-full object-cover" />
                                   ) : (
-                                    <div className="h-full w-full flex items-center justify-center text-gray-400">
-                                      <ShoppingBag className="w-5 h-5" />
+                                    <div className="h-full w-full flex items-center justify-center text-slate-400">
+                                      <ShoppingBag className="w-4 h-4" />
                                     </div>
                                   )}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-extrabold text-gray-900 text-sm truncate">{item.product_title || 'Produit'}</p>
-                                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
-                                    <span className="font-semibold">{formatMoney(item.unit_price, order.currency || 'TND')} / unité</span>
-                                    {item.variant_title && <span className="rounded bg-gray-100 px-1.5 py-0.5 font-bold text-gray-700">{item.variant_title}</span>}
-                                    {item.variant_sku && <span className="font-mono text-[11px] text-gray-400">SKU: {item.variant_sku}</span>}
+                                  <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">{item.product_title || 'Produit'}</p>
+                                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500">
+                                    <span className="font-normal">{formatMoney(item.unit_price, order.currency || 'TND')} / unité</span>
+                                    {item.variant_title && <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">{item.variant_title}</span>}
+                                    {item.variant_sku && <span className="font-mono text-[10px] text-slate-400">SKU: {item.variant_sku}</span>}
                                   </div>
                                 </div>
                               </div>
@@ -696,34 +760,34 @@ export function SellerOrderDrawer({
                               <div className="flex items-center justify-between sm:justify-end gap-5">
                                 {/* Inline Quantity Controls */}
                                 {isEditable && item.id ? (
-                                  <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 p-1">
+                                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5">
                                     <button
                                       type="button"
                                       onClick={() => handleUpdateItemQuantity(item.id!, qty - 1)}
                                       disabled={isEditingThis || qty <= 1}
-                                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 shadow-xs"
+                                      className="flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40 shadow-2xs"
                                     >
-                                      <Minus className="h-3.5 w-3.5" />
+                                      <Minus className="h-3 w-3" />
                                     </button>
-                                    <span className="w-8 text-center text-xs font-black text-gray-900 font-mono">
-                                      {isEditingThis ? <Loader2 className="h-3 w-3 animate-spin mx-auto text-emerald-600" /> : qty}
+                                    <span className="w-7 text-center text-xs font-semibold text-slate-900 dark:text-white font-mono">
+                                      {isEditingThis ? <Loader2 className="h-3 w-3 animate-spin mx-auto text-slate-600" /> : qty}
                                     </span>
                                     <button
                                       type="button"
                                       onClick={() => handleUpdateItemQuantity(item.id!, qty + 1)}
                                       disabled={isEditingThis}
-                                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 shadow-xs"
+                                      className="flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40 shadow-2xs"
                                     >
-                                      <Plus className="h-3.5 w-3.5" />
+                                      <Plus className="h-3 w-3" />
                                     </button>
                                   </div>
                                 ) : (
-                                  <span className="text-xs font-bold text-gray-700">Quantité : {qty}</span>
+                                  <span className="text-xs font-normal text-slate-600 dark:text-slate-400">Qté : <strong className="font-semibold text-slate-900 dark:text-white">{qty}</strong></span>
                                 )}
 
                                 {/* Subtotal */}
-                                <div className="text-right min-w-[80px]">
-                                  <p className="text-sm font-black text-gray-900">{formatMoney(item.subtotal, order.currency || 'TND')}</p>
+                                <div className="text-right min-w-[70px]">
+                                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatMoney(item.subtotal, order.currency || 'TND')}</p>
                                 </div>
 
                                 {/* Delete Button */}
@@ -732,10 +796,10 @@ export function SellerOrderDrawer({
                                     type="button"
                                     onClick={() => handleRemoveOrderItem(item.id!)}
                                     disabled={isEditingThis}
-                                    className="p-2 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-700 transition disabled:opacity-40"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition disabled:opacity-40"
                                     title="Supprimer cet article"
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </div>
@@ -746,18 +810,18 @@ export function SellerOrderDrawer({
                     </div>
 
                     {/* Totals Summary */}
-                    <div className="rounded-2xl bg-gray-50 border border-gray-200/80 p-5 space-y-2 text-xs font-semibold text-gray-600">
+                    <div className="rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 p-4 space-y-1.5 text-xs font-normal text-slate-600 dark:text-slate-300">
                       <div className="flex justify-between">
                         <span>Sous-total articles :</span>
-                        <span className="font-bold text-gray-900">{formatMoney(order.store_subtotal ?? order.subtotal, order.currency || 'TND')}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{formatMoney(order.store_subtotal ?? order.subtotal, order.currency || 'TND')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Frais de livraison :</span>
-                        <span className="font-bold text-gray-900">{formatMoney(order.store_shipping_total ?? order.shipping_total, order.currency || 'TND')}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{formatMoney(order.store_shipping_total ?? order.shipping_total, order.currency || 'TND')}</span>
                       </div>
-                      <div className="flex justify-between border-t border-gray-200 pt-2 text-sm font-black text-gray-900">
+                      <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-xs font-semibold text-slate-900 dark:text-white">
                         <span>Total de votre boutique :</span>
-                        <span className="text-emerald-600">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">{formatMoney(order.store_total ?? order.total, order.currency || 'TND')}</span>
                       </div>
                     </div>
                   </div>
@@ -769,20 +833,32 @@ export function SellerOrderDrawer({
                  ───────────────────────────────────────────────────────────── */}
               {activeTab === 'shipping' && (
                 <div className="space-y-5">
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs space-y-4">
-                    <div className="flex items-center gap-2 border-b pb-3">
-                      <Truck className="h-5 w-5 text-purple-600" />
-                      <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.drawerShippingStatus')}</h3>
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                      <Truck className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">{t('dashboardPages.orders.drawerShippingStatus')}</h3>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="p-3.5 rounded-xl bg-gray-50">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">{t('dashboardPages.orders.carrier')}</span>
-                        <p className="font-black text-gray-900 mt-1">{order.carrier || t('dashboardPages.orders.drawerNoCarrier')}</p>
+                      <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{t('dashboardPages.orders.carrier')}</span>
+                        <p className="font-semibold text-slate-900 dark:text-white mt-1 text-xs">{order.carrier || t('dashboardPages.orders.drawerNoCarrier')}</p>
                       </div>
-                      <div className="p-3.5 rounded-xl bg-gray-50">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">{t('dashboardPages.orders.drawerTrackingNumber')}</span>
-                        <p className="font-mono font-bold text-gray-900 mt-1">{order.tracking_number || '—'}</p>
+                      <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{t('dashboardPages.orders.drawerTrackingNumber')}</span>
+                          {order.tracking_number && (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(order.tracking_number!, 'tracking_drawer')}
+                              className="p-0.5 text-slate-400 hover:text-slate-700 transition-colors"
+                              title="Copier le numéro de suivi"
+                            >
+                              {copiedField === 'tracking_drawer' ? <span className="text-[10px] text-emerald-600 font-medium">Copié !</span> : <Copy className="w-3 h-3" />}
+                            </button>
+                          )}
+                        </div>
+                        <p className="font-mono font-semibold text-slate-900 dark:text-white mt-1 text-xs">{order.tracking_number || '—'}</p>
                       </div>
                     </div>
 
@@ -791,7 +867,7 @@ export function SellerOrderDrawer({
                         href={getTrackingUrl(order.carrier, order.tracking_number)!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 transition-colors shadow-2xs"
                       >
                         <span>Consulter le suivi transporteur en direct ↗</span>
                       </a>
@@ -804,9 +880,9 @@ export function SellerOrderDrawer({
                           type="button"
                           onClick={() => void generateShippingLabel(order)}
                           disabled={generatingLabelId === order.id}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-60 shadow-2xs"
                         >
-                          {generatingLabelId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />}
+                          {generatingLabelId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ReceiptText className="h-3.5 w-3.5 text-slate-500" />}
                           {latestShipment(order) ? t('dashboardPages.orders.openLabel') : t('dashboardPages.orders.generateLabel')}
                         </button>
                       )}
@@ -816,9 +892,9 @@ export function SellerOrderDrawer({
                           type="button"
                           onClick={() => void startPreparation(order)}
                           disabled={preparingId === order.id}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-black text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-60 shadow-2xs"
                         >
-                          {preparingId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                          {preparingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Package className="h-3.5 w-3.5 text-slate-500" />}
                           {t('dashboardPages.orders.startPreparation')}
                         </button>
                       )}
@@ -828,9 +904,9 @@ export function SellerOrderDrawer({
                           type="button"
                           onClick={() => void revertPreparation(order)}
                           disabled={preparingId === order.id}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-xs font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 disabled:opacity-60 shadow-2xs"
                         >
-                          {preparingId === order.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                          {preparingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5 text-slate-400" />}
                           {t('dashboardPages.orders.revertPreparation')}
                         </button>
                       )}
@@ -839,9 +915,9 @@ export function SellerOrderDrawer({
                         <button
                           type="button"
                           onClick={() => openFulfillmentModal(order)}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-xs font-black text-white transition hover:bg-purple-700 shadow-xs"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 dark:bg-white px-4 py-2.5 text-xs font-medium text-white dark:text-slate-900 transition hover:bg-slate-800 shadow-2xs"
                         >
-                          <Truck className="h-4 w-4" />
+                          <Truck className="h-3.5 w-3.5" />
                           {t('dashboardPages.orders.markShipped')}
                         </button>
                       )}

@@ -2455,8 +2455,18 @@ export default function OrdersPage() {
                 value={search}
                 onChange={(event) => handleSearchChange(event.target.value)}
                 placeholder={t('dashboardPages.orders.searchPlaceholder')}
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none transition-all shadow-2xs"
+                className="w-full pl-9 pr-9 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-xs font-normal text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 outline-none transition-all shadow-2xs"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
               <select
@@ -2673,7 +2683,17 @@ export default function OrdersPage() {
                 <Truck className="h-6 w-6" />
               </div>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{t('dashboardPages.orders.noOrders')}</p>
-              <p className="mt-1 text-xs text-slate-400">{t('dashboardPages.orders.noOrdersHint')}</p>
+              <p className="mt-1 text-xs text-slate-400 max-w-sm">{t('dashboardPages.orders.noOrdersHint')}</p>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{t('dashboardPages.orders.reset')}</span>
+                </button>
+              )}
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
@@ -2745,6 +2765,7 @@ export default function OrdersPage() {
                             {order.payment_gateway?.replace('_', ' ') || '—'}
                           </p>
                           <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${paymentStatusColor(order.payment_status)}`}>
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                             {paymentStatusLabel(order.payment_status, t)}
                           </span>
                         </td>
@@ -2760,6 +2781,7 @@ export default function OrdersPage() {
                             const store = storeOrderStatus(order, t);
                             return (
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${store.color}`}>
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                                 {store.label}
                               </span>
                             );
@@ -2777,6 +2799,7 @@ export default function OrdersPage() {
                       {visibleColumns.fulfillment && (
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${fulfillmentColor(order.fulfillment_status)}`}>
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-70" />
                             {fulfillmentLabel(order.fulfillment_status, t)}
                           </span>
                           {order.tracking_number && (
