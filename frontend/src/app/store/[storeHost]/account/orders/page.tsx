@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Package, Clock, CheckCircle2, Eye, Truck, XCircle, Download, Loader2 } from 'lucide-react';
+import { Package, Clock, CheckCircle2, Eye, Truck, XCircle, Download, Loader2, RefreshCw, Star, ArrowRight } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useCart } from '@/contexts/CartContext';
 
 interface OrderItem {
   id?: string;
@@ -133,6 +134,24 @@ const getCarrierTrackingUrl = (carrier?: string | null, trackingNumber?: string 
 
 const shortId = (id: string) => `#${id.slice(-8).toUpperCase()}`;
 
+function SkeletonStoreOrderCard() {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 animate-pulse space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
+        <div className="space-y-2">
+          <div className="h-5 w-32 bg-gray-200 rounded-md" />
+          <div className="h-3 w-24 bg-gray-100 rounded" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-20 bg-gray-100 rounded-full" />
+          <div className="h-6 w-16 bg-gray-200 rounded-md" />
+        </div>
+      </div>
+      <div className="h-12 bg-gray-50 rounded-xl" />
+    </div>
+  );
+}
+
 export default function StorefrontAccountOrdersPage() {
   const params = useParams();
   const storeHost = decodeURIComponent(params.storeHost as string);
@@ -142,13 +161,28 @@ export default function StorefrontAccountOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [downloadingProductId, setDownloadingProductId] = useState<string | null>(null);
   const [downloadMessage, setDownloadMessage] = useState('');
+  const [reorderToast, setReorderToast] = useState<{ message: string } | null>(null);
+
+  const { addToCart } = useCart();
+
+  const handleReorder = (item: OrderItem) => {
+    addToCart({
+      product_id: item.product_id,
+      title: item.product_title,
+      price: parseFloat(item.unit_price) || 0,
+      quantity: 1,
+      image_url: item.thumbnail || null,
+      store_id: storeHost,
+      store_name: storeHost,
+      product_type: item.product_type || 'physical',
+    });
+    setReorderToast({ message: `« ${item.product_title} » a été ajouté à votre panier !` });
+    setTimeout(() => setReorderToast(null), 3500);
+  };
 
   useEffect(() => {
     async function loadOrders() {
       try {
-        // Storefront channel only: this endpoint returns orders placed on THIS
-        // storefront (storefront_customer_id scoped to the store). Marketplace
-        // Hub orders are a separate channel and never appear here.
         const res = await fetchWithCsrf('/api/pd/orders/storefront/me');
         if (res.ok) {
           const data = await res.json();
@@ -187,8 +221,9 @@ export default function StorefrontAccountOrdersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-500" />
+      <div className="space-y-4 py-4" aria-busy="true">
+        <SkeletonStoreOrderCard />
+        <SkeletonStoreOrderCard />
       </div>
     );
   }
@@ -243,7 +278,7 @@ export default function StorefrontAccountOrdersPage() {
             const isDownloadable = (item.product_type === 'digital' || item.product_type === 'serial') && item.has_digital_file;
             const canDownload = order.payment_status === 'captured' && isDownloadable;
             return (
-              <div key={item.id || `${pkg.id}-${item.product_id}`} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <div key={item.id || `${pkg.id}-${item.product_id}`} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                 <div>
                   <p className="font-semibold text-gray-900">{item.product_title}</p>
                   <p className="text-xs text-gray-500">
@@ -252,6 +287,15 @@ export default function StorefrontAccountOrdersPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-900">{formatPrice(item.subtotal)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(item)}
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs"
+                    title="Commander à nouveau"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Recommander
+                  </button>
                   {canDownload && (
                     <button
                       type="button"
@@ -287,7 +331,22 @@ export default function StorefrontAccountOrdersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Floating Reorder Toast */}
+      {reorderToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-gray-900 px-5 py-3 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-bold">{reorderToast.message}</span>
+          <Link
+            href={`/store/${encodeURIComponent(storeHost)}/cart`}
+            className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white hover:bg-emerald-600 transition-colors"
+          >
+            Panier
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-gray-100 bg-white p-6 sm:p-8 shadow-xs">
         <h1 className="text-xl font-bold text-gray-900 border-b pb-4 mb-6">Mes Commandes</h1>
 
