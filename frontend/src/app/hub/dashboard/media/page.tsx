@@ -90,7 +90,7 @@ function formatDate(dateStr?: string, locale = 'fr-TN') {
 }
 
 export default function SellerMediaPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   // Data & loading
@@ -282,7 +282,7 @@ export default function SellerMediaPage() {
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
 
-    // Put new dropped files directly into the uncategorized folder
+    // Put new dropped files directly into the active folder or uncategorized
     const targetFolder = activeFolder !== 'all' && ['products', 'branding', 'uncategorized', 'general'].includes(activeFolder)
       ? activeFolder
       : 'uncategorized';
@@ -415,164 +415,161 @@ export default function SellerMediaPage() {
 
   return (
     <div
+      dir={dir}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="relative min-h-[calc(100vh-8rem)] space-y-6"
+      className="relative space-y-6"
     >
       {/* Drag & Drop Visual Backdrop Overlay */}
       {isDraggingOver && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-emerald-950/80 p-8 backdrop-blur-md transition-all">
-          <div className="flex max-w-lg flex-col items-center rounded-3xl border-2 border-dashed border-emerald-400 bg-emerald-900/60 p-10 text-center text-white shadow-2xl">
-            <UploadCloud className="h-20 w-20 animate-bounce text-emerald-400" />
-            <h2 className="mt-4 text-2xl font-black">{t('dashboardPages.media.dropToUpload')}</h2>
-            <p className="mt-2 text-sm text-emerald-200">{t('dashboardPages.media.dragDropSubtitle')}</p>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/60 p-6 backdrop-blur-xs transition-all">
+          <div className="flex max-w-md flex-col items-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 p-8 text-center shadow-2xl space-y-3">
+            <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
+              <UploadCloud className="h-8 w-8" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('dashboardPages.media.dropToUpload')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">{t('dashboardPages.media.dragDropSubtitle')}</p>
           </div>
         </div>
       )}
 
       {/* Main Header Card */}
-      <div className="relative overflow-hidden rounded-[2rem] border border-emerald-500/20 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-2xl shadow-emerald-950/20">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-black text-emerald-300">
-              <ImageIcon className="h-3.5 w-3.5" />
-              {t('dashboardPages.media.storeMediaLibrary')}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+            <ImageIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                {t('dashboardPages.media.title')}
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                Médiathèque
+              </span>
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-white">{t('dashboardPages.media.title')}</h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-normal">
               {t('dashboardPages.media.description')}
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 active:translate-y-0">
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin text-slate-950" /> : <UploadCloud className="h-4 w-4 text-slate-950" />}
-              <span>{uploading ? uploadProgress || t('dashboardPages.media.uploading') : t('dashboardPages.media.uploadImage')}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void processUpload(file, activeFolder !== 'all' ? activeFolder : 'uncategorized');
-                  e.target.value = '';
-                }}
-                className="hidden"
-              />
-            </label>
-          </div>
         </div>
 
-        {/* Note on Automatic Product Picture Duplication */}
-        <div className="mt-6 flex items-start gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-950/40 p-3.5 text-xs text-emerald-200">
-          <Info className="h-4 w-4 shrink-0 text-emerald-400" />
-          <span>{t('dashboardPages.media.autoDuplicatedNote')}</span>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs">
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+            <span>{uploading ? uploadProgress || t('dashboardPages.media.uploading') : t('dashboardPages.media.uploadImage')}</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/svg+xml"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void processUpload(file, activeFolder !== 'all' ? activeFolder : 'uncategorized');
+                e.target.value = '';
+              }}
+              className="hidden"
+            />
+          </label>
         </div>
+      </div>
+
+      {/* Note on Automatic Product Picture Duplication */}
+      <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-3 text-xs text-slate-600 dark:text-slate-400 shadow-2xs">
+        <Info className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+        <span>{t('dashboardPages.media.autoDuplicatedNote')}</span>
       </div>
 
       {/* Toast Feedback */}
       {(success || error) && (
         <div
-          className={`flex items-center gap-3 rounded-2xl border px-5 py-3 text-sm font-semibold shadow-sm transition-all ${
+          className={`flex items-center gap-2.5 rounded-xl border p-3.5 text-xs font-medium shadow-2xs transition ${
             error
-              ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300'
-              : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/50 dark:text-emerald-300'
+              ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+              : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
           }`}
         >
-          {error ? <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" /> : <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />}
+          {error ? <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
           <span className="flex-1">{error || success}</span>
           <button type="button" onClick={() => { setError(''); setSuccess(''); }} className="opacity-60 hover:opacity-100">
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-gray-400 dark:text-gray-500">
-            <span className="text-xs font-black uppercase tracking-wider">{t('dashboardPages.media.totalMedia')}</span>
-            <Layers className="h-4 w-4 text-emerald-500" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          [t('dashboardPages.media.totalMedia'), String(summary.total), Layers],
+          [t('dashboardPages.media.productImages'), String(summary.products), Package],
+          [t('dashboardPages.media.uncategorized'), String(summary.uncategorized), Folder],
+          [t('dashboardPages.media.storageUsed'), formatBytes(summary.storage_used), HardDrive],
+        ].map(([label, value, Icon]) => (
+          <div key={String(label)} className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{String(label)}</p>
+                <p className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mt-1.5">{String(value)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+                <Icon className="h-4 w-4" />
+              </div>
+            </div>
           </div>
-          <p className="mt-2 text-2xl font-black text-gray-900 dark:text-white">{summary.total}</p>
-        </div>
-
-        <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-gray-400 dark:text-gray-500">
-            <span className="text-xs font-black uppercase tracking-wider">{t('dashboardPages.media.productImages')}</span>
-            <Package className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-gray-900 dark:text-white">{summary.products}</p>
-        </div>
-
-        <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-gray-400 dark:text-gray-500">
-            <span className="text-xs font-black uppercase tracking-wider">{t('dashboardPages.media.uncategorized')}</span>
-            <Folder className="h-4 w-4 text-amber-500" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-gray-900 dark:text-white">{summary.uncategorized}</p>
-        </div>
-
-        <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-gray-400 dark:text-gray-500">
-            <span className="text-xs font-black uppercase tracking-wider">{t('dashboardPages.media.storageUsed')}</span>
-            <HardDrive className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="mt-2 text-2xl font-black text-gray-900 dark:text-white">{formatBytes(summary.storage_used)}</p>
-        </div>
-      </div>
-
-      {/* Folder Tabs Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3 dark:border-gray-800">
-        {folderTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeFolder === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveFolder(tab.id)}
-              className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-black transition-all ${
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-slate-900 dark:text-gray-400 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{tab.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-300'
-                }`}
-              >
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
+        ))}
       </div>
 
       {/* Controls & Filter Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('dashboardPages.media.searchPlaceholder')}
-            className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-11 pr-4 text-xs font-semibold text-gray-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:border-gray-800 dark:bg-slate-900 dark:text-white"
-          />
+        {/* Folder Tabs Navigation */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-1 shadow-2xs">
+          {folderTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeFolder === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveFolder(tab.id)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                  isActive
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{tab.label}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
+                    isActive ? 'bg-white/20 dark:bg-slate-900/20 text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 sm:w-60">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('dashboardPages.media.searchPlaceholder')}
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 pl-8 pr-3 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 outline-none shadow-2xs"
+            />
+          </div>
+
           {/* Sorting */}
-          <div className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-3 py-1.5 dark:border-gray-800 dark:bg-slate-900">
-            <ArrowUpDown className="h-3.5 w-3.5 text-gray-400" />
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 shadow-2xs">
+            <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent text-xs font-bold text-gray-700 outline-none dark:text-gray-300"
+              className="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
             >
               <option value="date_desc">{t('dashboardPages.media.sortNewest')}</option>
               <option value="date_asc">{t('dashboardPages.media.sortOldest')}</option>
@@ -584,22 +581,22 @@ export default function SellerMediaPage() {
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center rounded-2xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-slate-900">
+          <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5 shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`rounded-xl p-1.5 transition ${viewMode === 'grid' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : 'text-gray-400 hover:text-gray-700'}`}
+              className={`rounded-lg p-1.5 transition cursor-pointer ${viewMode === 'grid' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
               aria-label="Grid view"
             >
-              <Grid className="h-4 w-4" />
+              <Grid className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`rounded-xl p-1.5 transition ${viewMode === 'table' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' : 'text-gray-400 hover:text-gray-700'}`}
+              className={`rounded-lg p-1.5 transition cursor-pointer ${viewMode === 'table' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
               aria-label="Table view"
             >
-              <List className="h-4 w-4" />
+              <List className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -607,18 +604,21 @@ export default function SellerMediaPage() {
 
       {/* Media Items Display */}
       {loading ? (
-        <div className="flex items-center justify-center rounded-[2rem] border border-gray-100 bg-white py-20 shadow-sm dark:border-gray-800 dark:bg-slate-900">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+          <div className="flex items-center gap-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-slate-900 dark:text-white" />
+            <span>{t('dashboardPages.media.loading') || 'Chargement des médias...'}</span>
+          </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-gray-200 bg-white px-6 py-20 text-center dark:border-gray-800 dark:bg-slate-900">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-            <ImageIcon className="h-8 w-8" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-16 text-center shadow-2xs">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+            <ImageIcon className="h-6 w-6" />
           </div>
-          <h3 className="mt-4 text-base font-bold text-gray-900 dark:text-white">{t('dashboardPages.media.noMedia')}</h3>
-          <p className="mt-1 max-w-sm text-xs text-gray-500 dark:text-gray-400">{t('dashboardPages.media.dragDropSubtitle')}</p>
-          <label className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500">
-            <UploadCloud className="h-4 w-4" />
+          <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.media.noMedia')}</h3>
+          <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400 font-normal">{t('dashboardPages.media.dragDropSubtitle')}</p>
+          <label className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs">
+            <UploadCloud className="h-3.5 w-3.5" />
             <span>{t('dashboardPages.media.uploadImage')}</span>
             <input
               type="file"
@@ -634,32 +634,24 @@ export default function SellerMediaPage() {
         </div>
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {items.map((item) => (
             <div
               key={item.key || item.url}
-              className="group relative flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-xl hover:shadow-emerald-950/10 dark:border-gray-800 dark:bg-slate-900"
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs transition hover:shadow-xs"
             >
               {/* Image Preview Container */}
-              <div className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-slate-800">
+              <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <img
                   src={item.url ? getResizedImageUrl(item.url, 'medium') : ''}
                   alt={item.filename}
                   loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                 />
 
                 {/* Folder Badge Pill */}
-                <div className="absolute left-2.5 top-2.5 z-10">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider backdrop-blur-md shadow-sm ${
-                      item.folder === 'products'
-                        ? 'bg-emerald-600/90 text-white'
-                        : item.folder === 'branding'
-                        ? 'bg-purple-600/90 text-white'
-                        : 'bg-slate-900/80 text-amber-300'
-                    }`}
-                  >
+                <div className="absolute left-2 top-2 z-10">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-900/75 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-xs shadow-2xs">
                     {item.folder === 'products' ? (
                       <Package className="h-2.5 w-2.5" />
                     ) : item.folder === 'branding' ? (
@@ -676,7 +668,7 @@ export default function SellerMediaPage() {
                 </div>
 
                 {/* Quick Action Overlay on Hover */}
-                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/70 p-2 opacity-0 backdrop-blur-xs transition-opacity duration-200 group-hover:opacity-100">
+                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-950/60 p-2 opacity-0 backdrop-blur-xs transition-opacity duration-150 group-hover:opacity-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -684,9 +676,9 @@ export default function SellerMediaPage() {
                       setZoomLevel(1);
                     }}
                     title={t('dashboardPages.media.zoom')}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition hover:bg-white hover:text-slate-900"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
                   >
-                    <Maximize2 className="h-3.5 w-3.5" />
+                    <Maximize2 className="h-3 w-3" />
                   </button>
 
                   <button
@@ -696,9 +688,9 @@ export default function SellerMediaPage() {
                       setOptResult(null);
                     }}
                     title={t('dashboardPages.media.optimize')}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition hover:bg-emerald-500 hover:text-slate-900"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
                   >
-                    <Zap className="h-3.5 w-3.5" />
+                    <Zap className="h-3 w-3" />
                   </button>
 
                   <button
@@ -708,38 +700,38 @@ export default function SellerMediaPage() {
                       setNewFilename(item.filename);
                     }}
                     title={t('dashboardPages.media.rename')}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition hover:bg-white hover:text-slate-900"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
                   >
-                    <Edit3 className="h-3.5 w-3.5" />
+                    <Edit3 className="h-3 w-3" />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => void copyUrl(item.url)}
                     title={t('dashboardPages.media.copy')}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition hover:bg-white hover:text-slate-900"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
                   >
-                    {copiedUrl === item.url ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedUrl === item.url ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setDeletingItem(item)}
                     title={t('dashboardPages.media.delete')}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition hover:bg-red-600 hover:text-white"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-rose-600 hover:text-white cursor-pointer"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
               </div>
 
               {/* Card Footer Information */}
-              <div className="flex flex-1 flex-col justify-between p-3">
+              <div className="flex flex-1 flex-col justify-between p-2.5">
                 <div>
-                  <p className="truncate text-xs font-bold text-gray-900 dark:text-white" title={item.filename}>
+                  <p className="truncate text-xs font-medium text-slate-900 dark:text-white" title={item.filename}>
                     {item.filename}
                   </p>
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
                     <span>{item.dimensions || (item.size > 0 ? formatBytes(item.size) : 'Image')}</span>
                     {item.size > 0 && <span>{formatBytes(item.size)}</span>}
                   </div>
@@ -747,13 +739,13 @@ export default function SellerMediaPage() {
 
                 {/* Linked Product Link */}
                 {item.product_title && item.product_id && (
-                  <div className="mt-2.5 border-t border-gray-100 pt-2 dark:border-gray-800">
+                  <div className="mt-2 border-t border-slate-100 dark:border-slate-800 pt-1.5">
                     <Link
                       href={`/hub/dashboard/products/${item.product_id}`}
-                      className="flex items-center gap-1 truncate text-[10px] font-bold text-emerald-600 hover:underline dark:text-emerald-400"
+                      className="flex items-center gap-1 truncate text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:underline"
                       title={item.product_title}
                     >
-                      <LinkIcon className="h-2.5 w-2.5 shrink-0" />
+                      <LinkIcon className="h-2.5 w-2.5 shrink-0 text-slate-400" />
                       <span className="truncate">{item.product_title}</span>
                     </Link>
                   </div>
@@ -764,31 +756,31 @@ export default function SellerMediaPage() {
         </div>
       ) : (
         /* TABLE VIEW */
-        <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-slate-900">
+        <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-gray-100 bg-gray-50/50 text-[10px] font-black uppercase tracking-wider text-gray-400 dark:border-gray-800 dark:bg-slate-800/50 dark:text-gray-400">
+              <thead className="bg-slate-50 dark:bg-slate-850 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
                 <tr>
-                  <th className="px-4 py-3">Aperçu</th>
-                  <th className="px-4 py-3">{t('dashboardPages.media.name')}</th>
-                  <th className="px-4 py-3">Dossier</th>
-                  <th className="px-4 py-3">{t('dashboardPages.media.dimensions')}</th>
-                  <th className="px-4 py-3">{t('dashboardPages.media.size')}</th>
-                  <th className="px-4 py-3">{t('dashboardPages.media.date')}</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="p-3.5 font-medium">Aperçu</th>
+                  <th className="p-3.5 font-medium">{t('dashboardPages.media.name')}</th>
+                  <th className="p-3.5 font-medium">Dossier</th>
+                  <th className="p-3.5 font-medium">{t('dashboardPages.media.dimensions')}</th>
+                  <th className="p-3.5 font-medium">{t('dashboardPages.media.size')}</th>
+                  <th className="p-3.5 font-medium">{t('dashboardPages.media.date')}</th>
+                  <th className="p-3.5 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                 {items.map((item) => (
-                  <tr key={item.key || item.url} className="group hover:bg-gray-50/50 dark:hover:bg-slate-800/50">
-                    <td className="px-4 py-2.5">
+                  <tr key={item.key || item.url} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                    <td className="p-3">
                       <button
                         type="button"
                         onClick={() => {
                           setPreviewItem(item);
                           setZoomLevel(1);
                         }}
-                        className="relative block h-10 w-10 overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-800"
+                        className="relative block h-9 w-9 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700"
                       >
                         <img
                           src={item.url ? getResizedImageUrl(item.url, 'small') : ''}
@@ -797,20 +789,20 @@ export default function SellerMediaPage() {
                         />
                       </button>
                     </td>
-                    <td className="px-4 py-2.5 font-bold text-gray-900 dark:text-white">
+                    <td className="p-3 font-medium text-slate-900 dark:text-white">
                       <p className="max-w-xs truncate">{item.filename}</p>
                       {item.product_title && item.product_id && (
                         <Link
                           href={`/hub/dashboard/products/${item.product_id}`}
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
+                          className="inline-flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 hover:underline"
                         >
                           <LinkIcon className="h-2.5 w-2.5" />
                           {item.product_title}
                         </Link>
                       )}
                     </td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 dark:bg-slate-800 dark:text-gray-300">
+                    <td className="p-3">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {item.folder === 'products'
                           ? 'Produits'
                           : item.folder === 'branding'
@@ -818,10 +810,10 @@ export default function SellerMediaPage() {
                           : 'Non classé'}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{item.dimensions || '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{formatBytes(item.size)}</td>
-                    <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{formatDate(item.created_at, dateLocale)}</td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="p-3 text-slate-500 dark:text-slate-400">{item.dimensions || '—'}</td>
+                    <td className="p-3 text-slate-500 dark:text-slate-400 font-mono">{formatBytes(item.size)}</td>
+                    <td className="p-3 text-slate-500 dark:text-slate-400">{formatDate(item.created_at, dateLocale)}</td>
+                    <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
@@ -829,7 +821,7 @@ export default function SellerMediaPage() {
                             setPreviewItem(item);
                             setZoomLevel(1);
                           }}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                           title={t('dashboardPages.media.zoom')}
                         >
                           <Maximize2 className="h-3.5 w-3.5" />
@@ -840,7 +832,7 @@ export default function SellerMediaPage() {
                             setOptimizingItem(item);
                             setOptResult(null);
                           }}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950 dark:hover:text-emerald-400"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                           title={t('dashboardPages.media.optimize')}
                         >
                           <Zap className="h-3.5 w-3.5" />
@@ -851,7 +843,7 @@ export default function SellerMediaPage() {
                             setRenamingItem(item);
                             setNewFilename(item.filename);
                           }}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                           title={t('dashboardPages.media.rename')}
                         >
                           <Edit3 className="h-3.5 w-3.5" />
@@ -859,7 +851,7 @@ export default function SellerMediaPage() {
                         <button
                           type="button"
                           onClick={() => void copyUrl(item.url)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                           title={t('dashboardPages.media.copy')}
                         >
                           {copiedUrl === item.url ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -867,7 +859,7 @@ export default function SellerMediaPage() {
                         <button
                           type="button"
                           onClick={() => setDeletingItem(item)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                           title={t('dashboardPages.media.delete')}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -884,61 +876,61 @@ export default function SellerMediaPage() {
 
       {/* 1. ZOOM / LIGHTBOX PREVIEW MODAL */}
       {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl dark:bg-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white shadow-2xl dark:bg-slate-900">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <ImageIcon className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-gray-900 dark:text-white">{previewItem.filename}</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{previewItem.dimensions || formatBytes(previewItem.size)}</p>
+                  <h3 className="text-xs font-semibold text-slate-900 dark:text-white">{previewItem.filename}</h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">{previewItem.dimensions || formatBytes(previewItem.size)}</p>
                 </div>
               </div>
 
               {/* Zoom Controls & Close */}
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-slate-800">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-0.5 dark:bg-slate-800">
                   <button
                     type="button"
                     onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
-                    className="rounded-lg p-1 text-gray-600 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:bg-slate-700"
+                    className="rounded-lg p-1 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
                   >
-                    <ZoomOut className="h-4 w-4" />
+                    <ZoomOut className="h-3.5 w-3.5" />
                   </button>
-                  <span className="px-2 text-[10px] font-black">{Math.round(zoomLevel * 100)}%</span>
+                  <span className="px-2 text-[10px] font-mono font-medium">{Math.round(zoomLevel * 100)}%</span>
                   <button
                     type="button"
                     onClick={() => setZoomLevel((z) => Math.min(3, z + 0.25))}
-                    className="rounded-lg p-1 text-gray-600 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:bg-slate-700"
+                    className="rounded-lg p-1 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
                   >
-                    <ZoomIn className="h-4 w-4" />
+                    <ZoomIn className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setZoomLevel(1)}
-                    className="rounded-lg p-1 text-gray-600 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:bg-slate-700"
+                    className="rounded-lg p-1 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <RotateCcw className="h-3 w-3" />
                   </button>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setPreviewItem(null)}
-                  className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white cursor-pointer"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
             {/* Content & Sidebar */}
-            <div className="grid flex-1 gap-0 overflow-y-auto lg:grid-cols-[1fr_320px]">
+            <div className="grid flex-1 gap-0 overflow-y-auto lg:grid-cols-[1fr_280px]">
               {/* Viewer */}
-              <div className="flex min-h-[420px] items-center justify-center overflow-auto bg-slate-950 p-6">
+              <div className="flex min-h-[380px] items-center justify-center overflow-auto bg-slate-950/95 p-5">
                 <div
                   style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.15s ease' }}
                   className="flex items-center justify-center"
@@ -946,32 +938,32 @@ export default function SellerMediaPage() {
                   <img
                     src={previewItem.url ? getResizedImageUrl(previewItem.url, 'large') : ''}
                     alt={previewItem.filename}
-                    className="max-h-[60vh] max-w-full rounded-xl object-contain shadow-2xl"
+                    className="max-h-[55vh] max-w-full rounded-lg object-contain shadow-2xl"
                   />
                 </div>
               </div>
 
               {/* Sidebar Details */}
-              <div className="flex flex-col justify-between border-t border-gray-100 bg-gray-50/50 p-6 dark:border-gray-800 dark:bg-slate-900 lg:border-l lg:border-t-0">
-                <div className="space-y-4">
+              <div className="flex flex-col justify-between border-t border-slate-100 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900 lg:border-l lg:border-t-0">
+                <div className="space-y-3.5">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('dashboardPages.media.name')}</span>
-                    <p className="mt-1 break-words text-xs font-bold text-gray-900 dark:text-white">{previewItem.filename}</p>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('dashboardPages.media.name')}</span>
+                    <p className="mt-0.5 break-words text-xs font-medium text-slate-900 dark:text-white">{previewItem.filename}</p>
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('dashboardPages.media.dimensions')}</span>
-                    <p className="mt-1 text-xs font-bold text-gray-900 dark:text-white">{previewItem.dimensions || '—'}</p>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('dashboardPages.media.dimensions')}</span>
+                    <p className="mt-0.5 text-xs font-medium text-slate-900 dark:text-white">{previewItem.dimensions || '—'}</p>
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('dashboardPages.media.size')}</span>
-                    <p className="mt-1 text-xs font-bold text-gray-900 dark:text-white">{formatBytes(previewItem.size)}</p>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('dashboardPages.media.size')}</span>
+                    <p className="mt-0.5 text-xs font-medium text-slate-900 dark:text-white font-mono">{formatBytes(previewItem.size)}</p>
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Dossier</span>
-                    <p className="mt-1 text-xs font-bold text-gray-900 dark:text-white">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Dossier</span>
+                    <p className="mt-0.5 text-xs font-medium text-slate-900 dark:text-white">
                       {previewItem.folder === 'products'
                         ? 'Images Produits'
                         : previewItem.folder === 'branding'
@@ -982,32 +974,32 @@ export default function SellerMediaPage() {
 
                   {previewItem.product_title && previewItem.product_id && (
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('dashboardPages.media.productLinked')}</span>
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('dashboardPages.media.productLinked')}</span>
                       <Link
                         href={`/hub/dashboard/products/${previewItem.product_id}`}
-                        className="mt-1 flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:underline dark:text-emerald-400"
+                        className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:underline"
                       >
-                        <Package className="h-3.5 w-3.5" />
+                        <Package className="h-3 w-3 text-slate-400" />
                         <span>{previewItem.product_title}</span>
                       </Link>
                     </div>
                   )}
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('dashboardPages.media.url')}</span>
-                    <div className="mt-1 rounded-xl bg-white p-2.5 text-[11px] font-semibold text-gray-600 break-all dark:bg-slate-800 dark:text-gray-300">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('dashboardPages.media.url')}</span>
+                    <div className="mt-0.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white p-2 text-[10px] font-mono text-slate-600 break-all dark:bg-slate-800 dark:text-slate-300">
                       {previewItem.url}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 space-y-2">
+                <div className="mt-5 space-y-2">
                   <button
                     type="button"
                     onClick={() => void copyUrl(previewItem.url)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs cursor-pointer"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3.5 w-3.5" />
                     <span>{t('dashboardPages.media.copyMediaUrl')}</span>
                   </button>
 
@@ -1015,9 +1007,9 @@ export default function SellerMediaPage() {
                     href={previewItem.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-3.5 w-3.5" />
                     <span>{t('dashboardPages.media.openOriginal')}</span>
                   </a>
                 </div>
@@ -1029,38 +1021,38 @@ export default function SellerMediaPage() {
 
       {/* 2. OPTIMIZATION MODAL */}
       {optimizingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-[2rem] bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white p-6 shadow-2xl dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <Zap className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white">{t('dashboardPages.media.optimizeModalTitle')}</h3>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.media.optimizeModalTitle')}</h3>
               </div>
-              <button type="button" onClick={() => setOptimizingItem(null)} className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5" />
+              <button type="button" onClick={() => setOptimizingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-5 space-y-5">
-              <div className="flex items-center gap-4 rounded-2xl bg-gray-50 p-3.5 dark:bg-slate-800">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700">
                 <img
                   src={optimizingItem.url ? getResizedImageUrl(optimizingItem.url, 'small') : ''}
                   alt={optimizingItem.filename}
-                  className="h-14 w-14 rounded-xl object-cover"
+                  className="h-12 w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
                 />
-                <div>
-                  <p className="truncate text-xs font-bold text-gray-900 dark:text-white">{optimizingItem.filename}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-500">{formatBytes(optimizingItem.size)} • {optimizingItem.dimensions || 'Image'}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-slate-900 dark:text-white">{optimizingItem.filename}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{formatBytes(optimizingItem.size)} • {optimizingItem.dimensions || 'Image'}</p>
                 </div>
               </div>
 
               {/* Quality Slider */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-medium text-slate-700 dark:text-slate-300">
                   <span>{t('dashboardPages.media.quality')}</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">{optQuality}%</span>
+                  <span className="font-mono text-slate-900 dark:text-white">{optQuality}%</span>
                 </div>
                 <input
                   type="range"
@@ -1068,23 +1060,23 @@ export default function SellerMediaPage() {
                   max="100"
                   value={optQuality}
                   onChange={(e) => setOptQuality(parseInt(e.target.value, 10))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-emerald-600 dark:bg-slate-700"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-slate-900 dark:bg-slate-700 dark:accent-white"
                 />
               </div>
 
               {/* Max Width */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('dashboardPages.media.maxWidth')}</label>
-                <div className="grid grid-cols-4 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.media.maxWidth')}</label>
+                <div className="grid grid-cols-4 gap-1.5">
                   {[800, 1200, 1600, 2400].map((w) => (
                     <button
                       key={w}
                       type="button"
                       onClick={() => setOptMaxWidth(w)}
-                      className={`rounded-xl py-2 text-xs font-bold transition ${
+                      className={`rounded-lg py-1.5 text-xs font-medium transition cursor-pointer ${
                         optMaxWidth === w
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-300'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                          : 'border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {w}px
@@ -1094,18 +1086,18 @@ export default function SellerMediaPage() {
               </div>
 
               {/* Target Format */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('dashboardPages.media.format')}</label>
-                <div className="grid grid-cols-4 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.media.format')}</label>
+                <div className="grid grid-cols-4 gap-1.5">
                   {(['webp', 'jpeg', 'png', 'original'] as const).map((fmt) => (
                     <button
                       key={fmt}
                       type="button"
                       onClick={() => setOptFormat(fmt)}
-                      className={`rounded-xl py-2 text-xs font-bold uppercase transition ${
+                      className={`rounded-lg py-1.5 text-xs font-medium uppercase transition cursor-pointer ${
                         optFormat === fmt
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-300'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                          : 'border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {fmt}
@@ -1116,24 +1108,24 @@ export default function SellerMediaPage() {
 
               {/* Optimization Result Feedback */}
               {optResult && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-xs text-emerald-800 dark:text-emerald-300 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>{t('dashboardPages.media.optimizeSuccess')}</span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                  <div className="mt-1 flex items-center justify-between text-[11px] font-mono">
                     <span>{formatBytes(optResult.original_size)} → {formatBytes(optResult.new_size)}</span>
-                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-white">-{optResult.saved_percentage}</span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">-{optResult.saved_percentage}</span>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setOptimizingItem(null)}
-                className="rounded-2xl px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
               >
                 {t('dashboardPages.media.cancel')}
               </button>
@@ -1142,7 +1134,7 @@ export default function SellerMediaPage() {
                 type="button"
                 disabled={optimizing}
                 onClick={() => void handleSaveOptimize()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
               >
                 {optimizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
                 <span>{optimizing ? t('dashboardPages.media.optimizing') : t('dashboardPages.media.optimize')}</span>
@@ -1154,37 +1146,37 @@ export default function SellerMediaPage() {
 
       {/* 3. RENAME MODAL */}
       {renamingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white p-6 shadow-2xl dark:bg-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   <Edit3 className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white">{t('dashboardPages.media.renameModalTitle')}</h3>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.media.renameModalTitle')}</h3>
               </div>
-              <button type="button" onClick={() => setRenamingItem(null)} className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5" />
+              <button type="button" onClick={() => setRenamingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('dashboardPages.media.newFilename')}</label>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.media.newFilename')}</label>
                 <input
                   value={newFilename}
                   onChange={(e) => setNewFilename(e.target.value)}
                   placeholder="photo-nom.jpg"
-                  className="mt-1.5 w-full rounded-2xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:border-gray-800 dark:bg-slate-800 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setRenamingItem(null)}
-                className="rounded-2xl px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
               >
                 {t('dashboardPages.media.cancel')}
               </button>
@@ -1193,7 +1185,7 @@ export default function SellerMediaPage() {
                 type="button"
                 disabled={savingRename || !newFilename.trim()}
                 onClick={() => void handleSaveRename()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
               >
                 {savingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                 <span>{t('dashboardPages.media.save')}</span>
@@ -1205,31 +1197,33 @@ export default function SellerMediaPage() {
 
       {/* 4. DELETE CONFIRMATION MODAL */}
       {deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400">
-              <Trash2 className="h-6 w-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white p-6 shadow-2xl dark:bg-slate-900 space-y-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+              <Trash2 className="h-5 w-5" />
             </div>
 
-            <h3 className="mt-4 text-base font-black text-gray-900 dark:text-white">{t('dashboardPages.media.deleteConfirm')}</h3>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('dashboardPages.media.deleteWarning')}</p>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboardPages.media.deleteConfirm')}</h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-normal">{t('dashboardPages.media.deleteWarning')}</p>
+            </div>
 
-            <div className="mt-4 rounded-2xl bg-gray-50 p-3 text-xs font-bold text-gray-800 dark:bg-slate-800 dark:text-gray-200">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 p-2.5 text-xs font-mono text-slate-800 dark:bg-slate-800 dark:text-slate-200 truncate">
               {deletingItem.filename}
             </div>
 
             {deletingItem.product_title && (
-              <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+              <div className="flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 p-2.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
                 <span>Cette image est associée au produit: <strong>{deletingItem.product_title}</strong></span>
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setDeletingItem(null)}
-                className="rounded-2xl px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
               >
                 {t('dashboardPages.media.cancel')}
               </button>
@@ -1238,7 +1232,7 @@ export default function SellerMediaPage() {
                 type="button"
                 disabled={deleting}
                 onClick={() => void handleConfirmDelete()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-red-600/20 transition hover:bg-red-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-rose-700 transition shadow-2xs disabled:opacity-50 cursor-pointer"
               >
                 {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 <span>{t('dashboardPages.media.delete')}</span>
