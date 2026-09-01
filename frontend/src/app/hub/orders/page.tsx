@@ -504,27 +504,43 @@ export default function CustomerOrdersPage() {
 
       {/* Floating Reorder Toast */}
       {reorderToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-white shadow-xl animate-in fade-in slide-in-from-bottom-5">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-900/95 text-white px-4 py-3 shadow-2xl backdrop-blur-xs border border-slate-800 animate-in fade-in slide-in-from-bottom-5"
+        >
           <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
           <span className="text-xs font-medium">{reorderToast.message}</span>
           <Link
             href="/hub/cart"
-            className="ml-2 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+            className="ml-2 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors shadow-2xs"
           >
             Panier
             <ArrowRight className="h-3 w-3" />
           </Link>
+          <button
+            onClick={() => setReorderToast(null)}
+            className="ml-1 text-slate-400 hover:text-white p-0.5 transition-colors"
+            aria-label="Fermer la notification"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
       <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Quieter Header */}
+        {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/70 rounded-2xl p-5 sm:p-6 shadow-2xs">
           <div>
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-slate-700" />
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center">
                 Mes Commandes
+                {!loading && orders.length > 0 && (
+                  <span className="ml-2.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
+                    {orders.length}
+                  </span>
+                )}
               </h1>
             </div>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">Suivez l&apos;acheminement de vos colis, téléchargez vos factures et accédez à vos achats numériques.</p>
@@ -538,7 +554,7 @@ export default function CustomerOrdersPage() {
           </Link>
         </div>
 
-        {/* Quieter Search Bar & Horizontal Scrolling Filter Bar */}
+        {/* Search Bar & Horizontal Scrolling Filter Bar */}
         <div className="space-y-3 mb-6">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -554,14 +570,14 @@ export default function CustomerOrdersPage() {
               <button
                 onClick={() => setSearchQuery('')}
                 aria-label="Effacer la recherche"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
               >
                 <XCircle className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Calmer Filter Pills */}
+          {/* Filter Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap">
             {filterOptions.map((f) => {
               const isSelected = statusFilter === f.id;
@@ -590,13 +606,23 @@ export default function CustomerOrdersPage() {
             <SkeletonOrderCard />
           </div>
         ) : orders.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-2xl">
+          <div className="text-center py-16 bg-white border border-dashed border-slate-200 rounded-2xl p-6">
             <Package className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-800 text-base font-semibold">Aucune commande trouvée</p>
             <p className="text-slate-500 text-xs mt-1 max-w-sm mx-auto">
-              {debouncedSearch ? 'Aucune commande ne correspond à vos critères de recherche.' : 'Vos commandes apparaîtront ici dès vos premiers achats.'}
+              {debouncedSearch || statusFilter !== 'all'
+                ? 'Aucune commande ne correspond à vos critères de recherche ou de filtrage.'
+                : 'Vos commandes apparaîtront ici dès vos premiers achats.'}
             </p>
-            {!debouncedSearch && (
+            {debouncedSearch || statusFilter !== 'all' ? (
+              <button
+                onClick={() => { setSearchQuery(''); setStatusFilter('all'); setPage(1); }}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+              >
+                <RefreshCw className="w-3 h-3 text-slate-400" />
+                Réinitialiser les filtres
+              </button>
+            ) : (
               <Link
                 href="/hub"
                 className="mt-4 inline-flex items-center rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
@@ -616,7 +642,7 @@ export default function CustomerOrdersPage() {
               return (
                 <div
                   key={order.id}
-                  className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all shadow-2xs hover:border-slate-300"
+                  className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all shadow-2xs hover:border-slate-300 focus-within:ring-2 focus-within:ring-slate-900/10"
                 >
                   {/* Order Card Header */}
                   <div
@@ -670,6 +696,27 @@ export default function CustomerOrdersPage() {
                     </div>
 
                     <div className="flex items-center gap-3 self-end sm:self-center">
+                      {/* Preview item thumbnails when collapsed */}
+                      {!isExpanded && order.items && order.items.length > 0 && (
+                        <div className="hidden md:flex items-center gap-1.5 overflow-hidden">
+                          {order.items.slice(0, 3).map((it, i) => (
+                            it.thumbnail ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={i} src={it.thumbnail} alt={it.product_title} className="h-7 w-7 rounded-md border border-slate-200/80 object-cover shrink-0" />
+                            ) : (
+                              <div key={i} className="h-7 w-7 rounded-md bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-400 shrink-0">
+                                <ShoppingBag className="w-3 h-3" />
+                              </div>
+                            )
+                          ))}
+                          {order.items.length > 3 && (
+                            <span className="text-[10px] text-slate-400 font-medium ml-0.5">
+                              +{order.items.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-right">
                         <span className="text-xs text-slate-400 block sm:inline mr-1 font-normal">Total :</span>
                         <span className="text-base font-semibold text-slate-900">
@@ -1213,7 +1260,23 @@ export default function CustomerOrdersPage() {
 
               {/* Star Rating Selector */}
               <div className="flex flex-col items-center py-1 space-y-1">
-                <div className="flex items-center gap-1">
+                <div
+                  className="flex items-center gap-1 focus-visible:outline-none"
+                  role="radiogroup"
+                  aria-label="Note du produit"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setReviewRating((r) => Math.min(5, r + 1));
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setReviewRating((r) => Math.max(1, r - 1));
+                    } else if (['1', '2', '3', '4', '5'].includes(e.key)) {
+                      setReviewRating(parseInt(e.key, 10));
+                    }
+                  }}
+                >
                   {[1, 2, 3, 4, 5].map((star) => {
                     const activeRating = reviewHoverRating || reviewRating;
                     const isFilled = star <= activeRating;
@@ -1221,11 +1284,13 @@ export default function CustomerOrdersPage() {
                       <button
                         key={star}
                         type="button"
+                        role="radio"
+                        aria-checked={reviewRating === star}
                         onClick={() => setReviewRating(star)}
                         onMouseEnter={() => setReviewHoverRating(star)}
                         onMouseLeave={() => setReviewHoverRating(0)}
                         aria-label={`Attribuer ${star} étoile(s)`}
-                        className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                        className="p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:scale-110 rounded-md"
                       >
                         <Star
                           className={`h-6 w-6 transition-colors ${
@@ -1237,11 +1302,11 @@ export default function CustomerOrdersPage() {
                   })}
                 </div>
                 <span className="text-xs font-medium text-slate-600">
-                  {reviewRating === 5 && 'Excellent !'}
-                  {reviewRating === 4 && 'Très bon'}
-                  {reviewRating === 3 && 'Moyen'}
-                  {reviewRating === 2 && 'Décevant'}
-                  {reviewRating === 1 && 'Médiocre'}
+                  {reviewRating === 5 && '★★★★★ · Excellent !'}
+                  {reviewRating === 4 && '★★★★☆ · Très bon'}
+                  {reviewRating === 3 && '★★★☆☆ · Moyen'}
+                  {reviewRating === 2 && '★★☆☆☆ · Décevant'}
+                  {reviewRating === 1 && '★☆☆☆☆ · Médiocre'}
                 </span>
               </div>
 
