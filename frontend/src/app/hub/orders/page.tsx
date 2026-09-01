@@ -177,6 +177,68 @@ function getOrderTimelineStep(status: string): number {
   }
 }
 
+/**
+ * Per-package 4-step progression (Timeline Logistics style).
+ * Unlike the order-level stepper, this reflects ONE seller's parcel:
+ * pending -> preparing -> shipped -> delivered.
+ */
+function getPackageTimelineStep(status: string): number {
+  switch (status) {
+    case 'pending': return 1;
+    case 'preparing': return 2;
+    case 'shipped': return 3;
+    case 'delivered': return 4;
+    default: return 1; // cancelled/unknown: show at start; terminal styling handled separately
+  }
+}
+
+const PACKAGE_STEPPER_STEPS = [
+  { step: 1, label: 'En attente' },
+  { step: 2, label: 'Pr�paration' },
+  { step: 3, label: 'Exp�di�' },
+  { step: 4, label: 'Livr�' },
+] as const;
+
+function PackageTimelineStepper({ pkgStatus, storeName }: { pkgStatus: string; storeName: string }) {
+  if (pkgStatus === 'cancelled') {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">
+        <AlertCircle className="h-3.5 w-3.5" />
+        <span>Colis {storeName} annul�.</span>
+      </div>
+    );
+  }
+  const step = getPackageTimelineStep(pkgStatus);
+  return (
+    <div className="relative flex items-center justify-between py-1">
+      {/* Progress line */}
+      <div className="absolute left-[6%] right-[6%] top-1/2 -translate-y-1/2 h-1 bg-gray-200 -z-0 rounded-full" />
+      <div
+        className="absolute left-[6%] top-1/2 -translate-y-1/2 h-1 bg-emerald-500 -z-0 rounded-full transition-all duration-500"
+        style={{ width: `calc(${((step - 1) / 3) * 88}%)` }}
+      />
+      {PACKAGE_STEPPER_STEPS.map((s) => {
+        const isDone = step >= s.step;
+        const isCurrent = step === s.step;
+        return (
+          <div key={s.step} className="flex flex-col items-center relative z-10">
+            <div
+              className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
+                isDone
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white border-2 border-gray-300 text-gray-400'
+              } ${isCurrent ? 'ring-2 ring-emerald-100' : ''}`}
+            >
+              {isDone ? <Check className="h-2.5 w-2.5" /> : s.step}
+            </div>
+            <span className={`mt-1 text-[9px] font-bold ${isDone ? 'text-gray-800' : 'text-gray-400'}`}>{s.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -617,6 +679,11 @@ export default function CustomerOrdersPage() {
                                         {packageCount > 1 ? `Colis ${idx + 1}/${packageCount} · ` : ''}
                                         {pkg.store_name || 'Boutique'}
                                       </p>
+                                      {themeStyle === 'timeline_logistics' && (
+                                        <div className="mt-2">
+                                          <PackageTimelineStepper pkgStatus={pkg.status} storeName={pkg.store_name || 'Boutique'} />
+                                        </div>
+                                      )}
                                       {pkg.carrier ? (
                                         <p className="text-xs text-gray-600 mt-0.5 flex items-center gap-1.5">
                                           <Truck className="w-3.5 h-3.5 text-gray-400" />

@@ -2063,6 +2063,100 @@ export class OrderService {
   }
 
   /**
+   * Create a seller-edit refund request routed through the SAME approval gate
+   * as requestStoreRefund: a delivered order under the auto-process threshold
+   * stays seller-processable ('requested'); anything else goes to superadmin
+   * review ('awaiting_admin') WITH notification. Never hardcodes the status.
+   */
+  private async createEditAdjustmentRefund(
+    c: Pick<PoolClient, 'query'>,
+    opts: { orderId: string; storeId: string; requestedBy: string; amount: number; reason: string },
+  ): Promise<void> {
+    const gate = await this.evaluateRefundGate({
+      order_id: opts.orderId,
+      store_id: opts.storeId,
+      amount: opts.amount,
+      executor: c,
+    });
+
+    const { rows } = await c.query<StoreOrderRefundRow>(
+      `INSERT INTO pd_store_order_refund
+        (id, order_id, store_id, requested_by, amount, currency, reason_code, reason, status, metadata, decision_metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, 'customer_request', $7, $8, $9::jsonb, $10::jsonb)
+       RETURNING *`,
+      [
+        pdId('refund'),
+        opts.orderId,
+        opts.storeId,
+        opts.requestedBy,
+        opts.amount,
+        'TND',
+        opts.reason,
+        gate.initialStatus,
+        JSON.stringify({ source: 'seller_order_edit' }),
+        JSON.stringify(gate.context),
+      ],
+    );
+
+    if (gate.initialStatus === 'awaiting_admin') {
+      await this.notifySuperadminsRefundReview(rows[0], gate.context);
+    }
+  }
+
+  /**
+   * Audit trail for seller order edits (pd_audit_log) + buyer notification.
+   * Best-effort: never fails the edit itself.
+   */
+  private async auditOrderEdit(
+    c: Pick<PoolClient, 'query'>,
+    entry: {
+      action: string;
+      orderId: string;
+      storeId: string;
+      actorId?: string;
+      changes: Record<string, unknown>;
+      buyerNotification?: string;
+    },
+  ): Promise<void> {
+    try {
+      await c.query(
+        `INSERT INTO pd_audit_log (id, actor_id, actor_role, action, resource_type, resource_id, metadata)
+         VALUES ($1, $2, 'vendor', $3, 'pd_order', $4, $5::jsonb)`,
+        [
+          pdId('audit'),
+          entry.actorId ?? null,
+          entry.action,
+          entry.orderId,
+          JSON.stringify({ store_id: entry.storeId, ...entry.changes }),
+        ],
+      );
+    } catch (err) {
+      logger.warn({ err, action: entry.action, order_id: entry.orderId }, 'Order edit audit write failed');
+    }
+
+    if (entry.buyerNotification) {
+      try {
+        const { rows } = await c.query<{ customer_id: string | null; storefront_customer_id: string | null }>(
+          'SELECT customer_id, storefront_customer_id FROM pd_order WHERE id = $1',
+          [entry.orderId],
+        );
+        const recipient = rows[0]?.customer_id ?? rows[0]?.storefront_customer_id ?? null;
+        if (recipient) {
+          await notificationService.create({
+            user_id: recipient,
+            type: 'order_modified',
+            title: 'Votre commande a été modifiée',
+            message: entry.buyerNotification,
+            data: { order_id: entry.orderId, store_id: entry.storeId, changes: entry.changes },
+          });
+        }
+      } catch (err) {
+        logger.warn({ err, order_id: entry.orderId }, 'Order edit buyer notification failed');
+      }
+    }
+  }
+
+  /**
    * Recalculate order gross_subtotal, subtotal, and total in transaction.
    */
   private async recalculateOrderTotalsInTransaction(
@@ -2224,6 +2318,14 @@ export class OrderService {
       );
 
       await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      await this.auditOrderEdit(c, {
+        action: 'order.item_added',
+        orderId: opts.orderId,
+        storeId: opts.storeId,
+        actorId: opts.userId,
+        changes: { product_id: opts.productId, variant_id: opts.variantId ?? null, quantity: opts.quantity },
+        buyerNotification: `Un article a �t� ajout� � votre commande #${opts.orderId.slice(-8).toUpperCase()}.`,
+      });
       logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId }, 'Store order item added');
     });
 
@@ -2328,20 +2430,31 @@ export class OrderService {
         [item.id, opts.newQuantity, newSubtotal],
       );
 
-      // If online payment was already captured and quantity decreased, generate a refund request for the price difference
+      // If online payment was already captured and quantity decreased, generate a refund
+      // request for the price difference, routed through the standard approval gate
+      // (delivery-state aware, superadmins notified when review is required).
       if (order.payment_status === 'captured' && delta < 0) {
         const refundDelta = roundTnd(unitPrice * Math.abs(delta));
         if (refundDelta > 0) {
-          await c.query(
-            `INSERT INTO pd_store_order_refund (
-               id, order_id, store_id, requested_by, amount, reason_code, reason, status
-             ) VALUES ($1, $2, $3, $4, $5, 'customer_request', 'Ajustement de quantité suite à modification de commande', 'awaiting_admin')`,
-            [pdId('srefund'), opts.orderId, opts.storeId, opts.userId, refundDelta],
-          );
+          await this.createEditAdjustmentRefund(c, {
+            orderId: opts.orderId,
+            storeId: opts.storeId,
+            requestedBy: opts.userId,
+            amount: refundDelta,
+            reason: 'Ajustement de quantité suite à modification de commande',
+          });
         }
       }
 
       await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      await this.auditOrderEdit(c, {
+        action: 'order.item_quantity_updated',
+        orderId: opts.orderId,
+        storeId: opts.storeId,
+        actorId: opts.userId,
+        changes: { item_id: opts.itemId, from_quantity: item.quantity, to_quantity: opts.newQuantity, delta },
+        buyerNotification: `La quantit� d'un article de votre commande #${opts.orderId.slice(-8).toUpperCase()} a �t� ajust�e.`,
+      });
       logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId, delta }, 'Store order item quantity updated');
     });
 
@@ -2398,16 +2511,19 @@ export class OrderService {
       // Restore stock
       await restoreOrderItemStock(c, item);
 
-      // If captured online payment, generate refund request for full item subtotal
+      // If captured online payment, generate refund request for full item subtotal,
+      // routed through the standard approval gate (delivery-state aware, superadmins
+      // notified when review is required).
       if (order.payment_status === 'captured') {
         const refundAmt = roundTnd(parseFloat(item.subtotal));
         if (refundAmt > 0) {
-          await c.query(
-            `INSERT INTO pd_store_order_refund (
-               id, order_id, store_id, requested_by, amount, reason_code, reason, status
-             ) VALUES ($1, $2, $3, $4, $5, 'customer_request', 'Suppression d’article suite à modification de commande', 'awaiting_admin')`,
-            [pdId('srefund'), opts.orderId, opts.storeId, opts.userId, refundAmt],
-          );
+          await this.createEditAdjustmentRefund(c, {
+            orderId: opts.orderId,
+            storeId: opts.storeId,
+            requestedBy: opts.userId,
+            amount: refundAmt,
+            reason: 'Suppression d’article suite à modification de commande',
+          });
         }
       }
 
@@ -2430,6 +2546,14 @@ export class OrderService {
       }
 
       await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
+      await this.auditOrderEdit(c, {
+        action: 'order.item_removed',
+        orderId: opts.orderId,
+        storeId: opts.storeId,
+        actorId: opts.userId,
+        changes: { item_id: opts.itemId, product_id: item.product_id, quantity: item.quantity, refunded: order.payment_status === 'captured' },
+        buyerNotification: `Un article a �t� retir� de votre commande #${opts.orderId.slice(-8).toUpperCase()}.`,
+      });
       logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId }, 'Store order item removed');
     });
 
@@ -2535,7 +2659,15 @@ export class OrderService {
       );
 
       await this.recalculateOrderTotalsInTransaction(c, opts.orderId);
-      logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId, newVariantId: opts.newVariantId }, 'Store order item variant swapped');
+         await this.auditOrderEdit(c, {
+        action: 'order.item_variant_changed',
+        orderId: opts.orderId,
+        storeId: opts.storeId,
+        actorId: opts.userId,
+        changes: { item_id: opts.itemId, new_variant_id: opts.newVariantId },
+        buyerNotification: `La variante d'un article de votre commande #${opts.orderId.slice(-8).toUpperCase()} a �t� modifi�e.`,
+      });
+   logger.info({ orderId: opts.orderId, storeId: opts.storeId, itemId: opts.itemId, newVariantId: opts.newVariantId }, 'Store order item variant swapped');
     });
 
     return this.getStoreOrderDetail(opts.orderId, opts.storeId);

@@ -1211,119 +1211,6 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
   ];
 }
 
-function MandatReceiptReviewWidget({ orderId, onReviewed }: { orderId: string; onReviewed: () => void }) {
-  const { t } = useLocale();
-  const [receipt, setReceipt] = useState<any | null>(null);
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState('');
-
-  useEffect(() => {
-    async function loadReceipt() {
-      try {
-        const res = await fetchWithCsrf(`/api/pd/payments/receipts/order/${encodeURIComponent(orderId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setReceipt(data.receipt);
-          setViewUrl(data.view_url || null);
-        }
-      } catch {
-        // Ignore
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadReceipt();
-  }, [orderId]);
-
-  if (loading || !receipt) return null;
-
-  async function handleReview(action: 'approve' | 'reject') {
-    setSubmitting(true);
-    setFeedback('');
-    try {
-      const res = await fetchWithCsrf(`/api/pd/payments/receipts/${receipt.id}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, notes }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReceipt(data.receipt);
-        setFeedback(action === 'approve' ? t('dashboardPages.orders.mandatReceiptApproved') : t('dashboardPages.orders.mandatReceiptRejected'));
-        onReviewed();
-      }
-    } catch {
-      setFeedback(t('dashboardPages.orders.mandatReceiptError'));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-black text-amber-900 flex items-center gap-2">
-          <ReceiptText className="h-4 w-4 text-amber-600" />
-          {t('dashboardPages.orders.mandatReceiptTitle')}
-        </h4>
-        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-          receipt.status === 'approved'
-            ? 'bg-emerald-100 text-emerald-800'
-            : receipt.status === 'rejected'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-amber-100 text-amber-800'
-        }`}>
-          {receipt.status === 'approved' ? t('dashboardPages.orders.refundApproved') : receipt.status === 'rejected' ? t('dashboardPages.orders.refundRejected') : t('dashboardPages.orders.mandatReceiptPending')}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-gray-700">
-        <span>{t('dashboardPages.orders.fileLabel')}: <strong className="font-mono">{receipt.file_name}</strong></span>
-        {viewUrl && (
-          <a href={viewUrl} target="_blank" rel="noreferrer" className="font-bold text-amber-700 hover:underline flex items-center gap-1">
-            <ExternalLink className="h-3.5 w-3.5" /> {t('dashboardPages.orders.viewReceipt')}
-          </a>
-        )}
-      </div>
-
-      {feedback && (
-        <p className="text-xs font-bold text-emerald-700 bg-white p-2 rounded-xl border border-emerald-100">{feedback}</p>
-      )}
-
-      {receipt.status === 'pending_review' && (
-        <div className="space-y-2 pt-2 border-t border-amber-200">
-          <input
-            type="text"
-            placeholder={t('dashboardPages.orders.mandatReviewNotePlaceholder')}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full text-xs rounded-xl border border-amber-200 p-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => handleReview('reject')}
-              disabled={submitting}
-              className="px-3 py-1.5 rounded-xl bg-red-100 text-red-800 font-bold text-xs hover:bg-red-200 transition-colors disabled:opacity-60"
-            >
-              {t('dashboardPages.orders.rejectReceipt')}
-            </button>
-            <button
-              onClick={() => handleReview('approve')}
-              disabled={submitting}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-1"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" /> {t('dashboardPages.orders.approveAndValidatePayment')}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function OrdersPage() {
   const { t, locale } = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -3599,7 +3486,6 @@ export default function OrdersPage() {
           preparingId={preparingId}
           submittingDeliveryProofId={submittingDeliveryProofId}
           startingChatId={startingChatId}
-          MandatReceiptReviewWidget={MandatReceiptReviewWidget}
         />
       )}
 

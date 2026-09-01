@@ -98,7 +98,6 @@ interface SellerOrderDrawerProps {
   preparingId?: string;
   submittingDeliveryProofId?: string;
   startingChatId?: string;
-  MandatReceiptReviewWidget: React.ComponentType<{ orderId: string; onReviewed: () => void }>;
 }
 
 export function SellerOrderDrawer({
@@ -144,7 +143,6 @@ export function SellerOrderDrawer({
   preparingId,
   submittingDeliveryProofId,
   startingChatId,
-  MandatReceiptReviewWidget,
 }: SellerOrderDrawerProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'shipping' | 'cod' | 'notes'>('overview');
   const [sellerNote, setSellerNote] = useState(order.seller_note?.body || '');
@@ -306,7 +304,7 @@ export function SellerOrderDrawer({
     setSendingCodOtp(true);
     setCodFeedback('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod/send-otp`, {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod-otp/send`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -327,10 +325,10 @@ export function SellerOrderDrawer({
     setVerifyingCodOtp(true);
     setCodFeedback('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod/verify-otp`, {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod-otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp: codOtpInput.trim() }),
+        body: JSON.stringify({ code: codOtpInput.trim() }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -350,10 +348,10 @@ export function SellerOrderDrawer({
   const handleUpdateCodStatus = async (status: string, callAttemptsDelta: number, note: string) => {
     setUpdatingCodStatus(true);
     try {
-      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod/status`, {
+      const res = await fetchWithCsrf(`/api/pd/orders/store/${order.id}/cod-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, call_attempts_delta: callAttemptsDelta, note }),
+        body: JSON.stringify({ status, call_attempts_delta: callAttemptsDelta, notes: note }),
       });
       if (res.ok) {
         await onOrderUpdated();
@@ -518,8 +516,6 @@ export function SellerOrderDrawer({
                     </div>
                   </div>
 
-                  <MandatReceiptReviewWidget orderId={order.id} onReviewed={() => onOrderUpdated()} />
-
                   {/* Timeline */}
                   <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -626,12 +622,12 @@ export function SellerOrderDrawer({
                         <div className="flex items-start gap-2.5">
                           <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                           <div>
-                            <p className="font-bold">Édition de commande active :</p>
+                            <p className="font-bold">{t('dashboardPages.orders.drawerEditActive')}</p>
                             <p className="mt-0.5">
-                              Vous pouvez modifier les quantités, supprimer des articles ou ajouter de nouveaux produits de votre boutique. Les totaux de commande et les réservations de stock sont synchronisés en temps réel.
+                              {t('dashboardPages.orders.drawerEditHint')}
                               {order.payment_status === 'captured' && (
                                 <strong className="block mt-1 text-blue-950 font-bold">
-                                  ⚠️ Sur les commandes payées en ligne, une diminution de montant génère automatiquement une demande de remboursement pour l&apos;acheteur.
+                                  {t('dashboardPages.orders.drawerCapturedEditNotice')}
                                 </strong>
                               )}
                             </p>
@@ -776,16 +772,16 @@ export function SellerOrderDrawer({
                   <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs space-y-4">
                     <div className="flex items-center gap-2 border-b pb-3">
                       <Truck className="h-5 w-5 text-purple-600" />
-                      <h3 className="text-sm font-black text-gray-900">Statut d&apos;expédition & Transporteur</h3>
+                      <h3 className="text-sm font-black text-gray-900">{t('dashboardPages.orders.drawerShippingStatus')}</h3>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="p-3.5 rounded-xl bg-gray-50">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">Transporteur</span>
-                        <p className="font-black text-gray-900 mt-1">{order.carrier || 'Aucun transporteur assigné'}</p>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase">{t('dashboardPages.orders.carrier')}</span>
+                        <p className="font-black text-gray-900 mt-1">{order.carrier || t('dashboardPages.orders.drawerNoCarrier')}</p>
                       </div>
                       <div className="p-3.5 rounded-xl bg-gray-50">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">Numéro de suivi</span>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase">{t('dashboardPages.orders.drawerTrackingNumber')}</span>
                         <p className="font-mono font-bold text-gray-900 mt-1">{order.tracking_number || '—'}</p>
                       </div>
                     </div>
@@ -1068,7 +1064,7 @@ export function SellerOrderDrawer({
                         className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700 transition"
                       >
                         <FileText className="h-4 w-4" />
-                        Télécharger Facture Vendeur (PDF)
+                        {t('dashboardPages.orders.drawerSellerInvoice')}
                       </a>
                       <button
                         type="button"
@@ -1122,7 +1118,7 @@ export function SellerOrderDrawer({
           <div className="w-full max-w-xl rounded-[2rem] bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <div>
-                <h3 className="text-lg font-black text-gray-900">Ajouter un produit à la commande</h3>
+                <h3 className="text-lg font-black text-gray-900">{t('dashboardPages.orders.drawerAddProduct')}</h3>
                 <p className="text-xs text-gray-500">Commande #{order.id.slice(-8).toUpperCase()}</p>
               </div>
               <button
@@ -1159,7 +1155,7 @@ export function SellerOrderDrawer({
                 </div>
               ) : availableStoreProducts.filter((p) => !productSearchQuery || p.title.toLowerCase().includes(productSearchQuery.toLowerCase())).length === 0 ? (
                 <div className="py-8 text-center text-xs text-gray-400">
-                  Aucun produit trouvé dans votre boutique.
+                  {t('dashboardPages.orders.drawerNoProducts')}
                 </div>
               ) : (
                 availableStoreProducts
@@ -1222,7 +1218,7 @@ export function SellerOrderDrawer({
             {/* Quantity Selector */}
             {selectedProductToAdd && (
               <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-bold text-gray-700">Quantité à ajouter :</span>
+                <span className="text-xs font-bold text-gray-700">{t('dashboardPages.orders.drawerQuantityToAdd')}</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
