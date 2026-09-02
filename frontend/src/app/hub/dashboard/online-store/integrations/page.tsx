@@ -18,6 +18,9 @@ import {
   Loader2,
   QrCode,
   Sparkles,
+  X,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
@@ -130,7 +133,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'aramex',
     name: 'Aramex Tunisie',
-    logo_badge: '🔴 Aramex Express',
+    logo_badge: 'Aramex Express',
     tagline: 'Leader national express avec suivi digital temps réel',
     coverage_type: 'national',
     sla_hours_min: 24,
@@ -143,7 +146,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'laposte_rapid',
     name: 'Rapid-Poste (La Poste TN)',
-    logo_badge: '🟡 Rapid-Poste',
+    logo_badge: 'Rapid-Poste',
     tagline: 'Réseau postal le plus dense sur les 24 gouvernorats et zones rurales',
     coverage_type: 'national',
     sla_hours_min: 24,
@@ -156,7 +159,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'first_delivery',
     name: 'First Delivery',
-    logo_badge: '⚡ First Delivery',
+    logo_badge: 'First Delivery',
     tagline: 'Spécialiste Grand Tunis & Sahel avec engagement 24h chrono',
     coverage_type: 'grand_tunis',
     sla_hours_min: 12,
@@ -169,7 +172,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'runex',
     name: 'Runex Express',
-    logo_badge: '🚀 Runex',
+    logo_badge: 'Runex',
     tagline: 'Hub logistique performant Sfax, Sahel et Sud tunisien',
     coverage_type: 'sfax_sud',
     sla_hours_min: 24,
@@ -182,7 +185,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'fleex',
     name: 'Fleex Last-Mile',
-    logo_badge: '🛵 Fleex Moto',
+    logo_badge: 'Fleex Moto',
     tagline: 'Livraison express urbaine par coursier moto Grand Tunis',
     coverage_type: 'grand_tunis',
     sla_hours_min: 6,
@@ -195,7 +198,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
   {
     id: 'own_fleet',
     name: 'Flotte Propre / Vendeur',
-    logo_badge: '🚚 Livraison Directe',
+    logo_badge: 'Livraison Directe',
     tagline: 'Livraison autonome gérée directement par vos propres livreurs',
     coverage_type: 'national',
     sla_hours_min: 12,
@@ -208,7 +211,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
 ];
 
 export default function IntegrationsPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const [activeTab, setActiveTab] = useState<'logistics' | 'pixels'>('logistics');
 
   // Integrations state
@@ -265,6 +268,17 @@ export default function IntegrationsPage() {
 
   // AWB Sample Generator Modal
   const [awbPreviewCarrier, setAwbPreviewCarrier] = useState<CarrierInfo | null>(null);
+
+  // Escape key listener for AWB Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && awbPreviewCarrier) {
+        setAwbPreviewCarrier(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [awbPreviewCarrier]);
 
   // Client-Side Dynamic Quote Calculation Fallback
   const calculateLocalQuotes = useCallback((govName: string, weightKg: number, codDt: number, carrierList: CarrierInfo[]) => {
@@ -385,7 +399,6 @@ export default function IntegrationsPage() {
           return;
         }
       }
-      // Fallback to local computation if API doesn't return
       const local = calculateLocalQuotes(simDestGov, simWeight, simCodAmount, carriers);
       setSimQuotes(local.quotes);
       setSimBestRate(local.best_rate);
@@ -482,7 +495,6 @@ export default function IntegrationsPage() {
         }
       }
 
-      // Mock live timeline generator for demo / testing
       const now = new Date();
       setTrackingResult({
         tracking_number: searchTrackingNumber.trim(),
@@ -578,103 +590,115 @@ export default function IntegrationsPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div dir={dir} className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <header className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="rounded-2xl bg-[#B91C1C]/10 p-3 text-[#B91C1C]">
-              <Truck className="h-6 w-6" />
-            </span>
+            <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
+              <Truck className="h-4 w-4" />
+            </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-base font-semibold text-slate-900 dark:text-white">
                 Hub Logistique & Intégrations Plateforme
               </h1>
-              <p className="text-xs font-semibold text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                 Connectez les transporteurs tunisiens (Aramex, Rapid-Poste, First Delivery, Runex, Fleex) et vos outils marketing.
               </p>
             </div>
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
             <button
               type="button"
               onClick={() => setActiveTab('logistics')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === 'logistics'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Truck className="w-4 h-4 text-[#B91C1C]" />
-              <span>🚚 Transporteurs & Routage</span>
+              <Truck className="w-3.5 h-3.5" />
+              <span>Transporteurs & Routage</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('pixels')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 activeTab === 'pixels'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Code2 className="w-4 h-4 text-indigo-600" />
-              <span>📊 Pixels & Marketing</span>
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Pixels & Marketing</span>
             </button>
           </div>
         </div>
 
         {feedback && (
           <div
-            className={`mt-4 rounded-xl p-3 text-xs font-bold ${
+            role="status"
+            className={`mt-3 flex items-center justify-between rounded-xl p-3 text-xs font-medium shadow-2xs ${
               feedback.isError
-                ? 'bg-red-50 text-red-700 border border-red-200'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60'
             }`}
           >
-            {feedback.message}
+            <div className="flex items-center gap-2">
+              {feedback.isError ? <AlertCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+              <span>{feedback.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              aria-label="Fermer"
+              className="rounded-lg p-1 hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
-      </div>
+      </header>
 
       {/* ========================================================================= */}
       {/* TAB 1: LOGISTICS AGGREGATOR & TUNISIAN CARRIERS */}
       {/* ========================================================================= */}
       {activeTab === 'logistics' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
           {/* Smart Automation Strategy Card */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#B91C1C] flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  <Zap className="w-3 h-3" />
                   Moteur de Routage Intelligent PandaMarket
-                </span>
-                <h2 className="text-base font-black text-slate-900 mt-1">
-                  Stratégie d&apos;Expédition & Sélection Automatique des Transporteurs
+                </div>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
+                  Stratégie d'Expédition & Sélection Automatique des Transporteurs
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                   Attribuez automatiquement chaque commande au transporteur le plus avantageux selon le gouvernorat de livraison.
                 </p>
               </div>
 
               {/* Strategy Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleChange('shipping_automation_mode', 'smart_best_rate')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                     integrations.shipping_automation_mode === 'smart_best_rate'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -684,10 +708,10 @@ export default function IntegrationsPage() {
                 <button
                   type="button"
                   onClick={() => handleChange('shipping_automation_mode', 'manual')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                     integrations.shipping_automation_mode === 'manual'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
@@ -696,64 +720,66 @@ export default function IntegrationsPage() {
               </div>
             </div>
 
-            {/* Free shipping threshold input */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-1.5">
-                <label className="block text-xs font-black text-amber-900 uppercase tracking-wider">
-                  🎉 Seuil de Livraison Gratuite (TND) :
+            {/* Free shipping threshold input & Default Origin */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+                <label htmlFor="free-shipping-input" className="block text-xs font-semibold text-slate-900 dark:text-white">
+                  Seuil de Livraison Gratuite (TND)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id="free-shipping-input"
                     type="number"
                     min={0}
                     step={5}
                     value={integrations.free_shipping_threshold || ''}
                     onChange={(e) => handleChange('free_shipping_threshold', parseFloat(e.target.value) || 0)}
                     placeholder="Ex: 100 (0 = Désactivé)"
-                    className="w-full rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-amber-400"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none shadow-2xs"
                   />
-                  <span className="text-xs font-black text-amber-900 font-mono">DT</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 font-mono">DT</span>
                 </div>
-                <p className="text-[11px] text-amber-800">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Offrez automatiquement les frais de port à vos clients si leur panier dépasse ce montant.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <span className="block text-xs font-black text-slate-800 uppercase tracking-wider">
-                  📍 Hub & Ville d&apos;Expédition par Défaut :
+              <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
+                <span className="block text-xs font-semibold text-slate-900 dark:text-white">
+                  Hub & Ville d'Expédition par Défaut
                 </span>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={storeCity}
                     disabled
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 outline-none"
+                    aria-label="Ville d'expédition par défaut"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none opacity-80"
                   />
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-medium border border-emerald-200/60 dark:border-emerald-800 shrink-0">
                     Actif
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Origine utilisée pour calculer les distances et matrices tarifaires des transporteurs.
                 </p>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Interactive Multi-Carrier Rate Simulator */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <Sliders className="w-3 h-3" />
                   Simulateur & Comparateur en Direct
-                </span>
-                <h2 className="text-base font-black text-slate-900 mt-1">
+                </div>
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
                   Testeur de Devis Multi-Transporteurs sur 24 Gouvernorats
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Simulez n&apos;importe quelle destination tunisienne pour visualiser les tarifs et les recommandations de routage.
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                  Simulez n'importe quelle destination tunisienne pour visualiser les tarifs et les recommandations de routage.
                 </p>
               </div>
 
@@ -761,7 +787,7 @@ export default function IntegrationsPage() {
                 type="button"
                 onClick={runQuoteSimulator}
                 disabled={simLoading}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 {simLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 <span>Recalculer</span>
@@ -769,15 +795,16 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Simulator Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 uppercase">
-                  📍 Gouvernorat Destinataire :
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                  Gouvernorat Destinataire
                 </label>
                 <select
                   value={simDestGov}
                   onChange={(e) => setSimDestGov(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-indigo-500"
+                  aria-label="Gouvernorat Destinataire"
+                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none shadow-2xs"
                 >
                   {governorates.map((gov) => (
                     <option key={gov.code} value={gov.name}>
@@ -787,9 +814,9 @@ export default function IntegrationsPage() {
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 uppercase">
-                  ⚖️ Poids du Colis (KG) :
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                  Poids du Colis (KG)
                 </label>
                 <input
                   type="number"
@@ -798,13 +825,14 @@ export default function IntegrationsPage() {
                   step={0.5}
                   value={simWeight}
                   onChange={(e) => setSimWeight(parseFloat(e.target.value) || 1)}
-                  className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-indigo-500"
+                  aria-label="Poids du Colis"
+                  className="w-full px-3 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 uppercase">
-                  💵 Montant COD à Encaisser (DT) :
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                  Montant COD à Encaisser (DT)
                 </label>
                 <input
                   type="number"
@@ -812,38 +840,40 @@ export default function IntegrationsPage() {
                   step={5}
                   value={simCodAmount}
                   onChange={(e) => setSimCodAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 text-xs font-mono font-bold rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-indigo-500"
+                  aria-label="Montant COD à Encaisser"
+                  className="w-full px-3 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 uppercase">
-                  🏢 Ville Origine :
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                  Ville Origine
                 </label>
                 <input
                   type="text"
                   value={simOriginCity}
                   onChange={(e) => setSimOriginCity(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50 outline-none"
+                  aria-label="Ville Origine"
+                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Smart Routing Highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
               {/* Best Rate Card */}
               {simBestRate && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 space-y-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
-                    🏷️ Meilleur Tarif Économique
+                <div className="p-3.5 rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-1.5">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-medium">
+                    Meilleur Tarif Économique
                   </span>
                   <div className="flex items-center justify-between">
-                    <p className="font-black text-slate-900 text-sm">{simBestRate.carrier_name}</p>
-                    <p className="text-lg font-black text-emerald-600 font-mono">
+                    <p className="font-semibold text-slate-900 dark:text-white text-xs">{simBestRate.carrier_name}</p>
+                    <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 font-mono">
                       {formatMoney(simBestRate.total_shipping_tnd)}
                     </p>
                   </div>
-                  <p className="text-xs text-emerald-800">
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
                     Délai estimé : <strong>{simBestRate.estimated_days_label}</strong>
                   </p>
                 </div>
@@ -851,89 +881,89 @@ export default function IntegrationsPage() {
 
               {/* Fastest Delivery Card */}
               {simFastest && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 space-y-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase">
-                    ⚡ Livraison la Plus Rapide
+                <div className="p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 space-y-1.5">
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-medium">
+                    Livraison la Plus Rapide
                   </span>
                   <div className="flex items-center justify-between">
-                    <p className="font-black text-slate-900 text-sm">{simFastest.carrier_name}</p>
-                    <p className="text-lg font-black text-amber-700 font-mono">
+                    <p className="font-semibold text-slate-900 dark:text-white text-xs">{simFastest.carrier_name}</p>
+                    <p className="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono">
                       {formatMoney(simFastest.total_shipping_tnd)}
                     </p>
                   </div>
-                  <p className="text-xs text-amber-800">
-                    Délai estimé : <strong>{simFastest.estimated_days_label} ({simFastest.estimated_hours_min}-{simFastest.estimated_hours_max}h)</strong>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                    Délai : <strong>{simFastest.estimated_days_label} ({simFastest.estimated_hours_min}-{simFastest.estimated_hours_max}h)</strong>
                   </p>
                 </div>
               )}
 
               {/* Recommended Card */}
               {simRecommended && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 space-y-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-black uppercase">
-                    ⭐ Recommandé PandaMarket
+                <div className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-1.5">
+                  <span className="px-2 py-0.5 rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-medium">
+                    Recommandé PandaMarket
                   </span>
                   <div className="flex items-center justify-between">
-                    <p className="font-black text-slate-900 text-sm">{simRecommended.carrier_name}</p>
-                    <p className="text-lg font-black text-indigo-600 font-mono">
+                    <p className="font-semibold text-slate-900 dark:text-white text-xs">{simRecommended.carrier_name}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">
                       {formatMoney(simRecommended.total_shipping_tnd)}
                     </p>
                   </div>
-                  <p className="text-xs text-indigo-800">
-                    Meilleur équilibre fiabilité / délai pour <strong>{simDestGov}</strong>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    Équilibre délai / prix pour <strong>{simDestGov}</strong>
                   </p>
                 </div>
               )}
             </div>
 
             {/* Detailed Quotes Table */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px]">
+                <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
                   <tr>
-                    <th className="px-4 py-3">Transporteur</th>
-                    <th className="px-4 py-3">Service</th>
-                    <th className="px-4 py-3">Délai (SLA)</th>
-                    <th className="px-4 py-3">Frais Transport</th>
-                    <th className="px-4 py-3">Frais COD</th>
-                    <th className="px-4 py-3">Total Vendeur</th>
-                    <th className="px-4 py-3 text-right">Badge</th>
+                    <th scope="col" className="px-3.5 py-2.5">Transporteur</th>
+                    <th scope="col" className="px-3.5 py-2.5">Service</th>
+                    <th scope="col" className="px-3.5 py-2.5">Délai (SLA)</th>
+                    <th scope="col" className="px-3.5 py-2.5">Frais Transport</th>
+                    <th scope="col" className="px-3.5 py-2.5">Frais COD</th>
+                    <th scope="col" className="px-3.5 py-2.5">Total Vendeur</th>
+                    <th scope="col" className="px-3.5 py-2.5 text-right">Badge</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {simQuotes.map((q) => (
-                    <tr key={q.carrier_id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-4 py-3 font-bold text-slate-900">
+                    <tr key={q.carrier_id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-3.5 py-2.5 font-semibold text-slate-900 dark:text-white">
                         {q.carrier_name}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-400">
                         {q.service_type}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
+                      <td className="px-3.5 py-2.5 font-medium text-slate-700 dark:text-slate-300">
                         {q.estimated_days_label}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-800">
+                      <td className="px-3.5 py-2.5 font-mono text-slate-700 dark:text-slate-300">
                         {formatMoney(q.price_tnd)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-500">
+                      <td className="px-3.5 py-2.5 font-mono text-slate-500 dark:text-slate-400">
                         {q.cod_fee_tnd > 0 ? formatMoney(q.cod_fee_tnd) : 'Gratuit'}
                       </td>
-                      <td className="px-4 py-3 font-mono font-black text-slate-900 text-sm">
+                      <td className="px-3.5 py-2.5 font-mono font-bold text-slate-900 dark:text-white text-xs">
                         {formatMoney(q.total_shipping_tnd)}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-3.5 py-2.5 text-right">
                         {q.is_best_rate && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-medium border border-emerald-200/60 dark:border-emerald-800">
                             Meilleur Tarif
                           </span>
                         )}
                         {q.is_fastest && !q.is_best_rate && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-[10px] font-medium border border-amber-200/60 dark:border-amber-800">
                             Plus Rapide
                           </span>
                         )}
                         {q.is_recommended && !q.is_best_rate && !q.is_fastest && (
-                          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-black">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] font-medium border border-slate-200/60 dark:border-slate-700">
                             Recommandé
                           </span>
                         )}
@@ -943,20 +973,20 @@ export default function IntegrationsPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
 
           {/* Active Carriers Matrix */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs space-y-4">
             <div>
-              <h2 className="text-base font-black text-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Transporteurs Tunisiens Partenaires & Ajustements Tarifaires
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                 Activez ou désactivez chaque coursier et personnalisez vos majorations / remises commerciales.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {carriers.map((carrier) => {
                 const isEnabled = integrations.enabled_carriers?.[carrier.id] ?? true;
                 const adjustment = integrations.carrier_rate_adjustments?.[carrier.id] ?? 0;
@@ -964,18 +994,18 @@ export default function IntegrationsPage() {
                 return (
                   <div
                     key={carrier.id}
-                    className={`p-5 rounded-3xl border transition-all space-y-4 ${
+                    className={`p-4 rounded-2xl border transition-all space-y-3 ${
                       isEnabled
-                        ? 'border-slate-200 bg-white shadow-sm hover:border-[#B91C1C]/40'
-                        : 'border-slate-100 bg-slate-50/70 opacity-60'
+                        ? 'border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-850 shadow-2xs'
+                        : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 opacity-60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                          {carrier.logo_badge}
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white block">
+                          {carrier.name}
                         </span>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                           {carrier.tagline}
                         </p>
                       </div>
@@ -984,38 +1014,38 @@ export default function IntegrationsPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleCarrier(carrier.id)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-black transition-all ${
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition cursor-pointer shrink-0 border ${
                           isEnabled
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-200 text-slate-600'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                            : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                         }`}
                       >
-                        {isEnabled ? 'Activé ✅' : 'Désactivé ❌'}
+                        {isEnabled ? 'Activé' : 'Désactivé'}
                       </button>
                     </div>
 
-                    <div className="space-y-1.5 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="space-y-1.5 text-xs bg-slate-50/70 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-750">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Tarif de Base National :</span>
-                        <span className="font-mono font-black text-slate-900">{formatMoney(carrier.base_rate_tnd)}</span>
+                        <span className="text-slate-500 dark:text-slate-400">Tarif de Base National :</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white">{formatMoney(carrier.base_rate_tnd)}</span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Délai Moyen (SLA) :</span>
-                        <span className="font-bold text-slate-700">
+                        <span className="text-slate-500 dark:text-slate-400">Délai Moyen (SLA) :</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
                           {carrier.sla_hours_max <= 24 ? '24h chrono' : `${carrier.sla_hours_min}-${carrier.sla_hours_max}h`}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500">Préfixe Bordereau AWB :</span>
-                        <span className="font-mono font-bold text-indigo-600">{carrier.tracking_prefix}-xxxx</span>
+                        <span className="text-slate-500 dark:text-slate-400">Préfixe Bordereau AWB :</span>
+                        <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{carrier.tracking_prefix}-xxxx</span>
                       </div>
                     </div>
 
                     {/* Surcharge or Discount rule */}
-                    <div className="space-y-1 pt-1">
+                    <div className="space-y-1 pt-0.5">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-slate-700">Ajustement Marchand (DT) :</span>
-                        <span className="font-mono font-bold text-[#B91C1C]">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">Ajustement Marchand :</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white">
                           {adjustment > 0 ? `+${adjustment.toFixed(3)}` : adjustment < 0 ? `${adjustment.toFixed(3)}` : '0.000'} DT
                         </span>
                       </div>
@@ -1025,7 +1055,8 @@ export default function IntegrationsPage() {
                         value={adjustment || ''}
                         onChange={(e) => handleCarrierAdjustment(carrier.id, parseFloat(e.target.value) || 0)}
                         placeholder="Ex: +1.000 ou -1.500"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-800 outline-none"
+                        aria-label={`Ajustement tarifaire pour ${carrier.name}`}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
                       />
                     </div>
 
@@ -1033,7 +1064,7 @@ export default function IntegrationsPage() {
                     <button
                       type="button"
                       onClick={() => setAwbPreviewCarrier(carrier)}
-                      className="w-full py-2 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-500" />
                       <span>Aperçu Bordereau AWB</span>
@@ -1042,19 +1073,19 @@ export default function IntegrationsPage() {
                 );
               })}
             </div>
-          </div>
+          </section>
 
           {/* Real-time Multi-Carrier Tracking Timeline */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs space-y-4">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <MapPin className="w-3 h-3" />
                 Suivi Logistique Multi-Transporteurs
-              </span>
-              <h2 className="text-base font-black text-slate-900 mt-1">
-                Recherche & Suivi d&apos;Expédition en Temps Réel
+              </div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
+                Recherche & Suivi d'Expédition en Temps Réel
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                 Entrez un numéro de suivi AWB (ex: ARAMEX-TN-..., RP-TN-..., FD-TN-...) pour visualiser les étapes de livraison.
               </p>
             </div>
@@ -1066,13 +1097,14 @@ export default function IntegrationsPage() {
                 onChange={(e) => setSearchTrackingNumber(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleTrackSearch()}
                 placeholder="Entrez le numéro de suivi AWB..."
-                className="flex-1 px-4 py-2.5 text-xs font-mono font-bold rounded-2xl border border-slate-200 bg-slate-50 outline-none focus:ring-2 focus:ring-[#B91C1C]"
+                aria-label="Numéro de suivi AWB"
+                className="flex-1 px-3.5 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none shadow-2xs"
               />
               <button
                 type="button"
                 onClick={handleTrackSearch}
                 disabled={trackingLoading || !searchTrackingNumber.trim()}
-                className="px-5 py-2.5 rounded-2xl bg-[#B91C1C] text-white text-xs font-black hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 {trackingLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 <span>Suivre</span>
@@ -1080,46 +1112,46 @@ export default function IntegrationsPage() {
             </div>
 
             {trackingError && (
-              <p className="text-xs font-bold text-red-600">{trackingError}</p>
+              <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">{trackingError}</p>
             )}
 
             {trackingResult && (
-              <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-4 animate-in fade-in">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+              <div className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-3.5 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-700 pb-3">
                   <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400">Numéro de Suivi AWB :</span>
-                    <p className="font-mono font-black text-slate-900 text-sm">{trackingResult.tracking_number}</p>
+                    <span className="text-[10px] font-medium uppercase text-slate-400">Numéro de Suivi AWB :</span>
+                    <p className="font-mono font-semibold text-slate-900 dark:text-white text-xs">{trackingResult.tracking_number}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-medium border border-emerald-200/60 dark:border-emerald-800">
                       {trackingResult.carrier_name}
                     </span>
-                    <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-black uppercase">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium uppercase">
                       {trackingResult.status}
                     </span>
                   </div>
                 </div>
 
                 {/* Timeline Events */}
-                <div className="space-y-4 relative pl-6 border-l-2 border-slate-200">
+                <div className="space-y-3.5 relative pl-5 border-l border-slate-200 dark:border-slate-700">
                   {trackingResult.events.map((ev, idx) => (
                     <div key={idx} className="relative">
-                      <div className="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full bg-[#B91C1C] border-2 border-white shadow-xs" />
+                      <div className="absolute -left-[25px] top-1.5 w-2.5 h-2.5 rounded-full bg-slate-900 dark:bg-white border-2 border-white dark:border-slate-800 shadow-2xs" />
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-900 text-xs">{ev.location}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white text-xs">{ev.location}</p>
                           <span className="text-[10px] text-slate-400 font-mono">
                             {new Date(ev.timestamp).toLocaleString(locale === 'ar' ? 'ar-TN' : 'fr-TN')}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600">{ev.description}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{ev.description}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </section>
         </div>
       )}
 
@@ -1127,70 +1159,70 @@ export default function IntegrationsPage() {
       {/* TAB 2: MARKETING PIXELS & CUSTOM SCRIPTS */}
       {/* ========================================================================= */}
       {activeTab === 'pixels' && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5 animate-in fade-in duration-200">
+        <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs space-y-4 animate-in fade-in duration-150">
           <div>
-            <h2 className="text-base font-black text-slate-900">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
               Pixels Publicitaires & Balises de Tracking E-commerce
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Renseignez vos identifiants pour activer automatiquement les événements d&apos;achat et de panier.
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Renseignez vos identifiants pour activer automatiquement les événements d'achat et de panier.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.googleAnalyticsId')}</label>
+          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.integrations.googleAnalyticsId')}</label>
               <input
                 type="text"
                 value={integrations.google_analytics_id || ''}
                 onChange={(e) => handleChange('google_analytics_id', e.target.value)}
                 placeholder={t('dashboardPages.integrations.googleAnalyticsPlaceholder')}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 outline-none shadow-2xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.metaPixelId')}</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.integrations.metaPixelId')}</label>
               <input
                 type="text"
                 value={integrations.facebook_pixel_id || ''}
                 onChange={(e) => handleChange('facebook_pixel_id', e.target.value)}
                 placeholder={t('dashboardPages.integrations.metaPixelPlaceholder')}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 outline-none shadow-2xs"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.tiktokPixelId')}</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.integrations.tiktokPixelId')}</label>
               <input
                 type="text"
                 value={integrations.tiktok_pixel_id || ''}
                 onChange={(e) => handleChange('tiktok_pixel_id', e.target.value)}
                 placeholder={t('dashboardPages.integrations.tiktokPlaceholder')}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 outline-none shadow-2xs"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.customHeadJs')}</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.integrations.customHeadJs')}</label>
             <textarea
               rows={4}
               value={integrations.custom_head_js || ''}
               onChange={(e) => handleChange('custom_head_js', e.target.value)}
               placeholder={t('dashboardPages.integrations.customHeadJsPlaceholder')}
-              className="w-full font-mono text-xs rounded-xl border border-slate-200 bg-slate-900 text-slate-100 p-3 placeholder-slate-500 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+              className="w-full font-mono text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900 text-slate-100 p-3 placeholder:text-slate-500 outline-none shadow-2xs"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">{t('dashboardPages.integrations.customBodyJs')}</label>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('dashboardPages.integrations.customBodyJs')}</label>
             <textarea
               rows={4}
               value={integrations.custom_body_js || ''}
               onChange={(e) => handleChange('custom_body_js', e.target.value)}
               placeholder={t('dashboardPages.integrations.customBodyJsPlaceholder')}
-              className="w-full font-mono text-xs rounded-xl border border-slate-200 bg-slate-900 text-slate-100 p-3 placeholder-slate-500 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+              className="w-full font-mono text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900 text-slate-100 p-3 placeholder:text-slate-500 outline-none shadow-2xs"
             />
           </div>
 
@@ -1198,97 +1230,103 @@ export default function IntegrationsPage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#991B1B] transition shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
           >
             <Save className="h-4 w-4" />
             {saving ? t('dashboardPages.integrations.saving') : t('dashboardPages.integrations.saveButton')}
           </button>
-        </div>
+        </section>
       )}
 
       {/* AWB Label Preview Modal */}
       {awbPreviewCarrier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="awb-preview-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-[#B91C1C]" />
-                <h3 className="text-base font-black text-slate-900">
-                  Bordereau d&apos;Expédition AWB Standard
+                <Printer className="w-4 h-4 text-slate-900 dark:text-white" />
+                <h3 id="awb-preview-title" className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Bordereau d'Expédition AWB Standard
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAwbPreviewCarrier(null)}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                aria-label="Fermer le dialogue"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
-                Fermer ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Standardized AWB Ticket */}
-            <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 space-y-4 font-sans text-xs">
-              <div className="flex items-start justify-between border-b border-slate-200 pb-3">
+            <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 space-y-3 font-sans text-xs">
+              <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
                 <div>
-                  <span className="font-black text-sm uppercase text-slate-900">{awbPreviewCarrier.name}</span>
+                  <span className="font-semibold text-xs uppercase text-slate-900 dark:text-white">{awbPreviewCarrier.name}</span>
                   <p className="text-[10px] text-slate-400">Bordereau de Transport Routier Tunisie</p>
                 </div>
-                <div className="p-1 rounded-lg bg-white border border-slate-200 shadow-xs">
-                  <QrCode className="w-8 h-8 text-slate-900" />
+                <div className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <QrCode className="w-7 h-7 text-slate-900 dark:text-white" />
                 </div>
               </div>
 
               {/* Barcode Simulation */}
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-center space-y-1">
-                <div className="h-8 bg-[repeating-linear-gradient(90deg,#000,#000_2px,transparent_2px,transparent_4px)] w-4/5 mx-auto" />
-                <p className="font-mono font-black text-xs text-slate-900 tracking-wider">
+              <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                <div className="h-7 bg-[repeating-linear-gradient(90deg,#000,#000_2px,transparent_2px,transparent_4px)] dark:bg-[repeating-linear-gradient(90deg,#fff,#fff_2px,transparent_2px,transparent_4px)] w-4/5 mx-auto" />
+                <p className="font-mono font-semibold text-xs text-slate-900 dark:text-white tracking-wider">
                   {awbPreviewCarrier.tracking_prefix}-84920193
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200 space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400">Expéditeur (Vendeur) :</span>
-                  <p className="font-bold text-slate-900">{storeName}</p>
-                  <p className="text-[10px] text-slate-500">{storeCity}, Tunisie</p>
+              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 space-y-0.5">
+                  <span className="text-[9px] font-medium uppercase text-slate-400">Expéditeur (Vendeur) :</span>
+                  <p className="font-semibold text-slate-900 dark:text-white text-[11px]">{storeName}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{storeCity}, Tunisie</p>
                   <p className="text-[10px] font-mono text-slate-400">Tel: {storePhone}</p>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200 space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400">Destinataire (Client) :</span>
-                  <p className="font-bold text-slate-900">Ahmed Ben Salem</p>
-                  <p className="text-[10px] text-slate-500">Sousse, 4000</p>
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 space-y-0.5">
+                  <span className="text-[9px] font-medium uppercase text-slate-400">Destinataire (Client) :</span>
+                  <p className="font-semibold text-slate-900 dark:text-white text-[11px]">Ahmed Ben Salem</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Sousse, 4000</p>
                   <p className="text-[10px] font-mono text-slate-400">Tel: +216 24 111 222</p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between font-bold">
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between font-medium">
                 <div>
-                  <span className="text-[9px] font-black uppercase text-amber-800">Montant COD à Encaisser :</span>
-                  <p className="text-base font-black text-amber-900 font-mono">75.000 DT</p>
+                  <span className="text-[9px] font-medium uppercase text-slate-500 dark:text-slate-400">Montant COD à Encaisser :</span>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">75.000 DT</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] font-black uppercase text-amber-800">Poids :</span>
-                  <p className="text-xs font-mono text-amber-900">1.800 KG</p>
+                  <span className="text-[9px] font-medium uppercase text-slate-500 dark:text-slate-400">Poids :</span>
+                  <p className="text-xs font-mono text-slate-900 dark:text-white">1.800 KG</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setAwbPreviewCarrier(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-3.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
                 Fermer
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-5 py-2.5 rounded-2xl bg-[#B91C1C] text-white font-black text-xs hover:bg-[#991B1B] transition shadow-sm flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Imprimer l&apos;AWB</span>
+                <span>Imprimer l'AWB</span>
               </button>
             </div>
           </div>
