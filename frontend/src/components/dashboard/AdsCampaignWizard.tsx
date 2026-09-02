@@ -2,7 +2,7 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Loader2, Package, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Loader2, Package, Search, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { AdsCreativeMediaPicker } from './AdsCreativeMediaPicker';
@@ -43,10 +43,10 @@ export function AdsCampaignWizard({
 }) {
   const { t, dir } = useLocale();
   const steps = [
-    t('ads.wizard.stepSetup') || 'Setup',
-    t('ads.wizard.stepCreative') || 'Creative',
-    t('ads.wizard.stepTargeting') || 'Targeting',
-    t('ads.wizard.stepReview') || 'Review',
+    t('ads.wizard.stepSetup') || 'Configuration',
+    t('ads.wizard.stepCreative') || 'Créatif',
+    t('ads.wizard.stepTargeting') || 'Ciblage',
+    t('ads.wizard.stepReview') || 'Vérification',
   ];
 
   const [form, setForm] = useState<Form>({ ...blank, product_id: productId });
@@ -120,23 +120,23 @@ export function AdsCampaignWizard({
   const valid = () => {
     if (step === 0) {
       if (!form.name.trim() || Number(form.daily_budget) <= 0 || Number(form.total_budget) < Number(form.daily_budget)) {
-        return t('ads.wizard.validSetupErr') || 'Enter a valid campaign name and budgets.';
+        return t('ads.wizard.validSetupErr') || 'Veuillez saisir un nom de campagne et des budgets valides.';
       }
     }
     if (step === 1) {
       if (!form.creative_title.trim()) {
-        return t('ads.wizard.validTitleErr') || 'Enter a title for your campaign creative.';
+        return t('ads.wizard.validTitleErr') || 'Veuillez saisir un titre pour votre créatif publicitaire.';
       }
       if (form.campaign_type === 'sponsored_product' && !form.product_id.trim()) {
-        return t('ads.wizard.validProductErr') || 'Select or enter a product/service to sponsor.';
+        return t('ads.wizard.validProductErr') || 'Veuillez sélectionner ou indiquer un produit à sponsoriser.';
       }
     }
     if (step === 2) {
       if (!form.placement_ids.length) {
-        return t('ads.wizard.validPlacementErr') || 'Select at least one placement slot.';
+        return t('ads.wizard.validPlacementErr') || 'Veuillez sélectionner au moins un emplacement publicitaire.';
       }
       if (form.starts_at && form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
-        return t('ads.wizard.validScheduleErr') || 'End date must be after the start date.';
+        return t('ads.wizard.validScheduleErr') || 'La date de fin doit être postérieure à la date de début.';
       }
     }
     return '';
@@ -210,46 +210,50 @@ export function AdsCampaignWizard({
         }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error?.message || 'Unable to create campaign');
+      if (!r.ok) throw new Error(d.error?.message || 'Impossible de créer la campagne');
       localStorage.removeItem(KEY);
       await onCreated();
       onClose();
     } catch (x) {
-      onError(x instanceof Error ? x.message : 'Unable to create campaign');
+      onError(x instanceof Error ? x.message : 'Impossible de créer la campagne');
     } finally {
       setSaving(false);
     }
   };
 
-  const inputClass = 'mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm font-semibold text-slate-900 normal-case focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none';
+  const inputClass = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 outline-none shadow-2xs';
 
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <label className="block text-xs font-black uppercase tracking-wider text-slate-500">
-      {label}
+    <label className="block space-y-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+      <span>{label}</span>
       {children}
     </label>
   );
 
   return (
-    <div dir={dir} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <form onSubmit={submit} className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+    <div dir={dir} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <form onSubmit={submit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl">
         {/* Header */}
-        <header className="sticky top-0 z-10 border-b bg-white p-6">
+        <header className="sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-5 backdrop-blur-xs">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-2xl font-black text-slate-900">{t('ads.wizard.wizardTitle') || 'Create sponsored campaign'}</h2>
-              <p className="text-sm text-slate-500">{t('ads.wizard.wizardSubtitle') || 'Progress saves automatically on this device.'}</p>
+              <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white">{t('ads.wizard.wizardTitle') || 'Créer une Campagne Sponsorisée'}</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">{t('ads.wizard.wizardSubtitle') || 'Votre progression est enregistrée automatiquement.'}</p>
             </div>
-            <button type="button" aria-label="Close" onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-              <X className="h-5 w-5" />
+            <button type="button" aria-label="Fermer" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <X className="h-4 w-4" />
             </button>
           </div>
-          <ol className="mt-5 grid grid-cols-4 gap-2">
+          <ol className="mt-4 grid grid-cols-4 gap-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-1">
             {steps.map((s, i) => (
               <li
                 key={s}
-                className={`rounded-xl p-2 text-center text-xs font-black transition ${
-                  i === step ? 'bg-emerald-600 text-white' : i < step ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                className={`rounded-lg py-1.5 text-center text-xs font-medium transition ${
+                  i === step
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                    : i < step
+                    ? 'text-slate-900 dark:text-white font-semibold'
+                    : 'text-slate-400 dark:text-slate-500'
                 }`}
               >
                 {i + 1}. {s}
@@ -259,13 +263,13 @@ export function AdsCampaignWizard({
         </header>
 
         {/* Content Body */}
-        <main className="p-6">
+        <main className="p-5 sm:p-6 space-y-4">
           {restored && (
-            <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800">
-              <span>{t('ads.wizard.restoredNotice') || 'Saved progress restored.'}</span>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-700 dark:text-slate-300">
+              <span>{t('ads.wizard.restoredNotice') || 'Brouillon précédent restauré.'}</span>
               <button
                 type="button"
-                className="font-black text-blue-900 underline"
+                className="font-medium text-slate-900 dark:text-white underline cursor-pointer"
                 onClick={() => {
                   localStorage.removeItem(KEY);
                   setForm({ ...blank, product_id: productId });
@@ -273,13 +277,13 @@ export function AdsCampaignWizard({
                   setRestored(false);
                 }}
               >
-                {t('ads.wizard.discard') || 'Discard'}
+                {t('ads.wizard.discard') || 'Effacer'}
               </button>
             </div>
           )}
 
           {error && (
-            <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">
+            <div role="alert" className="rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs font-medium text-rose-700 dark:text-rose-300">
               {error}
             </div>
           )}
@@ -287,46 +291,46 @@ export function AdsCampaignWizard({
           {/* Step 0: Setup */}
           {step === 0 && (
             <section className="space-y-4">
-              <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.campaignSetup') || 'Campaign setup'}</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t('ads.wizard.campaignName') || 'Campaign name'}>
-                  <input value={form.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} placeholder="e.g. Summer Promotion Campaign" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('ads.wizard.campaignSetup') || 'Paramètres de la campagne'}</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t('ads.wizard.campaignName') || 'Nom de la campagne'}>
+                  <input value={form.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} placeholder="Ex: Promotion été 2026" />
                 </Field>
 
                 <Field label={t('ads.wizard.format') || 'Format'}>
                   <select value={form.campaign_type} onChange={(e) => set({ campaign_type: e.target.value })} className={inputClass}>
-                    <option value="sponsored_product">{t('ads.wizard.sponsoredProductOpt') || 'Sponsored product / service'}</option>
-                    <option value="sponsored_brand">{t('ads.wizard.sponsoredBrandOpt') || 'Sponsored brand'}</option>
-                    <option value="sponsored_content">{t('ads.wizard.sponsoredContentOpt') || 'Sponsored content'}</option>
+                    <option value="sponsored_product">{t('ads.wizard.sponsoredProductOpt') || 'Produit / Service sponsorisé'}</option>
+                    <option value="sponsored_brand">{t('ads.wizard.sponsoredBrandOpt') || 'Bannière de marque'}</option>
+                    <option value="sponsored_content">{t('ads.wizard.sponsoredContentOpt') || 'Contenu promotionnel'}</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.objective') || 'Objective'}>
+                <Field label={t('ads.wizard.objective') || 'Objectif'}>
                   <select value={form.objective} onChange={(e) => set({ objective: e.target.value })} className={inputClass}>
-                    <option value="awareness">{t('ads.wizard.awareness') || 'Awareness'}</option>
-                    <option value="traffic">{t('ads.wizard.traffic') || 'Traffic'}</option>
-                    <option value="sales">{t('ads.wizard.sales') || 'Sales'}</option>
+                    <option value="awareness">{t('ads.wizard.awareness') || 'Notoriété'}</option>
+                    <option value="traffic">{t('ads.wizard.traffic') || 'Trafic de boutique'}</option>
+                    <option value="sales">{t('ads.wizard.sales') || 'Ventes directes'}</option>
                     <option value="conversions">{t('ads.wizard.conversions') || 'Conversions'}</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.pricing') || 'Pricing model'}>
+                <Field label={t('ads.wizard.pricing') || 'Modèle de tarification'}>
                   <select value={form.pricing_model} onChange={(e) => set({ pricing_model: e.target.value })} className={inputClass}>
-                    <option value="cpc">{t('ads.wizard.cpc') || 'Cost per click (CPC)'}</option>
-                    <option value="cpm">{t('ads.wizard.cpm') || 'Cost per 1,000 impressions (CPM)'}</option>
-                    <option value="fixed_daily">{t('ads.wizard.fixedDaily') || 'Fixed daily rate'}</option>
+                    <option value="cpc">{t('ads.wizard.cpc') || 'Coût par clic (CPC)'}</option>
+                    <option value="cpm">{t('ads.wizard.cpm') || 'Coût par 1 000 impressions (CPM)'}</option>
+                    <option value="fixed_daily">{t('ads.wizard.fixedDaily') || 'Forfait journalier'}</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.dailyBudget') || 'Daily budget (TND)'}>
+                <Field label={t('ads.wizard.dailyBudget') || 'Budget quotidien (TND)'}>
                   <input type="number" min="0.001" step="0.001" value={form.daily_budget} onChange={(e) => set({ daily_budget: e.target.value })} className={inputClass} />
                 </Field>
 
-                <Field label={t('ads.wizard.totalBudget') || 'Total budget (TND)'}>
+                <Field label={t('ads.wizard.totalBudget') || 'Budget total (TND)'}>
                   <input type="number" min="0.001" step="0.001" value={form.total_budget} onChange={(e) => set({ total_budget: e.target.value })} className={inputClass} />
                 </Field>
 
-                <Field label={t('ads.wizard.bidAmount') || 'Bid / rate (TND)'}>
+                <Field label={t('ads.wizard.bidAmount') || 'Enchère max (TND)'}>
                   <input type="number" min="0" step="0.001" value={form.bid_amount} onChange={(e) => set({ bid_amount: e.target.value })} className={inputClass} />
                 </Field>
               </div>
@@ -336,13 +340,13 @@ export function AdsCampaignWizard({
           {/* Step 1: Creative */}
           {step === 1 && (
             <section className="space-y-4">
-              <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.stepCreative') || 'Creative'}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('ads.wizard.stepCreative') || 'Visuel & Contenu publicitaire'}</h3>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Rich Product Selector with Pictures */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Rich Product Selector */}
                 {form.campaign_type === 'sponsored_product' && (
-                  <div className="sm:col-span-2 space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
-                    <Field label={t('ads.wizard.selectProduct') || 'Select product or service'}>
+                  <div className="sm:col-span-2 space-y-2 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 shadow-2xs">
+                    <Field label={t('ads.wizard.selectProduct') || 'Sélectionner un produit du catalogue'}>
                       <RichProductSelector
                         products={storeProducts}
                         selectedId={form.product_id}
@@ -351,11 +355,11 @@ export function AdsCampaignWizard({
                       />
                     </Field>
 
-                    <Field label={t('ads.wizard.productId') || 'Product / Service ID'}>
+                    <Field label={t('ads.wizard.productId') || 'Identifiant du Produit'}>
                       <input
                         value={form.product_id}
                         onChange={(e) => set({ product_id: e.target.value })}
-                        placeholder={t('ads.wizard.customProductId') || 'Or enter custom Product ID...'}
+                        placeholder={t('ads.wizard.customProductId') || 'Ou collez un identifiant personnalisé...'}
                         className={inputClass}
                       />
                     </Field>
@@ -363,61 +367,60 @@ export function AdsCampaignWizard({
                 )}
 
                 <div className="sm:col-span-2 flex items-center justify-between">
-                  <span className="text-xs font-black uppercase text-slate-500">{t('ads.wizard.titleLabel') || 'Title & Copy'}</span>
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('ads.wizard.titleLabel') || 'Titre & Rédaction'}</span>
                   <button
                     type="button"
                     onClick={() => {
                       const sampleProduct = storeProducts.find((p) => p.id === form.product_id);
-                      const baseName = sampleProduct?.title || form.name || 'PandaMarket Exclusive';
+                      const baseName = sampleProduct?.title || form.name || 'Produit PandaMarket';
                       const headlines = [
-                        `🔥 Exclusive Deal: ${baseName} - Best Price Guaranteed!`,
-                        `🌟 Premium ${baseName}: Top Rated on PandaMarket`,
-                        `🚀 Limited Stock: Buy ${baseName} Today & Save Big!`,
-                        `✨ Best Seller: ${baseName} with Fast Nationwide Delivery`,
+                        `Offre Spéciale : ${baseName} au meilleur prix !`,
+                        `Sélection Premium : ${baseName} en livraison rapide`,
+                        `Indispensable : ${baseName} disponible en stock limité`,
                       ];
                       const descriptions = [
-                        `Discover the finest quality with ${baseName}. Order now on PandaMarket and enjoy exclusive marketplace savings!`,
-                        `Upgrade your daily lifestyle with ${baseName}. Trusted quality, verified sellers, and instant ordering.`,
-                        `Special promotional offer on ${baseName}. Stock is limited — get yours today before it sells out!`,
+                        `Découvrez ${baseName} sur PandaMarket. Qualité certifiée et commande sécurisée.`,
+                        `Profitez d'une remise exclusive sur ${baseName}. Commandez dès maintenant.`,
                       ];
                       const randHead = headlines[Math.floor(Math.random() * headlines.length)];
                       const randDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
                       set({ creative_title: randHead, creative_description: randDesc });
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-3 py-1 text-xs font-black text-amber-700 hover:bg-amber-500/20 transition cursor-pointer border border-amber-300"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
                   >
-                    ✨ Spark AI Copy Generator
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                    <span>Suggestions IA</span>
                   </button>
                 </div>
 
-                <Field label={t('ads.wizard.titleLabel') || 'Title'}>
-                  <input value={form.creative_title} onChange={(e) => set({ creative_title: e.target.value })} className={inputClass} placeholder="e.g. Best Olive Oil in Tunisia" />
+                <Field label={t('ads.wizard.titleLabel') || 'Titre de l\'annonce'}>
+                  <input value={form.creative_title} onChange={(e) => set({ creative_title: e.target.value })} className={inputClass} placeholder="Ex: Huile d'olive extra vierge" />
                 </Field>
 
                 <Field label={t('ads.wizard.imageLabel') || 'Image'}>
-                  <div className="mt-1 flex gap-2">
-                    <input value={form.image_url} onChange={(e) => set({ image_url: e.target.value })} placeholder="Image URL" className={`${inputClass} mt-0`} />
+                  <div className="flex gap-2">
+                    <input value={form.image_url} onChange={(e) => set({ image_url: e.target.value })} placeholder="URL de l'image" className={inputClass} />
                     <button
                       type="button"
                       onClick={() => setMediaOpen(true)}
-                      className="shrink-0 rounded-xl border border-emerald-600 px-4 text-xs font-black text-emerald-700 transition hover:bg-emerald-50"
+                      className="shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 shadow-2xs cursor-pointer"
                     >
-                      {t('ads.wizard.uploadLibrary') || 'Upload / Library'}
+                      {t('ads.wizard.uploadLibrary') || 'Médiathèque'}
                     </button>
                   </div>
                 </Field>
 
-                <Field label={t('ads.wizard.ctaLabel') || 'CTA'}>
+                <Field label={t('ads.wizard.ctaLabel') || 'Bouton d\'action'}>
                   <input value={form.cta_label} onChange={(e) => set({ cta_label: e.target.value })} className={inputClass} />
                 </Field>
 
-                <Field label={t('ads.wizard.destinationUrl') || 'Destination URL'}>
-                  <input value={form.destination_url} onChange={(e) => set({ destination_url: e.target.value })} className={inputClass} placeholder="e.g. /hub/products/..." />
+                <Field label={t('ads.wizard.destinationUrl') || 'Lien de destination'}>
+                  <input value={form.destination_url} onChange={(e) => set({ destination_url: e.target.value })} className={inputClass} placeholder="/hub/products/..." />
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field label={t('ads.wizard.descriptionLabel') || 'Description'}>
-                    <textarea value={form.creative_description} onChange={(e) => set({ creative_description: e.target.value })} rows={3} className={inputClass} />
+                  <Field label={t('ads.wizard.descriptionLabel') || 'Description textuelle'}>
+                    <textarea value={form.creative_description} onChange={(e) => set({ creative_description: e.target.value })} rows={2} className={inputClass} />
                   </Field>
                 </div>
               </div>
@@ -429,52 +432,52 @@ export function AdsCampaignWizard({
           {/* Step 2: Targeting */}
           {step === 2 && (
             <section className="space-y-4">
-              <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.stepTargeting') || 'Targeting'}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('ads.wizard.stepTargeting') || 'Audience & Emplacements'}</h3>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t('ads.wizard.startsAt') || 'Starts'}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t('ads.wizard.startsAt') || 'Date de début'}>
                   <input type="datetime-local" value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} className={inputClass} />
                 </Field>
 
-                <Field label={t('ads.wizard.endsAt') || 'Ends'}>
+                <Field label={t('ads.wizard.endsAt') || 'Date de fin'}>
                   <input type="datetime-local" value={form.ends_at} onChange={(e) => set({ ends_at: e.target.value })} className={inputClass} />
                 </Field>
 
-                <Field label={t('ads.wizard.language') || 'Language'}>
+                <Field label={t('ads.wizard.language') || 'Langue'}>
                   <select value={form.locale} onChange={(e) => set({ locale: e.target.value })} className={inputClass}>
-                    <option value="all">{t('ads.wizard.allLanguages') || 'All'}</option>
-                    <option value="fr">Français (French)</option>
+                    <option value="all">{t('ads.wizard.allLanguages') || 'Toutes'}</option>
+                    <option value="fr">Français</option>
                     <option value="en">English</option>
-                    <option value="ar">العربية (Arabic)</option>
+                    <option value="ar">العربية</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.device') || 'Device'}>
+                <Field label={t('ads.wizard.device') || 'Appareils'}>
                   <select value={form.device} onChange={(e) => set({ device: e.target.value })} className={inputClass}>
-                    <option value="all">{t('ads.wizard.allDevices') || 'All'}</option>
-                    <option value="mobile">{t('ads.wizard.mobile') || 'Mobile'}</option>
-                    <option value="desktop">{t('ads.wizard.desktop') || 'Desktop'}</option>
+                    <option value="all">{t('ads.wizard.allDevices') || 'Tous les appareils'}</option>
+                    <option value="mobile">{t('ads.wizard.mobile') || 'Mobiles uniquement'}</option>
+                    <option value="desktop">{t('ads.wizard.desktop') || 'Ordinateurs'}</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.audience') || 'Audience'}>
+                <Field label={t('ads.wizard.audience') || 'Type d\'audience'}>
                   <select value={form.audience} onChange={(e) => set({ audience: e.target.value })} className={inputClass}>
-                    <option value="all">{t('ads.wizard.allVisitors') || 'All visitors'}</option>
-                    <option value="new">{t('ads.wizard.newVisitors') || 'New visitors'}</option>
-                    <option value="returning">{t('ads.wizard.returningVisitors') || 'Returning visitors'}</option>
+                    <option value="all">{t('ads.wizard.allVisitors') || 'Tous les visiteurs'}</option>
+                    <option value="new">{t('ads.wizard.newVisitors') || 'Nouveaux visiteurs'}</option>
+                    <option value="returning">{t('ads.wizard.returningVisitors') || 'Clients récurrents'}</option>
                   </select>
                 </Field>
 
-                <Field label={t('ads.wizard.categorySlug') || 'Category slug'}>
-                  <input value={form.category} onChange={(e) => set({ category: e.target.value })} className={inputClass} placeholder="e.g. electronics" />
+                <Field label={t('ads.wizard.categorySlug') || 'Catégorie cible'}>
+                  <input value={form.category} onChange={(e) => set({ category: e.target.value })} className={inputClass} placeholder="Ex: electronique" />
                 </Field>
               </div>
 
-              <fieldset className="mt-5 space-y-2">
-                <legend className="text-xs font-black uppercase text-slate-500">{t('ads.wizard.placements') || 'Placements'}</legend>
+              <fieldset className="space-y-2 pt-2">
+                <legend className="text-xs font-medium text-slate-700 dark:text-slate-300">{t('ads.wizard.placements') || 'Emplacements disponibles'}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {placements.map((p) => (
-                    <label key={p.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-sm font-semibold transition hover:border-emerald-400 cursor-pointer">
+                    <label key={p.id} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs hover:border-slate-400 transition cursor-pointer">
                       <input
                         type="checkbox"
                         checked={form.placement_ids.includes(p.id)}
@@ -483,13 +486,13 @@ export function AdsCampaignWizard({
                             placement_ids: e.target.checked ? [...form.placement_ids, p.id] : form.placement_ids.filter((id) => id !== p.id),
                           })
                         }
-                        className="mt-0.5 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
+                        className="mt-0.5 h-3.5 w-3.5 rounded text-slate-900"
                       />
                       <div>
-                        <span className="font-black text-slate-900">{p.name}</span>
-                        <small className="block font-medium text-slate-500">
+                        <span className="font-semibold text-slate-900 dark:text-white block">{p.name}</span>
+                        <span className="text-[11px] text-slate-400">
                           {p.format} · {Number(p.default_price).toFixed(3)} TND
-                        </small>
+                        </span>
                       </div>
                     </label>
                   ))}
@@ -507,18 +510,18 @@ export function AdsCampaignWizard({
           {/* Step 3: Review */}
           {step === 3 && (
             <section className="space-y-4">
-              <h3 className="text-lg font-black text-slate-900">{t('ads.wizard.reviewTitle') || 'Review & summary'}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('ads.wizard.reviewTitle') || 'Récapitulatif de la campagne'}</h3>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {[
-                  [t('ads.wizard.campaignSetup') || 'Campaign', `${form.name} · ${form.campaign_type.replaceAll('_', ' ')}`],
-                  [t('ads.wizard.dailyBudget') || 'Budget', `${form.daily_budget} TND/day · ${form.total_budget} TND total`],
+                  [t('ads.wizard.campaignSetup') || 'Campagne', `${form.name} · ${form.campaign_type.replaceAll('_', ' ')}`],
+                  [t('ads.wizard.dailyBudget') || 'Budget', `${form.daily_budget} TND/jour · ${form.total_budget} TND total`],
                   [t('ads.wizard.audience') || 'Audience', `${form.locale} · ${form.device}${form.category ? ` · ${form.category}` : ''}`],
-                  [t('ads.wizard.placements') || 'Placements', placements.filter((p) => form.placement_ids.includes(p.id)).map((p) => p.name).join(', ') || 'None selected'],
+                  [t('ads.wizard.placements') || 'Emplacements', placements.filter((p) => form.placement_ids.includes(p.id)).map((p) => p.name).join(', ') || 'Aucun sélectionné'],
                 ].map(([l, v]) => (
-                  <div key={String(l)} className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                    <p className="text-[10px] font-black uppercase text-slate-400">{String(l)}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-900 capitalize">{String(v)}</p>
+                  <div key={String(l)} className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3.5 border border-slate-200/60 dark:border-slate-700">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{String(l)}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white capitalize">{String(v)}</p>
                   </div>
                 ))}
               </div>
@@ -531,15 +534,15 @@ export function AdsCampaignWizard({
 
               <AdsCreativePreview creative={form} formats={placements.filter((p) => form.placement_ids.includes(p.id)).map((p) => p.format)} />
 
-              <p className="rounded-2xl bg-amber-50 p-4 text-xs font-semibold text-amber-800 border border-amber-200">
-                {t('ads.wizard.draftNotice') || 'This creates a draft campaign. Submit it for review when funded and ready.'}
+              <p className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                {t('ads.wizard.draftNotice') || 'Cette action crée une campagne en brouillon. Vous pourrez la soumettre pour examen dès que votre solde sera suffisant.'}
               </p>
             </section>
           )}
         </main>
 
         {/* Footer */}
-        <footer className="sticky bottom-0 flex justify-between border-t bg-white p-5">
+        <footer className="sticky bottom-0 flex justify-between border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
           <button
             type="button"
             disabled={!step}
@@ -547,28 +550,29 @@ export function AdsCampaignWizard({
               setError('');
               setStep((v) => Math.max(0, v - 1));
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition shadow-2xs disabled:opacity-40 cursor-pointer"
           >
-            <ChevronLeft className="h-4 w-4" />
-            {t('ads.wizard.backBtn') || 'Back'}
+            <ChevronLeft className="h-3.5 w-3.5" />
+            {t('ads.wizard.backBtn') || 'Retour'}
           </button>
 
           {step < 3 ? (
             <button
               type="button"
               onClick={next}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs cursor-pointer"
             >
-              {t('ads.wizard.continueBtn') || 'Continue'}
-              <ChevronRight className="h-4 w-4" />
+              <span>{t('ads.wizard.continueBtn') || 'Continuer'}</span>
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           ) : (
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:opacity-50 shadow-md shadow-emerald-600/20"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white px-4 py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
             >
-              {saving ? t('ads.wizard.creatingBtn') || 'Creating...' : t('ads.wizard.createDraftBtn') || 'Create draft'}
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              <span>{saving ? t('ads.wizard.creatingBtn') || 'Création...' : t('ads.wizard.createDraftBtn') || 'Enregistrer le brouillon'}</span>
             </button>
           )}
         </footer>
@@ -603,8 +607,8 @@ function RichProductSelector({
 
   if (loading) {
     return (
-      <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> Loading store catalog products...
+      <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-500">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-900 dark:text-white" /> Chargement du catalogue...
       </div>
     );
   }
@@ -615,47 +619,47 @@ function RichProductSelector({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-left transition hover:border-emerald-500 focus:outline-none"
+        className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-left transition hover:border-slate-400 focus:outline-none shadow-2xs cursor-pointer"
       >
         {selectedProduct ? (
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
               {selectedProduct.image_url ? (
                 <img src={selectedProduct.image_url ? getResizedImageUrl(selectedProduct.image_url, 'medium') : ''} alt={selectedProduct.title} className="h-full w-full object-cover" />
               ) : (
-                <Package className="h-5 w-5 text-slate-400" />
+                <Package className="h-4 w-4 text-slate-400" />
               )}
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900">{selectedProduct.title}</p>
-              <p className="text-xs font-semibold text-emerald-700">{Number(selectedProduct.price).toFixed(3)} TND · <span className="font-mono text-slate-400">{selectedProduct.id}</span></p>
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{selectedProduct.title}</p>
+              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">{Number(selectedProduct.price).toFixed(3)} TND</p>
             </div>
           </div>
         ) : (
-          <span className="text-sm font-semibold text-slate-400">-- Select a product/service from your catalog --</span>
+          <span className="text-xs text-slate-400">-- Sélectionner un produit du catalogue --</span>
         )}
-        <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown Menu */}
       {open && (
-        <div className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-          <div className="sticky top-0 bg-white p-1">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs">
-              <Search className="h-4 w-4 text-slate-400" />
+        <div className="absolute z-30 mt-1.5 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-xl">
+          <div className="sticky top-0 bg-white dark:bg-slate-800 pb-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-xs">
+              <Search className="h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full bg-transparent font-semibold text-slate-900 focus:outline-none"
+                placeholder="Rechercher un produit..."
+                className="w-full bg-transparent text-xs font-medium text-slate-900 dark:text-white outline-none"
               />
             </div>
           </div>
 
-          <div className="mt-1 divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
             {filtered.length === 0 ? (
-              <p className="p-4 text-center text-xs text-slate-400">No matching products found</p>
+              <p className="p-3 text-center text-xs text-slate-400">Aucun produit trouvé</p>
             ) : (
               filtered.map((prod) => (
                 <button
@@ -665,24 +669,24 @@ function RichProductSelector({
                     onSelect(prod);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between p-2.5 text-left transition hover:bg-emerald-50/70 rounded-xl ${
-                    prod.id === selectedId ? 'bg-emerald-50 font-bold' : ''
+                  className={`flex w-full items-center justify-between p-2 text-left transition hover:bg-slate-50 dark:hover:bg-slate-700/60 rounded-lg cursor-pointer ${
+                    prod.id === selectedId ? 'bg-slate-50 dark:bg-slate-700/60 font-semibold' : ''
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
                       {prod.image_url ? (
                         <img src={prod.image_url ? getResizedImageUrl(prod.image_url, 'medium') : ''} alt={prod.title} className="h-full w-full object-cover" />
                       ) : (
-                        <Package className="h-5 w-5 text-slate-400" />
+                        <Package className="h-4 w-4 text-slate-400" />
                       )}
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-900 line-clamp-1">{prod.title}</p>
-                      <p className="text-[11px] font-bold text-emerald-700">{Number(prod.price).toFixed(3)} TND <span className="font-mono text-[10px] text-slate-400">({prod.id})</span></p>
+                      <p className="text-xs font-medium text-slate-900 dark:text-white line-clamp-1">{prod.title}</p>
+                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{Number(prod.price).toFixed(3)} TND</p>
                     </div>
                   </div>
-                  {prod.id === selectedId && <Check className="h-4 w-4 text-emerald-600" />}
+                  {prod.id === selectedId && <Check className="h-3.5 w-3.5 text-slate-900 dark:text-white" />}
                 </button>
               ))
             )}
@@ -698,42 +702,42 @@ function EstimatePanel({ estimate, loading, apply }: { estimate: Estimate | null
 
   if (loading) {
     return (
-      <div className="mt-5 flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-xs font-bold text-emerald-700 border border-emerald-200">
-        <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-        {t('ads.wizard.calculatingEstimate') || 'Calculating delivery estimate…'}
+      <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 text-xs text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-900 dark:text-white" />
+        {t('ads.wizard.calculatingEstimate') || 'Estimation de la portée en cours…'}
       </div>
     );
   }
   if (!estimate) return null;
   return (
-    <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+    <div className="rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 shadow-2xs space-y-2.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase text-emerald-700">{t('ads.wizard.estimatedDelivery') || 'Estimated delivery'}</p>
-          <p className="mt-1 text-2xl font-black text-emerald-950">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('ads.wizard.estimatedDelivery') || 'Portée prévisionnelle'}</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-white font-mono mt-0.5">
             {estimate.range.low.toLocaleString()}–{estimate.range.high.toLocaleString()} {estimate.metric}
           </p>
-          <p className="text-xs text-emerald-800">
-            Across approximately {estimate.estimated_days} day{estimate.estimated_days === 1 ? '' : 's'}.
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+            Sur environ {estimate.estimated_days} jour{estimate.estimated_days > 1 ? 's' : ''}.
           </p>
         </div>
         <button
           type="button"
           onClick={() => apply(estimate.recommended_bid, estimate.recommended_daily_budget)}
-          className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white hover:bg-emerald-800 transition"
+          className="rounded-xl bg-slate-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs cursor-pointer"
         >
-          {t('ads.wizard.applyRecommendation') || 'Apply recommendation'}
+          {t('ads.wizard.applyRecommendation') || 'Appliquer les conseils'}
         </button>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <p className="rounded-lg bg-white/80 p-2 font-semibold">
-          <b>{t('ads.wizard.suggestedBid') || 'Suggested bid'}:</b> {estimate.recommended_bid.toFixed(3)} TND
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <p className="rounded-lg bg-white dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+          <span className="text-slate-400 font-normal">{t('ads.wizard.suggestedBid') || 'Enchère recommandée'}:</span> {estimate.recommended_bid.toFixed(3)} TND
         </p>
-        <p className="rounded-lg bg-white/80 p-2 font-semibold">
-          <b>{t('ads.wizard.suggestedDaily') || 'Suggested daily'}:</b> {estimate.recommended_daily_budget.toFixed(3)} TND
+        <p className="rounded-lg bg-white dark:bg-slate-800 p-2 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+          <span className="text-slate-400 font-normal">{t('ads.wizard.suggestedDaily') || 'Budget quotidien suggéré'}:</span> {estimate.recommended_daily_budget.toFixed(3)} TND
         </p>
       </div>
-      <p className="mt-3 text-[11px] leading-4 text-emerald-800 font-medium">{estimate.assumptions}</p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{estimate.assumptions}</p>
     </div>
   );
 }
