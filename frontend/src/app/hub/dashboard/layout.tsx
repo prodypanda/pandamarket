@@ -3,11 +3,11 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { fetchOnboardingState } from '@/lib/onboarding';
 import { DashboardSubscriptionProvider } from '@/contexts/DashboardSubscriptionContext';
+import { DashboardStyleProvider, useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import {
-  ArrowLeftRight,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -38,11 +38,13 @@ import {
   Globe,
   Palette,
   Layout,
+  LayoutGrid,
   Navigation as NavIcon,
-  FileText,
   Search,
   Code2,
   Users,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../../components/LocaleSwitcher';
@@ -101,13 +103,11 @@ function hasCustomColors(customization?: ThemeCustomizationState | null): boolea
   );
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { t } = useLocale();
+function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
+  const { t, dir } = useLocale();
   const pathname = usePathname();
+  const { dashboardStyle, setDashboardStyle, sidebarCollapsed, toggleSidebarCollapsed } = useDashboardStyle();
+
   const [loggingOut, setLoggingOut] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [currentStore, setCurrentStore] = useState<CurrentStore | null>(null);
@@ -124,6 +124,9 @@ export default function DashboardLayout({
   const isStoreCreatePage = pathname === '/hub/dashboard/create-store';
   const isSubscriptionOrdersPage = pathname === '/hub/dashboard/my-subscription-orders';
   const isStoreSetupPage = isStoreSelectorPage || isStoreCreatePage || isSubscriptionOrdersPage;
+
+  const isBentoMode = dashboardStyle === 'bento';
+  const isCollapsed = isBentoMode && sidebarCollapsed;
 
   useEffect(() => {
     let cancelled = false;
@@ -257,7 +260,7 @@ export default function DashboardLayout({
     setMobileDrawerOpen(false);
   }, [pathname]);
 
-  // Mobile drawer scroll lock & keyboard event handling (Escape & Focus trap)
+  // Mobile drawer scroll lock & keyboard event handling
   useEffect(() => {
     if (!mobileDrawerOpen) return;
     document.body.style.overflow = 'hidden';
@@ -294,57 +297,57 @@ export default function DashboardLayout({
     {
       groupName: undefined,
       items: [
-        { name: t('dashboard.sidebar.overview'), href: '/hub/dashboard', icon: LayoutDashboard },
-        { name: t('dashboard.sidebar.setupGuide'), href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
-        { name: t('dashboard.sidebar.analytics'), href: '/hub/dashboard/analytics', icon: BarChart3 },
-        { name: t('dashboard.sidebar.ads'), href: '/hub/dashboard/ads', icon: Megaphone },
+        { name: t('dashboard.sidebar.overview') || 'Vue d\'ensemble', href: '/hub/dashboard', icon: LayoutDashboard },
+        { name: t('dashboard.sidebar.setupGuide') || 'Guide de lancement', href: '/hub/dashboard/onboarding', icon: CheckCircle2 },
+        { name: t('dashboard.sidebar.analytics') || 'Statistiques', href: '/hub/dashboard/analytics', icon: BarChart3 },
+        { name: t('dashboard.sidebar.ads') || 'PandaAds', href: '/hub/dashboard/ads', icon: Megaphone },
       ],
     },
     {
-      groupName: t('dashboard.sidebar.groupCatalogSales'),
+      groupName: t('dashboard.sidebar.groupCatalogSales') || 'Catalogue & Ventes',
       items: [
-        { name: t('dashboard.sidebar.products'), href: '/hub/dashboard/products', icon: Package },
-        { name: t('dashboard.sidebar.categories'), href: '/hub/dashboard/categories', icon: Tags },
+        { name: t('dashboard.sidebar.products') || 'Produits', href: '/hub/dashboard/products', icon: Package },
+        { name: t('dashboard.sidebar.categories') || 'Catégories', href: '/hub/dashboard/categories', icon: Tags },
         { name: t('dashboard.sidebar.loyalty') || 'Abonnés & Fidélité', href: '/hub/dashboard/loyalty', icon: Users },
-        { name: t('dashboard.sidebar.media'), href: '/hub/dashboard/media', icon: ImageIcon },
-        { name: t('dashboard.sidebar.orders'), href: '/hub/dashboard/orders', icon: ShoppingCart },
-        { name: t('dashboard.sidebar.messages'), href: '/hub/dashboard/messages', icon: MessageSquare },
-        { name: t('dashboard.sidebar.wallet'), href: '/hub/dashboard/wallet', icon: Wallet },
-        { name: t('dashboard.sidebar.financialReport'), href: '/hub/dashboard/financial', icon: ReceiptText },
+        { name: t('dashboard.sidebar.media') || 'Médiathèque', href: '/hub/dashboard/media', icon: ImageIcon },
+        { name: t('dashboard.sidebar.orders') || 'Commandes', href: '/hub/dashboard/orders', icon: ShoppingCart },
+        { name: t('dashboard.sidebar.messages') || 'Messagerie', href: '/hub/dashboard/messages', icon: MessageSquare },
+        { name: t('dashboard.sidebar.wallet') || 'Portefeuille', href: '/hub/dashboard/wallet', icon: Wallet },
+        { name: t('dashboard.sidebar.financialReport') || 'Rapports financiers', href: '/hub/dashboard/financial', icon: ReceiptText },
       ],
     },
     {
-      groupName: t('dashboard.sidebar.groupOnlineStore'),
+      groupName: t('dashboard.sidebar.groupOnlineStore') || 'Boutique en Ligne',
       items: [
-        { name: t('dashboard.sidebar.onlineStoreOverview'), href: '/hub/dashboard/online-store', icon: Globe },
-        { name: t('dashboard.sidebar.themes'), href: '/hub/dashboard/online-store/themes', icon: Palette },
-        { name: t('dashboard.sidebar.customize'), href: '/hub/dashboard/online-store/customize', icon: Sparkles },
-        { name: t('dashboard.sidebar.menusNavigation'), href: '/hub/dashboard/online-store/navigation', icon: NavIcon },
-        { name: t('dashboard.sidebar.pages'), href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
-        { name: t('dashboard.sidebar.domains'), href: '/hub/dashboard/online-store/domains', icon: Globe },
-        { name: t('dashboard.sidebar.seoMeta'), href: '/hub/dashboard/online-store/seo', icon: Search },
-        { name: t('dashboard.sidebar.integrationsPixels'), href: '/hub/dashboard/online-store/integrations', icon: Code2 },
-        { name: t('dashboard.sidebar.customers'), href: '/hub/dashboard/online-store/customers', icon: Users },
+        { name: t('dashboard.sidebar.onlineStoreOverview') || 'Boutique en ligne', href: '/hub/dashboard/online-store', icon: Globe },
+        { name: t('dashboard.sidebar.themes') || 'Thèmes', href: '/hub/dashboard/online-store/themes', icon: Palette },
+        { name: t('dashboard.sidebar.customize') || 'Personnalisation', href: '/hub/dashboard/online-store/customize', icon: Sparkles },
+        { name: t('dashboard.sidebar.menusNavigation') || 'Navigation & Menus', href: '/hub/dashboard/online-store/navigation', icon: NavIcon },
+        { name: t('dashboard.sidebar.pages') || 'Constructeur de pages', href: '/hub/dashboard/page-builder', icon: LayoutTemplate },
+        { name: t('dashboard.sidebar.domains') || 'Domaines & DNS', href: '/hub/dashboard/online-store/domains', icon: Globe },
+        { name: t('dashboard.sidebar.seoMeta') || 'Référencement SEO', href: '/hub/dashboard/online-store/seo', icon: Search },
+        { name: t('dashboard.sidebar.integrationsPixels') || 'Logistique & Intégrations', href: '/hub/dashboard/online-store/integrations', icon: Code2 },
+        { name: t('dashboard.sidebar.customers') || 'Clients', href: '/hub/dashboard/online-store/customers', icon: Users },
       ],
     },
     {
-      groupName: t('dashboard.sidebar.groupConfiguration'),
+      groupName: t('dashboard.sidebar.groupConfiguration') || 'Configuration',
       items: [
-        { name: t('dashboard.sidebar.aiTools'), href: '/hub/dashboard/ai', icon: Sparkles },
-        { name: t('dashboard.sidebar.subscription'), href: '/hub/dashboard/subscription', icon: Crown },
-        { name: t('dashboard.sidebar.paymentConfig'), href: '/hub/dashboard/payment-config', icon: CreditCard },
-        { name: t('dashboard.sidebar.reports'), href: '/hub/dashboard/reports', icon: Flag },
-        { name: t('dashboard.sidebar.settings'), href: '/hub/dashboard/settings', icon: Settings },
+        { name: t('dashboard.sidebar.aiTools') || 'Outils IA', href: '/hub/dashboard/ai', icon: Sparkles },
+        { name: t('dashboard.sidebar.subscription') || 'Abonnement', href: '/hub/dashboard/subscription', icon: Crown },
+        { name: t('dashboard.sidebar.paymentConfig') || 'Passerelles de paiement', href: '/hub/dashboard/payment-config', icon: CreditCard },
+        { name: t('dashboard.sidebar.reports') || 'Signalements', href: '/hub/dashboard/reports', icon: Flag },
+        { name: t('dashboard.sidebar.settings') || 'Paramètres', href: '/hub/dashboard/settings', icon: Settings },
       ],
     },
   ];
 
   const accountMenuItems = [
-    { name: t('dashboard.sidebar.myAccount'), href: '/hub/profile', icon: UserRound },
-    { name: t('dashboard.sidebar.platformOrdersInvoices'), href: '/hub/dashboard/my-subscription-orders', icon: ReceiptText },
-    { name: t('dashboard.sidebar.verification'), href: '/hub/dashboard/kyc', icon: Shield },
-    { name: t('dashboard.sidebar.apiKeys'), href: '/hub/dashboard/api-keys', icon: Key },
-    { name: t('dashboard.sidebar.webhooks'), href: '/hub/dashboard/webhooks', icon: Webhook },
+    { name: t('dashboard.sidebar.myAccount') || 'Mon compte', href: '/hub/profile', icon: UserRound },
+    { name: t('dashboard.sidebar.platformOrdersInvoices') || 'Commandes d\'abonnement', href: '/hub/dashboard/my-subscription-orders', icon: ReceiptText },
+    { name: t('dashboard.sidebar.verification') || 'Vérification KYC', href: '/hub/dashboard/kyc', icon: Shield },
+    { name: t('dashboard.sidebar.apiKeys') || 'Clés d\'API', href: '/hub/dashboard/api-keys', icon: Key },
+    { name: t('dashboard.sidebar.webhooks') || 'Webhooks', href: '/hub/dashboard/webhooks', icon: Webhook },
   ];
 
   const handleLogout = async () => {
@@ -373,12 +376,12 @@ export default function DashboardLayout({
     .toUpperCase();
   const setupPercentage = Math.round((setupProgress.completed / setupProgress.total) * 100);
 
-  const renderNavLinks = () => (
+  const renderNavLinks = (collapsed = false) => (
     <div className="space-y-6">
       {navigationGroups.map((group, gIdx) => (
         <div key={gIdx} className="space-y-1">
-          {group.groupName && (
-            <p className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+          {!collapsed && group.groupName && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
               {group.groupName}
             </p>
           )}
@@ -392,14 +395,17 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center px-3 py-2 text-xs font-semibold rounded-xl transition-colors ${
+                title={collapsed ? item.name : undefined}
+                className={`flex items-center text-xs font-medium rounded-xl transition ${
+                  collapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+                } ${
                   active
-                    ? 'bg-[#B91C1C]/12 text-[#B91C1C] ring-1 ring-[#B91C1C]/15 font-bold'
-                    : 'text-slate-700 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C]'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs font-semibold'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <item.icon className="me-2.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                <span>{item.name}</span>
+                <item.icon className={`${collapsed ? 'h-4 w-4' : 'me-2.5 h-4 w-4'} flex-shrink-0`} aria-hidden="true" />
+                {!collapsed && <span className="truncate">{item.name}</span>}
               </Link>
             );
           })}
@@ -412,7 +418,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center">
         <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold shadow-xl">
-          {t('dashboard.checkingAccess')}
+          {t('dashboard.checkingAccess') || 'Vérification des accès...'}
         </div>
       </div>
     );
@@ -420,7 +426,7 @@ export default function DashboardLayout({
 
   if (isStoreSetupPage) {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div dir={dir} className="min-h-screen bg-slate-100 text-slate-900">
         <header className="border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <MarketplaceBrand
@@ -431,24 +437,24 @@ export default function DashboardLayout({
               marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
               logoSurface="light"
               imageClassName="h-10 max-w-[170px] object-contain"
-              textClassName="text-xl font-bold text-[#B91C1C]"
+              textClassName="text-xl font-bold text-slate-900"
             />
             <div className="flex items-center gap-3">
               <Link
                 href="/hub/dashboard/select-store"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:border-[#B91C1C] hover:text-[#B91C1C] transition shadow-sm"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-slate-400 transition shadow-sm"
               >
-                <Store className="h-4 w-4 text-[#B91C1C]" />
+                <Store className="h-4 w-4 text-slate-900" />
                 <span>Mes boutiques</span>
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="inline-flex items-center gap-2 rounded-full border border-red-100 px-4 py-2 text-sm font-black text-red-600 hover:bg-red-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-rose-100 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60"
               >
                 <LogOut className="h-4 w-4" />
-                {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+                {loggingOut ? (t('dashboard.loggingOut') || 'Déconnexion...') : (t('nav.logout') || 'Déconnexion')}
               </button>
             </div>
           </div>
@@ -459,38 +465,63 @@ export default function DashboardLayout({
   }
 
   return (
-    <DashboardSubscriptionProvider>
-      <div className="min-h-screen bg-slate-100 text-slate-900 flex">
+    <div dir={dir} className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white flex">
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-white border-e border-slate-200 flex-col hidden md:flex fixed inset-y-0 start-0 h-full z-10 shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-200">
-          <MarketplaceBrand
-            href="/hub/dashboard"
-            marketplaceName={marketplaceSettings.marketplace_name}
-            marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
-            marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
-            marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
-            logoSurface="light"
-            imageClassName="h-10 max-w-[170px] object-contain"
-            textClassName="text-xl font-bold text-[#B91C1C]"
-          />
+      <aside
+        className={`bg-white dark:bg-slate-900 border-e border-slate-200/80 dark:border-slate-800 flex-col hidden md:flex fixed inset-y-0 start-0 h-full z-20 shadow-2xs transition-all duration-300 ${
+          isCollapsed ? 'w-16' : 'w-64'
+        }`}
+      >
+        <div className={`h-16 flex items-center border-b border-slate-200/80 dark:border-slate-800 ${isCollapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
+          {!isCollapsed && (
+            <MarketplaceBrand
+              href="/hub/dashboard"
+              marketplaceName={marketplaceSettings.marketplace_name}
+              marketplaceLogoUrl={marketplaceSettings.marketplace_logo_url}
+              marketplaceLogoLightUrl={marketplaceSettings.marketplace_logo_light_url}
+              marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
+              logoSurface="light"
+              imageClassName="h-8 max-w-[140px] object-contain"
+              textClassName="text-lg font-bold text-slate-900 dark:text-white"
+            />
+          )}
+
+          {isBentoMode && (
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              aria-label={isCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          )}
         </div>
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">{renderNavLinks()}</nav>
-        <div className="p-4 border-t border-slate-200">
+
+        <nav className="flex-1 px-3 py-5 overflow-y-auto">{renderNavLinks(isCollapsed)}</nav>
+
+        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-1">
           <Link
             href="/hub"
-            className="flex items-center w-full px-3 py-2 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mb-1"
+            title={isCollapsed ? (t('common.back') || 'Retour vers la marketplace') : undefined}
+            className={`flex items-center text-xs font-medium text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition ${
+              isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+            }`}
           >
-            ← {t('common.back')}
+            <span className={isCollapsed ? '' : 'me-2'}>←</span>
+            {!isCollapsed && <span>{t('common.back') || 'Retour marketplace'}</span>}
           </Link>
           <button
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="flex items-center w-full px-3 py-2 text-xs font-semibold text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-60"
+            title={isCollapsed ? (t('nav.logout') || 'Déconnexion') : undefined}
+            className={`flex items-center text-xs font-medium text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-60 cursor-pointer w-full ${
+              isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+            }`}
           >
-            <LogOut className="me-2.5 h-4 w-4 flex-shrink-0" />
-            {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+            <LogOut className={`${isCollapsed ? 'h-4 w-4' : 'me-2.5 h-4 w-4'} flex-shrink-0`} />
+            {!isCollapsed && <span>{loggingOut ? (t('dashboard.loggingOut') || 'Déconnexion...') : (t('nav.logout') || 'Déconnexion')}</span>}
           </button>
         </div>
       </aside>
@@ -498,18 +529,16 @@ export default function DashboardLayout({
       {/* Mobile Navigation Drawer */}
       {mobileDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileDrawerOpen(false)}
           />
-          {/* Drawer Panel */}
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className="fixed inset-y-0 start-0 w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-50 focus:outline-none"
+            className="fixed inset-y-0 start-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col z-50 focus:outline-none border-e border-slate-200 dark:border-slate-800"
           >
-            <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800">
               <MarketplaceBrand
                 href="/hub/dashboard"
                 marketplaceName={marketplaceSettings.marketplace_name}
@@ -518,119 +547,140 @@ export default function DashboardLayout({
                 marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
                 logoSurface="light"
                 imageClassName="h-8 max-w-[140px] object-contain"
-                textClassName="text-lg font-bold text-[#B91C1C]"
+                textClassName="text-lg font-bold text-slate-900 dark:text-white"
               />
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(false)}
                 aria-label="Fermer le menu"
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 px-4 py-6 overflow-y-auto">{renderNavLinks()}</nav>
-            <div className="p-4 border-t border-slate-200">
+            <nav className="flex-1 px-4 py-6 overflow-y-auto">{renderNavLinks(false)}</nav>
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
               <Link
                 href="/hub"
-                className="flex items-center w-full px-3 py-2 text-xs font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mb-1"
+                className="flex items-center w-full px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
-                ← {t('common.back')}
+                ← {t('common.back') || 'Retour marketplace'}
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="flex items-center w-full px-3 py-2 text-xs font-semibold text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-60"
+                className="flex items-center w-full px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition disabled:opacity-60 cursor-pointer"
               >
                 <LogOut className="mr-2.5 h-4 w-4 flex-shrink-0" />
-                {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+                {loggingOut ? (t('dashboard.loggingOut') || 'Déconnexion...') : (t('nav.logout') || 'Déconnexion')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 md:ms-64 flex flex-col">
+      {/* Main Content Area */}
+      <main
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          isCollapsed ? 'md:ms-16' : 'md:ms-64'
+        }`}
+      >
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-30 shadow-sm">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
               aria-label="Ouvrir le menu de navigation"
               aria-expanded={mobileDrawerOpen}
-              className="md:hidden rounded-xl p-2 text-slate-600 hover:bg-slate-100"
+              className="md:hidden rounded-xl p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">{t('dashboard.title')}</h2>
+            <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
+              {t('dashboard.title') || 'Tableau de bord Vendeur'}
+            </h2>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Style Switcher Segmented Control */}
+            <div
+              role="group"
+              aria-label="Style d'affichage du tableau de bord"
+              className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700"
+            >
+              <button
+                type="button"
+                onClick={() => setDashboardStyle('classic')}
+                aria-pressed={dashboardStyle === 'classic'}
+                aria-label="Vue Classique"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  dashboardStyle === 'classic'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Layout className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Classique</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDashboardStyle('bento')}
+                aria-pressed={dashboardStyle === 'bento'}
+                aria-label="Vue Bento Cockpit"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  dashboardStyle === 'bento'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Bento Cockpit</span>
+              </button>
+            </div>
+
             <LocaleSwitcher />
+
             <Link
               href="/hub/dashboard/select-store"
-              className="hidden sm:inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-[#B91C1C] hover:text-[#B91C1C]"
+              className="hidden lg:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
             >
-              <Store className="h-4 w-4 text-[#B91C1C]" />
-              {t('dashboard.sidebar.myStore')}
+              <Store className="h-3.5 w-3.5" />
+              <span>{t('dashboard.sidebar.myStore') || 'Boutiques'}</span>
             </Link>
-            {storeCount === 1 && canCreateFreeStore && (
-              <Link
-                href="/hub/dashboard/create-store"
-                className="hidden sm:inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-3 py-2 text-xs font-black text-white transition hover:bg-[#991B1B]"
-              >
-                <Plus className="h-4 w-4" />
-                {t('dashboard.sidebar.createFreeStore')}
-              </Link>
-            )}
-            <Link
-              href="/hub/dashboard/my-subscription-orders"
-              title={t('dashboard.sidebar.platformOrdersInvoices')}
-              aria-label={t('dashboard.sidebar.platformOrdersInvoices')}
-              className={`relative inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition ${
-                pathname.startsWith('/hub/dashboard/my-subscription-orders')
-                  ? 'border-amber-400 bg-amber-50 text-amber-600'
-                  : 'border-slate-200 text-slate-500 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-600'
-              }`}
-            >
-              <ReceiptText className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Link>
+
             <Link
               href="/hub/dashboard/notifications"
-              aria-label={t('dashboard.sidebar.notifications')}
-              className={`relative inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition ${
-                pathname.startsWith('/hub/dashboard/notifications')
-                  ? 'border-[#B91C1C]/20 bg-[#B91C1C]/10 text-[#B91C1C]'
-                  : 'border-slate-200 text-slate-500 hover:border-[#B91C1C]/30 hover:bg-[#B91C1C]/10 hover:text-[#B91C1C]'
-              }`}
+              aria-label={t('dashboard.sidebar.notifications') || 'Notifications'}
+              className="relative inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs"
             >
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Bell className="h-4 w-4" />
             </Link>
-            <div className="hidden lg:block text-xs sm:text-sm font-medium text-slate-600">
-              {t('dashboard.top.welcome', { name: displayName })}
-            </div>
+
+            {/* Account Menu */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setAccountMenuOpen((open) => !open)}
                 aria-haspopup="menu"
                 aria-expanded={accountMenuOpen}
-                className="h-9 w-9 rounded-full bg-[#B91C1C]/15 flex items-center justify-center text-[#B91C1C] font-bold ring-1 ring-[#B91C1C]/10 transition hover:bg-[#B91C1C]/20"
+                aria-label="Menu utilisateur"
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-xs shadow-2xs transition hover:bg-slate-800 dark:hover:bg-slate-100 cursor-pointer"
               >
                 {initials}
               </button>
+
               {accountMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white py-2 text-sm shadow-2xl shadow-slate-900/15"
+                  className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 text-xs shadow-2xl animate-in fade-in"
                 >
-                  <div className="border-b border-slate-100 px-4 py-3">
-                    <p className="font-black text-slate-900">{displayName}</p>
+                  <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-2.5">
+                    <p className="font-semibold text-slate-900 dark:text-white">{displayName}</p>
                     {currentUser?.email && (
-                      <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
+                      <p className="truncate text-[11px] text-slate-400">
                         {currentUser.email}
                       </p>
                     )}
@@ -641,34 +691,25 @@ export default function DashboardLayout({
                       href={item.href}
                       role="menuitem"
                       onClick={() => setAccountMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 font-bold transition ${
+                      className={`flex items-center gap-2.5 px-4 py-2.5 font-medium transition ${
                         pathname === item.href || pathname.startsWith(`${item.href}/`)
-                          ? 'bg-[#B91C1C]/10 text-[#B91C1C]'
-                          : 'text-slate-700 hover:bg-slate-50 hover:text-[#B91C1C]'
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {item.name}
+                      <item.icon className="h-3.5 w-3.5" />
+                      <span>{item.name}</span>
                     </Link>
                   ))}
-                  <Link
-                    href="/hub/dashboard/select-store"
-                    role="menuitem"
-                    onClick={() => setAccountMenuOpen(false)}
-                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 font-bold text-slate-700 hover:bg-slate-50 hover:text-[#B91C1C] transition"
-                  >
-                    <Store className="h-4 w-4 text-[#B91C1C]" />
-                    <span>Mes boutiques (Select store)</span>
-                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
                     disabled={loggingOut}
                     role="menuitem"
-                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                    className="flex w-full items-center gap-2.5 border-t border-slate-100 dark:border-slate-800 px-4 py-2.5 font-medium text-rose-600 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-60 cursor-pointer"
                   >
-                    <LogOut className="h-4 w-4" />
-                    {loggingOut ? t('dashboard.loggingOut') : t('nav.logout')}
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>{loggingOut ? (t('dashboard.loggingOut') || 'Déconnexion...') : (t('nav.logout') || 'Déconnexion')}</span>
                   </button>
                 </div>
               )}
@@ -676,31 +717,32 @@ export default function DashboardLayout({
           </div>
         </header>
 
+        {/* Setup Progress Bar if < 100% */}
         {setupPercentage < 100 && (
-          <div className="sticky top-16 z-20 border-b border-amber-100 bg-white/95 px-4 sm:px-8 py-3 backdrop-blur">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3 text-sm">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#B91C1C]/10 text-[#B91C1C]">
-                  <CheckCircle2 className="h-4 w-4" />
+          <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 sm:px-6 py-2.5 backdrop-blur-xs">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5 text-xs">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                 </span>
                 <div>
-                  <p className="font-black text-slate-900">Progression de configuration</p>
-                  <p className="text-xs font-semibold text-slate-500">
-                    {setupProgress.completed} sur {setupProgress.total} étapes de lancement validées
+                  <p className="font-semibold text-slate-900 dark:text-white">Lancement de votre boutique</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {setupProgress.completed} sur {setupProgress.total} étapes validées ({setupPercentage}%)
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 lg:w-96">
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+
+              <div className="flex items-center gap-2.5 sm:w-80">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-[#B91C1C] transition-all duration-500"
+                    className="h-full rounded-full bg-slate-900 dark:bg-white transition-all duration-500"
                     style={{ width: `${setupPercentage}%` }}
                   />
                 </div>
-                <span className="text-xs font-black text-[#B91C1C]">{setupPercentage}%</span>
                 <Link
                   href="/hub/dashboard/onboarding"
-                  className="ms-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] text-white text-xs font-bold rounded-lg hover:bg-[#991B1B] transition shadow-sm flex-shrink-0"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-medium rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs flex-shrink-0"
                 >
                   <span>Continuer</span>
                 </Link>
@@ -710,11 +752,24 @@ export default function DashboardLayout({
         )}
 
         {/* Page Content */}
-        <div className="p-4 sm:p-8 pt-4 flex-1 overflow-auto bg-slate-100 text-slate-900">
+        <div className="p-4 sm:p-6 flex-1 overflow-auto">
           {children}
         </div>
       </main>
     </div>
-    </DashboardSubscriptionProvider>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <DashboardStyleProvider>
+      <DashboardSubscriptionProvider>
+        <DashboardInnerLayout>{children}</DashboardInnerLayout>
+      </DashboardSubscriptionProvider>
+    </DashboardStyleProvider>
   );
 }
