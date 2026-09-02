@@ -3,7 +3,24 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import {
-  BarChart3, Building, CheckCircle2, ChevronRight, Edit3, Eye, Loader2, Megaphone, Plus, Trash2, UploadCloud, WalletCards, X,
+  AlertTriangle,
+  Archive,
+  BarChart3,
+  Building,
+  CheckCircle2,
+  Clock,
+  Edit3,
+  Eye,
+  Gift,
+  Info,
+  Loader2,
+  Megaphone,
+  Plus,
+  Trash2,
+  TrendingUp,
+  UploadCloud,
+  WalletCards,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { AdsCampaignWizard } from '../../../../components/dashboard/AdsCampaignWizard';
@@ -11,10 +28,37 @@ import { AdsPerformanceCharts } from '../../../../components/dashboard/AdsPerfor
 import { useLocale } from '@/contexts/LocaleContext';
 
 type Placement = { id: string; name: string; format: string; default_price: string };
-type Account = { balance: string; reserved_balance: string; currency: string; total_spend: string; active_campaigns: number; auto_refill_enabled?: boolean; auto_refill_threshold?: string; auto_refill_amount?: string };
+type Account = {
+  balance: string;
+  reserved_balance: string;
+  currency: string;
+  total_spend: string;
+  active_campaigns: number;
+  auto_refill_enabled?: boolean;
+  auto_refill_threshold?: string;
+  auto_refill_amount?: string;
+};
 type Campaign = {
-  id: string; name: string; campaign_type: string; status: string; total_budget: string; spent_amount: string; bid_amount: string; daily_budget: string;
-  starts_at?: string; ends_at?: string; targeting?: Record<string, any>; creatives?: Array<{ id: string; title: string; description?: string; image_url?: string; cta_label?: string; destination_url?: string; product_id?: string }>;
+  id: string;
+  name: string;
+  campaign_type: string;
+  status: string;
+  total_budget: string;
+  spent_amount: string;
+  bid_amount: string;
+  daily_budget: string;
+  starts_at?: string;
+  ends_at?: string;
+  targeting?: Record<string, any>;
+  creatives?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    image_url?: string;
+    cta_label?: string;
+    destination_url?: string;
+    product_id?: string;
+  }>;
 };
 type Refill = { id: string; amount: string; currency: string; gateway: string; status: string; proof_url?: string; rejection_reason?: string; created_at: string };
 type AdsTransaction = { id: string; type: string; amount: string; balance_after: string; description?: string; campaign_name?: string; created_at: string };
@@ -54,6 +98,14 @@ export default function SellerAdsPage() {
     }
   };
 
+  // Dialog & Modal States
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [redeemingPromo, setRedeemingPromo] = useState(false);
+
+  const [campaignToHide, setCampaignToHide] = useState<Campaign | null>(null);
+  const [hidingCampaign, setHidingCampaign] = useState(false);
+
   const [refilling, setRefilling] = useState(false);
   const [refillAmount, setRefillAmount] = useState('50');
   const [refillGateway, setRefillGateway] = useState('flouci');
@@ -68,11 +120,6 @@ export default function SellerAdsPage() {
   });
 
   const [previewCampaign, setPreviewCampaign] = useState<Campaign | null>(null);
-
-  const [autoRefillEnabled, setAutoRefillEnabled] = useState(false);
-  const [autoRefillThreshold, setAutoRefillThreshold] = useState('10');
-  const [autoRefillAmount, setAutoRefillAmount] = useState('50');
-  const [savingAutoRefill, setSavingAutoRefill] = useState(false);
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -111,14 +158,10 @@ export default function SellerAdsPage() {
       ]);
 
       if (!ar.ok || !cr.ok || !pr.ok || !rr.ok || !tr.ok || !an.ok) {
-        throw new Error(ad.error?.message || cd.error?.message || 'Unable to load PandaMarket Ads');
+        throw new Error(ad.error?.message || cd.error?.message || 'Impossible de charger PandaMarket Ads');
       }
 
       setAccount(ad.account);
-      setAutoRefillEnabled(Boolean(ad.account?.auto_refill_enabled));
-      setAutoRefillThreshold(String(ad.account?.auto_refill_threshold || '10'));
-      setAutoRefillAmount(String(ad.account?.auto_refill_amount || '50'));
-
       setCampaigns(cd.campaigns || []);
       setPlacements(pd.placements || []);
       setRefills(rd.refills || []);
@@ -127,7 +170,7 @@ export default function SellerAdsPage() {
       setDaily(and.daily || []);
       setMarketplaceSettings(msd.settings || null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to load PandaMarket Ads');
+      setError(e instanceof Error ? e.message : 'Impossible de charger PandaMarket Ads');
     } finally {
       setLoading(false);
     }
@@ -137,58 +180,74 @@ export default function SellerAdsPage() {
     void load();
   }, [load]);
 
-  const redeemCoupon = async () => {
-    const code = window.prompt(t('ads.enterCouponCode') || 'Enter PandaMarket Ads promo code:');
-    if (!code) return;
-    setError(''); setSuccessMsg('');
-    const res = await fetchWithCsrf('/api/pd/ads/coupons/redeem', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error?.message || 'Invalid promo code'); return; }
-    setSuccessMsg(t('ads.couponRedeemed') || 'Promotional credit added to your account balance!');
-    await load();
-  };
-
-  const saveAutoRefill = async (e: React.FormEvent) => {
+  // Handle Promo Code Submission via custom modal
+  const handleRedeemCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingAutoRefill(true); setError(''); setSuccessMsg('');
+    if (!promoCode.trim()) return;
+    setRedeemingPromo(true);
+    setError('');
+    setSuccessMsg('');
     try {
-      const res = await fetchWithCsrf('/api/pd/ads/account/auto-refill', {
-        method: 'POST', credentials: 'include',
+      const res = await fetchWithCsrf('/api/pd/ads/coupons/redeem', {
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enabled: autoRefillEnabled,
-          threshold: Number(autoRefillThreshold),
-          amount: Number(autoRefillAmount),
-        }),
+        body: JSON.stringify({ code: promoCode.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to update auto-refill');
-      setSuccessMsg(t('ads.autoRefillSaved') || 'Auto-refill settings saved successfully.');
+      if (!res.ok) throw new Error(data.error?.message || 'Code promo invalide ou déjà utilisé');
+      setSuccessMsg(t('ads.couponRedeemed') || 'Crédit promotionnel ajouté avec succès à votre solde publicitaire !');
+      setPromoModalOpen(false);
+      setPromoCode('');
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update auto-refill');
+      setError(err instanceof Error ? err.message : 'Échec de validation du code promo');
     } finally {
-      setSavingAutoRefill(false);
+      setRedeemingPromo(false);
+    }
+  };
+
+  // Handle Campaign Hide via custom modal
+  const handleConfirmHide = async () => {
+    if (!campaignToHide) return;
+    setHidingCampaign(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/ads/campaigns/${campaignToHide.id}/hide`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || 'Échec du masquage de la campagne');
+      }
+      setSuccessMsg(`La campagne "${campaignToHide.name}" a été masquée de votre vue principale.`);
+      setCampaignToHide(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec du masquage de la campagne');
+    } finally {
+      setHidingCampaign(false);
     }
   };
 
   const handleFileUpload = async (file: File) => {
-    setUploadingFile(true); setError('');
+    setUploadingFile(true);
+    setError('');
     try {
       const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
-        method: 'POST', credentials: 'include',
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, contentType: file.type, folder: 'ads-refill-proofs' }),
       });
-      if (!presignRes.ok) throw new Error('Failed to prepare picture upload');
+      if (!presignRes.ok) throw new Error('Échec de la préparation du fichier de preuve');
       const presignData = await presignRes.json();
       const { upload_url, file_key, public_url } = presignData;
       if (upload_url) {
         const uploadRes = await fetch(upload_url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
-        if (!uploadRes.ok) throw new Error('Picture upload failed');
+        if (!uploadRes.ok) throw new Error('Échec du téléversement de la preuve de virement');
       }
       const finalUrl = public_url || file_key || upload_url;
       setRefillProofUrl(finalUrl);
@@ -200,49 +259,58 @@ export default function SellerAdsPage() {
         setProofPreviewUrl(finalUrl);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Picture upload failed');
+      setError(err instanceof Error ? err.message : 'Échec du téléversement du justificatif');
     } finally {
       setUploadingFile(false);
     }
   };
 
   const startRefill = async (event: React.FormEvent) => {
-    event.preventDefault(); setError(''); setSuccessMsg('');
+    event.preventDefault();
+    setError('');
+    setSuccessMsg('');
     if (refillGateway === 'manual_mandat') {
-      if (!refillProofUrl.trim()) { setError(t('ads.proofUrlHint') || 'Please upload a picture of your payment receipt.'); return; }
+      if (!refillProofUrl.trim()) {
+        setError(t('ads.proofUrlHint') || 'Veuillez téléverser une photo ou capture de votre reçu bancaire ou mandat.');
+        return;
+      }
       const r = await fetchWithCsrf('/api/pd/ads/refills/manual-mandat', {
-        method: 'POST', credentials: 'include',
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: Number(refillAmount), proof_url: refillProofUrl.trim() }),
       });
       const d = await r.json();
-      if (!r.ok) { setError(d.error?.message || 'Unable to submit manual refill'); return; }
-      setRefilling(false); setRefillProofUrl(''); setProofPreviewUrl(''); setSuccessMsg(t('ads.mandatSubmitted') || 'Manual mandat refill submitted for admin review!');
-      await load(); return;
+      if (!r.ok) {
+        setError(d.error?.message || 'Impossible de soumettre le rechargement manuel');
+        return;
+      }
+      setRefilling(false);
+      setRefillProofUrl('');
+      setProofPreviewUrl('');
+      setSuccessMsg(t('ads.mandatSubmitted') || 'Demande de rechargement soumise avec succès pour validation administrative !');
+      await load();
+      return;
     }
     const r = await fetchWithCsrf('/api/pd/ads/refills', {
-      method: 'POST', credentials: 'include',
+      method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: Number(refillAmount), gateway: refillGateway }),
     });
     const d = await r.json();
-    if (!r.ok) { setError(d.error?.message || 'Unable to start refill'); return; }
+    if (!r.ok) {
+      setError(d.error?.message || 'Impossible de démarrer la transaction');
+      return;
+    }
     window.location.href = d.checkout_url;
   };
 
   const action = async (id: string, name: string) => {
     const res = await fetchWithCsrf(`/api/pd/ads/campaigns/${id}/${name}`, { method: 'POST', credentials: 'include' });
     const data = await res.json();
-    if (!res.ok) { setError(data.error?.message || 'Campaign action failed'); return; }
-    await load();
-  };
-
-  const hideCampaign = async (id: string) => {
-    if (!window.confirm('Hide this campaign from your dashboard?')) return;
-    const res = await fetchWithCsrf(`/api/pd/ads/campaigns/${id}/hide`, { method: 'POST', credentials: 'include' });
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error?.message || 'Failed to hide campaign');
+      setError(data.error?.message || 'L\'action sur la campagne a échoué');
       return;
     }
     await load();
@@ -267,10 +335,12 @@ export default function SellerAdsPage() {
   const submitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCampaign) return;
-    setError(''); setSuccessMsg('');
+    setError('');
+    setSuccessMsg('');
     try {
       const res = await fetchWithCsrf(`/api/pd/ads/campaigns/${editingCampaign.id}`, {
-        method: 'PATCH', credentials: 'include',
+        method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editForm.name,
@@ -287,16 +357,22 @@ export default function SellerAdsPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Failed to update campaign');
+      if (!res.ok) throw new Error(data.error?.message || 'Échec de la modification de la campagne');
       setEditingCampaign(null);
-      setSuccessMsg('Campaign updated successfully! If it was approved, it has been resubmitted for admin review.');
+      setSuccessMsg('Campagne modifiée avec succès ! Si elle était active, elle sera réexaminée par nos équipes.');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update campaign');
+      setError(err instanceof Error ? err.message : 'Échec de la modification');
     }
   };
 
   const billingInfo = marketplaceSettings?.marketplace_billing_info;
+
+  // Calculate Net Merchant Margin (Attributed Revenue - Ad Spend)
+  const totalPeriodSpend = (analytics?.clicks || 0) * (analytics?.average_cpc || 0);
+  const attributedRevenueNum = Number(analytics?.revenue || 0);
+  const netMarginTnd = attributedRevenueNum - totalPeriodSpend;
+  const isNetMarginPositive = netMarginTnd >= 0;
 
   if (loading) {
     return (
@@ -311,7 +387,7 @@ export default function SellerAdsPage() {
 
   return (
     <div dir={dir} className="space-y-6">
-      {/* Header */}
+      {/* Top Header Card */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <div className="flex items-center gap-3.5">
           <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
@@ -319,7 +395,7 @@ export default function SellerAdsPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
+              <h1 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
                 {t('ads.center') || 'Centre Publicitaire PandaAds'}
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -332,20 +408,22 @@ export default function SellerAdsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={redeemCoupon}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
+            onClick={() => setPromoModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
           >
-            {t('ads.redeemCoupon') || 'Code Promo'}
+            <Gift className="h-3.5 w-3.5 text-amber-500" />
+            <span>{t('ads.redeemCoupon') || 'Code Promo'}</span>
           </button>
           <button
             type="button"
             onClick={() => setRefilling(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
           >
-            {t('ads.refillAccount') || 'Recharger le Solde'}
+            <WalletCards className="h-3.5 w-3.5 text-slate-400" />
+            <span>{t('ads.refillAccount') || 'Recharger le Solde'}</span>
           </button>
           <button
             type="button"
@@ -381,7 +459,7 @@ export default function SellerAdsPage() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{String(label)}</p>
-                <p className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mt-1.5">{String(value)}</p>
+                <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mt-1">{String(value)}</p>
               </div>
               <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
                 <Icon className="h-4 w-4" />
@@ -394,7 +472,7 @@ export default function SellerAdsPage() {
       {/* Low Balance Warning */}
       {Number(account?.balance || 0) < 5 && (
         <div className="rounded-xl border border-amber-200/80 dark:border-amber-800/80 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-xs font-normal text-amber-800 dark:text-amber-300 flex items-start gap-3 shadow-2xs">
-          <WalletCards className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-amber-900 dark:text-amber-200">
               {t('ads.lowBalanceTitle') || 'Solde Publicitaire Bas'}
@@ -406,12 +484,12 @@ export default function SellerAdsPage() {
         </div>
       )}
 
-      {/* Performance Section */}
-      <section className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xs space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Performance Section with Net Merchant Margin */}
+      <section className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xs space-y-5" aria-labelledby="ads-perf-heading">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.performanceTitle') || 'Performance & Statistiques'}</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">{t('ads.performanceDesc') || 'Suivi précis des impressions, clics, dépenses et conversions.'}</p>
+            <h2 id="ads-perf-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.performanceTitle') || 'Performance & Rentabilité'}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">{t('ads.performanceDesc') || 'Suivi précis des impressions, clics, dépenses et retour sur investissement net.'}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5 shadow-2xs">
@@ -428,7 +506,7 @@ export default function SellerAdsPage() {
             </div>
 
             <select
-              aria-label="Filtre de campagne"
+              aria-label="Filtre par campagne"
               value={campaignFilter}
               onChange={(e) => setCampaignFilter(e.target.value)}
               className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs outline-none"
@@ -440,6 +518,7 @@ export default function SellerAdsPage() {
             </select>
 
             <select
+              aria-label="Granularité d'analyse"
               value={granularity}
               onChange={(e) => setGranularity(e.target.value as any)}
               className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 shadow-2xs outline-none"
@@ -473,20 +552,30 @@ export default function SellerAdsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
+        {/* 9-KPI Grid including Net Merchant Margin */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
           {[
-            [t('ads.impressions') || 'Impressions', analytics?.impressions || 0],
-            [t('ads.clicks') || 'Clics', analytics?.clicks || 0],
-            [t('ads.ctr') || 'CTR', `${((analytics?.ctr || 0) * 100).toFixed(2)}%`],
-            [t('ads.avgCpc') || 'CPC Moyen', money(String(analytics?.average_cpc || 0))],
-            [t('ads.conversions') || 'Conversions', analytics?.conversions || 0],
-            [t('ads.convRate') || 'Taux Conv.', `${((analytics?.conversion_rate || 0) * 100).toFixed(2)}%`],
-            [t('ads.revenue') || 'Revenus', money(analytics?.revenue)],
-            [t('ads.roas') || 'ROAS', `${Number(analytics?.roas || 0).toFixed(2)}×`],
-          ].map(([l, v]) => (
-            <div key={String(l)} className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{String(l)}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-900 dark:text-white font-mono">{String(v)}</p>
+            [t('ads.impressions') || 'Impressions', (analytics?.impressions || 0).toLocaleString(), 'Vues de l\'annonce'],
+            [t('ads.clicks') || 'Clics', (analytics?.clicks || 0).toLocaleString(), 'Visiteurs uniques'],
+            [t('ads.ctr') || 'CTR', `${((analytics?.ctr || 0) * 100).toFixed(2)}%`, 'Taux de clic'],
+            [t('ads.avgCpc') || 'CPC Moyen', money(analytics?.average_cpc || 0), 'Coût par clic'],
+            [t('ads.conversions') || 'Ventes', analytics?.conversions || 0, 'Commandes générées'],
+            [t('ads.convRate') || 'Taux Conv.', `${((analytics?.conversion_rate || 0) * 100).toFixed(2)}%`, 'Commandes / Clics'],
+            [t('ads.revenue') || 'Ventes Attribuées', money(analytics?.revenue), 'Chiffre d\'affaires'],
+            [t('ads.roas') || 'ROAS', `${Number(analytics?.roas || 0).toFixed(2)}×`, 'CA généré / Dépenses'],
+            [
+              'Marge Nette Est.',
+              `${netMarginTnd >= 0 ? '+' : ''}${money(netMarginTnd)}`,
+              'Bénéfice (CA - Pub)',
+              isNetMarginPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+            ],
+          ].map(([label, value, sub, customColor]) => (
+            <div key={String(label)} className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs flex flex-col justify-between">
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 truncate">{String(label)}</p>
+                <p className={`mt-1 text-xs font-semibold font-mono truncate ${customColor || 'text-slate-900 dark:text-white'}`}>{String(value)}</p>
+              </div>
+              <p className="text-[9px] text-slate-400 font-normal truncate mt-1">{String(sub)}</p>
             </div>
           ))}
         </div>
@@ -495,9 +584,14 @@ export default function SellerAdsPage() {
       </section>
 
       {/* Campaigns List Section */}
-      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-        <div className="border-b border-slate-100 dark:border-slate-800 p-5">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.campaignsTitle') || 'Vos Campagnes Publicitaires'}</h2>
+      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs" aria-labelledby="campaigns-list-heading">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 gap-2">
+          <div>
+            <h2 id="campaigns-list-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.campaignsTitle') || 'Vos Campagnes Publicitaires'}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+              Examen et validation des nouvelles campagnes sous 24h ouvrées.
+            </p>
+          </div>
         </div>
         {campaigns.length === 0 ? (
           <div className="p-12 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -511,7 +605,7 @@ export default function SellerAdsPage() {
                 <div key={c.id} className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                   <div className="flex items-center gap-3.5 min-w-0">
                     {creative?.image_url ? (
-                      <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover border border-slate-200/80 dark:border-slate-700" />
+                      <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt={c.name} className="h-11 w-11 shrink-0 rounded-xl object-cover border border-slate-200/80 dark:border-slate-700" />
                     ) : (
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                         <Megaphone className="h-4 w-4" />
@@ -544,6 +638,7 @@ export default function SellerAdsPage() {
                     <button
                       type="button"
                       onClick={() => setPreviewCampaign(c)}
+                      aria-label={`Aperçu du visuel de ${c.name}`}
                       className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
                       title="Aperçu du visuel"
                     >
@@ -552,6 +647,7 @@ export default function SellerAdsPage() {
                     <button
                       type="button"
                       onClick={() => openEditModal(c)}
+                      aria-label={`Modifier la campagne ${c.name}`}
                       className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
                       title="Modifier la campagne"
                     >
@@ -559,11 +655,12 @@ export default function SellerAdsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => hideCampaign(c.id)}
+                      onClick={() => setCampaignToHide(c)}
+                      aria-label={`Masquer la campagne ${c.name}`}
                       className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30 p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition shadow-2xs cursor-pointer"
                       title="Masquer la campagne"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Archive className="h-3.5 w-3.5" />
                     </button>
 
                     {c.status === 'draft' && (
@@ -611,24 +708,28 @@ export default function SellerAdsPage() {
       </section>
 
       {/* Refill History */}
-      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-        <div className="border-b border-slate-100 dark:border-slate-800 p-5">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.refillHistoryTitle') || 'Historique des Rechargements'}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">{t('ads.refillHistoryDesc') || 'Demandes de rechargement prépayé et reçus comptables.'}</p>
+      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs" aria-labelledby="refill-history-heading">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-100 dark:border-slate-800 p-5 gap-2">
+          <div>
+            <h2 id="refill-history-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.refillHistoryTitle') || 'Historique des Rechargements'}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+              Délai moyen de validation des mandats : 2 à 4 heures ouvrables (Lun-Sam 8h-18h).
+            </p>
+          </div>
         </div>
         {refills.length === 0 ? (
           <p className="p-8 text-center text-xs font-medium text-slate-400">{t('ads.noRefills') || 'Aucun rechargement effectué.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-850 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800/40 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
                 <tr>
-                  <th className="p-3.5 font-medium">{t('ads.date') || 'Date'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.gateway') || 'Passerelle'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.amount') || 'Montant'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.status') || 'Statut'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.proof') || 'Justificatif'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.receipt') || 'Reçu'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.date') || 'Date'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.gateway') || 'Passerelle'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.amount') || 'Montant'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.status') || 'Statut'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.proof') || 'Justificatif'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.receipt') || 'Reçu'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
@@ -639,15 +740,15 @@ export default function SellerAdsPage() {
                     <td className="p-3.5 font-semibold text-slate-900 dark:text-white font-mono">{money(r.amount, r.currency)}</td>
                     <td className="p-3.5">
                       {r.status === 'captured' ? (
-                        <span className="rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.captured') || 'Validé'}</span>
+                        <span className="rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.captured') || 'Validé'}</span>
                       ) : r.status === 'pending_review' ? (
-                        <span className="rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.pendingReview') || 'En examen'}</span>
+                        <span className="rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.pendingReview') || 'En examen'}</span>
                       ) : r.status === 'rejected' ? (
-                        <span className="rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.rejected') || 'Rejeté'}</span>
+                        <span className="rounded-full bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-2 py-0.5 text-[10px] font-medium">{t('ads.rejected') || 'Rejeté'}</span>
                       ) : (
-                        <span className="rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 text-[10px] font-medium">{r.status.replaceAll('_', ' ')}</span>
+                        <span className="rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 text-[10px] font-medium">{r.status.replaceAll('_', ' ')}</span>
                       )}
-                      {r.status === 'rejected' && r.rejection_reason && <p className="mt-1 text-[10px] text-rose-600">{r.rejection_reason}</p>}
+                      {r.status === 'rejected' && r.rejection_reason && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 font-normal">{r.rejection_reason}</p>}
                     </td>
                     <td className="p-3.5">
                       {r.proof_url ? (
@@ -676,37 +777,37 @@ export default function SellerAdsPage() {
       </section>
 
       {/* Ads Account Transactions Ledger */}
-      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+      <section className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs" aria-labelledby="transactions-ledger-heading">
         <div className="border-b border-slate-100 dark:border-slate-800 p-5">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.transactionsTitle') || 'Journal des Transactions Ads'}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">Registre de tous les rechargements, débits de campagne et remboursements.</p>
+          <h2 id="transactions-ledger-heading" className="text-sm font-semibold text-slate-900 dark:text-white">{t('ads.transactionsTitle') || 'Journal des Transactions Ads'}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">Registre comptable de tous les rechargements, débits de campagne et remboursements.</p>
         </div>
         {transactions.length === 0 ? (
           <p className="p-8 text-center text-xs font-medium text-slate-400">{t('ads.noTransactions') || 'Aucune transaction enregistrée.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-850 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800/40 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
                 <tr>
-                  <th className="p-3.5 font-medium">{t('ads.date') || 'Date'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.type') || 'Type'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.description') || 'Description'}</th>
-                  <th className="p-3.5 font-medium">Campagne</th>
-                  <th className="p-3.5 font-medium">{t('ads.amount') || 'Montant'}</th>
-                  <th className="p-3.5 font-medium">{t('ads.balance') || 'Solde après'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.date') || 'Date'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.type') || 'Type'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.description') || 'Description'}</th>
+                  <th scope="col" className="p-3.5 font-medium">Campagne</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.amount') || 'Montant'}</th>
+                  <th scope="col" className="p-3.5 font-medium">{t('ads.balance') || 'Solde après'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                {transactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{new Date(t.created_at).toLocaleDateString()}</td>
-                    <td className="p-3.5 font-medium capitalize text-slate-900 dark:text-white">{t.type.replaceAll('_', ' ')}</td>
-                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{t.description || '—'}</td>
-                    <td className="p-3.5 font-medium text-slate-900 dark:text-white">{t.campaign_name || t.description || 'Compte Général'}</td>
-                    <td className={`p-3.5 font-semibold font-mono ${Number(t.amount) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
-                      {Number(t.amount) >= 0 ? '+' : ''}{money(t.amount)}
+                {transactions.map((tr) => (
+                  <tr key={tr.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{new Date(tr.created_at).toLocaleDateString()}</td>
+                    <td className="p-3.5 font-medium capitalize text-slate-900 dark:text-white">{tr.type.replaceAll('_', ' ')}</td>
+                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{tr.description || '—'}</td>
+                    <td className="p-3.5 font-medium text-slate-900 dark:text-white">{tr.campaign_name || tr.description || 'Compte Général'}</td>
+                    <td className={`p-3.5 font-semibold font-mono ${Number(tr.amount) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                      {Number(tr.amount) >= 0 ? '+' : ''}{money(tr.amount)}
                     </td>
-                    <td className="p-3.5 font-medium text-slate-900 dark:text-white font-mono">{money(t.balance_after)}</td>
+                    <td className="p-3.5 font-medium text-slate-900 dark:text-white font-mono">{money(tr.balance_after)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -725,16 +826,138 @@ export default function SellerAdsPage() {
         />
       )}
 
+      {/* Promo Code Modal Dialog */}
+      {promoModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="promo-dialog-title"
+        >
+          <form
+            onSubmit={handleRedeemCoupon}
+            className="w-full max-w-sm rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                  <Gift className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 id="promo-dialog-title" className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Activer un Code Promo
+                  </h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                    Créditez votre solde publicitaire avec un bon promotionnel.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPromoModalOpen(false)}
+                aria-label="Fermer le dialogue de code promo"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="promo-input-code" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                Code Promotionnel
+              </label>
+              <input
+                id="promo-input-code"
+                type="text"
+                autoFocus
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                placeholder="Ex: PANDA-BOOST-20"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider outline-none shadow-2xs"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPromoModalOpen(false)}
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={redeemingPromo || !promoCode.trim()}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white py-2 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs disabled:opacity-50 cursor-pointer"
+              >
+                {redeemingPromo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                <span>{redeemingPromo ? 'Validation...' : 'Appliquer'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Confirm Hide Campaign Dialog */}
+      {campaignToHide && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hide-dialog-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shrink-0">
+                <Archive className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 id="hide-dialog-title" className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Masquer la campagne ?
+                </h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+                  Êtes-vous sûr de vouloir masquer <span className="font-semibold text-slate-900 dark:text-white">"{campaignToHide.name}"</span> de votre tableau de bord ?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCampaignToHide(null)}
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmHide}
+                disabled={hidingCampaign}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 dark:bg-rose-700 py-2 text-xs font-medium text-white hover:bg-rose-700 transition shadow-2xs disabled:opacity-50 cursor-pointer"
+              >
+                {hidingCampaign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                <span>{hidingCampaign ? 'Masquage...' : 'Confirmer'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Campaign Modal */}
       {editingCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <form onSubmit={submitEdit} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-campaign-title"
+        >
+          <form onSubmit={submitEdit} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Modifier la Campagne : {editingCampaign.name}</h2>
+                <h2 id="edit-campaign-title" className="text-base font-semibold text-slate-900 dark:text-white">Modifier la Campagne : {editingCampaign.name}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Toute modification soumettra de nouveau le créatif pour modération.</p>
               </div>
-              <button type="button" onClick={() => setEditingCampaign(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <button type="button" onClick={() => setEditingCampaign(null)} aria-label="Fermer la modification" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -800,11 +1023,16 @@ export default function SellerAdsPage() {
 
       {/* Preview Modal */}
       {previewCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-modal-title"
+        >
           <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Aperçu du Créatif Publicitaire</h2>
-              <button type="button" onClick={() => setPreviewCampaign(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <h2 id="preview-modal-title" className="text-sm font-semibold text-slate-900 dark:text-white">Aperçu du Créatif Publicitaire</h2>
+              <button type="button" onClick={() => setPreviewCampaign(null)} aria-label="Fermer la prévisualisation" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -814,7 +1042,7 @@ export default function SellerAdsPage() {
                   <img src={previewCampaign.creatives[0].image_url} alt="" className="h-40 w-full rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                 )}
                 <div>
-                  <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-medium uppercase text-slate-700 dark:text-slate-300">Sponsorisé</span>
+                  <span className="rounded-md bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[9px] font-medium uppercase text-slate-700 dark:text-slate-300">Sponsorisé</span>
                   <h3 className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-white">{previewCampaign.creatives[0].title}</h3>
                   {previewCampaign.creatives[0].description && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-normal">{previewCampaign.creatives[0].description}</p>}
                   <button type="button" className="mt-3 rounded-xl bg-slate-900 dark:bg-white px-3.5 py-1.5 text-xs font-medium text-white dark:text-slate-900 shadow-2xs">
@@ -831,21 +1059,26 @@ export default function SellerAdsPage() {
 
       {/* Refill Modal */}
       {refilling && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <form onSubmit={startRefill} className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="refill-modal-title"
+        >
+          <form onSubmit={startRefill} className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('ads.refillModalTitle') || 'Recharger le Solde Ads'}</h2>
+                <h2 id="refill-modal-title" className="text-base font-semibold text-slate-900 dark:text-white">{t('ads.refillModalTitle') || 'Recharger le Solde Ads'}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">{t('ads.refillModalDesc') || 'Approvisionnez votre compte publicitaire.'}</p>
               </div>
-              <button type="button" onClick={() => setRefilling(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setRefilling(false)} aria-label="Fermer la recharge" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="refill-amount-input" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                 {t('ads.amountTnd') || 'Montant (TND)'}
               </label>
-              <input type="number" min="0.001" step="0.001" value={refillAmount} onChange={(e) => setRefillAmount(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-base font-semibold text-slate-900 dark:text-white shadow-2xs outline-none" />
+              <input id="refill-amount-input" type="number" min="0.001" step="0.001" value={refillAmount} onChange={(e) => setRefillAmount(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-base font-semibold text-slate-900 dark:text-white shadow-2xs outline-none" />
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {['20', '50', '100', '200'].map((preset) => (
                   <button
@@ -853,7 +1086,7 @@ export default function SellerAdsPage() {
                     type="button"
                     onClick={() => setRefillAmount(preset)}
                     className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                      refillAmount === preset ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                      refillAmount === preset ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                     }`}
                   >
                     +{preset} TND
@@ -863,13 +1096,13 @@ export default function SellerAdsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="refill-gateway-select" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                 {t('ads.gateway') || 'Moyen de Paiement'}
               </label>
-              <select value={refillGateway} onChange={(e) => setRefillGateway(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-medium text-slate-900 dark:text-white shadow-2xs outline-none cursor-pointer">
+              <select id="refill-gateway-select" value={refillGateway} onChange={(e) => setRefillGateway(e.target.value)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs font-medium text-slate-900 dark:text-white shadow-2xs outline-none cursor-pointer">
                 <option value="flouci">Flouci</option>
                 <option value="konnect">Konnect</option>
-                <option value="manual_mandat">{t('ads.mandatGateway') || 'Virement Bancaire / Mandat'}</option>
+                <option value="manual_mandat">{t('ads.mandatGateway') || 'Virement Bancaire / Mandat Postal'}</option>
               </select>
             </div>
 
@@ -892,14 +1125,14 @@ export default function SellerAdsPage() {
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">{t('ads.proofImage') || 'Preuve de Virement'}</label>
                   {uploadingFile ? (
-                    <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white dark:bg-slate-800 p-3 text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs font-medium text-slate-600 dark:text-slate-400">
                       <Loader2 className="h-4 w-4 animate-spin text-slate-900 dark:text-white" />
                       {t('ads.uploadingProof') || 'Téléversement en cours...'}
                     </div>
                   ) : proofPreviewUrl ? (
                     <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5">
                       <div className="flex items-center gap-2.5">
-                        <img src={proofPreviewUrl} alt="Receipt preview" className="h-12 w-12 rounded-lg object-cover border border-slate-200" />
+                        <img src={proofPreviewUrl} alt="Receipt preview" className="h-12 w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
                         <div>
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Document téléversé
