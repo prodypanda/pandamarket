@@ -1,11 +1,10 @@
 'use client';
 
-import { ChatInbox } from '../../../components/chat/ChatInbox';
+import { AdminChatInbox } from '@/components/chat/AdminChatInbox';
 
 export default function AdminMessagesPage() {
   return (
-    <ChatInbox
-      mode="admin"
+    <AdminChatInbox
       title="Superadmin Messages"
       subtitle="Handle seller and buyer support conversations from one elegant command inbox, reply in real time, and track open threads clearly."
     />
