@@ -26,6 +26,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AdsCampaignWizard } from '../../../../components/dashboard/AdsCampaignWizard';
 import { AdsPerformanceCharts } from '../../../../components/dashboard/AdsPerformanceCharts';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { AnalyticsBentoCockpit, AnalyticsData } from '@/components/dashboard/AnalyticsBentoCockpit';
 
 type Placement = { id: string; name: string; format: string; default_price: string };
 type Account = {
@@ -70,6 +72,9 @@ const money = (v?: string | number, c = 'TND') => `${Number(v || 0).toFixed(3)} 
 
 export default function SellerAdsPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
+  const [bentoPeriod, setBentoPeriod] = useState<7 | 30 | 90>(30);
+  const [storeAnalytics, setStoreAnalytics] = useState<AnalyticsData | null>(null);
 
   const [account, setAccount] = useState<Account | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -136,12 +141,34 @@ export default function SellerAdsPage() {
     }
   }, []);
 
+  const fetchStoreAnalytics = useCallback(async (p: number) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/analytics/store?period=${p}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setStoreAnalytics(json);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const q = new URLSearchParams({ from, to, granularity });
+      const bentoFrom = new Date(Date.now() - bentoPeriod * 86400000).toISOString().slice(0, 10);
+      const bentoTo = new Date().toISOString().slice(0, 10);
+      const effectiveFrom = dashboardStyle === 'bento' ? bentoFrom : from;
+      const effectiveTo = dashboardStyle === 'bento' ? bentoTo : to;
+      const q = new URLSearchParams({ from: effectiveFrom, to: effectiveTo, granularity });
       if (campaignFilter) q.set('campaign_id', campaignFilter);
+
+      const fetchBento = dashboardStyle === 'bento'
+        ? fetchStoreAnalytics(bentoPeriod)
+        : Promise.resolve();
 
       const [ar, cr, pr, rr, tr, an, msr] = await Promise.all([
         fetchWithCsrf('/api/pd/ads/account', { credentials: 'include' }),
@@ -152,6 +179,8 @@ export default function SellerAdsPage() {
         fetchWithCsrf(`/api/pd/ads/analytics?${q}`, { credentials: 'include' }),
         fetchWithCsrf('/api/pd/marketplace/settings', { credentials: 'include' }),
       ]);
+
+      await fetchBento;
 
       const [ad, cd, pd, rd, td, and, msd] = await Promise.all([
         ar.json(), cr.json(), pr.json(), rr.json(), tr.json(), an.json(), msr.json(),
@@ -174,11 +203,17 @@ export default function SellerAdsPage() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, campaignFilter, granularity]);
+  }, [from, to, campaignFilter, granularity, dashboardStyle, bentoPeriod, fetchStoreAnalytics]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (dashboardStyle === 'bento') {
+      void fetchStoreAnalytics(bentoPeriod);
+    }
+  }, [dashboardStyle, bentoPeriod, fetchStoreAnalytics]);
 
   // Handle Promo Code Submission via custom modal
   const handleRedeemCoupon = async (e: React.FormEvent) => {
@@ -374,7 +409,7 @@ export default function SellerAdsPage() {
   const netMarginTnd = attributedRevenueNum - totalPeriodSpend;
   const isNetMarginPositive = netMarginTnd >= 0;
 
-  if (loading) {
+  if (loading && dashboardStyle !== 'bento') {
     return (
       <div className="flex min-h-[380px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <div className="flex items-center gap-2.5 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -387,7 +422,20 @@ export default function SellerAdsPage() {
 
   return (
     <div dir={dir} className="space-y-6">
-      {/* Top Header Card */}
+      {dashboardStyle === 'bento' ? (
+        <AnalyticsBentoCockpit
+          data={storeAnalytics}
+          adsData={{ account, analytics, daily }}
+          period={bentoPeriod}
+          onPeriodChange={(p) => setBentoPeriod(p)}
+          loading={loading}
+          onRefresh={load}
+          dir={dir}
+          onCreateCampaign={() => setCreating(true)}
+        />
+      ) : (
+        <>
+          {/* Top Header Card */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <div className="flex items-center gap-3.5">
           <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
@@ -815,6 +863,8 @@ export default function SellerAdsPage() {
           </div>
         )}
       </section>
+        </>
+      )}
 
       {/* Campaign Wizard Popup */}
       {creating && (

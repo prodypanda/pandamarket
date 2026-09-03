@@ -5,9 +5,11 @@ import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy } from 'lucide-react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy, LayoutGrid, Table } from 'lucide-react';
 import { SellerOrderDrawer } from '@/components/dashboard/orders/SellerOrderDrawer';
 import { PromptDialog } from '@/components/ui/PromptDialog';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { OrdersBentoCockpit } from '@/components/dashboard/OrdersBentoCockpit';
 
 export type OrdersMainTab = 'all_orders' | 'cod_radar' | 'rto_returns' | 'courier_settlements';
 
@@ -184,7 +186,7 @@ export interface SellerDeliveryProof {
   created_at: string;
 }
 
-interface OrderSummary {
+export interface OrderSummary {
   total_orders: number;
   open_orders: number;
   to_ship: number;
@@ -203,7 +205,7 @@ interface OrderSummary {
   fulfillment_sla_rate: number;
 }
 
-interface OrderMeta {
+export interface OrderMeta {
   page: number;
   limit: number;
   total: number;
@@ -1214,6 +1216,7 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
 
 export default function OrdersPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle, setDashboardStyle } = useDashboardStyle();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -2201,8 +2204,9 @@ export default function OrdersPage() {
     }
   };
 
-  const handleVerifyCodOtp = async (orderId: string) => {
-    if (!codOtpInput.trim()) return;
+  const handleVerifyCodOtp = async (orderId: string, customCode?: string) => {
+    const codeToVerify = (customCode !== undefined ? customCode : codOtpInput).trim();
+    if (!codeToVerify) return;
     setVerifyingCodOtp(true);
     setCodFeedback('');
     try {
@@ -2210,7 +2214,7 @@ export default function OrdersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code: codOtpInput.trim() }),
+        body: JSON.stringify({ code: codeToVerify }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error?.message || 'Code OTP incorrect');
@@ -2399,24 +2403,75 @@ export default function OrdersPage() {
             {t('dashboardPages.orders.ordersSubtitle')}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void fetchOrders()}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-60 shadow-2xs"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {t('dashboardPages.orders.refresh')}
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Mode Toggle: Bento Cockpit vs Classic Table */}
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setDashboardStyle('bento')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                dashboardStyle === 'bento'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cockpit Bento</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDashboardStyle('classic')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                dashboardStyle === 'classic'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Tableau classique</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void fetchOrders()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-60 shadow-2xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {t('dashboardPages.orders.refresh')}
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-200/60 bg-rose-50 p-4 text-xs font-medium text-rose-800">
+        <div className="flex items-center gap-3 rounded-2xl border border-rose-200/60 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 p-4 text-xs font-medium text-rose-800 dark:text-rose-300">
           <X className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
+      {dashboardStyle === 'bento' ? (
+        <OrdersBentoCockpit
+          orders={orders}
+          meta={meta}
+          loading={loading}
+          onRefresh={fetchOrders}
+          onSelectOrder={openOrderDetail}
+          onFulfillOrder={openFulfillmentModal}
+          onGenerateLabel={generateShippingLabel}
+          onUpdateCodStatus={handleUpdateCodStatus}
+          onSendCodOtp={handleSendCodOtp}
+          onVerifyCodOtp={handleVerifyCodOtp}
+          onPrintOrder={(order, kind) => openOrderPrintDocument(order, kind, marketplaceName, t, locale)}
+          onCancelFulfillment={cancelSellerFulfillment}
+          updatingCodStatus={updatingCodStatus}
+          sendingCodOtp={sendingCodOtp}
+          codFeedback={codFeedback}
+          dir={dir}
+        />
+      ) : (
+        <>
       {/* NAVIGATION TABS */}
       <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700">
         <button
@@ -3574,6 +3629,8 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {selectedOrder && (

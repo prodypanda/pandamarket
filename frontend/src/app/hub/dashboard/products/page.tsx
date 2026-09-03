@@ -10,6 +10,8 @@ import { getHubProductHref } from '@/lib/product-links';
 import { CategorySearchableSelect } from '@/components/ui/CategorySearchableSelect';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { buildHierarchicalCategoryList } from '@/lib/category-tree';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { ProductsBentoCockpit } from '@/components/dashboard/ProductsBentoCockpit';
 import {
   Activity,
   AlertCircle,
@@ -150,7 +152,7 @@ interface BundleItemForm {
   variant_inventory_quantity?: number;
 }
 
-interface Product {
+export interface Product {
   id: string;
   type?: string;
   title: string;
@@ -190,7 +192,7 @@ interface Product {
   bundle_items?: BundleItemForm[];
 }
 
-interface Category {
+export interface Category {
   id: string;
   name: string;
   slug: string;
@@ -542,7 +544,8 @@ function syncFirstProductOnboarding(productTotal: number, currentProducts: Produ
 // =========================================================================
 
 export default function ProductsPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
+  const { dashboardStyle, setDashboardStyle } = useDashboardStyle();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -2856,6 +2859,33 @@ export default function ProductsPage() {
     }
   };
 
+  const handleQuickAdjustStock = async (product: Product, newQuantity: number) => {
+    setError('');
+    try {
+      const res = await fetchWithCsrf(`/api/pd/stores/me/products/${product.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ inventory_quantity: Math.max(0, newQuantity) }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProducts((current) =>
+          current.map((item) =>
+            item.id === product.id ? { ...item, inventory_quantity: Math.max(0, newQuantity), ...(data.product || {}) } : item
+          )
+        );
+        setSuccess(`Stock mis à jour pour "${product.title}" : ${newQuantity} unité(s)`);
+        await fetchProducts();
+      } else {
+        setError(await getErrorMessage(res, 'Impossible d\'ajuster le stock'));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur réseau');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. CALM STATS & COMMAND BAR */}
@@ -2885,33 +2915,63 @@ export default function ProductsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* View Mode Toggle */}
-            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5">
+            {/* View Mode Toggle: Bento Cockpit vs Classic Catalogue */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
               <button
                 type="button"
-                onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'table'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                onClick={() => setDashboardStyle('bento')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  dashboardStyle === 'bento'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Vue Tableau Dense"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-                title="Vue Grille Studio"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Cockpit Bento</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDashboardStyle('classic')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  dashboardStyle === 'classic'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>Catalogue classique</span>
               </button>
             </div>
+
+            {/* View Mode Toggle (Classic table vs grid) */}
+            {dashboardStyle === 'classic' && (
+              <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                  title="Vue Tableau Dense"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                  title="Vue Grille Studio"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
@@ -2990,61 +3050,85 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* KPI Metric Cards */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
-          <div
-            onClick={() => setStatusFilter('all')}
-            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
-              statusFilter === 'all'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900'
-                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
-            }`}
-          >
-            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Total Références</span>
-            <p className="mt-1 text-lg font-semibold">{totalProducts}</p>
-          </div>
+        {/* KPI Metric Cards (Classic Mode Only) */}
+        {dashboardStyle === 'classic' && (
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+            <div
+              onClick={() => setStatusFilter('all')}
+              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
+                statusFilter === 'all'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900'
+                  : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Total Références</span>
+              <p className="mt-1 text-lg font-semibold">{totalProducts}</p>
+            </div>
 
-          <div
-            onClick={() => setStatusFilter((curr) => (curr === 'published' ? 'all' : 'published'))}
-            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
-              statusFilter === 'published'
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-300 ring-1 ring-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700'
-                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
-            }`}
-          >
-            <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-              Publiés & En Ligne
-            </span>
-            <p className="mt-1 text-lg font-semibold text-emerald-900 dark:text-emerald-200">{publishedCount}</p>
-          </div>
+            <div
+              onClick={() => setStatusFilter((curr) => (curr === 'published' ? 'all' : 'published'))}
+              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
+                statusFilter === 'published'
+                  ? 'bg-emerald-50 text-emerald-900 border-emerald-300 ring-1 ring-emerald-300/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-700'
+                  : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                Publiés & En Ligne
+              </span>
+              <p className="mt-1 text-lg font-semibold text-emerald-900 dark:text-emerald-200">{publishedCount}</p>
+            </div>
 
-          <div
-            onClick={() => setStatusFilter((curr) => (curr === 'draft' ? 'all' : 'draft'))}
-            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
-              statusFilter === 'draft'
-                ? 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700 dark:text-white dark:border-slate-600'
-                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
-            }`}
-          >
-            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Brouillons</span>
-            <p className="mt-1 text-lg font-semibold">{draftCount}</p>
-          </div>
+            <div
+              onClick={() => setStatusFilter((curr) => (curr === 'draft' ? 'all' : 'draft'))}
+              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
+                statusFilter === 'draft'
+                  ? 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-700 dark:text-white dark:border-slate-600'
+                  : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Brouillons</span>
+              <p className="mt-1 text-lg font-semibold">{draftCount}</p>
+            </div>
 
-          <div
-            onClick={() => setStatusFilter((curr) => (curr === 'low_stock' ? 'all' : 'low_stock'))}
-            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
-              statusFilter === 'low_stock'
-                ? 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700'
-                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
-            }`}
-          >
-            <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-              Alertes Stock Faible
-            </span>
-            <p className="mt-1 text-lg font-semibold text-amber-900 dark:text-amber-200">{lowStockCount}</p>
+            <div
+              onClick={() => setStatusFilter((curr) => (curr === 'low_stock' ? 'all' : 'low_stock'))}
+              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition shadow-2xs ${
+                statusFilter === 'low_stock'
+                  ? 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-300/60 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-700'
+                  : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                Alertes Stock Faible
+              </span>
+              <p className="mt-1 text-lg font-semibold text-amber-900 dark:text-amber-200">{lowStockCount}</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {dashboardStyle === 'bento' ? (
+        <ProductsBentoCockpit
+          products={products}
+          loading={loading}
+          totalProducts={totalProducts}
+          storeCounts={storeCounts}
+          categories={marketplaceCategories}
+          onRefresh={fetchProducts}
+          onEditProduct={startEdit}
+          onCreateProduct={() => {
+            resetForm();
+            setShowDrawer(true);
+          }}
+          onDeleteProduct={(product) => setProductToDelete(product)}
+          onStatusChange={handleStatusChange}
+          onQuickAdjustStock={handleQuickAdjustStock}
+          limits={limits ? { maxProducts: limits.max_products, currentProducts: totalProducts } : undefined}
+          dir={dir}
+        />
+      ) : (
+        <>
 
       {/* 2. CATALOG SEARCH & MODULAR FILTER BAR */}
       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
@@ -3592,6 +3676,8 @@ export default function ProductsPage() {
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+        </>
       )}
 
       {/* ========================================================================= */}

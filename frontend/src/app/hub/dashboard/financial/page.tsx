@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { WalletBentoCockpit } from '@/components/dashboard/WalletBentoCockpit';
 
 type PayoutMode = 'on_demand' | 'automatic';
 type FinancialTab = 'overview' | 'wallet' | 'payments' | 'accounting';
@@ -183,6 +185,7 @@ function normalizeAccountingProfile(value: unknown): AccountingProfile {
 
 export default function FinancialPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const localeStr = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const [activeTab, setActiveTab] = useState<FinancialTab>('overview');
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
@@ -458,7 +461,37 @@ export default function FinancialPage() {
 
   return (
     <div dir={dir} className="space-y-6 sm:space-y-8">
-      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
+      {dashboardStyle === 'bento' ? (
+        <WalletBentoCockpit
+          wallet={wallet}
+          transactions={transactions}
+          onRefresh={refreshAll}
+          onRequestPayout={async (amount, targetRib) => {
+            const res = await fetchWithCsrf('/api/pd/wallet/me/withdraw', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ amount, notes: `RIB: ${targetRib}` }),
+            });
+            if (!res.ok) {
+              const data = await res.json();
+              throw new Error(data.error?.message || t('dashboardPages.financial.errorRequestWithdrawal'));
+            }
+            const data = await res.json();
+            setWallet(data.wallet || null);
+            await Promise.all([fetchTransactions(), fetchOrders()]);
+          }}
+          onPayoutModeChange={handlePayoutModeChange}
+          onExportTransactions={exportTransactions}
+          onExportOrders={exportOrders}
+          accountingProfile={accountingForm}
+          loading={loading}
+          requestingPayout={withdrawing}
+          dir={dir}
+        />
+      ) : (
+        <>
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
@@ -953,6 +986,8 @@ export default function FinancialPage() {
             </button>
           </div>
         </section>
+      )}
+        </>
       )}
     </div>
   );

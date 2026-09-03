@@ -3,6 +3,8 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { AnalyticsBentoCockpit, AdsData } from '@/components/dashboard/AnalyticsBentoCockpit';
 import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart3,
@@ -97,7 +99,9 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
-  const { t, locale } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
+  const [adsData, setAdsData] = useState<AdsData | null>(null);
+  const { t, locale, dir } = useLocale();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const statusLabels: Record<string, string> = {
     pending: t('dashboardPages.analytics.statusPending'),
@@ -135,9 +139,35 @@ export default function AnalyticsPage() {
     }
   }, []);
 
+  const fetchAds = useCallback(async (p: number) => {
+    try {
+      const fromDate = new Date(Date.now() - p * 86400000).toISOString().slice(0, 10);
+      const toDate = new Date().toISOString().slice(0, 10);
+      const [accRes, anRes] = await Promise.all([
+        fetchWithCsrf('/api/pd/ads/account', { credentials: 'include' }),
+        fetchWithCsrf(`/api/pd/ads/analytics?from=${fromDate}&to=${toDate}&granularity=daily`, { credentials: 'include' }),
+      ]);
+      if (accRes.ok && anRes.ok) {
+        const [accData, anData] = await Promise.all([accRes.json(), anRes.json()]);
+        setAdsData({
+          account: accData.account || null,
+          analytics: anData.summary || null,
+          daily: anData.daily || [],
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     fetchAnalytics(period);
-  }, [period, fetchAnalytics]);
+    fetchAds(period);
+  }, [period, fetchAnalytics, fetchAds]);
+
+  const handleRefresh = async () => {
+    await Promise.all([fetchAnalytics(period), fetchAds(period)]);
+  };
 
   const kpis = data?.kpis;
   const trend = data?.revenue_trend || [];
@@ -219,9 +249,21 @@ export default function AnalyticsPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+    <div className="space-y-6" dir={dir}>
+      {dashboardStyle === 'bento' ? (
+        <AnalyticsBentoCockpit
+          data={data}
+          adsData={adsData}
+          period={period}
+          onPeriodChange={(p) => setPeriod(p)}
+          loading={loading}
+          onRefresh={handleRefresh}
+          dir={dir}
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <div className="flex items-center gap-3.5">
           <div className="p-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs shrink-0">
             <BarChart3 className="h-5 w-5" />
@@ -578,6 +620,8 @@ export default function AnalyticsPage() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

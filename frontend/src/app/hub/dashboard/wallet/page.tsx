@@ -19,6 +19,8 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { WalletBentoCockpit } from '@/components/dashboard/WalletBentoCockpit';
 import {
   formatTunisianRib,
   validateTunisianRib,
@@ -55,6 +57,7 @@ const RIB_STORAGE_KEY = 'pandamarket_merchant_rib';
 
 export default function WalletPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +228,23 @@ export default function WalletPage() {
     }
   };
 
+  const handleRequestPayout = async (amount: number, targetRib: string) => {
+    setWithdrawError('');
+    setWithdrawSuccess('');
+
+    const res = await fetchWithCsrf('/api/pd/wallet/me/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ amount, notes: `RIB: ${targetRib}` }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error?.message || t('dashboardPages.wallet.withdrawRequestError'));
+    }
+    await Promise.all([fetchWallet(), fetchTransactions()]);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6" dir={dir}>
@@ -248,7 +268,22 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
-      {/* Header */}
+      {dashboardStyle === 'bento' ? (
+        <WalletBentoCockpit
+          wallet={wallet}
+          transactions={transactions}
+          onRefresh={async () => {
+            await Promise.all([fetchWallet(), fetchTransactions()]);
+          }}
+          onRequestPayout={handleRequestPayout}
+          onPayoutModeChange={handlePayoutModeChange}
+          loading={loading}
+          requestingPayout={withdrawing}
+          dir={dir}
+        />
+      ) : (
+        <>
+          {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -780,6 +815,8 @@ export default function WalletPage() {
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
