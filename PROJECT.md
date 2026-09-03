@@ -34,10 +34,10 @@ Key architectural boundaries:
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Eradicate Native Dialogs & Modal Primitives | Create `Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx`; refactor `orders/page.tsx`, `products/page.tsx`, and secondary dialogs | none | PLANNED |
-| M2 | Tunisian Merchant Workflow Enhancements | Create `tunisia-banking.ts`; enhance `wallet/page.tsx`, `domains/page.tsx`, `themes/page.tsx` | M1 | PLANNED |
-| M3 | 100% Dark Mode Parity & Token Harmonization across 28 Surfaces | Refactor all 28 unpolished surfaces (Financial, Compliance, Online Store, Developer, AI Tools, Components) with standard tokens and `dir={dir}` | M1 | PLANNED |
-| M4 | Final Full Build, E2E Detector & Verification | Run detector suite (`scripts/detect.mjs`), `npm run build` (109 routes), and synchronize Git | M1, M2, M3 | PLANNED |
+| M1 | Eradicate Native Dialogs & Modal Primitives | Create `Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx`; refactor `orders/page.tsx`, `products/page.tsx`, and secondary dialogs | none | DONE |
+| M2 | Tunisian Merchant Workflow Enhancements | Create `tunisia-banking.ts`; enhance `wallet/page.tsx`, `domains/page.tsx`, `themes/page.tsx` | M1 | DONE |
+| M3 | 100% Dark Mode Parity & Token Harmonization across 28 Surfaces | Refactor all 28 unpolished surfaces (Financial, Compliance, Online Store, Developer, AI Tools, Components) with standard tokens and `dir={dir}` | M1 | DONE |
+| M4 | Final Full Build, E2E Detector & Verification | Run detector suite (`scripts/detect.mjs`), `npm run build` (109 routes), and synchronize Git | M1, M2, M3 | DONE |
 
 ## Interface Contracts
 
