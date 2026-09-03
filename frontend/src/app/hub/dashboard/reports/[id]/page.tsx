@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Download, Loader2, MessageSquare, Paperclip, Send, Upload, XCircle } from 'lucide-react';
-import { fetchWithCsrf } from '../../../../../lib/api';
+import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 
 type ReportStatus = 'open' | 'investigating' | 'awaiting_buyer' | 'awaiting_seller' | 'resolved' | 'dismissed';
@@ -47,12 +47,12 @@ interface CaseDetails {
 }
 
 const statusConfig: Record<ReportStatus, { className: string; icon: typeof AlertTriangle }> = {
-  open: { className: 'bg-red-50 text-red-700 ring-red-100', icon: AlertTriangle },
-  investigating: { className: 'bg-yellow-50 text-yellow-700 ring-yellow-100', icon: Clock },
-  awaiting_buyer: { className: 'bg-blue-50 text-blue-700 ring-blue-100', icon: MessageSquare },
-  awaiting_seller: { className: 'bg-purple-50 text-purple-700 ring-purple-100', icon: MessageSquare },
-  resolved: { className: 'bg-green-50 text-green-700 ring-green-100', icon: CheckCircle },
-  dismissed: { className: 'bg-gray-100 text-gray-600 ring-gray-200', icon: XCircle },
+  open: { className: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 ring-rose-200 dark:ring-rose-900/60', icon: AlertTriangle },
+  investigating: { className: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 ring-amber-200 dark:ring-amber-900/60', icon: Clock },
+  awaiting_buyer: { className: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-900/60', icon: MessageSquare },
+  awaiting_seller: { className: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-900/60', icon: MessageSquare },
+  resolved: { className: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-900/60', icon: CheckCircle },
+  dismissed: { className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-slate-200 dark:ring-slate-700', icon: XCircle },
 };
 
 function formatSize(size: number | string | null) {
@@ -63,7 +63,7 @@ function formatSize(size: number | string | null) {
 }
 
 export default function VendorReportDetailPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const params = useParams<{ id: string }>();
   const reportId = params.id;
@@ -85,7 +85,7 @@ export default function VendorReportDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [reportId]);
+  }, [reportId, t]);
 
   useEffect(() => {
     void loadCase();
@@ -155,62 +155,66 @@ export default function VendorReportDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center rounded-2xl bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-[#B91C1C]" />
+      <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-500 dark:text-slate-400" />
       </div>
     );
   }
 
   if (!report || !config) {
-    return <div className="rounded-2xl bg-white p-10 text-center text-gray-500">{feedback || t('dashboardPages.reportDetail.reportNotFound')}</div>;
+    return (
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center text-slate-500 dark:text-slate-400 shadow-2xs">
+        {feedback || t('dashboardPages.reportDetail.reportNotFound')}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <Link href="/hub/dashboard/reports" className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-gray-900">
+    <div dir={dir} className="space-y-6">
+      <Link href="/hub/dashboard/reports" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
         <ArrowLeft className="h-4 w-4" />
         {t('dashboardPages.reportDetail.backToReports')}
       </Link>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.4fr]">
         <aside className="space-y-5">
-          <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${config.className}`}>
+          <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${config.className}`}>
               <StatusIcon className="h-4 w-4" />
               {t(`dashboardPages.reportDetail.statuses.${report.status}`)}
             </span>
-            <h1 className="mt-5 text-2xl font-black text-gray-900">{t('dashboardPages.reportDetail.caseTitle', { id: report.id.slice(-8).toUpperCase() })}</h1>
-            <div className="mt-5 space-y-3 text-sm text-gray-600">
-              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.buyerLabel')}</span> {report.reporter_email || t('dashboardPages.reportDetail.buyerDefault')}</p>
-              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.categoryLabel')}</span> {report.category}</p>
-              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.priorityLabel')}</span> {report.priority}</p>
-              {report.order_id && <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.orderLabel')}</span> #{report.order_id.slice(-8).toUpperCase()}</p>}
-              <p><span className="font-black text-gray-900">{t('dashboardPages.reportDetail.createdLabel')}</span> {new Date(report.created_at).toLocaleString(dateLocale)}</p>
+            <h1 className="mt-5 text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.caseTitle', { id: report.id.slice(-8).toUpperCase() })}</h1>
+            <div className="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              <p><span className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.buyerLabel')}</span> {report.reporter_email || t('dashboardPages.reportDetail.buyerDefault')}</p>
+              <p><span className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.categoryLabel')}</span> {report.category}</p>
+              <p><span className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.priorityLabel')}</span> {report.priority}</p>
+              {report.order_id && <p><span className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.orderLabel')}</span> #{report.order_id.slice(-8).toUpperCase()}</p>}
+              <p><span className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.createdLabel')}</span> {new Date(report.created_at).toLocaleString(dateLocale)}</p>
             </div>
-            <div className="mt-5 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-700">{report.reason}</div>
-            {report.admin_notes && <div className="mt-4 rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">{report.admin_notes}</div>}
+            <div className="mt-5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 p-4 text-sm leading-6 text-slate-700 dark:text-slate-300">{report.reason}</div>
+            {report.admin_notes && <div className="mt-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/50 p-4 text-sm leading-6 text-blue-800 dark:text-blue-300">{report.admin_notes}</div>}
           </section>
         </aside>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-100 p-6">
-            <h2 className="text-xl font-black text-gray-900">{t('dashboardPages.reportDetail.conversationTitle')}</h2>
-            <p className="mt-1 text-sm text-gray-500">{t('dashboardPages.reportDetail.conversationSubtitle')}</p>
+        <section className="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+          <div className="border-b border-slate-200/80 dark:border-slate-800 p-6">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.reportDetail.conversationTitle')}</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('dashboardPages.reportDetail.conversationSubtitle')}</p>
           </div>
 
           <div className="max-h-[520px] space-y-4 overflow-y-auto p-6">
             {details.messages.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">{t('dashboardPages.reportDetail.noMessages')}</div>
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('dashboardPages.reportDetail.noMessages')}</div>
             ) : details.messages.map((message) => (
-              <div key={message.id} className="rounded-2xl bg-gray-50 p-4">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-gray-400">
+              <div key={message.id} className="rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 p-4">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   <span>{message.author_email || message.author_role}</span>
                   <span>{new Date(message.created_at).toLocaleString(dateLocale)}</span>
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">{message.body}</p>
+                <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{message.body}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {details.attachments.filter((attachment) => attachment.message_id === message.id).map((attachment) => (
-                    <button key={attachment.id} type="button" onClick={() => openAttachment(attachment)} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-gray-600 ring-1 ring-gray-200 hover:text-gray-900">
+                    <button key={attachment.id} type="button" onClick={() => openAttachment(attachment)} className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 hover:text-slate-900 dark:hover:text-white transition">
                       <Download className="h-3.5 w-3.5" />
                       {attachment.file_name} {formatSize(attachment.file_size)}
                     </button>
@@ -220,22 +224,22 @@ export default function VendorReportDetailPage() {
             ))}
           </div>
 
-          <form onSubmit={submitMessage} className="border-t border-gray-100 bg-gray-50 p-6">
-            {feedback && <div className="mb-4 rounded-2xl bg-white p-3 text-sm font-bold text-gray-600 ring-1 ring-gray-100">{feedback}</div>}
+          <form onSubmit={submitMessage} className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-6">
+            {feedback && <div className="mb-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-2xs">{feedback}</div>}
             <textarea
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={4}
               placeholder={t('dashboardPages.reportDetail.responsePlaceholder')}
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#B91C1C]"
+              className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
             />
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-600 hover:bg-gray-50">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 <Upload className="h-4 w-4" />
                 {t('dashboardPages.reportDetail.attachFiles')}
                 <input type="file" multiple className="hidden" onChange={onFileChange} accept="image/*,application/pdf,text/plain" />
               </label>
-              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#B91C1C] px-6 py-3 text-sm font-black text-white disabled:opacity-60">
+              <button type="submit" disabled={submitting || (!body.trim() && files.length === 0)} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-6 py-2.5 text-sm font-medium text-white shadow-2xs transition disabled:opacity-60">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {t('dashboardPages.reportDetail.sendResponse')}
               </button>
@@ -243,7 +247,7 @@ export default function VendorReportDetailPage() {
             {files.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {files.map((file) => (
-                  <span key={`${file.name}-${file.size}`} className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-200">
+                  <span key={`${file.name}-${file.size}`} className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-900 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
                     <Paperclip className="h-3 w-3" />
                     {file.name}
                   </span>

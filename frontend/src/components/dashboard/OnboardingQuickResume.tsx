@@ -18,12 +18,14 @@ import {
 } from 'lucide-react';
 import { fetchOnboardingState, type OnboardingState } from '@/lib/onboarding';
 import { fetchWithCsrf } from '@/lib/api';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface OnboardingQuickResumeProps {
   storeId?: string | null;
 }
 
 export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
+  const { dir } = useLocale();
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -135,25 +137,25 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
   const nextStep = steps.find((s) => !s.done) || steps[0];
 
   return (
-    <aside aria-label="Progression de configuration" className="bg-gradient-to-r from-amber-500/10 via-red-500/10 to-amber-500/10 border-b border-amber-200/60 px-4 py-2.5 sm:px-8 text-slate-800 transition-all">
+    <aside dir={dir} aria-label="Progression de configuration" className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 px-4 py-2.5 sm:px-8 text-slate-900 dark:text-white transition-all backdrop-blur-xs">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#B91C1C] text-white flex-shrink-0 shadow-sm">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex-shrink-0 shadow-2xs">
             <Sparkles className="w-4 h-4" />
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-[#B91C1C]">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 Configuration ({progressPercent}%)
               </span>
-              <span className="text-xs text-slate-500 hidden md:inline">
+              <span className="text-xs text-slate-500 dark:text-slate-400 hidden md:inline">
                 · {completedCount}/{steps.length} étapes validées
               </span>
             </div>
-            <div className="w-full max-w-xs bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+            <div className="w-full max-w-xs bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
               <div
-                className="bg-gradient-to-r from-amber-500 to-[#B91C1C] h-full rounded-full transition-all duration-500"
+                className="bg-slate-900 dark:bg-white h-full rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -163,7 +165,7 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
         <div className="flex items-center gap-2 self-end sm:self-center">
           <Link
             href={nextStep.href}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] text-white text-xs font-bold rounded-lg hover:bg-[#991B1B] transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white text-xs font-bold rounded-lg transition shadow-2xs"
           >
             <span>Continuer : {nextStep.label}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -172,7 +174,7 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="p-1.5 text-slate-600 hover:bg-white/80 rounded-lg transition"
+            className="p-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-lg transition"
             title="Détails des étapes"
             aria-label="Détails des étapes"
           >
@@ -182,7 +184,7 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white/80 rounded-lg transition"
+            className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-lg transition"
             title="Masquer la bannière"
             aria-label="Masquer la bannière"
           >
@@ -192,7 +194,7 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
       </div>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-amber-200/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 max-w-7xl mx-auto">
+        <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 max-w-7xl mx-auto">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             return (
@@ -201,14 +203,14 @@ export function OnboardingQuickResume({ storeId }: OnboardingQuickResumeProps) {
                 href={step.href}
                 className={`flex items-center gap-2 p-2 rounded-xl text-xs font-medium transition ${
                   step.done
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:border-[#B91C1C]/40 hover:text-[#B91C1C]'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/50'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {step.done ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                 ) : (
-                  <Circle className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                  <Circle className="w-4 h-4 text-slate-300 dark:text-slate-600 flex-shrink-0" />
                 )}
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{idx + 1}. {step.label}</span>

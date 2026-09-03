@@ -1,154 +1,111 @@
-# Project: PandaMarket Automated Image Compression & Multi-Size WebP Cloudflare R2 Pipeline
+# Project: PandaMarket Seller Dashboard Enhancements
 
 ## Architecture
-PandaMarket uses a multi-tier, high-performance image processing, storage, and distribution architecture:
-1. **Master Upload Layer**: Direct browser-to-Cloudflare R2 presigned upload (`/api/pd/files/presign`) or local S3 mock endpoint (`/api/pd/files/upload-s3-mock/:bucket/*`), registering asset records in `pd_file_asset`.
-2. **Asynchronous Processing Layer**: BullMQ queue (`pd_image_queue`) and worker (`backend/src/workers/image.worker.ts`), triggered post-upload (`/api/pd/files/process-variants`) or on product save/update.
-3. **Sharp Processing Engine (`backend/src/services/image-variant.service.ts`)**: Generates 4 WebP variants (`thumbnail` 150x150 cover, `small` 300x300 fit, `medium` 600x600 fit, `large` 1200x1200 fit) with dynamic quality from `image_quality_webp` platform settings.
-4. **Multi-Tier Persistence & Distribution Layer**:
-   - Cloudflare R2 Object Storage (`pandamarket` bucket) with `ContentType: image/webp` and `Cache-Control: public, max-age=31536000, immutable`.
-   - CDN Edge (`https://cdn.garbage.team` / `https://cdn.pandamarket.tn`).
-   - Database Blobs fallback (`pd_file_blobs`).
-   - Local disk cache (`resolveDataPath`).
-5. **Dynamic On-The-Fly & Edge Fallback**: `imageVariantService.getOrGenerateVariantOnTheFly` with single-flight request deduplication prevents 404s when ungenerated variants are requested.
-6. **Frontend & Storefront Distribution**: `frontend/src/lib/image-url.ts` resolves CDN/R2 WebP variants (`_thumbnail.webp`, `_small.webp`, `_medium.webp`, `_large.webp`), powering 18 theme storefronts, product galleries, hero banners, and dashboard components.
+The PandaMarket Seller Dashboard (`frontend/src/app/hub/dashboard`) is a multi-tenant merchant control panel built on Next.js 16 (App Router with Turbopack), React 19, TypeScript, and Tailwind CSS v4.
 
----
+Key architectural boundaries:
+- **UI Primitives Layer** (`frontend/src/components/ui/`): Reusable accessible modal dialogs (`Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx`), theme toggles, and base components.
+- **Merchant Workflow Libraries** (`frontend/src/lib/`): Specialized domain utilities (`tunisia-banking.ts` with Modulo 97 RIB checksum and bank directory, security headers, CSRF fetch helpers).
+- **Dashboard Feature Surfaces** (`frontend/src/app/hub/dashboard/`): 38 seller views partitioned into:
+  - Finance & Banking (`wallet`, `financial`, `subscription`, `my-subscription-orders`)
+  - Compliance & Settings (`kyc`, `settings`, `select-store`, `create-store`, `notifications`, `support`, `reports`)
+  - Developer & API (`api-keys`, `webhooks`)
+  - Online Store Suite (`online-store`, `domains`, `seo`, `themes`, `customers`, `customize`, `navigation`, `page-builder`)
+  - AI Tools Studio (`ai/AiToolsStudio.tsx`)
+- **Shared Dashboard Components** (`frontend/src/components/dashboard/`): `OnboardingQuickResume.tsx`, `ReferenceSelector.tsx`, `UnsavedChangesBanner.tsx`.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Multi-Size WebP Variant Generation | Sharp generates 4 WebP variants (`thumbnail` 150x150 cover, `small` 300x300 inside, `medium` 600x600 inside, `large` 1200x1200 inside) adhering to platform settings (`image_quality_webp`, dimensions, crop modes). | M1 | ORIGINAL_REQUEST §R1 |
-| 2 | Direct Cloudflare R2 Sync | Upload generated WebP variants directly to Cloudflare R2 (`pandamarket`) with `ContentType: image/webp`, `Cache-Control: public, max-age=31536000, immutable`, and CDN URLs (`https://cdn.garbage.team/...`). | M1 | ORIGINAL_REQUEST §R1 |
-| 3 | Metadata & DB Persistence | Persist variants and metadata into `pd_file_blobs` and `pd_file_asset` JSONB metadata. | M1 | ORIGINAL_REQUEST §R1, R2 |
-| 4 | BullMQ Async Processing Queue & Worker | Create `pd_image_queue` (`imageQueue`) and `image.worker.ts` with exponential backoff and dual runtime support (`main.ts` & `worker.ts`). | M2 | ORIGINAL_REQUEST §R2 |
-| 5 | Post-Upload Processing Triggers | Automatic trigger on presigned upload completion (`POST /api/pd/files/process-variants`) and product save/update hooks. | M2 | ORIGINAL_REQUEST §R2 |
-| 6 | Dynamic On-The-Fly Generation & Edge Fallback | Dynamic handler (`getOrGenerateVariantOnTheFly`) and single-flight concurrency lock in Express middleware to serve requested variants with HTTP 200 without 404s. | M3 | ORIGINAL_REQUEST §R3 |
-| 7 | Frontend Multi-Size WebP URL Resolution | Update `getResizedImageUrl` in `frontend/src/lib/image-url.ts` to generate CDN/R2 WebP variants while preserving non-resizable asset exclusions. | M4 | ORIGINAL_REQUEST §R4 |
-| 8 | Storefront Themes & UI Component Integration | Update `frontend/src/components/themes/shared.ts` (18 themes) and storefront/dashboard image consumers to render exact WebP variant sizes. | M4 | ORIGINAL_REQUEST §R4 |
-| 9 | Comprehensive Test Suite & Regression Safety | Unit, integration, and E2E test suites for backend image pipeline, BullMQ workers, R2 uploads, frontend URL resolution, and regression protection. | M5 | ORIGINAL_REQUEST §Acceptance Criteria |
-
----
+| 1 | Accessible Modal Primitives | Build accessible `Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx` with focus traps, escape key support, and dark mode tokens | M1 | Survey (Explorer 1) |
+| 2 | Orders Cancellation Modal | Replace `window.prompt` in `orders/page.tsx` with accessible cancellation modal dialog (reason input, 0/500 char counter, escape key, error handling) | M1 | ORIGINAL_REQUEST §R1 |
+| 3 | Products Deletion Modal | Replace `window.confirm` in `products/page.tsx` with accessible deletion modal (product details preview, spinner, escape key) | M1 | ORIGINAL_REQUEST §R1 |
+| 4 | Secondary Surface Dialog Eradication | Replace legacy `confirm()` in `my-subscription-orders`, `page-builder`, `settings`, `subscription`, and `webhooks` with custom confirm dialogs | M1 | Survey (Spec Miner / Explorer 1) |
+| 5 | Tunisian Banking Library | Implement `tunisia-banking.ts` with 20-digit RIB parser, Modulo 97 checksum computation, and 23-bank directory | M2 | ORIGINAL_REQUEST §R3 |
+| 6 | Wallet RIB & Bank Identification | Add structured RIB input, live bank detection badge, checksum validation, and withdrawal summary with retention notes in `wallet/page.tsx` | M2 | ORIGINAL_REQUEST §R3 |
+| 7 | Custom Domains DNS & Propagation | Add 1-click DNS record copy with visual feedback, DNS record table (CNAME, A, TXT), and propagation checker hyperlink in `domains/page.tsx` | M2 | ORIGINAL_REQUEST §R3 |
+| 8 | Themes Responsive Viewport Previews | Add multi-viewport preview toggles (Desktop 100%, Tablet 768px, Mobile 375px) in `themes/page.tsx` | M2 | ORIGINAL_REQUEST §R3 |
+| 9 | Finance & Compliance Dark Mode & Tokens | 100% dark mode parity, `dir={dir}` support, and replace raw `#B91C1C` / `#991B1B` tokens in `financial`, `subscription`, `my-subscription-orders`, `kyc`, `settings`, `select-store`, `create-store`, `notifications`, `support`, `reports`, `reports/[id]` | M3 | ORIGINAL_REQUEST §R2 |
+| 10 | Developer & Online Store Dark Mode & Tokens | 100% dark mode parity, `dir={dir}` support, and replace raw `#B91C1C` / `#991B1B` tokens in `api-keys`, `webhooks`, `online-store/page.tsx`, `online-store/seo`, `online-store/customers`, `online-store/customize`, `online-store/navigation`, `themes/customize`, `page-builder`, `ai/AiToolsStudio.tsx` | M3 | ORIGINAL_REQUEST §R2 |
+| 11 | Dashboard Shared Components Dark Mode & Tokens | 100% dark mode parity and token harmonization in `OnboardingQuickResume.tsx`, `ReferenceSelector.tsx`, `UnsavedChangesBanner.tsx` | M3 | ORIGINAL_REQUEST §R2 |
+| 12 | Deterministic Anti-Pattern Detector | Implement `scripts/detect.mjs` validating 0 native dialogs, 0 legacy red hexes, 100% dark mode coverage, and 0 empty handlers | M4 (E2E) | ORIGINAL_REQUEST §Verification |
+| 13 | Full Build & Route Compilation | Verify `npm run build` succeeds with 0 TypeScript/Turbopack errors and generates all 109 routes | M4 | ORIGINAL_REQUEST §Verification |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Multi-Size WebP Variant Generation & Cloudflare R2 Sync | Core Sharp WebP generation (4 presets), R2 upload with WebP content-type & immutable cache-control headers, platform settings integration (`image_quality_webp`), DB persistence (`pd_file_blobs`, `pd_file_asset`). | none | DONE |
-| M2 | Asynchronous Post-Upload Trigger & BullMQ Worker | `pd_image_queue`, `image.worker.ts`, integration into `main.ts` and `worker.ts`, post-upload endpoint `/api/pd/files/process-variants`, and product image update hooks. | M1 | DONE |
-| M3 | Dynamic On-The-Fly Generation & Edge Fallback Handler | Express static fallback middleware in `main.ts`, `imageVariantService.getOrGenerateVariantOnTheFly`, single-flight promise deduplication for concurrent requests, zero 404 guarantee. | M1 | DONE |
-| M4 | Frontend Multi-Size WebP Integration & Storefront Parity | `frontend/src/lib/image-url.ts`, `frontend/src/components/themes/shared.ts` (18 themes), product cards, gallery, hero banners, cart, and dashboard views. | M1, M3 | DONE |
-| M5 | Comprehensive Test Verification, Challenger Testing & Forensic Audit | Backend Vitest suite, frontend Vitest suite, Challenger stress testing, and Forensic integrity audit. | M1, M2, M3, M4 | PLANNED |
-
----
+| M1 | Eradicate Native Dialogs & Modal Primitives | Create `Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx`; refactor `orders/page.tsx`, `products/page.tsx`, and secondary dialogs | none | PLANNED |
+| M2 | Tunisian Merchant Workflow Enhancements | Create `tunisia-banking.ts`; enhance `wallet/page.tsx`, `domains/page.tsx`, `themes/page.tsx` | M1 | PLANNED |
+| M3 | 100% Dark Mode Parity & Token Harmonization across 28 Surfaces | Refactor all 28 unpolished surfaces (Financial, Compliance, Online Store, Developer, AI Tools, Components) with standard tokens and `dir={dir}` | M1 | PLANNED |
+| M4 | Final Full Build, E2E Detector & Verification | Run detector suite (`scripts/detect.mjs`), `npm run build` (109 routes), and synchronize Git | M1, M2, M3 | PLANNED |
 
 ## Interface Contracts
 
-### 1. `ImageVariantService` Interface (`backend/src/services/image-variant.service.ts`)
-```typescript
-export interface ImageVariantPreset {
-  name: 'thumbnail' | 'small' | 'medium' | 'large';
-  width: number;
-  height: number;
-  crop: 'cover' | 'inside';
-  quality?: number;
-}
+### Modal & Dialog Primitives (`frontend/src/components/ui/`)
+- `Modal`: `isOpen: boolean`, `onClose: () => void`, `title?: ReactNode`, `subtitle?: ReactNode`, `children: ReactNode`, `footer?: ReactNode`, `maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full'`
+- `ConfirmDialog`: `isOpen: boolean`, `onClose: () => void`, `onConfirm: () => void | Promise<void>`, `title: string`, `description: ReactNode`, `confirmLabel?: string`, `cancelLabel?: string`, `variant?: 'danger' | 'warning' | 'primary'`, `loading?: boolean`
+- `PromptDialog`: `isOpen: boolean`, `onClose: () => void`, `onSubmit: (value: string) => void | Promise<void>`, `title: string`, `description?: string`, `label?: string`, `placeholder?: string`, `maxLength?: number`, `required?: boolean`, `inputType?: 'text' | 'textarea'`, `loading?: boolean`
 
-export interface GeneratedVariant {
-  name: 'thumbnail' | 'small' | 'medium' | 'large';
-  key: string;
-  url: string;
-  width: number;
-  height: number;
-  size: number;
-  format: 'webp';
-  buffer?: Buffer;
-}
+### Tunisian Banking Utility (`frontend/src/lib/tunisia-banking.ts`)
+- `computeTunisianRibKey(base18: string): string`: Computes 2-digit Clé RIB using `97 - (BigInt(clean18 + '00') % 97n)`.
+- `validateTunisianRib(rawRib: string)`: Returns `{ isValid: boolean, bankCode?: string, branchCode?: string, accountNumber?: string, ribKey?: string, bankName?: string, error?: string }`.
+- `TUNISIAN_BANKS`: Record of 2-digit bank codes to bank metadata (`nameFr`, `nameAr`, `bic`, `code`).
 
-export interface ImageVariantService {
-  getPresetConfigs(): Promise<Record<string, ImageVariantPreset>>;
-  generateVariantsForBuffer(buffer: Buffer, bucket: string, rawKey: string): Promise<GeneratedVariant[]>;
-  generateVariantsFromR2(bucket: string, fileKey: string): Promise<GeneratedVariant[]>;
-  generateVariantsForFileKey(rawKey: string, bucket?: string): Promise<GeneratedVariant[]>;
-  getOrGenerateVariantOnTheFly(bucket: string, requestedKey: string): Promise<{ buffer: Buffer; contentType: string } | null>;
-}
+### Design Tokens Standard
+- Surface Primary: `bg-white dark:bg-slate-900`
+- Surface Secondary / Well: `bg-slate-50/50 dark:bg-slate-800/40`
+- Borders: `border-slate-200/80 dark:border-slate-800`
+- Text Primary: `text-slate-900 dark:text-white`
+- Text Secondary: `text-slate-500 dark:text-slate-400`
+- Buttons Primary: `bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium shadow-2xs`
+- Danger Badges: `bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50`
+- Elevation: `shadow-2xs` or `shadow-sm`
+
+## Code Layout
 ```
-
-### 2. BullMQ Image Queue Interface (`backend/src/queues/image-queue.ts`)
-```typescript
-export interface ImageProcessingJobData {
-  fileKey: string;
-  bucket?: string;
-  storeId?: string;
-  userId?: string;
-  purpose?: string;
-}
-
-export const imageQueue: Queue<ImageProcessingJobData>;
-export function enqueueImageVariantGeneration(data: ImageProcessingJobData): Promise<Job<ImageProcessingJobData> | null>;
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── ui/
+│   │   │   ├── Modal.tsx
+│   │   │   ├── ConfirmDialog.tsx
+│   │   │   └── PromptDialog.tsx
+│   │   └── dashboard/
+│   │       ├── OnboardingQuickResume.tsx
+│   │       ├── ReferenceSelector.tsx
+│   │       └── UnsavedChangesBanner.tsx
+│   ├── lib/
+│   │   └── tunisia-banking.ts
+│   └── app/
+│       └── hub/
+│           └── dashboard/
+│               ├── orders/page.tsx
+│               ├── products/page.tsx
+│               ├── wallet/page.tsx
+│               ├── financial/page.tsx
+│               ├── kyc/page.tsx
+│               ├── settings/page.tsx
+│               ├── select-store/page.tsx
+│               ├── create-store/page.tsx
+│               ├── notifications/page.tsx
+│               ├── support/page.tsx
+│               ├── reports/page.tsx
+│               ├── reports/[id]/page.tsx
+│               ├── api-keys/page.tsx
+│               ├── webhooks/page.tsx
+│               ├── subscription/page.tsx
+│               ├── my-subscription-orders/page.tsx
+│               ├── online-store/
+│               │   ├── page.tsx
+│               │   ├── domains/page.tsx
+│               │   ├── seo/page.tsx
+│               │   ├── themes/page.tsx
+│               │   ├── themes/customize/page.tsx
+│               │   ├── customers/page.tsx
+│               │   ├── customize/page.tsx
+│               │   └── navigation/page.tsx
+│               ├── page-builder/page.tsx
+│               └── ai/AiToolsStudio.tsx
+scripts/
+└── detect.mjs
 ```
-
-### 3. Post-Upload API Contract (`POST /api/pd/files/process-variants`)
-- **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
-- **Request Body**:
-  ```json
-  {
-    "file_key": "products/store_123/file_abc.jpg",
-    "bucket": "pandamarket",
-    "async": true
-  }
-  ```
-- **Response (200 OK)**:
-  ```json
-  {
-    "ok": true,
-    "success": true,
-    "enqueued": true,
-    "file_key": "products/store_123/file_abc.jpg",
-    "variants": [
-      { "name": "thumbnail", "key": "products/store_123/file_abc_thumbnail.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_thumbnail.webp" },
-      { "name": "small", "key": "products/store_123/file_abc_small.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_small.webp" },
-      { "name": "medium", "key": "products/store_123/file_abc_medium.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_medium.webp" },
-      { "name": "large", "key": "products/store_123/file_abc_large.webp", "url": "https://cdn.garbage.team/products/store_123/file_abc_large.webp" }
-    ]
-  }
-  ```
-
-### 4. Frontend Image URL Helper Contract (`frontend/src/lib/image-url.ts`)
-```typescript
-export type ImageVariantSize = 'thumbnail' | 'small' | 'medium' | 'large' | 'original';
-
-export function getResizedImageUrl(
-  url: string | null | undefined,
-  size: ImageVariantSize = 'medium',
-  fallback: string = '/placeholder.svg'
-): string;
-```
-
----
-
-## Code Layout & Write Ownership
-- **Milestone 1** (DONE):
-  - `backend/src/services/image-variant.service.ts`
-  - `backend/src/services/storage.service.ts`
-  - `backend/src/services/platform-config.service.ts`
-  - `backend/src/api/admin/settings.routes.ts`
-- **Milestone 2** (DONE):
-  - `backend/src/queues/image-queue.ts`
-  - `backend/src/workers/image.worker.ts`
-  - `backend/src/main.ts`
-  - `backend/src/worker.ts`
-  - `backend/src/api/files.route.ts`
-  - `backend/src/__tests__/image-queue.test.ts`
-- **Milestone 3** (DONE):
-  - `backend/src/services/image-variant.service.ts` (concurrency single-flight deduplication & on-the-fly generation)
-  - `backend/src/main.ts` (express dynamic fallback middleware)
-  - `backend/src/__tests__/image-fallback.test.ts`
-- **Milestone 4** (DONE):
-  - `frontend/src/lib/image-url.ts`
-  - `frontend/src/components/themes/shared.ts`
-  - `frontend/src/components/store/ProductCard.tsx`
-  - `frontend/src/components/product/ProductGallery.tsx`
-  - `frontend/src/__tests__/image-url.test.ts`
-  - `frontend/src/__tests__/challenger-m4-adversarial.test.tsx`
-- **Milestone 5**:
-  - Full backend and frontend verification & regression suites

@@ -153,10 +153,10 @@ function formatDate(value: string | null | undefined, locale: string) {
 }
 
 function statusClass(status: AiJobStatus) {
-  if (status === 'completed') return 'bg-green-50 text-green-700 ring-green-100';
-  if (status === 'failed') return 'bg-red-50 text-red-700 ring-red-100';
-  if (status === 'processing') return 'bg-amber-50 text-amber-700 ring-amber-100';
-  return 'bg-slate-100 text-slate-600 ring-slate-200';
+  if (status === 'completed') return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900/50';
+  if (status === 'failed') return 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 ring-1 ring-rose-200 dark:ring-rose-900/50';
+  if (status === 'processing') return 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900/50';
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700';
 }
 
 function StatusIcon({ status }: { status: AiJobStatus }) {
@@ -167,13 +167,13 @@ function StatusIcon({ status }: { status: AiJobStatus }) {
 }
 
 function JobTypeIcon({ type }: { type: AiJobType }) {
-  if (type === 'image_compression') return <ImageIcon className="h-4 w-4 text-[#B91C1C]" />;
-  if (type === 'seo_generation') return <FileText className="h-4 w-4 text-amber-700" />;
-  return <Sparkles className="h-4 w-4 text-[#7F1D1D]" />;
+  if (type === 'image_compression') return <ImageIcon className="h-4 w-4 text-slate-700 dark:text-slate-300" />;
+  if (type === 'seo_generation') return <FileText className="h-4 w-4 text-slate-700 dark:text-slate-300" />;
+  return <Sparkles className="h-4 w-4 text-slate-700 dark:text-slate-300" />;
 }
 
 export default function AiToolsStudio() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const [credits, setCredits] = useState<Credits | null>(null);
   const [jobs, setJobs] = useState<AiJob[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -532,14 +532,14 @@ export default function AiToolsStudio() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-44 animate-pulse rounded-[2rem] bg-amber-50" />
+      <div dir={dir} className="space-y-6">
+        <div className="h-44 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-3xl border border-gray-100 bg-white p-6">
+            <div key={i} className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
               <div className="animate-pulse space-y-3">
-                <div className="h-6 w-1/2 rounded bg-gray-100" />
-                <div className="h-20 rounded bg-gray-100" />
+                <div className="h-6 w-1/2 rounded bg-slate-100 dark:bg-slate-800" />
+                <div className="h-20 rounded bg-slate-100 dark:bg-slate-800" />
               </div>
             </div>
           ))}
@@ -549,28 +549,28 @@ export default function AiToolsStudio() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-2xl shadow-red-950/10">
+    <div dir={dir} className="space-y-6 text-slate-900 dark:text-white">
+      <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-amber-100">
-              <Sparkles className="h-3.5 w-3.5" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-slate-700 dark:text-slate-300">
+              <Sparkles className="h-3.5 w-3.5 text-slate-900 dark:text-white" />
               {t('dashboardPages.ai.heroBadge')}
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight">{t('dashboardPages.ai.title')}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-50/85">
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900 dark:text-white">{t('dashboardPages.ai.title')}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
               {t('dashboardPages.ai.subtitle')}
             </p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/10 p-4">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-amber-100/20 p-3">
-                <Zap className="h-5 w-5 text-amber-100" />
+              <div className="rounded-xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
+                <Zap className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-100/80">{t('dashboardPages.ai.balanceLabel')}</p>
-                <p className="text-2xl font-black">{isUnlimited ? '∞' : credits?.ai_tokens || 0} {t('dashboardPages.ai.tokensUnit')}</p>
-                <p className="text-xs text-amber-50/70">{credits?.tokens_used || 0} {t('dashboardPages.ai.tokensUsed')}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.balanceLabel')}</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{isUnlimited ? '∞' : credits?.ai_tokens || 0} {t('dashboardPages.ai.tokensUnit')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{credits?.tokens_used || 0} {t('dashboardPages.ai.tokensUsed')}</p>
               </div>
             </div>
           </div>
@@ -578,10 +578,10 @@ export default function AiToolsStudio() {
       </section>
 
       {success && (
-        <div className="rounded-2xl border border-green-100 bg-green-50 p-4 text-sm font-semibold text-green-700">{success}</div>
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 p-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400">{success}</div>
       )}
       {error && (
-        <div className="flex items-center gap-2 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+        <div className="flex items-center gap-2 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 p-4 text-sm font-semibold text-rose-700 dark:text-rose-400">
           <AlertCircle className="h-4 w-4" />
           {error}
         </div>
@@ -593,13 +593,13 @@ export default function AiToolsStudio() {
           { label: t('dashboardPages.ai.stats.completed'), value: completedJobs, icon: CheckCircle2 },
           { label: t('dashboardPages.ai.stats.failed'), value: failedJobs, icon: XCircle },
         ].map((item) => (
-          <div key={item.label} className="rounded-3xl border border-gray-100 bg-white p-5 shadow-xl shadow-slate-900/5">
+          <div key={item.label} className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">{item.label}</p>
-                <p className="mt-2 text-2xl font-black text-gray-950">{item.value}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{item.label}</p>
+                <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{item.value}</p>
               </div>
-              <div className="rounded-2xl bg-amber-50 p-3 text-[#B91C1C]">
+              <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
                 <item.icon className="h-5 w-5" />
               </div>
             </div>
@@ -607,41 +607,41 @@ export default function AiToolsStudio() {
         ))}
       </div>
 
-      <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+      <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-black text-gray-950">
-              <Zap className="h-5 w-5 text-[#B91C1C]" />
+            <h2 className="flex items-center gap-2 text-lg font-black text-slate-900 dark:text-white">
+              <Zap className="h-5 w-5 text-slate-900 dark:text-white" />
               {t('dashboardPages.ai.buyTokensTitle')}
             </h2>
-            <p className="mt-1 text-sm font-semibold text-gray-500">
+            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
               {t('dashboardPages.ai.buyTokensSubtitle')}
             </p>
           </div>
           {isUnlimited && (
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">
+            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-black text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
               {t('dashboardPages.ai.unlimitedPlan')}
             </span>
           )}
         </div>
         {isUnlimited ? (
-          <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+          <div className="mt-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4 text-sm font-bold text-slate-800 dark:text-slate-200">
             {t('dashboardPages.ai.unlimitedIncluded')}
           </div>
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {tokenPacks.map((pack) => (
-              <div key={pack.id} className="rounded-3xl border border-gray-100 bg-gradient-to-br from-white to-amber-50/50 p-5">
-                <p className="text-sm font-black text-gray-950">{pack.label}</p>
-                <p className="mt-2 text-3xl font-black text-[#7F1D1D]">{pack.tokens}</p>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">{t('dashboardPages.ai.tokensUnit')}</p>
+              <div key={pack.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-5">
+                <p className="text-sm font-black text-slate-900 dark:text-white">{pack.label}</p>
+                <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{pack.tokens}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.tokensUnit')}</p>
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <span className="text-sm font-black text-gray-900">{pack.price_tnd.toFixed(3)} TND</span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">{pack.price_tnd.toFixed(3)} TND</span>
                   <button
                     type="button"
                     onClick={() => void handleBuyTokenPack(pack.id)}
                     disabled={Boolean(buyingPackId)}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-2 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2 text-sm font-bold text-white shadow-2xs transition-colors disabled:opacity-50"
                   >
                     {buyingPackId === pack.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                     {t('dashboardPages.ai.buy')}
@@ -650,7 +650,7 @@ export default function AiToolsStudio() {
               </div>
             ))}
             {tokenPacks.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm font-bold text-gray-500 md:col-span-3">
+              <div className="rounded-2xl border border-dashed border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-6 text-center text-sm font-bold text-slate-500 dark:text-slate-400 md:col-span-3">
                 {t('dashboardPages.ai.noPacks')}
               </div>
             )}
@@ -658,25 +658,25 @@ export default function AiToolsStudio() {
         )}
       </section>
 
-      <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+      <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-black text-gray-950">
-              <Zap className="h-5 w-5 text-[#B91C1C]" />
+            <h2 className="flex items-center gap-2 text-lg font-black text-slate-900 dark:text-white">
+              <Zap className="h-5 w-5 text-slate-900 dark:text-white" />
               {t('dashboardPages.ai.providerTitle')}
             </h2>
-            <p className="mt-1 text-sm font-semibold text-gray-500">
+            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
               {t('dashboardPages.ai.providerSubtitle')}
             </p>
           </div>
           {providerState?.config?.api_key_set && (
-            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700 ring-1 ring-green-100">
+            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 text-xs font-black text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-900/50">
               {t('dashboardPages.ai.keyConfigured')}
             </span>
           )}
         </div>
         {providerState && !providerState.allowed ? (
-          <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+          <div className="mt-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm font-bold text-amber-800 dark:text-amber-400">
             {t('dashboardPages.ai.providerNotAllowed')}
           </div>
         ) : (
@@ -684,7 +684,7 @@ export default function AiToolsStudio() {
             <select
               value={providerForm.provider}
               onChange={(e) => setProviderForm((current) => ({ ...current, provider: e.target.value as AiProvider }))}
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(providerLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -694,26 +694,26 @@ export default function AiToolsStudio() {
               value={providerForm.model}
               onChange={(e) => setProviderForm((current) => ({ ...current, model: e.target.value }))}
               placeholder={t('dashboardPages.ai.modelPlaceholder')}
-              className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               value={providerForm.base_url}
               onChange={(e) => setProviderForm((current) => ({ ...current, base_url: e.target.value }))}
               placeholder={t('dashboardPages.ai.baseUrlPlaceholder')}
-              className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               type="password"
               value={providerForm.api_key}
               onChange={(e) => setProviderForm((current) => ({ ...current, api_key: e.target.value }))}
               placeholder={providerState?.config?.api_key_set ? t('dashboardPages.ai.newKeyPlaceholder') : t('dashboardPages.ai.apiKeyPlaceholder')}
-              className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setProviderForm((current) => ({ ...current, is_enabled: !current.is_enabled }))}
-                className={`rounded-2xl px-4 py-3 text-xs font-black ring-1 ${providerForm.is_enabled ? 'bg-green-50 text-green-700 ring-green-100' : 'bg-gray-50 text-gray-500 ring-gray-100'}`}
+                className={`rounded-xl px-4 py-3 text-xs font-black ring-1 ${providerForm.is_enabled ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-900/50' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 ring-slate-200 dark:ring-slate-700'}`}
               >
                 {providerForm.is_enabled ? t('dashboardPages.ai.active') : t('dashboardPages.ai.inactive')}
               </button>
@@ -721,7 +721,7 @@ export default function AiToolsStudio() {
                 type="button"
                 onClick={() => void handleSaveProvider()}
                 disabled={savingProvider}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-3 text-sm font-bold text-white shadow-2xs transition-colors disabled:opacity-50"
               >
                 {savingProvider ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {t('dashboardPages.ai.save')}
@@ -731,7 +731,7 @@ export default function AiToolsStudio() {
                   type="button"
                   onClick={() => void handleDeleteProvider()}
                   disabled={savingProvider}
-                  className="rounded-2xl border border-red-100 bg-red-50 px-3 py-3 text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                  className="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-3 py-3 text-rose-700 dark:text-rose-400 transition hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -742,14 +742,14 @@ export default function AiToolsStudio() {
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-red-50 p-3 text-[#B91C1C]">
+            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
               <ImageIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.compressTitle')}</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('image_compression', 1)} {t('dashboardPages.ai.tokensPerImage')}</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.compressTitle')}</h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{priceFor('image_compression', 1)} {t('dashboardPages.ai.tokensPerImage')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -759,7 +759,7 @@ export default function AiToolsStudio() {
                 setCompressProductId(e.target.value);
                 setCompressUrl('');
               }}
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               <option value="">{t('dashboardPages.ai.externalOrNoProduct')}</option>
               {products.map((product) => (
@@ -770,7 +770,7 @@ export default function AiToolsStudio() {
               <select
                 value={compressUrl}
                 onChange={(e) => setCompressUrl(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
               >
                 {imageOptions.map((image) => (
                   <option key={image.url} value={image.url}>{image.label}</option>
@@ -782,13 +782,13 @@ export default function AiToolsStudio() {
               value={compressUrl}
               onChange={(e) => setCompressUrl(e.target.value)}
               placeholder={t('dashboardPages.ai.imageUrlPlaceholder')}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <button
               type="button"
               onClick={handleCompress}
               disabled={compressing}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-3 text-sm font-bold text-white shadow-2xs transition-colors disabled:opacity-50"
             >
               {compressing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
               {compressing ? t('dashboardPages.ai.compressing') : t('dashboardPages.ai.compress')}
@@ -796,21 +796,21 @@ export default function AiToolsStudio() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-amber-50 p-3 text-amber-700">
+            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
               <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.seoTitle')}</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('seo_generation', 2)} {t('dashboardPages.ai.tokensPerProduct')}</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.seoTitle')}</h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{priceFor('seo_generation', 2)} {t('dashboardPages.ai.tokensPerProduct')}</p>
             </div>
           </div>
           <div className="space-y-3">
             <select
               value={seoProductId}
               onChange={(e) => setSeoProductId(e.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               <option value="">{t('dashboardPages.ai.selectProduct')}</option>
               {products.map((product) => (
@@ -820,7 +820,7 @@ export default function AiToolsStudio() {
             <select
               value={seoLanguage}
               onChange={(e) => setSeoLanguage(e.target.value as Language)}
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(languageLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -830,7 +830,7 @@ export default function AiToolsStudio() {
               type="button"
               onClick={handleSeoGenerate}
               disabled={generating}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-3 text-sm font-bold text-white shadow-2xs transition-colors disabled:opacity-50"
             >
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               {generating ? t('dashboardPages.ai.generating') : t('dashboardPages.ai.generateSeo')}
@@ -838,14 +838,14 @@ export default function AiToolsStudio() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-xl shadow-slate-900/5">
+        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-red-50 p-3 text-[#7F1D1D]">
+            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.pageCopyTitle')}</h2>
-              <p className="text-xs font-semibold text-gray-400">{priceFor('page_copy', 2)} {t('dashboardPages.ai.tokensPerProposal')}</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.pageCopyTitle')}</h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{priceFor('page_copy', 2)} {t('dashboardPages.ai.tokensPerProposal')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -854,33 +854,33 @@ export default function AiToolsStudio() {
               value={pageTitle}
               onChange={(e) => setPageTitle(e.target.value)}
               placeholder={t('dashboardPages.ai.pageTitlePlaceholder')}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               type="text"
               value={currentSeoTitle}
               onChange={(e) => setCurrentSeoTitle(e.target.value)}
               placeholder={t('dashboardPages.ai.currentSeoTitlePlaceholder')}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <textarea
               value={currentSeoDescription}
               onChange={(e) => setCurrentSeoDescription(e.target.value)}
               placeholder={t('dashboardPages.ai.currentSeoDescriptionPlaceholder')}
               rows={2}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <textarea
               value={sectionOutline}
               onChange={(e) => setSectionOutline(e.target.value)}
               placeholder={t('dashboardPages.ai.sectionsPlaceholder')}
               rows={3}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <select
               value={copyLanguage}
               onChange={(e) => setCopyLanguage(e.target.value as Language)}
-              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(languageLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -890,7 +890,7 @@ export default function AiToolsStudio() {
               type="button"
               onClick={handlePageCopy}
               disabled={copyGenerating}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-3 text-sm font-bold text-white shadow-2xs transition-colors disabled:opacity-50"
             >
               {copyGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {copyGenerating ? t('dashboardPages.ai.generating') : t('dashboardPages.ai.generateProposal')}
@@ -900,9 +900,9 @@ export default function AiToolsStudio() {
       </div>
 
       {copySuggestions && (
-        <section className="rounded-[2rem] border border-amber-100 bg-amber-50/60 p-6">
+        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black text-[#7F1D1D]">{t('dashboardPages.ai.lastProposalTitle')}</h2>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.lastProposalTitle')}</h2>
             <button
               type="button"
               onClick={() => {
@@ -910,38 +910,38 @@ export default function AiToolsStudio() {
                   `${copySuggestions.seo_title}\n${copySuggestions.seo_description}\n${copySuggestions.hero_title}\n${copySuggestions.cta}`,
                 );
               }}
-              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-black text-[#B91C1C] transition hover:bg-amber-50"
+              className="rounded-full border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               {t('dashboardPages.ai.copy')}
             </button>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {Object.entries(copySuggestions).map(([key, value]) => (
-              <div key={key} className="rounded-2xl bg-white p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{t(`dashboardPages.ai.copyFields.${key}`)}</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-gray-800">{value}</p>
+              <div key={key} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{t(`dashboardPages.ai.copyFields.${key}`)}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-900 dark:text-white">{value}</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      <section className="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-xl shadow-slate-900/5">
-        <div className="flex flex-col gap-4 border-b border-gray-100 p-6 lg:flex-row lg:items-center lg:justify-between">
+      <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div className="flex flex-col gap-4 border-b border-slate-100 dark:border-slate-800 p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-gray-50 p-3 text-gray-500">
+            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
               <History className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-950">{t('dashboardPages.ai.historyTitle')}</h2>
-              <p className="text-xs font-semibold text-gray-400">{meta?.total || jobs.length} {t('dashboardPages.ai.jobsRecorded')}</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.historyTitle')}</h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{meta?.total || jobs.length} {t('dashboardPages.ai.jobsRecorded')}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={historyType}
               onChange={(e) => setHistoryType(e.target.value as 'all' | AiJobType)}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 outline-none focus:border-[#B91C1C]"
+              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
             >
               <option value="all">{t('dashboardPages.ai.allTypes')}</option>
               {Object.entries(typeLabelKeys).map(([value, key]) => (
@@ -951,7 +951,7 @@ export default function AiToolsStudio() {
             <select
               value={historyStatus}
               onChange={(e) => setHistoryStatus(e.target.value as 'all' | AiJobStatus)}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 outline-none focus:border-[#B91C1C]"
+              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
             >
               <option value="all">{t('dashboardPages.ai.allStatuses')}</option>
               {Object.entries(statusLabelKeys).map(([value, key]) => (
@@ -961,7 +961,7 @@ export default function AiToolsStudio() {
             <button
               type="button"
               onClick={refreshAll}
-              className="inline-flex items-center gap-2 rounded-full bg-gray-50 px-4 py-2 text-xs font-black text-gray-600 transition hover:bg-gray-100"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-700"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               {t('dashboardPages.ai.refresh')}
@@ -969,40 +969,40 @@ export default function AiToolsStudio() {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {jobs.length === 0 ? (
-            <div className="p-10 text-center text-sm font-semibold text-gray-400">{t('dashboardPages.ai.noJobs')}</div>
+            <div className="p-10 text-center text-sm font-semibold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.noJobs')}</div>
           ) : (
             jobs.map((job) => (
-              <div key={job.id} className="p-5 transition hover:bg-amber-50/30">
+              <div key={job.id} className="p-5 transition hover:bg-slate-50/60 dark:hover:bg-slate-850/60">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-[#7F1D1D]">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
                         <JobTypeIcon type={job.type} />
                         {t(typeLabelKeys[job.type]) || job.type}
                       </span>
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ring-1 ${statusClass(job.status)}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass(job.status)}`}>
                         <StatusIcon status={job.status} />
                         {t(statusLabelKeys[job.status]) || job.status}
                       </span>
                     </div>
-                    <p className="mt-3 truncate text-sm font-black text-gray-950">{jobTarget(job)}</p>
-                    <p className="mt-1 text-xs font-semibold text-gray-400">{formatDate(job.created_at, locale)} · {job.tokens_consumed || 0} {t('dashboardPages.ai.tokensUnit')}</p>
+                    <p className="mt-3 truncate text-sm font-black text-slate-900 dark:text-white">{jobTarget(job)}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{formatDate(job.created_at, locale)} · {job.tokens_consumed || 0} {t('dashboardPages.ai.tokensUnit')}</p>
                     {job.error_message && (
-                      <p className="mt-2 rounded-2xl bg-red-50 p-3 text-xs font-semibold text-red-700">{job.error_message}</p>
+                      <p className="mt-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 p-3 text-xs font-semibold text-rose-700 dark:text-rose-400">{job.error_message}</p>
                     )}
                     {job.status === 'completed' && job.output && (
-                      <div className="mt-3 rounded-2xl bg-gray-50 p-3 text-xs text-gray-600">
+                      <div className="mt-3 rounded-xl bg-slate-50/80 dark:bg-slate-850/80 border border-slate-200/80 dark:border-slate-800 p-3 text-xs text-slate-600 dark:text-slate-300">
                         {job.type === 'image_compression' && (
                           <div className="space-y-1">
-                            <p className="font-bold text-gray-800">{t('dashboardPages.ai.outputLabels.gain')}: {String(job.output.saved_percent ?? 0)}%</p>
+                            <p className="font-bold text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.gain')}: {String(job.output.saved_percent ?? 0)}%</p>
                             {asString(job.output.output_url) && (
                               <a
                                 href={asString(job.output.output_url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 font-black text-[#B91C1C]"
+                                className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white hover:underline"
                               >
                                 {t('dashboardPages.ai.viewCompressedImage')} <ExternalLink className="h-3 w-3" />
                               </a>
@@ -1011,20 +1011,20 @@ export default function AiToolsStudio() {
                         )}
                         {job.type === 'seo_generation' && (
                           <div className="space-y-1">
-                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.title')}:</span> {asString(job.output.title)}</p>
-                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.description')}:</span> {asString(job.output.description)}</p>
+                            <p><span className="font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.title')}:</span> {asString(job.output.title)}</p>
+                            <p><span className="font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.description')}:</span> {asString(job.output.description)}</p>
                           </div>
                         )}
                         {job.type === 'page_copy' && (
                           <div className="space-y-1">
-                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.hero')}:</span> {asString(job.output.hero_title)}</p>
-                            <p><span className="font-black text-gray-800">{t('dashboardPages.ai.outputLabels.cta')}:</span> {asString(job.output.cta)}</p>
+                            <p><span className="font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.hero')}:</span> {asString(job.output.hero_title)}</p>
+                            <p><span className="font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.cta')}:</span> {asString(job.output.cta)}</p>
                           </div>
                         )}
                       </div>
                     )}
                   </div>
-                  <p className="shrink-0 rounded-full bg-gray-50 px-3 py-1 font-mono text-[11px] font-bold text-gray-400">{job.id.slice(-10)}</p>
+                  <p className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">{job.id.slice(-10)}</p>
                 </div>
               </div>
             ))
@@ -1032,23 +1032,23 @@ export default function AiToolsStudio() {
         </div>
 
         {meta && meta.total_pages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 p-4">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 p-4">
             <button
               type="button"
               onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
               disabled={historyPage <= 1}
-              className="rounded-full px-4 py-2 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+              className="rounded-full px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               {t('dashboardPages.ai.previous')}
             </button>
-            <span className="text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               {t('dashboardPages.ai.page')} {meta.page} / {meta.total_pages}
             </span>
             <button
               type="button"
               onClick={() => setHistoryPage((page) => Math.min(meta.total_pages, page + 1))}
               disabled={historyPage >= meta.total_pages}
-              className="rounded-full px-4 py-2 text-sm font-black text-[#B91C1C] transition hover:bg-amber-50 disabled:opacity-40"
+              className="rounded-full px-4 py-2 text-sm font-bold text-slate-900 dark:text-white transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               {t('dashboardPages.ai.next')}
             </button>

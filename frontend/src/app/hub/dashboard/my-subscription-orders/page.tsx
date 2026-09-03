@@ -25,6 +25,7 @@ import {
   ArrowUpRight,
   Sparkles,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface UserStore {
   id: string;
@@ -82,19 +83,19 @@ function buildGatewayNames(t: (key: string, params?: Record<string, string | num
 
 function buildStatusBadges(t: (key: string, params?: Record<string, string | number>) => string): Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> {
   return {
-    captured: { label: t('dashboardPages.mySubscriptionOrders.statusCaptured'), bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    paid: { label: t('dashboardPages.mySubscriptionOrders.statusPaid'), bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    pending_review: { label: t('dashboardPages.mySubscriptionOrders.statusPendingReview'), bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', icon: <Clock className="w-3.5 h-3.5" /> },
-    pending_proof: { label: t('dashboardPages.mySubscriptionOrders.statusPendingProof'), bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', icon: <Clock className="w-3.5 h-3.5" /> },
-    pending: { label: t('dashboardPages.mySubscriptionOrders.statusPending'), bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', icon: <Clock className="w-3.5 h-3.5" /> },
-    failed: { label: t('dashboardPages.mySubscriptionOrders.statusFailed'), bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
-    rejected: { label: t('dashboardPages.mySubscriptionOrders.statusRejected'), bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', icon: <XCircle className="w-3.5 h-3.5" /> },
-    cancelled: { label: t('dashboardPages.mySubscriptionOrders.statusCancelled'), bg: 'bg-slate-100 border-slate-200', text: 'text-slate-500', icon: <XCircle className="w-3.5 h-3.5" /> },
+    captured: { label: t('dashboardPages.mySubscriptionOrders.statusCaptured'), bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50', text: 'text-emerald-700 dark:text-emerald-300', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    paid: { label: t('dashboardPages.mySubscriptionOrders.statusPaid'), bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50', text: 'text-emerald-700 dark:text-emerald-300', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    pending_review: { label: t('dashboardPages.mySubscriptionOrders.statusPendingReview'), bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50', text: 'text-amber-700 dark:text-amber-300', icon: <Clock className="w-3.5 h-3.5" /> },
+    pending_proof: { label: t('dashboardPages.mySubscriptionOrders.statusPendingProof'), bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-900/50', text: 'text-orange-700 dark:text-orange-300', icon: <Clock className="w-3.5 h-3.5" /> },
+    pending: { label: t('dashboardPages.mySubscriptionOrders.statusPending'), bg: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700', text: 'text-slate-700 dark:text-slate-300', icon: <Clock className="w-3.5 h-3.5" /> },
+    failed: { label: t('dashboardPages.mySubscriptionOrders.statusFailed'), bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50', text: 'text-rose-700 dark:text-rose-400', icon: <XCircle className="w-3.5 h-3.5" /> },
+    rejected: { label: t('dashboardPages.mySubscriptionOrders.statusRejected'), bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50', text: 'text-rose-700 dark:text-rose-400', icon: <XCircle className="w-3.5 h-3.5" /> },
+    cancelled: { label: t('dashboardPages.mySubscriptionOrders.statusCancelled'), bg: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700', text: 'text-slate-500 dark:text-slate-400', icon: <XCircle className="w-3.5 h-3.5" /> },
   };
 }
 
 export default function SubscriptionOrdersPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const localeCode = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const GATEWAY_NAMES = buildGatewayNames(t);
   const STATUS_BADGES = buildStatusBadges(t);
@@ -120,6 +121,8 @@ export default function SubscriptionOrdersPage() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofUrl, setProofUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [cancelOrderTargetId, setCancelOrderTargetId] = useState<string | null>(null);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -170,8 +173,13 @@ export default function SubscriptionOrdersPage() {
     loadOrders();
   }, [loadOrders]);
 
-  const handleCancelOrder = async (orderId: string) => {
-    if (!confirm(t('dashboardPages.mySubscriptionOrders.confirmCancelIntent'))) return;
+  const handleCancelOrder = (orderId: string) => {
+    setCancelOrderTargetId(orderId);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!cancelOrderTargetId) return;
+    setCancellingOrder(true);
     setError('');
     setSuccess('');
     try {
@@ -179,10 +187,11 @@ export default function SubscriptionOrdersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ intent_id: orderId }),
+        body: JSON.stringify({ intent_id: cancelOrderTargetId }),
       });
       if (res.ok) {
         setSuccess(t('dashboardPages.mySubscriptionOrders.intentCancelled'));
+        setCancelOrderTargetId(null);
         await loadOrders();
       } else {
         const data = await res.json();
@@ -190,6 +199,8 @@ export default function SubscriptionOrdersPage() {
       }
     } catch {
       setError(t('dashboardPages.mySubscriptionOrders.errorNetworkCancelling'));
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -272,36 +283,36 @@ export default function SubscriptionOrdersPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div dir={dir} className="space-y-6 sm:space-y-8">
       {/* Header Banner */}
-      <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-8 text-white shadow-2xl shadow-slate-900/15">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-100 ring-1 ring-white/10 self-start">
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300 self-start">
             <ReceiptText className="h-4 w-4" />
             {t('dashboardPages.mySubscriptionOrders.headerBadge')}
           </div>
           <Link
             href="/hub/dashboard/subscription"
-            className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] hover:bg-[#991B1B] px-5 py-2.5 text-xs font-black text-white transition shadow-lg self-start sm:self-auto"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2 text-xs font-semibold text-white transition shadow-2xs self-start sm:self-auto"
           >
-            <Crown className="h-4 w-4 text-yellow-300" />
+            <Crown className="h-4 w-4 text-amber-400" />
             {t('dashboardPages.mySubscriptionOrders.changeOrUpgradePlan')}
           </Link>
         </div>
-        <h1 className="mt-5 text-3xl font-black sm:text-4xl">{t('dashboardPages.mySubscriptionOrders.pageTitle')}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
+        <h1 className="mt-4 text-2xl font-bold sm:text-3xl text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.pageTitle')}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
           {t('dashboardPages.mySubscriptionOrders.pageSubtitle')}
         </p>
       </div>
 
       {/* Notifications */}
       {success && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl">
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold rounded-xl">
           {success}
         </div>
       )}
       {error && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-2xl flex items-center gap-2">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 text-xs font-semibold rounded-xl flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
@@ -309,35 +320,35 @@ export default function SubscriptionOrdersPage() {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiTotalSpentLabel')}</span>
-          <p className="text-3xl font-black text-slate-900">{summary.total_spent_tnd.toFixed(2)} TND</p>
-          <p className="text-xs text-slate-500 font-medium">{summary.paid_count} {t('dashboardPages.mySubscriptionOrders.kpiTotalSpentSub')}</p>
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiTotalSpentLabel')}</span>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">{summary.total_spent_tnd.toFixed(2)} TND</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{summary.paid_count} {t('dashboardPages.mySubscriptionOrders.kpiTotalSpentSub')}</p>
         </div>
 
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiPendingLabel')}</span>
-          <p className="text-3xl font-black text-amber-600">{summary.pending_count}</p>
-          <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiPendingSub')}</p>
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiPendingLabel')}</span>
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{summary.pending_count}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiPendingSub')}</p>
         </div>
 
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiManageLabel')}</span>
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('dashboardPages.mySubscriptionOrders.kpiManageLabel')}</span>
           <Link
             href="/hub/dashboard/subscription"
-            className="inline-flex items-center gap-1.5 text-sm font-black text-[#B91C1C] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white hover:underline"
           >
             <span>{t('dashboardPages.mySubscriptionOrders.kpiManageLink')}</span>
             <ArrowUpRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-slate-500 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiManageSub')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('dashboardPages.mySubscriptionOrders.kpiManageSub')}</p>
         </div>
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="flex flex-wrap items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400 ml-2" />
+          <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500 ml-2" />
           {[
             { id: 'all', label: t('dashboardPages.mySubscriptionOrders.filterAll') },
             { id: 'captured', label: t('dashboardPages.mySubscriptionOrders.filterPaid') },
@@ -351,10 +362,10 @@ export default function SubscriptionOrdersPage() {
                 setStatusFilter(tab.id);
                 setPage(1);
               }}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
                 statusFilter === tab.id
-                  ? 'bg-slate-900 text-white shadow-md'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+                  : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700'
               }`}
             >
               {tab.label}
@@ -362,19 +373,19 @@ export default function SubscriptionOrdersPage() {
           ))}
           {/* Store Filter Selector */}
           {userStores.length > 0 && (
-            <div className="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200">
-              <Building className="w-4 h-4 text-slate-400" />
+            <div className="flex items-center gap-2 ml-2 pl-3 border-l border-slate-200 dark:border-slate-700">
+              <Building className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               <select
                 value={storeFilter}
                 onChange={(e) => {
                   setStoreFilter(e.target.value);
                   setPage(1);
                 }}
-                className="bg-slate-50 border border-slate-200 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#B91C1C]"
+                className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-slate-900 dark:focus:border-white"
               >
-                <option value="all">{t('dashboardPages.mySubscriptionOrders.allStoresOption', { count: userStores.length })}</option>
+                <option value="all" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.allStoresOption', { count: userStores.length })}</option>
                 {userStores.map((st) => (
-                  <option key={st.id} value={st.id}>
+                  <option key={st.id} value={st.id} className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">
                     {st.name} {st.subdomain ? `(${st.subdomain})` : ''}
                   </option>
                 ))}
@@ -384,7 +395,7 @@ export default function SubscriptionOrdersPage() {
         </div>
 
         <div className="relative min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder={t('dashboardPages.mySubscriptionOrders.searchPlaceholder')}
@@ -393,37 +404,37 @@ export default function SubscriptionOrdersPage() {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-9 pr-4 py-2 text-xs text-slate-800 outline-none focus:border-[#B91C1C]"
+            className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
           />
         </div>
       </div>
 
       {/* Main Orders Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
         {loading ? (
-          <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-[#B91C1C]" />
-            <p className="text-xs font-bold text-slate-600">{t('dashboardPages.mySubscriptionOrders.loadingOrders')}</p>
+          <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
+            <Loader2 className="w-8 h-8 animate-spin text-slate-500 dark:text-slate-400" />
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('dashboardPages.mySubscriptionOrders.loadingOrders')}</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
-            <ReceiptText className="w-12 h-12 text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.noOrdersTitle')}</h3>
-            <p className="text-xs text-slate-500 max-w-sm">
+            <ReceiptText className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboardPages.mySubscriptionOrders.noOrdersTitle')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
               {t('dashboardPages.mySubscriptionOrders.noOrdersDesc')}
             </p>
             <Link
               href="/hub/dashboard/subscription"
-              className="mt-2 inline-flex items-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-2.5 text-xs font-bold text-white shadow-sm"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-2.5 text-xs font-semibold text-white shadow-2xs transition"
             >
-              <Sparkles className="w-4 h-4 text-yellow-300" />
+              <Sparkles className="w-4 h-4 text-amber-400" />
               {t('dashboardPages.mySubscriptionOrders.discoverPlans')}
             </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+              <thead className="bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800">
                 <tr>
                   <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colOrderNumber')}</th>
                   <th className="px-6 py-4">{t('dashboardPages.mySubscriptionOrders.colStore')}</th>
@@ -435,15 +446,15 @@ export default function SubscriptionOrdersPage() {
                   <th className="px-6 py-4 text-right">{t('dashboardPages.mySubscriptionOrders.colActions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
                 {orders.map((ord) => {
                   const badge = STATUS_BADGES[ord.status] || STATUS_BADGES.pending;
                   const isPaid = ord.status === 'captured' || ord.status === 'paid';
                   const isPendingProof = ord.status === 'pending_proof' || ord.status === 'pending';
 
                   return (
-                    <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-900">
+                    <tr key={ord.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white">
                         #{ord.id.slice(-10)}
                       </td>
                       <td className="px-6 py-4">
@@ -452,37 +463,37 @@ export default function SubscriptionOrdersPage() {
                             type="button"
                             onClick={() => handleSelectStore(ord.store_id)}
                             disabled={selectingStoreId === ord.store_id}
-                            className="font-bold text-slate-900 flex items-center gap-1.5 hover:text-[#B91C1C] text-left transition group"
+                            className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 hover:text-slate-700 dark:hover:text-slate-300 text-left transition group"
                             title={t('dashboardPages.mySubscriptionOrders.switchStoreTitle')}
                           >
-                            <Building className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#B91C1C]" />
+                            <Building className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300" />
                             <span>{ord.store_name || t('dashboardPages.mySubscriptionOrders.defaultStoreName')}</span>
-                            {selectingStoreId === ord.store_id && <Loader2 className="w-3 h-3 animate-spin text-[#B91C1C]" />}
+                            {selectingStoreId === ord.store_id && <Loader2 className="w-3 h-3 animate-spin text-slate-500 dark:text-slate-400" />}
                           </button>
                           {ord.store_subdomain && (
-                            <span className="text-[11px] text-slate-400 font-mono">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
                               {ord.store_subdomain}.garbage.team
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-extrabold text-slate-900 uppercase">
+                        <span className="font-extrabold text-slate-900 dark:text-white uppercase">
                           {ord.target_plan}
                         </span>
                         {ord.from_plan && (
-                          <span className="text-[11px] text-slate-400 block">
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 block">
                             ({t('dashboardPages.mySubscriptionOrders.fromPlan', { plan: ord.from_plan })})
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 font-black text-slate-900">
+                      <td className="px-6 py-4 font-black text-slate-900 dark:text-white">
                         {Number(ord.amount).toFixed(2)} {ord.currency || 'TND'}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {GATEWAY_NAMES[ord.gateway] || ord.gateway}
                       </td>
-                      <td className="px-6 py-4 text-slate-500">
+                      <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                         {new Date(ord.created_at).toLocaleDateString(localeCode, {
                           day: '2-digit',
                           month: 'short',
@@ -502,9 +513,9 @@ export default function SubscriptionOrdersPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedInvoice(ord)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 hover:bg-slate-100 shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-2xs transition"
                           >
-                            <Printer className="w-3.5 h-3.5 text-slate-500" />
+                            <Printer className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>{t('dashboardPages.mySubscriptionOrders.invoiceAction')}</span>
                           </button>
                         )}
@@ -513,7 +524,7 @@ export default function SubscriptionOrdersPage() {
                           <button
                             type="button"
                             onClick={() => setUploadModalOrder(ord)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 font-bold text-white hover:bg-amber-700 shadow-sm"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 dark:bg-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600 font-semibold text-white shadow-2xs transition"
                           >
                             <Upload className="w-3.5 h-3.5" />
                             <span>{t('dashboardPages.mySubscriptionOrders.receiptAction')}</span>
@@ -524,7 +535,7 @@ export default function SubscriptionOrdersPage() {
                           <button
                             type="button"
                             onClick={() => handleCancelOrder(ord.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 font-bold text-rose-600 hover:bg-rose-50"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                           >
                             <span>{t('dashboardPages.mySubscriptionOrders.cancelAction')}</span>
                           </button>
@@ -540,15 +551,15 @@ export default function SubscriptionOrdersPage() {
 
         {/* Footer Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 bg-slate-50/50">
-            <div className="text-xs text-slate-500 font-semibold">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-6 py-4 bg-slate-50/50 dark:bg-slate-850/50">
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
               {t('dashboardPages.mySubscriptionOrders.paginationInfo', { page, total: totalPages, records: totalRecords })}
             </div>
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 transition"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>{t('dashboardPages.mySubscriptionOrders.previous')}</span>
@@ -556,7 +567,7 @@ export default function SubscriptionOrdersPage() {
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 transition"
               >
                 <span>{t('dashboardPages.mySubscriptionOrders.next')}</span>
                 <ChevronRight className="w-4 h-4" />
@@ -568,64 +579,64 @@ export default function SubscriptionOrdersPage() {
 
       {/* Printable Invoice Modal */}
       {selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl p-8 shadow-2xl space-y-6 my-8 print:p-0 print:shadow-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-8 shadow-2xl space-y-6 my-8 print:p-0 print:shadow-none print:border-none">
             {/* Invoice Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-6">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
               <div>
-                <span className="text-xs font-black uppercase tracking-widest text-[#B91C1C]">{t('dashboardPages.mySubscriptionOrders.invoicePlatform')}</span>
-                <h2 className="text-2xl font-black text-slate-900 mt-1">{t('dashboardPages.mySubscriptionOrders.invoiceTitle')}</h2>
-                <p className="text-xs font-mono text-slate-500 mt-0.5">{t('dashboardPages.mySubscriptionOrders.invoiceRef', { ref: selectedInvoice.id.slice(-8).toUpperCase() })}</p>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.invoicePlatform')}</span>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{t('dashboardPages.mySubscriptionOrders.invoiceTitle')}</h2>
+                <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">{t('dashboardPages.mySubscriptionOrders.invoiceRef', { ref: selectedInvoice.id.slice(-8).toUpperCase() })}</p>
               </div>
               <div className="text-right">
-                <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 rounded-full text-xs">
+                <span className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-900/50 rounded-full text-xs">
                   {t('dashboardPages.mySubscriptionOrders.invoicePaidBadge')}
                 </span>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {t('dashboardPages.mySubscriptionOrders.invoiceDateLabel')}: {new Date(selectedInvoice.created_at).toLocaleDateString(localeCode)}
                 </p>
               </div>
             </div>
 
             {/* Billed To / Company Details */}
-            <div className="grid grid-cols-2 gap-6 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="grid grid-cols-2 gap-6 text-xs bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800">
               <div>
-                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLabel')}</span>
-                <p className="font-black text-slate-900">{t('dashboardPages.mySubscriptionOrders.invoiceProviderName')}</p>
-                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderDesc')}</p>
-                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderMf')}</p>
-                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLocation')}</p>
+                <span className="font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLabel')}</span>
+                <p className="font-bold text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.invoiceProviderName')}</p>
+                <p className="text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoiceProviderDesc')}</p>
+                <p className="text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoiceProviderMf')}</p>
+                <p className="text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoiceProviderLocation')}</p>
               </div>
               <div>
-                <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceBeneficiaryLabel')}</span>
-                <p className="font-black text-slate-900">{t('dashboardPages.mySubscriptionOrders.invoiceStoreNumber', { ref: selectedInvoice.store_id.slice(-8) })}</p>
-                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoiceSubscriptionPlan', { plan: selectedInvoice.target_plan.toUpperCase() })}</p>
-                <p className="text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoicePaymentVia', { gateway: GATEWAY_NAMES[selectedInvoice.gateway] || selectedInvoice.gateway })}</p>
+                <span className="font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">{t('dashboardPages.mySubscriptionOrders.invoiceBeneficiaryLabel')}</span>
+                <p className="font-bold text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.invoiceStoreNumber', { ref: selectedInvoice.store_id.slice(-8) })}</p>
+                <p className="text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoiceSubscriptionPlan', { plan: selectedInvoice.target_plan.toUpperCase() })}</p>
+                <p className="text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoicePaymentVia', { gateway: GATEWAY_NAMES[selectedInvoice.gateway] || selectedInvoice.gateway })}</p>
               </div>
             </div>
 
             {/* Invoice Line Items */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
               <table className="w-full text-left">
-                <thead className="bg-slate-100 text-slate-600 font-bold">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
                   <tr>
                     <th className="p-3">{t('dashboardPages.mySubscriptionOrders.invoiceColDescription')}</th>
                     <th className="p-3">{t('dashboardPages.mySubscriptionOrders.invoiceColPeriod')}</th>
                     <th className="p-3 text-right">{t('dashboardPages.mySubscriptionOrders.invoiceColAmount')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
                   <tr>
                     <td className="p-3">
-                      <span className="font-bold text-slate-900 block">
+                      <span className="font-bold text-slate-900 dark:text-white block">
                         {t('dashboardPages.mySubscriptionOrders.invoiceLineItem', { plan: selectedInvoice.target_plan.toUpperCase() })}
                       </span>
-                      <span className="text-slate-500 text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px]">
                         {t('dashboardPages.mySubscriptionOrders.invoiceLineItemDesc')}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-600">{t('dashboardPages.mySubscriptionOrders.invoicePeriod')}</td>
-                    <td className="p-3 text-right font-bold text-slate-900">
+                    <td className="p-3 text-slate-600 dark:text-slate-300">{t('dashboardPages.mySubscriptionOrders.invoicePeriod')}</td>
+                    <td className="p-3 text-right font-bold text-slate-900 dark:text-white">
                       {Number(selectedInvoice.amount).toFixed(2)} TND
                     </td>
                   </tr>
@@ -635,29 +646,29 @@ export default function SubscriptionOrdersPage() {
 
             {/* Invoice Totals */}
             <div className="flex justify-between items-center pt-2">
-              <div className="text-xs text-slate-500 space-y-1">
+              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
                 <p>{t('dashboardPages.mySubscriptionOrders.invoiceTaxNote')}</p>
                 <p>{t('dashboardPages.mySubscriptionOrders.invoiceAutoGenerated')}</p>
               </div>
               <div className="text-right">
-                <span className="text-xs text-slate-500 font-bold uppercase block">{t('dashboardPages.mySubscriptionOrders.invoiceTotalNet')}</span>
-                <span className="text-2xl font-black text-slate-900">{Number(selectedInvoice.amount).toFixed(2)} TND</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase block">{t('dashboardPages.mySubscriptionOrders.invoiceTotalNet')}</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white">{Number(selectedInvoice.amount).toFixed(2)} TND</span>
               </div>
             </div>
 
             {/* Modal Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 print:hidden">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 print:hidden">
               <button
                 type="button"
                 onClick={() => setSelectedInvoice(null)}
-                className="px-5 py-2.5 rounded-2xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition"
               >
                 {t('dashboardPages.mySubscriptionOrders.close')}
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shadow-md"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium text-xs shadow-2xs transition"
               >
                 <Printer className="w-4 h-4" />
                 {t('dashboardPages.mySubscriptionOrders.printInvoice')}
@@ -669,49 +680,49 @@ export default function SubscriptionOrdersPage() {
 
       {/* Upload Proof Modal */}
       {uploadModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">{t('dashboardPages.mySubscriptionOrders.uploadProofTitle')}</h3>
-                <p className="text-xs text-slate-500">{t('dashboardPages.mySubscriptionOrders.uploadProofSubtitle', { ref: uploadModalOrder.id.slice(-8), plan: uploadModalOrder.target_plan.toUpperCase() })}</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.uploadProofTitle')}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('dashboardPages.mySubscriptionOrders.uploadProofSubtitle', { ref: uploadModalOrder.id.slice(-8), plan: uploadModalOrder.target_plan.toUpperCase() })}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setUploadModalOrder(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1">
-                  <Building className="w-4 h-4 text-amber-700" /> {t('dashboardPages.mySubscriptionOrders.mandatBankTitle')}
+              <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <p className="font-semibold flex items-center gap-1">
+                  <Building className="w-4 h-4 text-amber-700 dark:text-amber-400" /> {t('dashboardPages.mySubscriptionOrders.mandatBankTitle')}
                 </p>
                 <p>{t('dashboardPages.mySubscriptionOrders.mandatRibLabel')}: <strong>10 000 0000000000000 00</strong> ({t('dashboardPages.mySubscriptionOrders.invoiceProviderName')})</p>
                 <p>{t('dashboardPages.mySubscriptionOrders.mandatUploadHint')}</p>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.fileLabel')}</label>
+                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">{t('dashboardPages.mySubscriptionOrders.fileLabel')}</label>
                 <input
                   type="file"
                   accept="image/*,.pdf"
                   onChange={handleFileChange}
-                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#B91C1C] file:text-white hover:file:bg-[#991B1B] cursor-pointer"
+                  className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-900 dark:file:bg-white file:text-white dark:file:text-slate-900 hover:file:bg-slate-800 dark:hover:file:bg-slate-100 cursor-pointer transition"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">{t('dashboardPages.mySubscriptionOrders.orUrlLabel')}</label>
+                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">{t('dashboardPages.mySubscriptionOrders.orUrlLabel')}</label>
                 <input
                   type="url"
                   value={proofUrl}
                   onChange={(e) => setProofUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2 border border-slate-200 rounded-2xl text-xs outline-none focus:border-[#B91C1C]"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                 />
               </div>
             </div>
@@ -720,7 +731,7 @@ export default function SubscriptionOrdersPage() {
               <button
                 type="button"
                 onClick={() => setUploadModalOrder(null)}
-                className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-200"
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
                 {t('dashboardPages.mySubscriptionOrders.cancelAction')}
               </button>
@@ -728,13 +739,30 @@ export default function SubscriptionOrdersPage() {
                 type="button"
                 onClick={handleUploadProof}
                 disabled={uploading}
-                className="flex-1 py-3 bg-[#B91C1C] text-white font-bold rounded-2xl text-xs hover:bg-[#991B1B] disabled:opacity-50"
+                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl text-xs shadow-2xs transition disabled:opacity-50"
               >
                 {uploading ? t('dashboardPages.mySubscriptionOrders.transmitting') : t('dashboardPages.mySubscriptionOrders.submitReceipt')}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {cancelOrderTargetId && (
+        <ConfirmDialog
+          isOpen={!!cancelOrderTargetId}
+          onClose={() => {
+            if (!cancellingOrder) setCancelOrderTargetId(null);
+          }}
+          onConfirm={confirmCancelOrder}
+          title={t('dashboardPages.mySubscriptionOrders.cancelOrderTitle') || "Annuler la commande d'abonnement"}
+          description={t('dashboardPages.mySubscriptionOrders.confirmCancelIntent') || "Êtes-vous sûr de vouloir annuler cette intention de paiement ?"}
+          confirmLabel={t('dashboardPages.mySubscriptionOrders.cancelOrderButton') || "Annuler la commande"}
+          cancelLabel={t('dashboardPages.common.cancel') || "Fermer"}
+          variant="danger"
+          loading={cancellingOrder}
+          dir={dir}
+        />
       )}
     </div>
   );

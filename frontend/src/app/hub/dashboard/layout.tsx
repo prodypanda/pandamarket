@@ -416,8 +416,8 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center">
-        <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold shadow-xl">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-4 text-sm font-semibold shadow-xl text-slate-900 dark:text-white">
           {t('dashboard.checkingAccess') || 'Vérification des accès...'}
         </div>
       </div>
@@ -426,8 +426,8 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
   if (isStoreSetupPage) {
     return (
-      <div dir={dir} className="min-h-screen bg-slate-100 text-slate-900">
-        <header className="border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
+      <div dir={dir} className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 shadow-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <MarketplaceBrand
               href="/hub"
@@ -437,21 +437,21 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
               marketplaceLogoDarkUrl={marketplaceSettings.marketplace_logo_dark_url}
               logoSurface="light"
               imageClassName="h-10 max-w-[170px] object-contain"
-              textClassName="text-xl font-bold text-slate-900"
+              textClassName="text-xl font-bold text-slate-900 dark:text-white"
             />
             <div className="flex items-center gap-3">
               <Link
                 href="/hub/dashboard/select-store"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-slate-400 transition shadow-sm"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500 transition shadow-sm"
               >
-                <Store className="h-4 w-4 text-slate-900" />
+                <Store className="h-4 w-4 text-slate-900 dark:text-slate-100" />
                 <span>Mes boutiques</span>
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="inline-flex items-center gap-2 rounded-full border border-rose-100 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-rose-100 dark:border-rose-900/40 px-4 py-2 text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-60"
               >
                 <LogOut className="h-4 w-4" />
                 {loggingOut ? (t('dashboard.loggingOut') || 'Déconnexion...') : (t('nav.logout') || 'Déconnexion')}

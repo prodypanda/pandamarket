@@ -676,7 +676,7 @@ export default function SellerMediaPage() {
                       setZoomLevel(1);
                     }}
                     title={t('dashboardPages.media.zoom')}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 dark:bg-white/20 text-white transition hover:bg-white dark:hover:bg-white hover:text-slate-900 dark:hover:text-slate-900 cursor-pointer"
                   >
                     <Maximize2 className="h-3 w-3" />
                   </button>
@@ -688,7 +688,7 @@ export default function SellerMediaPage() {
                       setOptResult(null);
                     }}
                     title={t('dashboardPages.media.optimize')}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 dark:bg-white/20 text-white transition hover:bg-white dark:hover:bg-white hover:text-slate-900 dark:hover:text-slate-900 cursor-pointer"
                   >
                     <Zap className="h-3 w-3" />
                   </button>
@@ -700,7 +700,7 @@ export default function SellerMediaPage() {
                       setNewFilename(item.filename);
                     }}
                     title={t('dashboardPages.media.rename')}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 dark:bg-white/20 text-white transition hover:bg-white dark:hover:bg-white hover:text-slate-900 dark:hover:text-slate-900 cursor-pointer"
                   >
                     <Edit3 className="h-3 w-3" />
                   </button>
@@ -709,7 +709,7 @@ export default function SellerMediaPage() {
                     type="button"
                     onClick={() => void copyUrl(item.url)}
                     title={t('dashboardPages.media.copy')}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-white hover:text-slate-900 cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 dark:bg-white/20 text-white transition hover:bg-white dark:hover:bg-white hover:text-slate-900 dark:hover:text-slate-900 cursor-pointer"
                   >
                     {copiedUrl === item.url ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                   </button>
@@ -718,7 +718,7 @@ export default function SellerMediaPage() {
                     type="button"
                     onClick={() => setDeletingItem(item)}
                     title={t('dashboardPages.media.delete')}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white transition hover:bg-rose-600 hover:text-white cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 dark:bg-white/20 text-white transition hover:bg-rose-600 dark:hover:bg-rose-600 hover:text-white cursor-pointer"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

@@ -34,7 +34,7 @@ const AVAILABLE_SCOPES = [
 ];
 
 export default function ApiKeysPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const scopeInfo: Record<string, { label: string; desc: string }> = {
@@ -185,21 +185,21 @@ export default function ApiKeysPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.apiKeys.title')}</h1>
+      <div dir={dir} className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.apiKeys.title')}</h1>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-slate-400 dark:text-slate-500 animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div dir={dir} className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('dashboardPages.apiKeys.title')}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.apiKeys.title')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
             {t('dashboardPages.apiKeys.subtitle')}
           </p>
         </div>
@@ -208,7 +208,7 @@ export default function ApiKeysPage() {
             setShowCreate(true);
             setNewlyCreatedKey(null);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition-colors"
         >
           <Plus className="w-4 h-4" />
           {t('dashboardPages.apiKeys.createKey')}
@@ -216,40 +216,40 @@ export default function ApiKeysPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl">{error}</div>
+        <div className="bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 p-4 rounded-xl">{error}</div>
       )}
 
       {/* Newly Created Key Banner */}
       {newlyCreatedKey && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-bold text-yellow-800 mb-1">
+              <h3 className="font-bold text-amber-900 dark:text-amber-200 mb-1">
                 {t('dashboardPages.apiKeys.saveKeyWarning')}
               </h3>
-              <p className="text-sm text-yellow-700 mb-3">
+              <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
                 {t('dashboardPages.apiKeys.saveKeyWarningDesc')}
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-4 py-2.5 bg-white border border-yellow-300 rounded-lg text-sm font-mono text-gray-900 break-all">
+                <code className="flex-1 px-4 py-2.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 rounded-lg text-sm font-mono text-slate-900 dark:text-white break-all">
                   {newlyCreatedKey}
                 </code>
                 <button
                   onClick={handleCopyKey}
-                  className="p-2.5 bg-white border border-yellow-300 rounded-lg hover:bg-yellow-100 transition-colors"
+                  className="p-2.5 bg-white dark:bg-slate-850 border border-amber-300 dark:border-amber-700/60 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   {copied ? (
-                    <Check className="w-4 h-4 text-green-600" />
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Copy className="w-4 h-4 text-yellow-700" />
+                    <Copy className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                   )}
                 </button>
               </div>
             </div>
             <button
               onClick={() => setNewlyCreatedKey(null)}
-              className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
+              className="text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 text-sm font-medium"
             >
               {t('dashboardPages.apiKeys.dismiss')}
             </button>
@@ -259,45 +259,46 @@ export default function ApiKeysPage() {
 
       {/* Create Form */}
       {showCreate && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">{t('dashboardPages.apiKeys.createNewApiKey')}</h2>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-6">
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">{t('dashboardPages.apiKeys.createNewApiKey')}</h2>
           {createError && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{createError}</div>
+            <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-sm rounded-lg">{createError}</div>
           )}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboardPages.apiKeys.label')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('dashboardPages.apiKeys.label')}</label>
               <input
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder={t('dashboardPages.apiKeys.labelPlaceholder')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('dashboardPages.apiKeys.scopes')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('dashboardPages.apiKeys.scopes')}</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {AVAILABLE_SCOPES.map((scope) => {
                   const info = scopeInfo[scope];
+                  const isSelected = newScopes.includes(scope);
                   return (
                     <label
                       key={scope}
                       className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        newScopes.includes(scope)
-                          ? 'border-[#B91C1C] bg-[#B91C1C]/5'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        isSelected
+                          ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800/80'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 bg-white dark:bg-slate-900'
                       }`}
                     >
                       <input
                         type="checkbox"
-                        checked={newScopes.includes(scope)}
+                        checked={isSelected}
                         onChange={() => toggleScope(scope)}
-                        className="mt-0.5 text-[#B91C1C] focus:ring-[#B91C1C]"
+                        className="mt-0.5 text-slate-900 focus:ring-slate-900 dark:text-white dark:focus:ring-white rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850"
                       />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{info.label}</p>
-                        <p className="text-xs text-gray-500">{info.desc}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{info.label}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{info.desc}</p>
                       </div>
                     </label>
                   );
@@ -305,7 +306,7 @@ export default function ApiKeysPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('dashboardPages.apiKeys.expirationOptional')}
               </label>
               <input
@@ -313,20 +314,20 @@ export default function ApiKeysPage() {
                 value={newExpiresAt}
                 onChange={(e) => setNewExpiresAt(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
               />
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition-colors disabled:opacity-50"
               >
                 {creating ? t('dashboardPages.apiKeys.creating') : t('dashboardPages.apiKeys.createApiKey')}
               </button>
               <button
                 onClick={() => setShowCreate(false)}
-                className="px-6 py-2.5 text-gray-600 font-medium hover:text-gray-800 transition-colors"
+                className="px-6 py-2.5 text-slate-600 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 {t('dashboardPages.apiKeys.cancel')}
               </button>
@@ -336,45 +337,45 @@ export default function ApiKeysPage() {
       )}
 
       {/* Keys List */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">{t('dashboardPages.apiKeys.yourApiKeys')}</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+          <h2 className="font-semibold text-slate-900 dark:text-white">{t('dashboardPages.apiKeys.yourApiKeys')}</h2>
         </div>
         {keys.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <Key className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">{t('dashboardPages.apiKeys.emptyState')}</p>
+            <Key className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-500 dark:text-slate-400">{t('dashboardPages.apiKeys.emptyState')}</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {keys.map((key) => (
-              <div key={key.id} className="px-6 py-4">
+              <div key={key.id} className="px-6 py-4 hover:bg-slate-50/40 dark:hover:bg-slate-800/30 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
                       className={`p-2 rounded-lg ${
-                        key.is_active ? 'bg-green-50' : 'bg-gray-100'
+                        key.is_active ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-slate-100 dark:bg-slate-800'
                       }`}
                     >
                       <Key
                         className={`w-4 h-4 ${
-                          key.is_active ? 'text-green-600' : 'text-gray-400'
+                          key.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
                         }`}
                       />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{key.label}</p>
-                      <p className="text-sm text-gray-500 font-mono">{key.key_prefix}••••••••</p>
+                      <p className="font-medium text-slate-900 dark:text-white">{key.label}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{key.key_prefix}••••••••</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right text-sm">
                       {key.is_active ? (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700">
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
                           {t('dashboardPages.apiKeys.active')}
                         </span>
                       ) : (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                           {t('dashboardPages.apiKeys.revoked')}
                         </span>
                       )}
@@ -386,13 +387,13 @@ export default function ApiKeysPage() {
                             <button
                               onClick={() => handleRevoke(key.id)}
                               disabled={revoking}
-                              className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors"
                             >
                               {revoking ? t('dashboardPages.apiKeys.revoking') : t('dashboardPages.apiKeys.confirm')}
                             </button>
                             <button
                               onClick={() => setRevokeId(null)}
-                              className="px-3 py-1.5 text-gray-500 text-xs font-medium hover:text-gray-700"
+                              className="px-3 py-1.5 text-slate-500 dark:text-slate-400 text-xs font-medium hover:text-slate-700 dark:hover:text-slate-200"
                             >
                               {t('dashboardPages.apiKeys.cancel')}
                             </button>
@@ -400,7 +401,7 @@ export default function ApiKeysPage() {
                         ) : (
                           <button
                             onClick={() => setRevokeId(key.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                             title={t('dashboardPages.apiKeys.revokeKey')}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -410,13 +411,13 @@ export default function ApiKeysPage() {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     {t('dashboardPages.apiKeys.scopesLabel')}{' '}
                     {key.scopes.map((s) => (
                       <span
                         key={s}
-                        className="inline-flex px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 mr-1"
+                        className="inline-flex px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 mr-1"
                       >
                         {s}
                       </span>

@@ -55,7 +55,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
           <Badge />
           <p className="text-base font-semibold text-white tracking-tight leading-snug">{title}</p>
           <p className="line-clamp-2 text-xs text-slate-300 font-normal">{description}</p>
-          <span className="inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-2xs">
+          <span className="inline-block rounded-lg bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-900 dark:text-white shadow-2xs">
             {cta}
           </span>
         </div>

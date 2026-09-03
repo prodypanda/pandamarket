@@ -31,7 +31,7 @@ const typeIcons: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -140,25 +140,25 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="space-y-6">
+    <div dir={dir} className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Bell className="w-6 h-6 text-[#B91C1C]" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Bell className="w-6 h-6 text-slate-900 dark:text-white" />
             {t('dashboardPages.notifications.title')}
             {unreadCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-rose-500 dark:bg-rose-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
                 {unreadCount}
               </span>
             )}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">{t('dashboardPages.notifications.subtitle')}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('dashboardPages.notifications.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setFilter(filter === 'all' ? 'unread' : 'all')}
-            className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center px-3.5 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-2xs"
           >
             <Filter className="w-4 h-4 mr-2" />
             {filter === 'all' ? t('dashboardPages.notifications.filterUnreadOnly') : t('dashboardPages.notifications.filterAll')}
@@ -167,7 +167,7 @@ export default function NotificationsPage() {
             <button
               onClick={markAllAsRead}
               disabled={markingAll}
-              className="flex items-center px-3 py-2 text-sm bg-[#B91C1C] text-white rounded-lg hover:bg-[#14b576] transition-colors disabled:opacity-50"
+              className="flex items-center px-3.5 py-2 text-sm font-medium bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white rounded-xl shadow-2xs transition-colors disabled:opacity-50"
             >
               {markingAll ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -181,29 +181,29 @@ export default function NotificationsPage() {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
+        <div className="p-3 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 text-sm rounded-xl border border-rose-200 dark:border-rose-900/50">
           {error}
         </div>
       )}
 
       {/* Notifications List */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 text-[#B91C1C] animate-spin" />
+            <Loader2 className="w-6 h-6 text-slate-500 dark:text-slate-400 animate-spin" />
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-16">
-            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">{t('dashboardPages.notifications.empty')}</p>
+            <Bell className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('dashboardPages.notifications.empty')}</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {notifications.map((notif) => (
               <div
                 key={notif.id}
-                className={`p-4 sm:p-5 flex items-start gap-4 hover:bg-gray-50/50 transition-colors cursor-pointer ${
-                  !notif.is_read ? 'bg-[#B91C1C]/5 border-l-4 border-l-[#B91C1C]' : ''
+                className={`p-4 sm:p-5 flex items-start gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${
+                  !notif.is_read ? 'bg-amber-50/40 dark:bg-amber-950/20 border-l-4 border-l-amber-500 dark:border-l-amber-400' : ''
                 }`}
                 onClick={() => !notif.is_read && markAsRead(notif.id)}
               >
@@ -212,15 +212,15 @@ export default function NotificationsPage() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className={`text-sm ${!notif.is_read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                    <h3 className={`text-sm ${!notif.is_read ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
                       {notif.title}
                     </h3>
                     {!notif.is_read && (
-                      <span className="w-2 h-2 bg-[#B91C1C] rounded-full flex-shrink-0" />
+                      <span className="w-2 h-2 bg-amber-500 dark:bg-amber-400 rounded-full flex-shrink-0" />
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
-                  <span className="text-xs text-gray-400 mt-1 block">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{notif.message}</p>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 mt-1 block">
                     {new Date(notif.created_at).toLocaleDateString(locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN', {
                       day: 'numeric',
                       month: 'short',
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
                 {!notif.is_read && (
                   <button
                     onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
-                    className="p-1.5 text-gray-400 hover:text-[#B91C1C] hover:bg-[#B91C1C]/10 rounded-lg transition-colors flex-shrink-0"
+                    className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
                     title={t('dashboardPages.notifications.markAsRead')}
                   >
                     <Check className="w-4 h-4" />
@@ -240,7 +240,7 @@ export default function NotificationsPage() {
                 )}
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }}
-                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors flex-shrink-0"
                   title={t('dashboardPages.notifications.delete')}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -252,19 +252,19 @@ export default function NotificationsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 flex items-center justify-center gap-2">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               ← {t('dashboardPages.notifications.previous')}
             </button>
-            <span className="text-sm text-gray-500">{t('dashboardPages.notifications.page', { current: page, total: totalPages })}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('dashboardPages.notifications.page', { current: page, total: totalPages })}</span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               {t('dashboardPages.notifications.next')} →
             </button>

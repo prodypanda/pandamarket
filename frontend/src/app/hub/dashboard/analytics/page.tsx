@@ -82,7 +82,7 @@ function formatCompact(v: number): string {
 const STATUS_COLORS: Record<string, string> = {
   pending: '#F59E0B',
   processing: '#3B82F6',
-  payment_required: '#EF4444',
+  payment_required: '#F43F5E',
   fulfilled: '#0284C7',
   delivered: '#10B981',
   cancelled: '#64748B',

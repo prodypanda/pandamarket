@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { getResizedImageUrl } from '@/lib/image-url';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type {
   Order,
   OrderItem,
@@ -161,6 +162,8 @@ export function SellerOrderDrawer({
   const [addItemQuantity, setAddItemQuantity] = useState(1);
   const [addingItemLoading, setAddingItemLoading] = useState(false);
   const [orderEditFeedback, setOrderEditFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [removeItemTargetId, setRemoveItemTargetId] = useState<string | null>(null);
+  const [removingItem, setRemovingItem] = useState(false);
 
   // COD State
   const [codOtpInput, setCodOtpInput] = useState('');
@@ -276,8 +279,14 @@ export function SellerOrderDrawer({
     }
   };
 
-  const handleRemoveOrderItem = async (itemId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir retirer cet article de la commande ?')) return;
+  const handleRemoveOrderItem = (itemId: string) => {
+    setRemoveItemTargetId(itemId);
+  };
+
+  const confirmRemoveOrderItem = async () => {
+    if (!removeItemTargetId) return;
+    const itemId = removeItemTargetId;
+    setRemovingItem(true);
     setEditingItemId(itemId);
     setOrderEditFeedback(null);
     try {
@@ -289,11 +298,13 @@ export function SellerOrderDrawer({
         throw new Error(data.error?.message || 'Erreur lors de la suppression de l’article');
       }
       setOrderEditFeedback({ type: 'success', message: 'Article retiré avec succès.' });
+      setRemoveItemTargetId(null);
       await onOrderUpdated();
     } catch (err) {
       setOrderEditFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' });
     } finally {
       setEditingItemId(null);
+      setRemovingItem(false);
     }
   };
 
@@ -1365,6 +1376,23 @@ export function SellerOrderDrawer({
             </div>
           </div>
         </div>
+      )}
+
+      {removeItemTargetId && (
+        <ConfirmDialog
+          isOpen={!!removeItemTargetId}
+          onClose={() => {
+            if (!removingItem) setRemoveItemTargetId(null);
+          }}
+          onConfirm={confirmRemoveOrderItem}
+          title={t?.('dashboardPages.orders.removeItemTitle') || 'Retirer l’article'}
+          description={t?.('dashboardPages.orders.confirmRemoveItem') || 'Êtes-vous sûr de vouloir retirer cet article de la commande ?'}
+          confirmLabel={t?.('dashboardPages.orders.removeItemConfirm') || 'Retirer'}
+          cancelLabel={t?.('dashboardPages.common.cancel') || 'Annuler'}
+          variant="danger"
+          loading={removingItem}
+          dir={locale === 'ar' ? 'rtl' : 'ltr'}
+        />
       )}
     </>
   );

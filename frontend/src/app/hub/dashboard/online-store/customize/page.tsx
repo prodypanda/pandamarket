@@ -11,7 +11,7 @@ import { getStorefrontUrl } from '@/lib/store-hosts';
 import { useLocale } from '@/contexts/LocaleContext';
 
 export default function ThemeCustomizePage() {
-  const { t, locale } = useLocale();
+  const { t, dir } = useLocale();
   const [themeId, setThemeId] = useState<ThemeId>('classic');
   const [initialCustomization, setInitialCustomization] = useState<ThemeCustomization>({});
   const [currentCustomization, setCurrentCustomization] = useState<ThemeCustomization>({});
@@ -82,23 +82,23 @@ export default function ThemeCustomizePage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+      <div dir={dir} className="flex h-64 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div dir={dir} className="space-y-6">
+      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
-            <span className="rounded-xl bg-[#B91C1C]/10 p-2 text-[#B91C1C]">
+            <span className="rounded-xl bg-slate-100 dark:bg-slate-800 p-2 text-slate-900 dark:text-white">
               <Sparkles className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.customize.title')}</h1>
-              <p className="text-sm text-slate-500">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.customize.title')}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('dashboardPages.customize.activeThemeSubtitle', { themeId })}
               </p>
             </div>
@@ -134,9 +134,9 @@ export default function ThemeCustomizePage() {
                 setFeedback({ message: t('dashboardPages.customize.previewError'), isError: true });
               }
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium px-4 py-2.5 text-xs shadow-2xs transition-colors"
           >
-            <Sparkles className="h-4 w-4 text-amber-400" />
+            <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
             <span>{t('dashboardPages.customize.fullscreenPreview')}</span>
           </button>
         </div>
@@ -145,8 +145,8 @@ export default function ThemeCustomizePage() {
           <div
             className={`mt-4 rounded-xl p-3 text-xs font-semibold ${
               feedback.isError
-                ? 'bg-red-50 text-red-700 border border-red-200'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50'
+                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
             }`}
           >
             {feedback.message}
@@ -154,7 +154,7 @@ export default function ThemeCustomizePage() {
         )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <ThemeCustomizer
           themeId={themeId}
           initialCustomization={currentCustomization}

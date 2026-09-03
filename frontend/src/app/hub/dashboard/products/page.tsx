@@ -8,6 +8,7 @@ import { ProductDescriptionEditor } from '@/components/product/ProductDescriptio
 import { updateOnboardingStep } from '@/lib/onboarding';
 import { getHubProductHref } from '@/lib/product-links';
 import { CategorySearchableSelect } from '@/components/ui/CategorySearchableSelect';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { buildHierarchicalCategoryList } from '@/lib/category-tree';
 import {
   Activity,
@@ -869,6 +870,8 @@ export default function ProductsPage() {
   const [studioAspectRatio, setStudioAspectRatio] = useState<'1:1' | '4:5' | '16:9' | '3:4'>('1:1');
   const [studioZoomEnabled, setStudioZoomEnabled] = useState<boolean>(false);
   const [studioHistory, setStudioHistory] = useState<Array<{ id: string; presetName: string; imageUrl: string; timestamp: string }>>([]);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
 
   // -----------------------------------------------------------------------
   // KEYBOARD SHORTCUTS
@@ -2797,8 +2800,19 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (productId: string) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
+  const handleDelete = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setProductToDelete(product);
+    } else {
+      setProductToDelete({ id: productId, title: 'Produit' } as Product);
+    }
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    const productId = productToDelete.id;
+    setDeletingProduct(true);
     setError('');
     try {
       const res = await fetchWithCsrf(`/api/pd/stores/me/products/${productId}`, {
@@ -2809,11 +2823,14 @@ export default function ProductsPage() {
         setProducts((current) => current.filter((product) => product.id !== productId));
         setTotalProducts((current) => Math.max(0, current - 1));
         setSuccess('Produit supprimé avec succès.');
+        setProductToDelete(null);
       } else {
         setError(await getErrorMessage(res, 'Échec de suppression'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
+    } finally {
+      setDeletingProduct(false);
     }
   };
 
@@ -3317,7 +3334,7 @@ export default function ProductsPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelectOne(product.id)}
-                      className="rounded border-slate-300 bg-white text-slate-900 shadow-2xs"
+                      className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-slate-900 dark:text-emerald-500 shadow-2xs"
                     />
                   </div>
 
@@ -4041,7 +4058,7 @@ export default function ProductsPage() {
                               <input
                                 type="radio"
                                 checked={form.bundle_pricing_type === 'percentage'}
-                                onChange={() => {}}
+                                onChange={() => setForm((c) => ({ ...c, bundle_pricing_type: 'percentage' }))}
                                 className="text-slate-900 focus:ring-slate-900"
                               />
                             </div>
@@ -4094,7 +4111,13 @@ export default function ProductsPage() {
                               <input
                                 type="radio"
                                 checked={form.bundle_pricing_type === 'fixed'}
-                                onChange={() => {}}
+                                onChange={() => {
+                                  setForm((c) => ({
+                                    ...c,
+                                    bundle_pricing_type: 'fixed',
+                                    compare_at_price: bundleMetrics.originalSum > 0 ? bundleMetrics.originalSum.toFixed(3) : c.compare_at_price,
+                                  }));
+                                }}
                                 className="text-slate-900 focus:ring-slate-900"
                               />
                             </div>
@@ -5555,10 +5578,10 @@ export default function ProductsPage() {
                               style={{ left: `${studioSliderPos}%`, transform: 'translateX(-1px)' }}
                             >
                               {/* Vertical divider line */}
-                              <div className="absolute inset-y-0 w-0.5 bg-white/80 shadow-lg" />
+                              <div className="absolute inset-y-0 w-0.5 bg-white/80 dark:bg-white/80 shadow-lg" />
                               {/* Circular handle */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-px h-8 w-8 rounded-full bg-white text-slate-900 shadow-md flex items-center justify-center border border-slate-300 ring-2 ring-slate-900/10">
-                                <ArrowLeftRight className="w-3.5 h-3.5 text-slate-700" />
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-px h-8 w-8 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md flex items-center justify-center border border-slate-300 dark:border-slate-600 ring-2 ring-slate-900/10 dark:ring-white/10">
+                                <ArrowLeftRight className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                               </div>
                             </div>
 
@@ -6419,7 +6442,7 @@ export default function ProductsPage() {
                           );
                         }}
                         placeholder="Nom de l'option (ex: Taille, Couleur)"
-                        className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white"
+                        className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       />
                     </div>
                     <button
@@ -6467,7 +6490,7 @@ export default function ProductsPage() {
                           }
                         }}
                         placeholder="+ Ajouter valeur (Entrée)"
-                        className="w-36 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 bg-white"
+                        className="w-36 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       />
                       <button
                         type="button"
@@ -6507,7 +6530,7 @@ export default function ProductsPage() {
                   value={matrixDefaultPrice}
                   onChange={(e) => setMatrixDefaultPrice(e.target.value)}
                   placeholder={form.price || '0.000'}
-                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 bg-white"
+                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -6534,7 +6557,7 @@ export default function ProductsPage() {
                   value={matrixDefaultStock}
                   onChange={(e) => setMatrixDefaultStock(e.target.value)}
                   placeholder="5"
-                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 bg-white"
+                  className="w-full px-3 py-1.5 font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
 
@@ -6547,7 +6570,7 @@ export default function ProductsPage() {
                   value={matrixSkuPrefix}
                   onChange={(e) => setMatrixSkuPrefix(e.target.value.toUpperCase())}
                   placeholder={form.product_reference || 'PROD-2026'}
-                  className="w-full px-3 py-1.5 font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                  className="w-full px-3 py-1.5 font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
               </div>
             </div>
@@ -7926,6 +7949,32 @@ export default function ProductsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {productToDelete && (
+        <ConfirmDialog
+          isOpen={!!productToDelete}
+          onClose={() => {
+            if (!deletingProduct) setProductToDelete(null);
+          }}
+          onConfirm={confirmDeleteProduct}
+          title="Supprimer le produit"
+          description={
+            <div className="space-y-2">
+              <p>
+                Êtes-vous sûr de vouloir supprimer définitivement le produit{' '}
+                <strong className="text-slate-900 dark:text-white font-semibold">« {productToDelete.title} »</strong> ?
+              </p>
+              <p className="text-xs text-rose-600 dark:text-rose-400">
+                Cette opération est irréversible. Les déclinaisons, images et données associées seront supprimées.
+              </p>
+            </div>
+          }
+          confirmLabel="Supprimer"
+          cancelLabel="Annuler"
+          variant="danger"
+          loading={deletingProduct}
+        />
       )}
     </div>
   );

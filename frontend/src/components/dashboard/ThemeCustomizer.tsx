@@ -110,15 +110,15 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Personnalisation du thème</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Personnalisation du thème</h3>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
             Thème actif : <span className="font-medium text-[#16C784]">{theme.name}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Réinitialiser
@@ -142,7 +142,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
 
       {/* Live Preview Bar */}
       <div
-        className="rounded-xl overflow-hidden border border-gray-200"
+        className="rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800"
         style={{ backgroundColor: resolved.background }}
       >
         <div
@@ -172,7 +172,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
               (c, i) => (
                 <div
                   key={i}
-                  className="w-6 h-6 rounded-full border border-gray-300"
+                  className="w-6 h-6 rounded-full border border-gray-300 dark:border-slate-700"
                   style={{ backgroundColor: c }}
                   title={['Primary', 'Secondary', 'Accent', 'Background', 'Text'][i]}
                 />
@@ -194,24 +194,24 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
       {/* Accordion Sections */}
       <div className="space-y-2">
         {sections.map((section) => (
-          <div key={section.id} className="border border-gray-200 rounded-xl overflow-hidden">
+          <div key={section.id} className="border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
             <button
               onClick={() => toggleSection(section.id)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-850 transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <section.icon className="w-4 h-4 text-[#16C784]" />
-                <span className="text-sm font-medium text-gray-900">{section.label}</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{section.label}</span>
               </div>
               {expandedSection === section.id ? (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-gray-400 dark:text-slate-500" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-400 dark:text-slate-500" />
               )}
             </button>
 
             {expandedSection === section.id && (
-              <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="px-4 pb-4 border-t border-gray-100 dark:border-slate-800">
                 {/* Layout Variation */}
                 {section.id === 'layout' && (
                   <div className="pt-3 space-y-2">
@@ -222,7 +222,9 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                         <label
                           key={v}
                           className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                            active ? 'bg-[#16C784]/10 border border-[#16C784]/30' : 'border border-gray-100 hover:bg-gray-50'
+                            active
+                              ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border border-[#16C784]/30 dark:border-[#16C784]/40'
+                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850/60'
                           }`}
                         >
                           <input
@@ -235,9 +237,9 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-base">{info.icon}</span>
-                              <span className="text-sm font-medium text-gray-900">{info.label}</span>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">{info.label}</span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{info.description}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{info.description}</p>
                           </div>
                         </label>
                       );
@@ -255,7 +257,9 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                         <label
                           key={d}
                           className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                            active ? 'bg-[#16C784]/10 border border-[#16C784]/30' : 'border border-gray-100 hover:bg-gray-50'
+                            active
+                              ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border border-[#16C784]/30 dark:border-[#16C784]/40'
+                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850/60'
                           }`}
                         >
                           <input
@@ -266,8 +270,8 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                             className="text-[#16C784] focus:ring-[#16C784]"
                           />
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium text-gray-900">{info.label}</span>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{info.label}</span>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                               {info.description} ({info.cols})
                             </p>
                           </div>
@@ -277,7 +281,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                               (_, i) => (
                                 <div
                                   key={i}
-                                  className={`bg-gray-300 rounded-sm ${
+                                  className={`bg-gray-300 dark:bg-slate-700 rounded-sm ${
                                     d === 'compact' ? 'w-2 h-3' : d === 'comfortable' ? 'w-3 h-4' : 'w-4 h-5'
                                   }`}
                                 />
@@ -302,13 +306,13 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                           onClick={() => updateCustomization({ heroStyle: h })}
                           className={`p-3 rounded-lg text-center transition-all ${
                             active
-                              ? 'bg-[#16C784]/10 border-2 border-[#16C784]'
-                              : 'border border-gray-200 hover:border-gray-300'
+                              ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border-2 border-[#16C784]'
+                              : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
                           }`}
                         >
                           <span className="text-xl block mb-1">{info.icon}</span>
-                          <span className="text-xs font-medium text-gray-900">{info.label}</span>
-                          <p className="text-[10px] text-gray-500 mt-0.5">{info.description}</p>
+                          <span className="text-xs font-medium text-gray-900 dark:text-white">{info.label}</span>
+                          <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5">{info.description}</p>
                         </button>
                       );
                     })}
@@ -320,7 +324,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                   <div className="pt-3 space-y-4">
                     {/* Presets */}
                     <div>
-                      <p className="text-xs font-medium text-gray-700 mb-2">Palettes prédéfinies</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-slate-300 mb-2">Palettes prédéfinies</p>
                       <div className="grid grid-cols-2 gap-2">
                         {theme.colorPresets.map((preset) => {
                           const active = customization.colorPresetId === preset.id ||
@@ -334,6 +338,9 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                                 updateCustomization({
                                   colorPresetId: preset.id,
                                   customColors: undefined,
+                                  layoutVariation: customization.layoutVariation,
+                                  gridDensity: customization.gridDensity,
+                                  heroStyle: customization.heroStyle,
                                 })
                               }
                             />
@@ -367,7 +374,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                             ] as const
                           ).map(({ key, label }) => (
                             <div key={key}>
-                              <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                              <label className="block text-[11px] font-medium text-gray-600 dark:text-slate-400 mb-1">
                                 {label}
                               </label>
                               <div className="flex items-center gap-2">
@@ -375,7 +382,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                                   type="color"
                                   value={customization.customColors?.[key] || resolved[key]}
                                   onChange={(e) => updateCustomColor(key, e.target.value)}
-                                  className="w-8 h-8 rounded-lg border border-gray-200 cursor-pointer p-0"
+                                  className="w-8 h-8 rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer p-0 bg-white dark:bg-slate-800"
                                 />
                                 <input
                                   type="text"
@@ -386,7 +393,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                                       updateCustomColor(key, v);
                                     }
                                   }}
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-md font-mono focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-md font-mono focus:border-[#16C784] focus:ring-1 focus:ring-[#16C784] outline-none"
                                   maxLength={7}
                                 />
                               </div>
@@ -421,8 +428,8 @@ function PresetCard({
       onClick={onClick}
       className={`p-3 rounded-lg text-left transition-all ${
         active
-          ? 'bg-[#16C784]/10 border-2 border-[#16C784]'
-          : 'border border-gray-200 hover:border-gray-300'
+          ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border-2 border-[#16C784]'
+          : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
       }`}
     >
       <div className="flex gap-1 mb-2">
@@ -430,13 +437,13 @@ function PresetCard({
           (c, i) => (
             <div
               key={i}
-              className="w-5 h-5 rounded-full border border-gray-200"
+              className="w-5 h-5 rounded-full border border-gray-200 dark:border-slate-700"
               style={{ backgroundColor: c }}
             />
           ),
         )}
       </div>
-      <p className="text-xs font-medium text-gray-900">{preset.name}</p>
+      <p className="text-xs font-medium text-gray-900 dark:text-white">{preset.name}</p>
     </button>
   );
 }

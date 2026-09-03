@@ -7,6 +7,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy } from 'lucide-react';
 import { SellerOrderDrawer } from '@/components/dashboard/orders/SellerOrderDrawer';
+import { PromptDialog } from '@/components/ui/PromptDialog';
 
 export type OrdersMainTab = 'all_orders' | 'cod_radar' | 'rto_returns' | 'courier_settlements';
 
@@ -575,7 +576,7 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
       border: 0;
       border-radius: 999px;
       padding: 10px 18px;
-      background: #B91C1C;
+      background: #0f172a;
       color: white;
       cursor: pointer;
       font-weight: 900;
@@ -631,7 +632,7 @@ function openOrderPrintDocument(order: Order, kind: PrintDocumentKind, marketpla
       align-items: center;
       justify-content: center;
       border-radius: 12px;
-      background: linear-gradient(135deg, #B91C1C, #059669);
+      background: linear-gradient(135deg, #047857, #059669);
       color: white;
       font-weight: 950;
       letter-spacing: -0.04em;
@@ -1011,7 +1012,7 @@ function openShipmentLabelDocument(order: Order, shipment: SellerOrderShipment, 
     .code strong { display: block; font-family: monospace; font-size: 20px; letter-spacing: 1px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .block { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
-    .block h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #991b1b; letter-spacing: .08em; }
+    .block h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #047857; letter-spacing: .08em; }
     .footer { margin-top: auto; font-size: 11px; color: #6b7280; text-align: center; }
   </style>
 </head>
@@ -1212,7 +1213,7 @@ function buildOrderTimeline(order: Order, t: (key: string, params?: Record<strin
 }
 
 export default function OrdersPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -1274,6 +1275,11 @@ export default function OrdersPage() {
   const [verifyingCodOtp, setVerifyingCodOtp] = useState(false);
   const [updatingCodStatus, setUpdatingCodStatus] = useState(false);
   const [codFeedback, setCodFeedback] = useState('');
+
+  // Fulfillment Cancellation Modal State
+  const [cancelFulfillmentOrderTarget, setCancelFulfillmentOrderTarget] = useState<Order | null>(null);
+  const [cancellingFulfillment, setCancellingFulfillment] = useState(false);
+  const [cancelFulfillmentError, setCancelFulfillmentError] = useState('');
 
   // RTO Return Action Modal State
   const [rtoOrderTarget, setRtoOrderTarget] = useState<Order | null>(null);
@@ -1812,27 +1818,32 @@ export default function OrdersPage() {
     openDeliveryProofModal(order);
   };
 
-  const cancelSellerFulfillment = async (order: Order) => {
-    const reason = window.prompt(t('dashboardPages.orders.cancelFulfillmentPrompt'));
-    if (!reason?.trim()) return;
-    setStatusActionId(order.id);
-    setError('');
+  const cancelSellerFulfillment = (order: Order) => {
+    setCancelFulfillmentOrderTarget(order);
+    setCancelFulfillmentError('');
+  };
+
+  const handleCancelFulfillmentSubmit = async (reason: string) => {
+    if (!cancelFulfillmentOrderTarget) return;
+    setCancellingFulfillment(true);
+    setCancelFulfillmentError('');
     try {
-      const res = await fetchWithCsrf(`/api/pd/orders/${order.id}/fulfillment/cancel`, {
+      const res = await fetchWithCsrf(`/api/pd/orders/${cancelFulfillmentOrderTarget.id}/fulfillment/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ reason: reason.trim() }),
       });
       if (!res.ok) {
-        setError(await getErrorMessage(res, t('dashboardPages.orders.errorCancelling')));
+        setCancelFulfillmentError(await getErrorMessage(res, t('dashboardPages.orders.errorCancelling')));
         return;
       }
-      await refreshOrderAfterStatusChange(order);
+      await refreshOrderAfterStatusChange(cancelFulfillmentOrderTarget);
+      setCancelFulfillmentOrderTarget(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
+      setCancelFulfillmentError(err instanceof Error ? err.message : t('dashboardPages.orders.errorNetwork'));
     } finally {
-      setStatusActionId('');
+      setCancellingFulfillment(false);
     }
   };
 
@@ -4113,6 +4124,35 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {cancelFulfillmentOrderTarget && (
+        <PromptDialog
+          isOpen={!!cancelFulfillmentOrderTarget}
+          onClose={() => {
+            if (!cancellingFulfillment) {
+              setCancelFulfillmentOrderTarget(null);
+              setCancelFulfillmentError('');
+            }
+          }}
+          onSubmit={handleCancelFulfillmentSubmit}
+          title={t('dashboardPages.orders.cancelFulfillment') || "Annuler l'expédition"}
+          description={
+            t('dashboardPages.orders.cancelFulfillmentPrompt') ||
+            `Indiquez le motif d'annulation de l'expédition pour la commande #${cancelFulfillmentOrderTarget.id.slice(-8).toUpperCase()} :`
+          }
+          label={t('dashboardPages.orders.cancellationReason') || "Motif d'annulation"}
+          placeholder={t('dashboardPages.orders.cancellationReasonPlaceholder') || "Ex : Rupture de stock, problème logistique..."}
+          inputType="textarea"
+          maxLength={500}
+          required={true}
+          rows={3}
+          loading={cancellingFulfillment}
+          errorMessage={cancelFulfillmentError}
+          confirmLabel={t('dashboardPages.orders.confirmCancellation') || "Confirmer l'annulation"}
+          cancelLabel={t('dashboardPages.common.cancel')}
+          dir={dir}
+        />
       )}
     </div>
   );

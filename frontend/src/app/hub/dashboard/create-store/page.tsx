@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, Store } from 'lucide-react';
 import { getSellerTypeOptions, type SellerTypeValue } from '@/lib/seller-type';
-import { useLocale } from '../../../../contexts/LocaleContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { getMarketplaceDomain } from '@/lib/store-hosts';
 
 function slugify(value: string) {
@@ -26,7 +26,7 @@ async function getErrorMessage(res: Response, fallback: string) {
 }
 
 export default function CreateStorePage() {
-  const { t } = useLocale();
+  const { t, dir } = useLocale();
   const sellerTypes = getSellerTypeOptions(t);
   const [form, setForm] = useState({
     name: '',
@@ -96,69 +96,69 @@ export default function CreateStorePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/hub/dashboard/select-store" className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-gray-900">
+    <div dir={dir} className="mx-auto max-w-3xl space-y-6">
+      <Link href="/hub/dashboard/select-store" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
         <ArrowLeft className="h-4 w-4" />
         Back to store selector
       </Link>
 
-      <div className="rounded-[2rem] bg-white p-6 shadow-sm sm:p-8">
-        <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-700 ring-1 ring-amber-100">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
+        <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
           <Store className="h-4 w-4" />
           New store
         </div>
-        <h1 className="mt-5 text-3xl font-black text-gray-900">Create another storefront</h1>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
+        <h1 className="mt-4 text-2xl font-bold sm:text-3xl text-slate-900 dark:text-white">Create another storefront</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
           Add the free store available for this seller account. Each account can create one free store only.
         </p>
 
         {error && (
-          <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          <div className="mt-5 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm font-medium text-rose-700 dark:text-rose-400">
             {error}
           </div>
         )}
 
         {canCreateFreeStore === false && (
-          <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+          <div className="mt-5 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm font-medium text-amber-700 dark:text-amber-300">
             Free store limit reached for this account. You can manage your existing stores from the selector.
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-black text-gray-700">Store name</label>
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Store name</label>
             <input
               value={form.name}
               onChange={(event) => updateField('name', event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               placeholder="My second store"
               required
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-black text-gray-700">Subdomain</label>
-            <div className="flex overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 focus-within:border-[#B91C1C] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#B91C1C]/10">
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Subdomain</label>
+            <div className="flex overflow-hidden rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 focus-within:border-slate-900 dark:focus-within:border-white focus-within:ring-1 focus-within:ring-slate-900 dark:focus-within:ring-white">
               <input
                 value={form.subdomain}
                 onChange={(event) => updateField('subdomain', event.target.value)}
-                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-bold text-gray-900 outline-none"
+                className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 placeholder="my-second-store"
                 required
               />
-              <span className="border-l border-gray-200 px-4 py-3 text-sm font-black text-gray-400">.{getMarketplaceDomain()}</span>
+              <span className="border-l border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 px-4 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center">.{getMarketplaceDomain()}</span>
             </div>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-black text-gray-700">Seller type</label>
+            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Seller type</label>
             <select
               value={form.seller_type}
               onChange={(event) => updateField('seller_type', event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-900 outline-none transition focus:border-[#B91C1C] focus:bg-white focus:ring-4 focus:ring-[#B91C1C]/10"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {sellerTypes.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value} value={option.value} className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{option.label}</option>
               ))}
             </select>
           </div>
@@ -166,7 +166,7 @@ export default function CreateStorePage() {
           <button
             type="submit"
             disabled={saving || canCreateFreeStore === false || !form.name.trim() || !form.subdomain.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-[#B91C1C]/20 transition hover:-translate-y-0.5 hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-5 py-3 text-sm font-medium text-white shadow-2xs transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Create and open dashboard

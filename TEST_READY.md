@@ -1,52 +1,89 @@
-# E2E Test Suite Ready
+# TEST_READY: PandaMarket Seller Dashboard Test Infrastructure & Quality Gates
 
-## Test Runner
-- Backend Feature 20 Vitest Suites: `npx vitest run src/__tests__/store-subscription.service.test.ts src/__tests__/smart-notification-batch.test.ts src/__tests__/buyer-interest.service.test.ts src/__tests__/seller-trust.service.test.ts src/__tests__/admin-notes-feature20.test.ts src/__tests__/hub-feed-settings.test.ts`
-- Frontend Feature 20 Vitest Suites: `npm --prefix frontend test -- src/__tests__/store-follow-button.test.tsx src/__tests__/my-followed-feed.test.tsx src/__tests__/seller-loyalty-dashboard.test.tsx src/__tests__/admin-settings-algorithm.test.tsx`
-- Full E2E Database & Logic Verification Script: `npx tsx backend/src/scripts/verify-feature20-full.ts`
-- Full Backend Test Suite: `npm --prefix backend test -- --run`
-- Full Frontend Test Suite: `npm --prefix frontend test`
-- Type Compliance: `npm run type-check -w backend` and `cd frontend && npx tsc --noEmit`
-- Expected Result: All test suites and verification scripts pass with exit code 0 and zero compilation errors.
+**Status**: READY  
+**Author**: E2E Testing Track Agent  
+**Date**: 2026-09-03  
+**Integrity Mode**: Development / Strict Verification  
 
-## Coverage Summary
-| Tier | Count | Description |
-|------|------:|-------------|
-| 1. Feature Coverage | 63 tests | Isolated happy-path feature tests (>=5 per feature) |
-| 2. Boundary & Corner | 64 tests | Edge cases, zero values, rate limits, decay limits, concurrency (>=5 per feature) |
-| 3. Cross-Feature | 41 tests | Inter-module interactions, queue/event pipelining, UI-to-API state flows |
-| 4. Real-World Application | 49 tests | End-to-end multi-step user scenarios & full automated DB verification assertions |
-| **Total** | **217 tests** | **127 Backend + 56 Frontend + 34 E2E Verification Assertions** |
+---
 
-## Feature Checklist
-| Feature | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Status |
-|---------|:------:|:------:|:------:|:------:|:------:|
-| 1. Store Subscriptions & Anti-Bot Logic (R1) | 15 (8 BE + 7 FE) | 13 (8 BE + 5 FE) | 7 (6 BE + 1 FE) | 3 (2 BE + 1 FE) + 6 DB | ✓ READY |
-| 2. Smart Batched Notifications (R2) | 6 (BE) | 8 (BE) | 4 (BE) | 2 (BE) + 3 DB | ✓ READY |
-| 3. AI Interest Engine & Dynamic Profile (R3) | 12 (6 BE + 6 FE) | 12 (7 BE + 5 FE) | 9 (7 BE + 2 FE) | 4 (2 BE + 2 FE) + 4 DB | ✓ READY |
-| 4. Marketplace Hub 30% Injection & Controls (R4) | 12 (7 BE + 5 FE) | 13 (8 BE + 5 FE) | 8 (6 BE + 2 FE) | 3 (1 BE + 2 FE) + 3 DB | ✓ READY |
-| 5. Seller Logarithmic Trust Score & Loyalty (R5) | 11 (6 BE + 5 FE) | 12 (7 BE + 5 FE) | 7 (5 BE + 2 FE) | 2 (1 BE + 1 FE) + 8 DB | ✓ READY |
-| 6. Superadmin Admin-Notes & 44 Checklist Items (R6) | 7 (BE) | 6 (BE) | 6 (BE) | 1 (BE) + 4 DB | ✓ READY |
-| 7. Full E2E Verification Script (`verify-feature20-full.ts`) | — | — | — | 34 comprehensive DB & logic assertions | ✓ READY |
+## 1. Overview & Verification Philosophy
 
-## Summary of Test Artifacts
-- **Backend Test Suites**:
-  - `backend/src/__tests__/store-subscription.service.test.ts` (24 tests)
-  - `backend/src/__tests__/smart-notification-batch.test.ts` (20 tests)
-  - `backend/src/__tests__/buyer-interest.service.test.ts` (22 tests)
-  - `backend/src/__tests__/seller-trust.service.test.ts` (19 tests)
-  - `backend/src/__tests__/admin-notes-feature20.test.ts` (20 tests)
-  - `backend/src/__tests__/hub-feed-settings.test.ts` (22 tests)
-- **Frontend Test Suites**:
-  - `frontend/src/__tests__/store-follow-button.test.tsx` (14 tests)
-  - `frontend/src/__tests__/my-followed-feed.test.tsx` (15 tests)
-  - `frontend/src/__tests__/seller-loyalty-dashboard.test.tsx` (13 tests)
-  - `frontend/src/__tests__/admin-settings-algorithm.test.tsx` (14 tests)
-- **Automated Verification Script**:
-  - `backend/src/scripts/verify-feature20-full.ts` (34 test assertions)
+The PandaMarket Seller Dashboard enhancement track utilizes deterministic quality gates and production compilation to ensure zero regression, complete eradication of disruptive native dialogs, token harmonization, and 100% dark mode parity.
 
-## Verification Verdict
-- **Gate Review**: **APPROVE** by `reviewer_e2e_testing`
-- **Total Tests Passed**: 217 / 217 (100% passing)
-- **Regressions**: 0
-- **TypeScript Errors**: 0
+The primary automated quality gate is the deterministic anti-pattern detector (`scripts/detect.mjs`), accompanied by Next.js Turbopack production compilation (`npm run build` across all 109 routes).
+
+---
+
+## 2. Test Runner Commands
+
+### 2.1 Deterministic Anti-Pattern Detector
+```bash
+# Run human-readable detector report (exits with 0 if clean, 1 if violations exist)
+node scripts/detect.mjs
+
+# Run structured JSON output for CI / automated toolchains
+node scripts/detect.mjs --json
+
+# Run compact summary mode
+node scripts/detect.mjs --summary
+```
+
+### 2.2 Next.js Full Production Build & Type-Check
+```bash
+# Verify static generation and TypeScript compilation for all 109 routes
+cd frontend && npm run build
+```
+
+---
+
+## 3. Detector Rules & Enforcement
+
+The detector scans all 58 `.tsx` files in:
+- `frontend/src/app/hub/dashboard/**/*.tsx` (40 files)
+- `frontend/src/components/dashboard/**/*.tsx` (18 files)
+
+### Rule 1: Native Browser Dialog Eradication (`nativeDialogs`)
+- **Enforcement**: Zero occurrences of `window.alert`, `window.confirm`, `window.prompt`, `alert(`, `confirm(`, `prompt(`.
+- **Allowed Alternative**: Custom accessible dialog components (`frontend/src/components/ui/Modal.tsx`, `ConfirmDialog.tsx`, `PromptDialog.tsx`).
+- **Baseline Violations**: 8 occurrences across 8 files (`my-subscription-orders`, `orders`, `page-builder`, `products`, `settings`, `subscription`, `webhooks`, `SellerOrderDrawer`).
+
+### Rule 2: Raw Red Hex Color Tokens (`rawRedHexTokens`)
+- **Enforcement**: Zero occurrences of `#B91C1C`, `#991B1B`, `#7F1D1D`, `#3B0D0D`, `#DC2626`, `#EF4444` (case-insensitive).
+- **Allowed Alternative**: Standard PandaMarket design tokens (`bg-slate-900 dark:bg-white`, `border-slate-200/80 dark:border-slate-800`, `text-slate-900 dark:text-white`, `bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400`).
+- **Baseline Violations**: 440 occurrences across 24 files.
+
+### Rule 3: Missing Dark Mode Class Pairing (`missingDarkMode`)
+- **Enforcement**: All major container, card, and surface elements must have explicit `dark:` class pairings (`dark:bg-slate-900`, `dark:border-slate-800`, `dark:text-white`). Zero unstyled/white-box surfaces.
+- **Baseline Violations**: 32 surfaces requiring complete token pairing.
+
+### Rule 4: Empty Inline Event Handlers (`emptyInlineHandlers`)
+- **Enforcement**: Zero no-op handler stubs (`onClick={() => {}}`, `onChange={() => {}}`, etc.).
+- **Allowed Alternative**: Connected handlers, state setters, or disabled button states.
+- **Baseline Violations**: 2 occurrences in `products/page.tsx`.
+
+---
+
+## 4. Quality Gate Verification Checklist
+
+| Milestone | Target | Verification Command | Target Result |
+|---|---|---|---|
+| **M1** | Dialog Eradication | `node scripts/detect.mjs` | Rule 1 = 0 violations |
+| **M2** | Tunisian Workflows | `npm run build` | 0 TypeScript errors, 109 routes |
+| **M3** | Dark Mode & Tokens | `node scripts/detect.mjs` | Rule 2 & Rule 3 = 0 violations |
+| **M4** | Full Gate Verification | `node scripts/detect.mjs && cd frontend && npm run build` | Exit code 0, 0 total violations, 109 routes |
+
+---
+
+## 5. Baseline Summary
+
+```
+Total Files Scanned: 58 TSX files
+Rule 1 (Native Dialogs): 8 violations
+Rule 2 (Raw Red Hexes): 440 violations
+Rule 3 (Missing Dark Mode): 32 surfaces
+Rule 4 (Empty Event Handlers): 2 violations
+---------------------------------------------------------------
+Total Baseline Violations: 482
+Production Build: PASSED (109/109 routes generated in 20.8s)
+```

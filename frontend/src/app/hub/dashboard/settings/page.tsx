@@ -11,6 +11,7 @@ import { AccountSecurityActivityPanel } from '../../../../components/AccountSecu
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
 import { LocaleSwitcher } from '../../../../components/LocaleSwitcher';
 import { useLocale } from '../../../../contexts/LocaleContext';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../../lib/onboarding';
 import { revalidateStoreCache } from '@/lib/store-cache';
@@ -163,6 +164,8 @@ export default function SettingsPage() {
   const [newDomainHostname, setNewDomainHostname] = useState('');
   const [addingDomain, setAddingDomain] = useState(false);
   const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
+  const [deleteDomainTargetId, setDeleteDomainTargetId] = useState<string | null>(null);
+  const [deletingDomain, setDeletingDomain] = useState(false);
 
   // Shipping
   const [shippingMode, setShippingMode] = useState('self_managed');
@@ -742,8 +745,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteDomain = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce domaine ?')) return;
+  const handleDeleteDomain = (id: string) => {
+    setDeleteDomainTargetId(id);
+  };
+
+  const confirmDeleteDomain = async () => {
+    if (!deleteDomainTargetId) return;
+    const id = deleteDomainTargetId;
+    setDeletingDomain(true);
     try {
       const res = await fetchWithCsrf(`/api/pd/stores/me/domains/${id}`, {
         method: 'DELETE',
@@ -751,12 +760,15 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         showFeedback(t('dashboardPages.settings.domainDeleted'));
+        setDeleteDomainTargetId(null);
         fetchDomains();
       } else {
         showFeedback(await getErrorMessage(res), true);
       }
     } catch (err) {
       showFeedback(err instanceof Error ? err.message : t('common.networkError'), true);
+    } finally {
+      setDeletingDomain(false);
     }
   };
 
@@ -832,12 +844,12 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Paramètres</h1>
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
+      <div dir={dir} className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres</h1>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-8 shadow-2xs">
           <div className="animate-pulse space-y-4">
-            <div className="h-10 bg-gray-100 rounded w-full" />
-            <div className="h-40 bg-gray-100 rounded" />
+            <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded w-full" />
+            <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded" />
           </div>
         </div>
       </div>
@@ -846,15 +858,13 @@ export default function SettingsPage() {
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
-      <div className="relative overflow-hidden rounded-[2rem] border border-amber-100 bg-gradient-to-br from-[#3B0D0D] via-[#7F1D1D] to-[#B91C1C] p-6 text-white shadow-xl shadow-red-950/10">
-        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-300/25 blur-3xl" />
-        <div className="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
         <div className="relative">
-          <span className="inline-flex rounded-full border border-amber-200/30 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-amber-100">
+          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
             Seller dashboard
           </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight">Paramètres</h1>
-          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white/75">
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Paramètres</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
             Gérez votre identité boutique, vos visuels, votre thème, votre domaine et vos politiques publiques dans une interface claire.
           </p>
         </div>
@@ -862,28 +872,28 @@ export default function SettingsPage() {
 
       {/* Feedback */}
       {success && (
-        <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-sm font-semibold rounded-xl flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 shrink-0" />
           {success}
         </div>
       )}
       {error && (
-        <div className="p-3 bg-red-50 text-red-700 text-sm rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 text-sm font-medium rounded-xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-amber-100 bg-amber-50/60 p-1.5 shadow-sm">
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-1.5 shadow-2xs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors flex-1 ${
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition flex-1 ${
               activeTab === tab.id
-                ? 'bg-white text-[#B91C1C] shadow-sm ring-1 ring-amber-100'
-                : 'text-slate-500 hover:bg-white/60 hover:text-[#7F1D1D]'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -892,47 +902,47 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="rounded-[2rem] border border-slate-200/70 bg-white p-6 shadow-xl shadow-slate-200/40">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         {/* Store Settings Tab */}
         {activeTab === 'store' && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 via-white to-red-50/40 p-5">
-              <h2 className="text-lg font-black text-slate-950">Informations de la boutique</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Informations de la boutique</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
             </div>
-            <div className="rounded-2xl border border-[#B91C1C]/15 bg-[#B91C1C]/5 p-5">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/60 p-5">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black uppercase tracking-wide text-[#B91C1C]">Étape d’onboarding</p>
-                  <h3 className="mt-1 text-base font-black text-slate-950">Store basics: nom, sous-domaine, logos et couleurs</h3>
-                  <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Étape d’onboarding</p>
+                  <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">Store basics: nom, sous-domaine, logos et couleurs</h3>
+                  <p className="mt-1 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
                     Complétez ces quatre éléments pour rendre votre vitrine reconnaissable avant de passer aux thèmes, produits et paiements.
                   </p>
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
-                    <div className="h-full rounded-full bg-[#B91C1C] transition-all" style={{ width: `${storeBasicsProgress}%` }} />
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    <div className="h-full rounded-full bg-slate-900 dark:bg-white transition-all" style={{ width: `${storeBasicsProgress}%` }} />
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {storeBasicsTasks.map((task) => (
-                      <div key={task.label} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
-                        {task.completed ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <Clock3 className="h-4 w-4 text-amber-600" />}
+                      <div key={task.label} className="flex items-center gap-2 rounded-xl bg-white dark:bg-slate-800 px-3 py-2 border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+                        {task.completed ? <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> : <Clock3 className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
                         <div className="min-w-0">
-                          <p className="text-xs font-black text-slate-900">{task.label}</p>
-                          <p className="truncate text-[11px] font-semibold text-slate-500">{task.detail}</p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{task.label}</p>
+                          <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">{task.detail}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm">
+                <div className="flex shrink-0 flex-col gap-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 p-3 shadow-2xs">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-black uppercase tracking-wide text-gray-400">Langue</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Langue</span>
                     <LocaleSwitcher />
                   </div>
-                  <div className={`rounded-xl px-3 py-2 text-xs font-black ${storeBasicsPersisted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                  <div className={`rounded-xl px-3 py-2 text-xs font-bold ${storeBasicsPersisted ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'}`}>
                     {storeBasicsPersisted ? 'Progression persistée' : `${completedStoreBasicsTasks}/${storeBasicsTasks.length} éléments`}
                   </div>
                   {!hasCustomColors && (
-                    <button type="button" onClick={() => setActiveTab('theme')} className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-50">
+                    <button type="button" onClick={() => setActiveTab('theme')} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
                       Configurer les couleurs
                     </button>
                   )}
@@ -941,53 +951,53 @@ export default function SettingsPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la boutique</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nom de la boutique</label>
                 <input
                   type="text"
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sous-domaine public</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sous-domaine public</label>
                 <input
                   type="text"
                   value={subdomain || 'Génération automatique'}
                   readOnly
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 font-mono text-sm text-gray-600 outline-none"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 font-mono text-sm text-slate-600 dark:text-slate-300 outline-none"
                 />
-                <p className="mt-1 text-xs font-semibold text-gray-400">Le sous-domaine identifie votre storefront vendeur.</p>
+                <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Le sous-domaine identifie votre storefront vendeur.</p>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
               <textarea
                 value={storeDescription}
                 onChange={(e) => setStoreDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none resize-none"
+                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none resize-none transition"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sellerTypes.title')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('sellerTypes.title')}</label>
               {hasPendingSellerTypeRequest && (
-                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                <div className="mb-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-amber-800 dark:text-amber-300">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex gap-3">
-                      <Clock3 className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
                       <div>
                         <p className="text-sm font-bold">
                           {t('sellerTypes.approval.pendingRequest', { type: String(pendingSellerTypeLabel) })}
                         </p>
-                        <p className="mt-1 text-xs leading-5 text-amber-700">
+                        <p className="mt-1 text-xs leading-5 text-amber-700 dark:text-amber-300">
                           {t('sellerTypes.approval.pendingDetails')}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
-                          <span className="rounded-full bg-white px-3 py-1 text-amber-700">
+                          <span className="rounded-full bg-white dark:bg-slate-800 border border-amber-200/60 dark:border-amber-900/40 px-3 py-1 text-amber-800 dark:text-amber-200">
                             {t('sellerTypes.approval.currentType')}: {sellerTypeOptions.find((option) => option.value === currentSellerType)?.label || currentSellerType}
                           </span>
-                          <span className="rounded-full bg-white px-3 py-1 text-amber-700">
+                          <span className="rounded-full bg-white dark:bg-slate-800 border border-amber-200/60 dark:border-amber-900/40 px-3 py-1 text-amber-800 dark:text-amber-200">
                             {t('sellerTypes.approval.requestedType')}: {pendingSellerTypeLabel}
                           </span>
                         </div>
@@ -997,14 +1007,14 @@ export default function SettingsPage() {
                       type="button"
                       onClick={cancelSellerTypeRequest}
                       disabled={cancellingSellerTypeRequest}
-                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-amber-800 dark:text-amber-200 transition hover:bg-amber-100 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {cancellingSellerTypeRequest ? t('sellerTypes.approval.cancelling') : t('sellerTypes.approval.cancelRequest')}
                     </button>
                   </div>
                 </div>
               )}
-              <p className="mb-3 text-xs leading-5 text-gray-500">
+              <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
                 {t('sellerTypes.approval.monthlyLimit')}
               </p>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -1018,14 +1028,14 @@ export default function SettingsPage() {
                         if (!hasPendingSellerTypeRequest) setSellerType(option.value);
                       }}
                       disabled={hasPendingSellerTypeRequest}
-                      className={`rounded-xl border p-4 transition-all disabled:cursor-not-allowed disabled:opacity-60 ${isRtl ? 'text-right' : 'text-left'} ${
+                      className={`rounded-xl border p-4 transition disabled:cursor-not-allowed disabled:opacity-60 ${isRtl ? 'text-right' : 'text-left'} ${
                         selected
-                          ? 'border-[#B91C1C] bg-amber-50 shadow-sm ring-2 ring-amber-100'
-                          : 'border-gray-200 bg-white hover:border-amber-200 hover:bg-amber-50/40'
+                          ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      <span className="block text-sm font-bold text-gray-900">{option.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-gray-500">{option.description}</span>
+                      <span className="block text-sm font-bold text-slate-900 dark:text-white">{option.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{option.description}</span>
                     </button>
                   );
                 })}
@@ -1033,110 +1043,110 @@ export default function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email de contact</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email de contact</label>
                 <input
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Téléphone</label>
                 <input
                   type="tel"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
               <div className="mb-4 flex items-start gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 text-[#B91C1C]" />
+                <MapPin className="mt-0.5 h-5 w-5 text-slate-900 dark:text-white" />
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Adresse & carte</h3>
-                  <p className="text-xs text-gray-500">Ces informations apparaissent sur votre page vendeur et dans le pied de page de votre boutique.</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Adresse & carte</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Ces informations apparaissent sur votre page vendeur et dans le pied de page de votre boutique.</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Adresse</label>
                   <input
                     type="text"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Ville</label>
                   <input
                     type="text"
                     value={city}
                     onChange={(event) => setCity(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pays</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pays</label>
                   <input
                     type="text"
                     value={country}
                     onChange={(event) => setCountry(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL Google Maps embed</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">URL Google Maps embed</label>
                   <input
                     type="url"
                     value={mapEmbedUrl}
                     onChange={(event) => setMapEmbedUrl(event.target.value)}
                     placeholder="https://www.google.com/maps/embed?pb=..."
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
-                  <p className="mt-1 text-xs text-gray-400">Utilisez uniquement une URL d&apos;intégration Google Maps.</p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Utilisez uniquement une URL d&apos;intégration Google Maps.</p>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
               <div className="mb-4 flex items-start gap-3">
-                <Share2 className="mt-0.5 h-5 w-5 text-[#B91C1C]" />
+                <Share2 className="mt-0.5 h-5 w-5 text-slate-900 dark:text-white" />
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Réseaux sociaux</h3>
-                  <p className="text-xs text-gray-500">Ajoutez vos profils publics pour rassurer les clients et générer du trafic.</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Réseaux sociaux</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Ajoutez vos profils publics pour rassurer les clients et générer du trafic.</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {socialPlatforms.map((platform) => (
                   <div key={platform.key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{platform.label}</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{platform.label}</label>
                     <div className="relative">
-                      <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="url"
                         value={socialLinks[platform.key]}
                         onChange={(event) => updateSocialLink(platform.key, event.target.value)}
                         placeholder={platform.placeholder}
-                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white py-2.5 pl-10 pr-4 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                       />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Logos de la boutique</label>
-              <p className="mb-4 text-xs text-gray-500">Le logo sombre est utilisé sur fond clair. Le logo clair est utilisé sur fond sombre. Le logo principal reste le fallback.</p>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
+              <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Logos de la boutique</label>
+              <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Le logo sombre est utilisé sur fond clair. Le logo clair est utilisé sur fond sombre. Le logo principal reste le fallback.</p>
               <div className="grid gap-4 lg:grid-cols-3">
                 {[
                   { key: 'default' as const, label: 'Logo principal', value: logoUrl, setter: setLogoUrl, previewClass: 'bg-white' },
                   { key: 'dark' as const, label: 'Logo sombre', value: logoDarkUrl, setter: setLogoDarkUrl, previewClass: 'bg-white' },
                   { key: 'light' as const, label: 'Logo clair', value: logoLightUrl, setter: setLogoLightUrl, previewClass: 'bg-slate-950' },
                 ].map((logo) => (
-                  <div key={logo.key} className="rounded-2xl border border-gray-200 bg-white p-4">
-                    <div className={`flex h-24 items-center justify-center overflow-hidden rounded-xl border border-gray-200 ${logo.previewClass}`}>
+                  <div key={logo.key} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs">
+                    <div className={`flex h-24 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 ${logo.previewClass}`}>
                       {logo.value ? (
                         <div
                           aria-label={`${storeName || t('dashboardPages.settings.storeLogo')} ${logo.label}`}
@@ -1145,19 +1155,19 @@ export default function SettingsPage() {
                           style={{ backgroundImage: `url(${getResizedImageUrl(logo.value, 'large')})` }}
                         />
                       ) : (
-                        <ImageIcon className="h-7 w-7 text-gray-300" />
+                        <ImageIcon className="h-7 w-7 text-slate-300 dark:text-slate-600" />
                       )}
                     </div>
                     <div className="mt-3">
-                      <p className="text-sm font-semibold text-gray-800">{logo.label}</p>
-                      <p className="text-xs text-gray-500">{logo.value ? 'Image sélectionnée' : 'Aucune image'}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{logo.label}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{logo.value ? 'Image sélectionnée' : 'Aucune image'}</p>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {logo.value && (
                         <button
                           type="button"
                           onClick={() => logo.setter('')}
-                          className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                          className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                         >
                           Retirer
                         </button>
@@ -1168,12 +1178,12 @@ export default function SettingsPage() {
                           setLogoPickerTarget(logo.key);
                           void fetchMediaItems();
                         }}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
                       >
                         <ImageIcon className="h-4 w-4" />
                         Galerie
                       </button>
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-3 py-2 text-xs font-semibold text-white hover:bg-[#991B1B]">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-3 py-2 text-xs font-semibold text-white shadow-2xs transition">
                         <UploadCloud className="h-4 w-4" />
                         {uploadingLogo ? 'Upload...' : 'Uploader'}
                         <input
@@ -1189,10 +1199,10 @@ export default function SettingsPage() {
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Image d&apos;en-tête marketplace</label>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
+              <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Image d&apos;en-tête marketplace</label>
               <div className="space-y-4">
-                <div className="h-40 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                <div className="h-40 overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900">
                   {marketplaceHeaderImageUrl ? (
                     <div
                       aria-label="Image d'en-tête marketplace"
@@ -1201,22 +1211,22 @@ export default function SettingsPage() {
                       style={{ backgroundImage: `url(${getResizedImageUrl(marketplaceHeaderImageUrl, 'large')})` }}
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-gray-300">
+                    <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">
                       <ImageIcon className="h-8 w-8" />
                     </div>
                   )}
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{marketplaceHeaderImageUrl ? 'Image sélectionnée' : 'Aucune image'}</p>
-                    <p className="text-xs text-gray-500">Cette image apparaît comme couverture sur votre page vendeur dans la marketplace.</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{marketplaceHeaderImageUrl ? 'Image sélectionnée' : 'Aucune image'}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Cette image apparaît comme couverture sur votre page vendeur dans la marketplace.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {marketplaceHeaderImageUrl && (
                       <button
                         type="button"
                         onClick={() => setMarketplaceHeaderImageUrl('')}
-                        className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                       >
                         Retirer
                       </button>
@@ -1227,12 +1237,12 @@ export default function SettingsPage() {
                         setShowHeaderImagePicker(true);
                         void fetchMediaItems();
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-[#B91C1C] hover:text-[#B91C1C]"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
                     >
                       <ImageIcon className="h-4 w-4" />
                       Galerie
                     </button>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#B91C1C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#991B1B]">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2 text-sm font-semibold text-white shadow-2xs transition">
                       <UploadCloud className="h-4 w-4" />
                       {uploadingHeaderImage ? 'Upload...' : 'Uploader'}
                       <input
@@ -1248,9 +1258,9 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <fieldset className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <legend className="px-1 text-sm font-bold text-slate-900">Navigation du catalogue produits</legend>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+            <fieldset className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
+              <legend className="px-1 text-sm font-bold text-slate-900 dark:text-white">Navigation du catalogue produits</legend>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500 dark:text-slate-400">
                 Choisissez la façon dont les visiteurs parcourent les produits au-delà des 24 premiers articles. Le réglage s’applique à la page d’accueil de votre vitrine.
               </p>
               <div className="mt-4 grid gap-3 lg:grid-cols-3" role="radiogroup" aria-label="Mode de chargement des produits">
@@ -1275,8 +1285,10 @@ export default function SettingsPage() {
                   return (
                     <label
                       key={option.value}
-                      className={`relative flex cursor-pointer flex-col rounded-xl border p-4 transition-all focus-within:ring-2 focus-within:ring-[#B91C1C]/30 ${
-                        selected ? 'border-[#B91C1C] bg-amber-50 shadow-sm' : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/40'
+                      className={`relative flex cursor-pointer flex-col rounded-xl border p-4 transition ${
+                        selected
+                          ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       <input
@@ -1290,32 +1302,32 @@ export default function SettingsPage() {
                       <span className="flex items-start gap-3">
                         <span
                           aria-hidden="true"
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? 'border-[#B91C1C]' : 'border-slate-300'}`}
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? 'border-slate-900 dark:border-white' : 'border-slate-300 dark:border-slate-600'}`}
                         >
-                          {selected && <span className="h-2.5 w-2.5 rounded-full bg-[#B91C1C]" />}
+                          {selected && <span className="h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white" />}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-sm font-bold text-slate-900">{option.title}</span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">{option.description}</span>
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{option.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{option.description}</span>
                         </span>
                       </span>
                     </label>
                   );
                 })}
               </div>
-              <p className="mt-3 text-[11px] font-semibold text-slate-400">
+              <p className="mt-3 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                 Recommandé : « Bouton Charger plus » pour un bon équilibre entre performance, contrôle et accessibilité.
               </p>
             </fieldset>
 
             {/* Maintenance Mode Toggle */}
             {(storeStatus === 'verified' || storeStatus === 'maintenance') && (
-              <div className={`rounded-xl border p-4 ${storeStatus === 'maintenance' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+              <div className={`rounded-2xl border p-4 ${storeStatus === 'maintenance' ? 'border-amber-300/80 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30' : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40'}`}>
                 <div className="flex items-start gap-3">
-                  <Construction className={`mt-0.5 h-5 w-5 ${storeStatus === 'maintenance' ? 'text-amber-600' : 'text-gray-400'}`} />
+                  <Construction className={`mt-0.5 h-5 w-5 ${storeStatus === 'maintenance' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`} />
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-gray-900">Mode maintenance</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Mode maintenance</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       {storeStatus === 'maintenance'
                         ? storeIsVerified
                           ? 'Votre boutique est actuellement en maintenance et inaccessible aux visiteurs.'
@@ -1324,13 +1336,13 @@ export default function SettingsPage() {
                     </p>
                     {storeStatus === 'maintenance' && (
                       <div className="mt-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Message de maintenance</label>
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Message de maintenance</label>
                         <textarea
                           value={maintenanceMessage}
                           onChange={(e) => setMaintenanceMessage(e.target.value)}
                           placeholder={t('dashboardPages.settings.maintenancePlaceholder')}
                           rows={2}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-3 py-2 text-sm focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                         />
                       </div>
                     )}
@@ -1370,10 +1382,10 @@ export default function SettingsPage() {
                           setTogglingMaintenance(false);
                         }
                       }}
-                      className={`mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                      className={`mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
                         storeStatus === 'maintenance' && storeIsVerified
-                          ? 'bg-[#B91C1C] text-white hover:bg-[#991B1B]'
-                          : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                          ? 'bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white shadow-2xs'
+                          : 'border border-amber-300/80 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-slate-700'
                       }`}
                     >
                       {storeStatus === 'maintenance' && storeIsVerified && <AlertTriangle className="h-4 w-4" />}
@@ -1393,7 +1405,7 @@ export default function SettingsPage() {
             <button
               onClick={saveStoreSettings}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.save')}
@@ -1403,8 +1415,8 @@ export default function SettingsPage() {
 
         {activeTab === 'security' && (
           <div className="space-y-6">
-            <AccountTwoFactorPanel accentClass="bg-[#B91C1C]" />
-            <AccountSecurityActivityPanel accentClass="bg-[#B91C1C]" compact />
+            <AccountTwoFactorPanel accentClass="bg-slate-900 dark:bg-white" />
+            <AccountSecurityActivityPanel accentClass="bg-slate-900 dark:bg-white" compact />
           </div>
         )}
 
@@ -1413,8 +1425,8 @@ export default function SettingsPage() {
           <div className="space-y-6">
             {/* Theme Selector */}
             <div>
-              <h2 className="font-semibold text-gray-900 mb-1">Choisir un thème</h2>
-              <p className="text-xs text-gray-500 mb-4">{themeList.length} thèmes disponibles. Les thèmes premium nécessitent un achat.</p>
+              <h2 className="font-bold text-slate-900 dark:text-white mb-1">Choisir un thème</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{themeList.length} thèmes disponibles. Les thèmes premium nécessitent un achat.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {themeList.map((t) => {
                   const cfg = themes[t.id];
@@ -1425,14 +1437,14 @@ export default function SettingsPage() {
                     <button
                       key={t.id}
                       onClick={() => setSelectedTheme(t.id)}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      className={`p-3 rounded-2xl border-2 text-left transition ${
                         selectedTheme === t.id
-                          ? 'border-[#B91C1C] bg-[#B91C1C]/5'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       {/* Mini color preview */}
-                      <div className="h-16 rounded-lg mb-2 overflow-hidden relative" style={{ backgroundColor: preset?.background || '#F3F4F6' }}>
+                      <div className="h-16 rounded-xl mb-2 overflow-hidden relative" style={{ backgroundColor: preset?.background || '#F3F4F6' }}>
                         <div className="absolute top-0 left-0 right-0 h-5" style={{ backgroundColor: preset?.headerBg || '#FFFFFF' }} />
                         <div className="absolute bottom-0 left-0 right-0 h-4" style={{ backgroundColor: preset?.footerBg || '#1A1A2E' }} />
                         <div className="absolute top-6 left-2 flex gap-1">
@@ -1441,29 +1453,29 @@ export default function SettingsPage() {
                           ))}
                         </div>
                         {isLocked && (
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg">
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-xl">
                             <Lock className="w-5 h-5 text-white drop-shadow" />
                           </div>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-semibold text-gray-900 text-sm truncate">{t.name}</h3>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate">{t.name}</h3>
                         {!t.free && (
                           <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full flex-shrink-0 ${
                             isPurchased
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-amber-100 text-amber-700'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
                           }`}>
                             {isPurchased ? 'ACHETÉ' : 'PREMIUM'}
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">{t.desc}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{t.desc}</p>
                       {isLocked && t.apiTheme && (
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setPurchaseConfirmTheme(t.apiTheme!); }}
-                          className="mt-1.5 w-full text-center px-2 py-1 text-[10px] font-bold bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors"
+                          className="mt-1.5 w-full text-center px-2 py-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition"
                         >
                           Acheter — {t.apiTheme.price} TND
                         </button>
@@ -1475,7 +1487,7 @@ export default function SettingsPage() {
               <button
                 onClick={saveTheme}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 mt-4 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 mt-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.applyTheme')}
@@ -1483,13 +1495,13 @@ export default function SettingsPage() {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-200" />
+            <div className="border-t border-slate-200/80 dark:border-slate-800" />
 
             {/* Theme Customizer */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-[#B91C1C]" />
-                <h2 className="font-semibold text-gray-900">Personnalisation avancée</h2>
+                <Sparkles className="w-4 h-4 text-slate-900 dark:text-white" />
+                <h2 className="font-bold text-slate-900 dark:text-white">Personnalisation avancée</h2>
               </div>
               <ThemeCustomizer
                 themeId={selectedTheme}
@@ -1504,16 +1516,16 @@ export default function SettingsPage() {
         {activeTab === 'domain' && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-bold text-lg text-gray-900 mb-1">Domaines personnalisés</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Domaines personnalisés</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Connectez vos propres noms de domaine à votre boutique PandaMarket (plan Starter et supérieur).
               </p>
             </div>
 
             {/* Add New Domain Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-600" /> Ajouter un nouveau domaine
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-2xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Ajouter un nouveau domaine
               </h3>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
@@ -1521,13 +1533,13 @@ export default function SettingsPage() {
                   value={newDomainHostname}
                   onChange={(e) => setNewDomainHostname(e.target.value)}
                   placeholder="ex: boutique.com ou www.maboutique.tn"
-                  className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none"
+                  className="flex-1 px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
                 <button
                   type="button"
                   onClick={handleAddCustomDomain}
                   disabled={addingDomain || !newDomainHostname.trim()}
-                  className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white text-sm font-medium rounded-xl shadow-2xs transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {addingDomain ? t('dashboardPages.settings.addingDomain') : t('dashboardPages.settings.addDomain')}
                 </button>
@@ -1536,35 +1548,35 @@ export default function SettingsPage() {
 
             {/* Existing Domains List */}
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-gray-900">Vos domaines configurés</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Vos domaines configurés</h3>
               {loadingDomains ? (
-                <div className="py-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-gray-400" /> Chargement des domaines...
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-slate-400 dark:text-slate-500" /> Chargement des domaines...
                 </div>
               ) : domainList.length === 0 ? (
-                <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center space-y-2">
-                  <Globe className="w-8 h-8 text-gray-400 mx-auto" />
-                  <p className="text-xs font-semibold text-gray-600">Aucun domaine personnalisé configuré</p>
-                  <p className="text-xs text-gray-400">Ajoutez votre domaine ci-dessus pour remplacer votre sous-domaine par défaut.</p>
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-dashed border-slate-200/80 dark:border-slate-700 rounded-2xl p-8 text-center space-y-2">
+                  <Globe className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto" />
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Aucun domaine personnalisé configuré</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Ajoutez votre domaine ci-dessus pour remplacer votre sous-domaine par défaut.</p>
                 </div>
               ) : (
                 domainList.map((d) => (
-                  <div key={d.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                  <div key={d.id} className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-2xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-base text-gray-900">{d.hostname}</span>
+                        <span className="font-bold text-base text-slate-900 dark:text-white">{d.hostname}</span>
                         {d.is_primary && (
-                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" /> Domaine Principal
+                          <span className="px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold rounded-full flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-emerald-600 dark:fill-emerald-400 text-emerald-600 dark:text-emerald-400" /> Domaine Principal
                           </span>
                         )}
                         <span
                           className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
                             d.verification_status === 'verified'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
                               : d.verification_status === 'failed'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
+                                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
                           }`}
                         >
                           {d.verification_status === 'verified'
@@ -1576,8 +1588,8 @@ export default function SettingsPage() {
                         <span
                           className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
                             d.ssl_status === 'active'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-600'
+                              ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                           }`}
                         >
                           SSL {d.ssl_status === 'active' ? 'Actif (HTTPS)' : 'En attente'}
@@ -1590,7 +1602,7 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => handleVerifyDomain(d.id)}
                           disabled={verifyingDomainId === d.id}
-                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+                          className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${verifyingDomainId === d.id ? 'animate-spin' : ''}`} />
                           Vérifier DNS
@@ -1600,7 +1612,7 @@ export default function SettingsPage() {
                           <button
                             type="button"
                             onClick={() => handleMakePrimaryDomain(d.id)}
-                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                            className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-xl transition"
                           >
                             Définir comme principal
                           </button>
@@ -1609,7 +1621,7 @@ export default function SettingsPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteDomain(d.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                           title="Supprimer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1618,20 +1630,20 @@ export default function SettingsPage() {
                     </div>
 
                     {/* DNS Configuration Instructions */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-2">
-                      <p className="font-bold text-slate-800">Instructions de configuration DNS chez votre registrar :</p>
+                    <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 text-xs space-y-2">
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Instructions de configuration DNS chez votre registrar :</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="bg-white p-2.5 border rounded-md">
-                          <span className="text-[10px] font-bold uppercase text-gray-400 block">Enregistrement CNAME (Recommandé)</span>
-                          <p className="mt-1 font-mono text-[11px] text-slate-900">
-                            <strong>Nom/Hôte:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">@</code> ou <code className="bg-gray-100 px-1 py-0.5 rounded">www</code><br />
-                            <strong>Cible:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">cname.garbage.team</code>
+                        <div className="bg-white dark:bg-slate-850 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Enregistrement CNAME (Recommandé)</span>
+                          <p className="mt-1 font-mono text-[11px] text-slate-900 dark:text-white">
+                            <strong>Nom/Hôte:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">@</code> ou <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">www</code><br />
+                            <strong>Cible:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">cname.garbage.team</code>
                           </p>
                         </div>
-                        <div className="bg-white p-2.5 border rounded-md">
-                          <span className="text-[10px] font-bold uppercase text-gray-400 block">Challenge TXT (Alternative)</span>
-                          <p className="mt-1 font-mono text-[11px] text-slate-900">
-                            <strong>Nom TXT:</strong> <code className="bg-gray-100 px-1 py-0.5 rounded">_pandamarket-challenge.{d.hostname}</code><br />
+                        <div className="bg-white dark:bg-slate-850 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Challenge TXT (Alternative)</span>
+                          <p className="mt-1 font-mono text-[11px] text-slate-900 dark:text-white">
+                            <strong>Nom TXT:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">_pandamarket-challenge.{d.hostname}</code><br />
                             <strong>Valeur TXT:</strong> Token unique généré
                           </p>
                         </div>
@@ -1647,7 +1659,7 @@ export default function SettingsPage() {
         {/* Shipping Tab */}
         {activeTab === 'shipping' && (
           <div className="space-y-4">
-            <h2 className="font-semibold text-gray-900 mb-4">Mode de livraison</h2>
+            <h2 className="font-bold text-slate-900 dark:text-white mb-4">Mode de livraison</h2>
             <div className="space-y-3">
               {[
                 { id: 'self_managed', name: 'Gestion vendeur', desc: 'Vous gérez vous-même la livraison et le suivi client.' },
@@ -1655,10 +1667,10 @@ export default function SettingsPage() {
               ].map((mode) => (
                 <label
                   key={mode.id}
-                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
                     shippingMode === mode.id
-                      ? 'border-[#B91C1C] bg-[#B91C1C]/5'
-                      : 'border-gray-200 hover:bg-gray-50'
+                      ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
+                      : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
                   <input
@@ -1666,49 +1678,49 @@ export default function SettingsPage() {
                     name="shipping_mode"
                     checked={shippingMode === mode.id}
                     onChange={() => setShippingMode(mode.id)}
-                    className="text-[#B91C1C] focus:ring-[#B91C1C]"
+                    className="accent-slate-900 dark:accent-white"
                   />
                   <div>
-                    <p className="font-medium text-gray-900">{mode.name}</p>
-                    <p className="text-xs text-gray-500">{mode.desc}</p>
+                    <p className="font-semibold text-slate-900 dark:text-white">{mode.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{mode.desc}</p>
                   </div>
                 </label>
               ))}
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <h3 className="text-sm font-semibold text-gray-900">Politiques publiques</h3>
-              <p className="mt-1 text-xs text-gray-500">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-5">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Politiques publiques</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Ces textes peuvent être affichés dans les blocs dynamiques Page Builder. Ne saisissez pas de clés API ou d&apos;informations privées.
               </p>
               <div className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Politique de livraison</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Politique de livraison</label>
                   <textarea
                     value={shippingPolicy}
                     onChange={(event) => setShippingPolicy(event.target.value)}
                     rows={4}
                     placeholder="Délais estimés, zones desservies, suivi, frais ou conditions spécifiques..."
-                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Retours & échanges</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Retours & échanges</label>
                   <textarea
                     value={returnsPolicy}
                     onChange={(event) => setReturnsPolicy(event.target.value)}
                     rows={4}
                     placeholder="Conditions de retour, délais, produits exclus, procédure de contact..."
-                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Information paiement publique</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Information paiement publique</label>
                   <textarea
                     value={paymentPolicy}
                     onChange={(event) => setPaymentPolicy(event.target.value)}
                     rows={4}
                     placeholder="Modes acceptés, paiement à la livraison, Mandat Minute ou consignes publiques..."
-                    className="w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
               </div>
@@ -1716,7 +1728,7 @@ export default function SettingsPage() {
             <button
               onClick={saveShipping}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#B91C1C] text-white font-semibold rounded-lg hover:bg-[#991B1B] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? t('dashboardPages.settings.saving') : t('dashboardPages.settings.save')}
@@ -1727,78 +1739,78 @@ export default function SettingsPage() {
         {/* Analytics & Tracking Pixels Tab */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
-            <div className="border-b pb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-emerald-600" />
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 Analytics & Pixels de Suivi
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Configurez vos identifiants Google Analytics 4, Meta Pixel, Google Tag Manager et TikTok Pixel pour suivre les conversions et optimiser vos campagnes publicitaires sur votre boutique.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Google Analytics 4 */}
-              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+              <div className="p-5 border border-slate-200/80 dark:border-slate-800 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-gray-900">Google Analytics 4 (GA4)</label>
-                  <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 font-semibold rounded-full">Mesure</span>
+                  <label className="text-sm font-bold text-slate-900 dark:text-white">Google Analytics 4 (GA4)</label>
+                  <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold rounded-full">Mesure</span>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Identifiant de mesure commençant par <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">G-</code> pour suivre les pages vues, le panier et les commandes.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Identifiant de mesure commençant par <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">G-</code> pour suivre les pages vues, le panier et les commandes.
                 </p>
                 <input
                   type="text"
                   value={ga4MeasurementId}
                   onChange={(e) => setGa4MeasurementId(e.target.value)}
                   placeholder="G-XXXXXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
               {/* Meta Pixel (Facebook / Instagram) */}
-              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+              <div className="p-5 border border-slate-200/80 dark:border-slate-800 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-gray-900">Meta Pixel (Facebook / IG)</label>
-                  <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 font-semibold rounded-full">Ads & Retargeting</span>
+                  <label className="text-sm font-bold text-slate-900 dark:text-white">Meta Pixel (Facebook / IG)</label>
+                  <span className="text-xs px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold rounded-full">Ads & Retargeting</span>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Identifiant numérique Meta Pixel (15-16 chiffres) pour suivre les événements <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">AddToCart</code> et <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">Purchase</code>.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Identifiant numérique Meta Pixel (15-16 chiffres) pour suivre les événements <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">AddToCart</code> et <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">Purchase</code>.
                 </p>
                 <input
                   type="text"
                   value={metaPixelId}
                   onChange={(e) => setMetaPixelId(e.target.value)}
                   placeholder="123456789012345"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
               {/* Google Tag Manager (GTM) */}
-              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+              <div className="p-5 border border-slate-200/80 dark:border-slate-800 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-gray-900">Google Tag Manager (GTM)</label>
-                  <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 font-semibold rounded-full">Conteneur</span>
+                  <label className="text-sm font-bold text-slate-900 dark:text-white">Google Tag Manager (GTM)</label>
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold rounded-full">Conteneur</span>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Identifiant conteneur commençant par <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800">GTM-</code> pour gérer vos balises personnalisées.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Identifiant conteneur commençant par <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">GTM-</code> pour gérer vos balises personnalisées.
                 </p>
                 <input
                   type="text"
                   value={gtmContainerId}
                   onChange={(e) => setGtmContainerId(e.target.value)}
                   placeholder="GTM-XXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
               {/* TikTok Pixel */}
-              <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+              <div className="p-5 border border-slate-200/80 dark:border-slate-800 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-gray-900">TikTok Pixel</label>
-                  <span className="text-xs px-2 py-0.5 bg-pink-100 text-pink-700 font-semibold rounded-full">TikTok Ads</span>
+                  <label className="text-sm font-bold text-slate-900 dark:text-white">TikTok Pixel</label>
+                  <span className="text-xs px-2 py-0.5 bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 font-semibold rounded-full">TikTok Ads</span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Identifiant TikTok Pixel pour mesurer le rendement de vos campagnes TikTok et le trafic vers votre boutique.
                 </p>
                 <input
@@ -1806,17 +1818,17 @@ export default function SettingsPage() {
                   value={tiktokPixelId}
                   onChange={(e) => setTiktokPixelId(e.target.value)}
                   placeholder="CXXXXXXXXXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t">
+            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={saveStoreSettings}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#B91C1C] hover:bg-[#991B1B] text-white font-bold rounded-xl shadow-md transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium rounded-xl shadow-2xs transition disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saving ? t('dashboardPages.settings.saving') : 'Sauvegarder les pixels & analytics'}
@@ -1834,14 +1846,14 @@ export default function SettingsPage() {
         )}
       </div>
       {logoPickerTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs px-4">
+          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Galerie de la boutique</h2>
-                <p className="text-sm text-gray-500">Choisissez une image déjà uploadée pour votre logo.</p>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Galerie de la boutique</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Choisissez une image déjà uploadée pour votre logo.</p>
               </div>
-              <button type="button" onClick={() => setLogoPickerTarget(null)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+              <button type="button" onClick={() => setLogoPickerTarget(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1857,9 +1869,9 @@ export default function SettingsPage() {
                         setLogoPickerTarget(null);
                         showFeedback(t('dashboardPages.settings.logoSelected'));
                       }}
-                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"
+                      className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-left transition hover:border-slate-900 dark:hover:border-white hover:shadow-2xs"
                     >
-                      <div className="aspect-square bg-gray-100">
+                      <div className="aspect-square bg-slate-100 dark:bg-slate-800">
                         <div
                           aria-label={item.alt_text || item.product_title}
                           role="img"
@@ -1868,13 +1880,13 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div className="p-2">
-                        <p className="truncate text-xs font-medium text-gray-700">{item.product_title}</p>
+                        <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{item.product_title}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucune image disponible. Uploadez un logo pour commencer.
                 </div>
               )}
@@ -1883,14 +1895,14 @@ export default function SettingsPage() {
         </div>
       )}
       {showHeaderImagePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs px-4">
+          <div className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Galerie de la boutique</h2>
-                <p className="text-sm text-gray-500">Choisissez une image pour l&apos;en-tête marketplace.</p>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Galerie de la boutique</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Choisissez une image pour l&apos;en-tête marketplace.</p>
               </div>
-              <button type="button" onClick={() => setShowHeaderImagePicker(false)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+              <button type="button" onClick={() => setShowHeaderImagePicker(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1906,9 +1918,9 @@ export default function SettingsPage() {
                         setShowHeaderImagePicker(false);
                         showFeedback('Image sélectionnée. Cliquez sur Sauvegarder pour appliquer.');
                       }}
-                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white text-left transition-all hover:border-[#B91C1C] hover:shadow-md"
+                      className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-left transition hover:border-slate-900 dark:hover:border-white hover:shadow-2xs"
                     >
-                      <div className="aspect-square bg-gray-100">
+                      <div className="aspect-square bg-slate-100 dark:bg-slate-800">
                         <div
                           aria-label={item.alt_text || item.product_title}
                           role="img"
@@ -1917,13 +1929,13 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div className="p-2">
-                        <p className="truncate text-xs font-medium text-gray-700">{item.product_title}</p>
+                        <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{item.product_title}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucune image disponible. Uploadez une image pour commencer.
                 </div>
               )}
@@ -1932,26 +1944,26 @@ export default function SettingsPage() {
         </div>
       )}
       {purchaseConfirmTheme && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-              <h2 className="text-lg font-bold text-gray-900">Acheter le thème premium</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs px-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Acheter le thème premium</h2>
               <button
                 type="button"
                 onClick={() => setPurchaseConfirmTheme(null)}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="my-6 space-y-3 text-sm text-gray-600">
+            <div className="my-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
               <p>
-                Vous êtes sur le point d&apos;acheter le thème <strong className="text-gray-900">{purchaseConfirmTheme.name}</strong>.
+                Vous êtes sur le point d&apos;acheter le thème <strong className="text-slate-900 dark:text-white">{purchaseConfirmTheme.name}</strong>.
               </p>
               {purchaseConfirmTheme.description && (
-                <p className="text-xs text-gray-500">{purchaseConfirmTheme.description}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{purchaseConfirmTheme.description}</p>
               )}
-              <div className="flex justify-between rounded-xl bg-amber-50 p-3 font-semibold text-amber-900">
+              <div className="flex justify-between rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 p-3 font-semibold text-amber-900 dark:text-amber-200">
                 <span>Prix :</span>
                 <span>{purchaseConfirmTheme.price} TND</span>
               </div>
@@ -1960,7 +1972,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setPurchaseConfirmTheme(null)}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
               >
                 Annuler
               </button>
@@ -1968,13 +1980,47 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => purchaseTheme(purchaseConfirmTheme)}
                 disabled={purchasing}
-                className="rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-semibold text-white hover:bg-[#991B1B] disabled:opacity-50"
+                className="rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 px-4 py-2 text-xs font-medium text-white shadow-2xs transition disabled:opacity-50"
               >
                 {purchasing ? t('dashboardPages.settings.purchasing') : t('dashboardPages.settings.confirmPurchase')}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {deleteDomainTargetId && (
+        <ConfirmDialog
+          isOpen={!!deleteDomainTargetId}
+          onClose={() => {
+            if (!deletingDomain) setDeleteDomainTargetId(null);
+          }}
+          onConfirm={confirmDeleteDomain}
+          title={t('dashboardPages.settings.deleteDomainTitle') || "Supprimer le domaine"}
+          description={
+            <div className="space-y-2">
+              <p>
+                {t('dashboardPages.settings.confirmDeleteDomain') || "Êtes-vous sûr de vouloir supprimer ce domaine ?"}
+              </p>
+              {(() => {
+                const targetDomain = domainList.find((d) => d.id === deleteDomainTargetId);
+                return targetDomain ? (
+                  <p className="font-semibold text-slate-900 dark:text-white font-mono text-sm">
+                    {targetDomain.hostname}
+                  </p>
+                ) : null;
+              })()}
+              <p className="text-xs text-rose-600 dark:text-rose-400">
+                Le trafic vers ce domaine personnalisé ne sera plus dirigé vers votre boutique.
+              </p>
+            </div>
+          }
+          confirmLabel={t('dashboardPages.common.delete') || "Supprimer"}
+          cancelLabel={t('dashboardPages.common.cancel') || "Annuler"}
+          variant="danger"
+          loading={deletingDomain}
+          dir={dir}
+        />
       )}
     </div>
   );

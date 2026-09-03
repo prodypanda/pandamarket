@@ -38,7 +38,7 @@ interface StoreData {
 }
 
 export default function OnlineStoreOverviewPage() {
-  const { t } = useLocale();
+  const { t, dir } = useLocale();
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -102,8 +102,8 @@ export default function OnlineStoreOverviewPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+      <div dir={dir} className="flex h-64 items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
     );
   }
@@ -169,18 +169,18 @@ export default function OnlineStoreOverviewPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div dir={dir} className="space-y-6">
       {/* Header Banner */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-xl bg-[#B91C1C]/10 p-2 text-[#B91C1C]">
+              <span className="rounded-xl bg-slate-100 dark:bg-slate-800 p-2 text-slate-900 dark:text-white">
                 <Globe className="h-5 w-5" />
               </span>
-              <h1 className="text-2xl font-bold text-slate-900">{t('dashboardPages.onlineStore.title')}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.onlineStore.title')}</h1>
             </div>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {t('dashboardPages.onlineStore.title')}
             </p>
           </div>
@@ -190,11 +190,11 @@ export default function OnlineStoreOverviewPage() {
               href={storefrontUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:border-[#B91C1C] hover:text-[#B91C1C] transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-white hover:text-slate-900 dark:hover:text-white transition shadow-2xs"
             >
               <Eye className="h-4 w-4" />
               <span>{t('dashboardPages.onlineStore.visit')}</span>
-              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              <ExternalLink className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
             </a>
 
             <button
@@ -226,8 +226,8 @@ export default function OnlineStoreOverviewPage() {
           <div
             className={`mt-4 rounded-xl p-3 text-xs font-semibold ${
               feedback.isError
-                ? 'bg-red-50 text-red-700 border border-red-200'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50'
+                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
             }`}
           >
             {feedback.message}
@@ -241,25 +241,25 @@ export default function OnlineStoreOverviewPage() {
           <Link
             key={item.href}
             href={item.href}
-            className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-[#B91C1C]/40 hover:shadow-md transition-all"
+            className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs hover:border-slate-400 dark:hover:border-slate-700 hover:shadow-md transition-all"
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="rounded-xl bg-slate-100 p-2.5 text-slate-700 group-hover:bg-[#B91C1C]/10 group-hover:text-[#B91C1C] transition-colors">
+                <div className="rounded-xl bg-slate-100 dark:bg-slate-800 p-2.5 text-slate-700 dark:text-slate-300 group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors">
                   <item.icon className="h-5 w-5" />
                 </div>
                 {item.badge && (
-                  <span className="truncate max-w-[120px] rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                  <span className="truncate max-w-[120px] rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700">
                     {item.badge}
                   </span>
                 )}
               </div>
-              <h3 className="font-bold text-slate-900 text-sm group-hover:text-[#B91C1C] transition-colors">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                 {item.title}
               </h3>
-              <p className="mt-1 text-xs text-slate-500 line-clamp-2">{item.desc}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{item.desc}</p>
             </div>
-            <div className="mt-4 flex items-center gap-1 text-xs font-bold text-[#B91C1C] opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="mt-4 flex items-center gap-1 text-xs font-bold text-slate-900 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity">
               <span>Gérer</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </div>

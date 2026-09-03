@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useLocale } from '@/contexts/LocaleContext';
 
 export interface ThemeConfig {
   primaryColor: string;
@@ -26,6 +27,7 @@ const DEFAULT_CONFIG: ThemeConfig = {
 };
 
 export default function ThemeCustomizerPage() {
+  const { dir } = useLocale();
   const [config, setConfig] = useState<ThemeConfig>(DEFAULT_CONFIG);
   const [activeTab, setActiveTab] = useState<'colors' | 'typography' | 'header'>('colors');
   const [isSaving, setIsSaving] = useState(false);
@@ -48,18 +50,18 @@ export default function ThemeCustomizerPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+    <div dir={dir} className="flex h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
       {/* Sidebar Controls */}
-      <div className="w-96 border-r border-slate-800 bg-slate-900 flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="w-96 border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Link
               href="/hub/dashboard/online-store/themes"
-              className="text-xs text-slate-400 hover:text-white"
+              className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               &larr; Quitter
             </Link>
-            <h1 className="text-base font-bold text-white">Personnaliseur de Thème</h1>
+            <h1 className="text-base font-bold text-slate-900 dark:text-white">Personnaliseur de Thème</h1>
           </div>
           <button
             onClick={handleSave}
@@ -71,13 +73,13 @@ export default function ThemeCustomizerPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/50">
+        <div className="flex border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
           <button
             onClick={() => setActiveTab('colors')}
             className={`flex-1 py-3 text-xs font-medium border-b-2 transition ${
               activeTab === 'colors'
-                ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             🎨 Couleurs
@@ -86,8 +88,8 @@ export default function ThemeCustomizerPage() {
             onClick={() => setActiveTab('typography')}
             className={`flex-1 py-3 text-xs font-medium border-b-2 transition ${
               activeTab === 'typography'
-                ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             🔤 Typographie
@@ -96,8 +98,8 @@ export default function ThemeCustomizerPage() {
             onClick={() => setActiveTab('header')}
             className={`flex-1 py-3 text-xs font-medium border-b-2 transition ${
               activeTab === 'header'
-                ? 'border-emerald-500 text-emerald-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
             🏷️ En-tête & Bannière
@@ -109,7 +111,7 @@ export default function ThemeCustomizerPage() {
           {activeTab === 'colors' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Couleur Principale (Primary)
                 </label>
                 <div className="flex items-center space-x-3">
@@ -117,19 +119,19 @@ export default function ThemeCustomizerPage() {
                     type="color"
                     value={config.primaryColor}
                     onChange={(e) => handleColorChange('primaryColor', e.target.value)}
-                    className="h-9 w-9 rounded-lg border border-slate-700 bg-transparent cursor-pointer"
+                    className="h-9 w-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent cursor-pointer"
                   />
                   <input
                     type="text"
                     value={config.primaryColor}
                     onChange={(e) => handleColorChange('primaryColor', e.target.value)}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white uppercase font-mono"
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white uppercase font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Couleur d&apos;Accent (Boutons d&apos;achat & Badges)
                 </label>
                 <div className="flex items-center space-x-3">
@@ -137,19 +139,19 @@ export default function ThemeCustomizerPage() {
                     type="color"
                     value={config.accentColor}
                     onChange={(e) => handleColorChange('accentColor', e.target.value)}
-                    className="h-9 w-9 rounded-lg border border-slate-700 bg-transparent cursor-pointer"
+                    className="h-9 w-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent cursor-pointer"
                   />
                   <input
                     type="text"
                     value={config.accentColor}
                     onChange={(e) => handleColorChange('accentColor', e.target.value)}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white uppercase font-mono"
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white uppercase font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Arrière-plan (Background)
                 </label>
                 <div className="flex items-center space-x-3">
@@ -157,13 +159,13 @@ export default function ThemeCustomizerPage() {
                     type="color"
                     value={config.backgroundColor}
                     onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
-                    className="h-9 w-9 rounded-lg border border-slate-700 bg-transparent cursor-pointer"
+                    className="h-9 w-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent cursor-pointer"
                   />
                   <input
                     type="text"
                     value={config.backgroundColor}
                     onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white uppercase font-mono"
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white uppercase font-mono"
                   />
                 </div>
               </div>
@@ -173,13 +175,13 @@ export default function ThemeCustomizerPage() {
           {activeTab === 'typography' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Police Principale
                 </label>
                 <select
                   value={config.fontFamily}
                   onChange={(e) => handleColorChange('fontFamily', e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white"
                 >
                   <option value="Inter">Inter (Moderne & Épuré)</option>
                   <option value="Plus Jakarta Sans">Plus Jakarta Sans (Tech & Minimal)</option>
@@ -194,36 +196,36 @@ export default function ThemeCustomizerPage() {
           {activeTab === 'header' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-300">Bannière d&apos;annonce</span>
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Bannière d&apos;annonce</span>
                 <input
                   type="checkbox"
                   checked={config.showAnnouncement}
                   onChange={(e) => setConfig((p) => ({ ...p, showAnnouncement: e.target.checked }))}
-                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
+                  className="rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500"
                 />
               </div>
 
               {config.showAnnouncement && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Texte de l&apos;annonce
                   </label>
                   <input
                     type="text"
                     value={config.announcementText}
                     onChange={(e) => handleColorChange('announcementText', e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white"
                   />
                 </div>
               )}
 
               <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-medium text-slate-300">En-tête Fixe (Sticky Header)</span>
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">En-tête Fixe (Sticky Header)</span>
                 <input
                   type="checkbox"
                   checked={config.stickyHeader}
                   onChange={(e) => setConfig((p) => ({ ...p, stickyHeader: e.target.checked }))}
-                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
+                  className="rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -232,8 +234,8 @@ export default function ThemeCustomizerPage() {
       </div>
 
       {/* Live Preview Pane */}
-      <div className="flex-1 flex flex-col bg-slate-900/50 p-6 overflow-y-auto">
-        <div className="max-w-3xl w-full mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 text-slate-900 transition-all">
+      <div className="flex-1 flex flex-col bg-slate-100/60 dark:bg-slate-900/50 p-6 overflow-y-auto">
+        <div className="max-w-3xl w-full mx-auto bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white transition-all">
           {/* Announcement Bar */}
           {config.showAnnouncement && (
             <div
@@ -247,7 +249,7 @@ export default function ThemeCustomizerPage() {
           {/* Header */}
           <div
             style={{ backgroundColor: config.backgroundColor }}
-            className="p-4 border-b border-slate-100 flex items-center justify-between"
+            className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between"
           >
             <div className="font-bold text-lg" style={{ color: config.textColor }}>
               Boutique Démo
@@ -266,11 +268,11 @@ export default function ThemeCustomizerPage() {
           </div>
 
           {/* Hero Banner */}
-          <div className="p-8 text-center bg-slate-50 border-b border-slate-100">
+          <div className="p-8 text-center bg-slate-50/50 dark:bg-slate-850/50 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-2xl font-black mb-2" style={{ color: config.textColor }}>
               Nouvelle Collection Artisanale
             </h2>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Créations 100% fait main fabriquées par des maîtres artisans tunisiens.
             </p>
             <button
@@ -283,19 +285,19 @@ export default function ThemeCustomizerPage() {
 
           {/* Product Cards Grid Preview */}
           <div className="p-6 grid grid-cols-2 gap-4">
-            <div className="border border-slate-100 rounded-lg p-3 bg-white shadow-sm">
-              <div className="h-28 bg-slate-100 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-850 shadow-sm">
+              <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
                 Image Produit
               </div>
-              <h3 className="font-semibold text-xs text-slate-800">Vase en Céramique Émaillée</h3>
-              <p className="text-xs font-bold text-emerald-600 mt-1">45.000 DT</p>
+              <h3 className="font-semibold text-xs text-slate-800 dark:text-slate-200">Vase en Céramique Émaillée</h3>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">45.000 DT</p>
             </div>
-            <div className="border border-slate-100 rounded-lg p-3 bg-white shadow-sm">
-              <div className="h-28 bg-slate-100 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-850 shadow-sm">
+              <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
                 Image Produit
               </div>
-              <h3 className="font-semibold text-xs text-slate-800">Plateau en Bois d&apos;Olivier</h3>
-              <p className="text-xs font-bold text-emerald-600 mt-1">65.000 DT</p>
+              <h3 className="font-semibold text-xs text-slate-800 dark:text-slate-200">Plateau en Bois d&apos;Olivier</h3>
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">65.000 DT</p>
             </div>
           </div>
         </div>

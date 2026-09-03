@@ -51,7 +51,7 @@ function extractLabel(row: Record<string, unknown>, type: ReferenceType): string
 }
 
 export function ReferenceSelector({ type, value, onChange, className }: ReferenceSelectorProps) {
-  const { t } = useLocale();
+  const { t, dir } = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -119,13 +119,13 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
   }, [options, query]);
 
   return (
-    <div ref={ref} className={`relative ${className ?? ''}`}>
+    <div ref={ref} dir={dir} className={`relative ${className ?? ''}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-[#B91C1C]"
+        className="flex w-full items-center justify-between rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
       >
-        <span className={selectedLabel ? 'truncate' : 'text-slate-400'}>
+        <span className={selectedLabel ? 'truncate text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}>
           {selectedLabel || t('storefrontNav.referenceSelector.selectPlaceholder')}
         </span>
         <div className="flex items-center gap-1">
@@ -145,36 +145,36 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
                   setSelectedLabel('');
                 }
               }}
-              className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded p-0.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
             >
               <X className="h-3 w-3" />
             </span>
           )}
-          <ChevronDown className="h-3 w-3 text-slate-400" />
+          <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
         </div>
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
-          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
-            <Search className="h-3.5 w-3.5 text-slate-400" />
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 px-3 py-2 bg-slate-50/50 dark:bg-slate-800/40">
+            <Search className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t(PLACEHOLDER_KEYS[type])}
               autoFocus
-              className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-slate-400">
+              <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-slate-400 dark:text-slate-500">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {t('storefrontNav.referenceSelector.loading')}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-slate-400">
+              <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
                 {t(EMPTY_LABEL_KEYS[type])}
               </div>
             ) : (
@@ -187,12 +187,12 @@ export function ReferenceSelector({ type, value, onChange, className }: Referenc
                     setSelectedLabel(opt.label);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition hover:bg-slate-50 ${
-                    opt.id === value ? 'bg-red-50 font-semibold text-[#B91C1C]' : 'text-slate-700'
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                    opt.id === value ? 'bg-slate-100 dark:bg-slate-800 font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  <span className="ml-2 shrink-0 font-mono text-[10px] text-slate-400">{opt.id.slice(-8)}</span>
+                  <span className="ml-2 shrink-0 font-mono text-[10px] text-slate-400 dark:text-slate-500">{opt.id.slice(-8)}</span>
                 </button>
               ))
             )}
