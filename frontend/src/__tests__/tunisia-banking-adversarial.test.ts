@@ -10,7 +10,7 @@ import {
 
 describe('Tunisian Banking Algorithm — Adversarial & Stress Testing', () => {
   describe('Mathematical Modulo 97 Properties & Invariants', () => {
-    it('verifies BigInt(base18 + key) % 97n === 0n across 100 distinct base18 inputs', () => {
+    it('verifies BigInt(base18 + key) % BigInt(97) === BigInt(0) across 100 distinct base18 inputs', () => {
       for (let i = 1; i <= 100; i++) {
         // Generate pseudo-random 18-digit string starting with bank code '10'
         const accountPart = String(i).padStart(13, '0');
@@ -19,8 +19,8 @@ describe('Tunisian Banking Algorithm — Adversarial & Stress Testing', () => {
 
         expect(key).toHaveLength(2);
         const fullRib = `${base18}${key}`;
-        const mod = BigInt(fullRib) % 97n;
-        expect(mod).toBe(0n);
+        const mod = BigInt(fullRib) % BigInt(97);
+        expect(mod).toBe(BigInt(0));
       }
     });
 
@@ -30,12 +30,12 @@ describe('Tunisian Banking Algorithm — Adversarial & Stress Testing', () => {
       // Since gcd(3, 97) = 1, clean18 must be a multiple of 97.
       // Let's pick 97 * 10^16 -> 18 digits: '970000000000000000'
       const base18 = '970000000000000000';
-      const remainder = Number(BigInt(base18 + '00') % 97n);
+      const remainder = Number(BigInt(base18 + '00') % BigInt(97));
       expect(remainder).toBe(0);
 
       const key = computeTunisianRibKey(base18);
       expect(key).toBe('97');
-      expect(BigInt(base18 + key) % 97n).toBe(0n);
+      expect(BigInt(base18 + key) % BigInt(97)).toBe(BigInt(0));
     });
 
     it('handles remainder === 96 edge case where key must be 01', () => {
@@ -44,12 +44,12 @@ describe('Tunisian Banking Algorithm — Adversarial & Stress Testing', () => {
       // Adding 32 to base18: 32 * 100 = 3200 = 32 * 97 + 96 -> (3200 % 97) = 96.
       // base18 = 970000000000000032
       const base18 = '970000000000000032';
-      const remainder = Number(BigInt(base18 + '00') % 97n);
+      const remainder = Number(BigInt(base18 + '00') % BigInt(97));
       expect(remainder).toBe(96);
 
       const key = computeTunisianRibKey(base18);
       expect(key).toBe('01');
-      expect(BigInt(base18 + key) % 97n).toBe(0n);
+      expect(BigInt(base18 + key) % BigInt(97)).toBe(BigInt(0));
     });
 
     it('handles remainder === 1 edge case where key must be 96', () => {
@@ -57,12 +57,12 @@ describe('Tunisian Banking Algorithm — Adversarial & Stress Testing', () => {
       // 65 * 100 = 6500 = 67 * 97 + 1 -> (6500 % 97) = 1.
       // base18 = 970000000000000065
       const base18 = '970000000000000065';
-      const remainder = Number(BigInt(base18 + '00') % 97n);
+      const remainder = Number(BigInt(base18 + '00') % BigInt(97));
       expect(remainder).toBe(1);
 
       const key = computeTunisianRibKey(base18);
       expect(key).toBe('96');
-      expect(BigInt(base18 + key) % 97n).toBe(0n);
+      expect(BigInt(base18 + key) % BigInt(97)).toBe(BigInt(0));
     });
 
     it('always produces keys between 01 and 97 (never 00, never >97)', () => {
