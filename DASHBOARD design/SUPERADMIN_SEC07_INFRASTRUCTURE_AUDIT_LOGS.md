@@ -6,27 +6,52 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 21 | **Télémétrie Coûts IA** | `Group 7: Infrastructure & Audit` | `/ai-costs` | `Sparkles` | `Administration > Infrastructure > Coûts IA` |
+| Page 22 | **Audit Administrateur** | `Group 7: Infrastructure & Audit` | `/audit-log` | `Activity` | `Administration > Infrastructure > Audit Administrateur` |
+| Page 23 | **Audit Vendeurs** | `Group 7: Infrastructure & Audit` | `/seller-audit-log` | `FileText` | `Administration > Infrastructure > Audit Vendeurs` |
+| Page 24 | **Audit Acheteurs** | `Group 7: Infrastructure & Audit` | `/buyer-audit-log` | `FileSearch` | `Administration > Infrastructure > Audit Acheteurs` |
+| Page 25 | **Logs Serveur & Santé** | `Group 7: Infrastructure & Audit` | `/system-logs` | `Server` | `Administration > Infrastructure > Logs Serveur` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 21] AI Usage Costs, Quotas & Token Consumption
+
+- **Navigation Placement**: `Group 7: Infrastructure & Audit` > **Télémétrie Coûts IA**
+- **Primary Route**: `/ai-costs`
+- **Breadcrumb Hierarchy**: `Administration > Infrastructure > Coûts IA`
+- **Layer 6 Archetype**: `LLM Token Telemetry, Cache Hit Rates & Budget Cap Controls`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Infrastructure > Coûts IA`
+2. **Header Bar**: Title `AI Usage Costs, Quotas & Token Consumption` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: LLM Token Telemetry, Cache Hit Rates & Budget Cap Controls.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 21. AI Usage Costs, Quotas & Token Consumption
 - **Route Path**: `/ai-costs`
@@ -67,6 +92,23 @@
 
 ### [Page 22] Administrator Security Audit Trail
 
+- **Navigation Placement**: `Group 7: Infrastructure & Audit` > **Audit Administrateur**
+- **Primary Route**: `/audit-log`
+- **Breadcrumb Hierarchy**: `Administration > Infrastructure > Audit Administrateur`
+- **Layer 6 Archetype**: `Immutable Security Event Log with IP & Session Drilldown`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Infrastructure > Audit Administrateur`
+2. **Header Bar**: Title `Administrator Security Audit Trail` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Immutable Security Event Log with IP & Session Drilldown.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 22. Administrator Security Audit Trail
 - **Route Path**: `/audit-log`
 - **Dashboard Realm**: Superadmin
@@ -98,6 +140,23 @@
 
 ### [Page 23] Merchant & Vendor Administrative Audit Trail
 
+- **Navigation Placement**: `Group 7: Infrastructure & Audit` > **Audit Vendeurs**
+- **Primary Route**: `/seller-audit-log`
+- **Breadcrumb Hierarchy**: `Administration > Infrastructure > Audit Vendeurs`
+- **Layer 6 Archetype**: `Store Configuration & Ledger Mutation Audit Stream`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Infrastructure > Audit Vendeurs`
+2. **Header Bar**: Title `Merchant & Vendor Administrative Audit Trail` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Store Configuration & Ledger Mutation Audit Stream.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 23. Merchant & Vendor Administrative Audit Trail
 - **Route Path**: `/seller-audit-log`
 - **Dashboard Realm**: Superadmin
@@ -127,6 +186,23 @@
 
 ### [Page 24] Buyer Account Actions & Order Audit Trail
 
+- **Navigation Placement**: `Group 7: Infrastructure & Audit` > **Audit Acheteurs**
+- **Primary Route**: `/buyer-audit-log`
+- **Breadcrumb Hierarchy**: `Administration > Infrastructure > Audit Acheteurs`
+- **Layer 6 Archetype**: `Shopper Activity, Order State Changes & Dispute Log`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Infrastructure > Audit Acheteurs`
+2. **Header Bar**: Title `Buyer Account Actions & Order Audit Trail` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Shopper Activity, Order State Changes & Dispute Log.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 24. Buyer Account Actions & Order Audit Trail
 - **Route Path**: `/buyer-audit-log`
 - **Dashboard Realm**: Superadmin
@@ -152,6 +228,23 @@
 ---
 
 ### [Page 25] Server Infrastructure, API Errors & Performance Logs
+
+- **Navigation Placement**: `Group 7: Infrastructure & Audit` > **Logs Serveur & Santé**
+- **Primary Route**: `/system-logs`
+- **Breadcrumb Hierarchy**: `Administration > Infrastructure > Logs Serveur`
+- **Layer 6 Archetype**: `Microservices Telemetry, Redis Memory & Real-Time Log Tail`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Infrastructure > Logs Serveur`
+2. **Header Bar**: Title `Server Infrastructure, API Errors & Performance Logs` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Microservices Telemetry, Redis Memory & Real-Time Log Tail.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 25. Server Infrastructure, API Errors & Performance Logs
 - **Route Path**: `/system-logs`

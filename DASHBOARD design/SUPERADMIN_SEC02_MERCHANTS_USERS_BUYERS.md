@@ -6,27 +6,51 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 4 | **Répertoire des Boutiques** | `Group 2: Commerces & Utilisateurs` | `/stores` | `Store` | `Administration > Commerces > Boutiques` |
+| Page 5 | **Utilisateurs & Vendeurs** | `Group 2: Commerces & Utilisateurs` | `/users` | `Users` | `Administration > Commerces > Utilisateurs & Vendeurs` |
+| Page 6 | **Répertoire des Acheteurs** | `Group 2: Commerces & Utilisateurs` | `/buyers` | `UserCheck` | `Administration > Commerces > Acheteurs` |
+| Page 31 | **Accès Rapide Vendeurs (Alias)** | `Group 2: Commerces & Utilisateurs` | `/(admin)/vendors` | `ExternalLink` | `Administration > Commerces > Vendeurs (Filtre Direct)` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 4] Stores & Merchant Accounts Management
+
+- **Navigation Placement**: `Group 2: Commerces & Utilisateurs` > **Répertoire des Boutiques**
+- **Primary Route**: `/stores`
+- **Breadcrumb Hierarchy**: `Administration > Commerces > Boutiques`
+- **Layer 6 Archetype**: `Data Table with Store Verification & GMV Filters`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Commerces > Boutiques`
+2. **Header Bar**: Title `Stores & Merchant Accounts Management` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with Store Verification & GMV Filters.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 4. Stores & Merchant Accounts Management
 - **Route Path**: `/stores`
@@ -91,6 +115,23 @@
 
 ### [Page 5] Platform Users & Vendors Directory
 
+- **Navigation Placement**: `Group 2: Commerces & Utilisateurs` > **Utilisateurs & Vendeurs**
+- **Primary Route**: `/users`
+- **Breadcrumb Hierarchy**: `Administration > Commerces > Utilisateurs & Vendeurs`
+- **Layer 6 Archetype**: `Data Table with Role Permission Matrix`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Commerces > Utilisateurs & Vendeurs`
+2. **Header Bar**: Title `Platform Users & Vendors Directory` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with Role Permission Matrix.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 5. Platform Users & Vendors Directory
 - **Route Path**: `/users`
 - **Dashboard Realm**: Superadmin
@@ -129,6 +170,23 @@
 ---
 
 ### [Page 6] Registered Buyers & Shoppers Directory
+
+- **Navigation Placement**: `Group 2: Commerces & Utilisateurs` > **Répertoire des Acheteurs**
+- **Primary Route**: `/buyers`
+- **Breadcrumb Hierarchy**: `Administration > Commerces > Acheteurs`
+- **Layer 6 Archetype**: `Data Table with Customer Lifetime Value & Order History`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Commerces > Acheteurs`
+2. **Header Bar**: Title `Registered Buyers & Shoppers Directory` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with Customer Lifetime Value & Order History.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 6. Registered Buyers & Shoppers Directory
 - **Route Path**: `/buyers`
@@ -170,6 +228,23 @@
 ---
 
 ### [Page 31] Vendors Navigation Shortcut (Direct Alias to Users)
+
+- **Navigation Placement**: `Group 2: Commerces & Utilisateurs` > **Accès Rapide Vendeurs (Alias)**
+- **Primary Route**: `/(admin)/vendors`
+- **Breadcrumb Hierarchy**: `Administration > Commerces > Vendeurs (Filtre Direct)`
+- **Layer 6 Archetype**: `Direct Redirection Handler to /users?role=vendor`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Commerces > Vendeurs (Filtre Direct)`
+2. **Header Bar**: Title `Vendors Navigation Shortcut (Direct Alias to Users)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Direct Redirection Handler to /users?role=vendor.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 31. Vendors Navigation Shortcut (Direct Alias to Users)
 - **Route Path**: `/vendors`

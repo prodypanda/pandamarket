@@ -6,27 +6,50 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 17 | **Campagnes PandaAds** | `Group 6: Monétisation & Abonnements` | `/ads` | `Megaphone` | `Administration > Monétisation > PandaAds` |
+| Page 18 | **Commandes d'Abonnement** | `Group 6: Monétisation & Abonnements` | `/subscription-orders` | `ReceiptText` | `Administration > Monétisation > Commandes d'Abonnement` |
+| Page 20 | **Forfaits & Quotas SaaS** | `Group 6: Monétisation & Abonnements` | `/plans` | `Crown` | `Administration > Monétisation > Forfaits & Quotas` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 17] PandaAds Global Campaign Management & Placement Pricing
+
+- **Navigation Placement**: `Group 6: Monétisation & Abonnements` > **Campagnes PandaAds**
+- **Primary Route**: `/ads`
+- **Breadcrumb Hierarchy**: `Administration > Monétisation > PandaAds`
+- **Layer 6 Archetype**: `Ad Campaign Auction Matrix & Impression Monitors`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Monétisation > PandaAds`
+2. **Header Bar**: Title `PandaAds Global Campaign Management & Placement Pricing` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Ad Campaign Auction Matrix & Impression Monitors.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 17. PandaAds Global Campaign Management & Placement Pricing
 - **Route Path**: `/ads`
@@ -70,6 +93,23 @@
 
 ### [Page 18] SaaS Subscription Orders & Invoicing
 
+- **Navigation Placement**: `Group 6: Monétisation & Abonnements` > **Commandes d'Abonnement**
+- **Primary Route**: `/subscription-orders`
+- **Breadcrumb Hierarchy**: `Administration > Monétisation > Commandes d'Abonnement`
+- **Layer 6 Archetype**: `SaaS Invoicing Order Book with VAT Breakdown`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Monétisation > Commandes d'Abonnement`
+2. **Header Bar**: Title `SaaS Subscription Orders & Invoicing` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: SaaS Invoicing Order Book with VAT Breakdown.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 18. SaaS Subscription Orders & Invoicing
 - **Route Path**: `/subscription-orders`
 - **Dashboard Realm**: Superadmin
@@ -112,6 +152,23 @@
 ---
 
 ### [Page 20] SaaS Subscription Plans, Features & Tier Limits Management
+
+- **Navigation Placement**: `Group 6: Monétisation & Abonnements` > **Forfaits & Quotas SaaS**
+- **Primary Route**: `/plans`
+- **Breadcrumb Hierarchy**: `Administration > Monétisation > Forfaits & Quotas`
+- **Layer 6 Archetype**: `Tier Limits & Feature Matrix Multi-Plan Editor`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Monétisation > Forfaits & Quotas`
+2. **Header Bar**: Title `SaaS Subscription Plans, Features & Tier Limits Management` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Tier Limits & Feature Matrix Multi-Plan Editor.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 20. SaaS Subscription Plans, Features & Tier Limits Management
 - **Route Path**: `/plans`

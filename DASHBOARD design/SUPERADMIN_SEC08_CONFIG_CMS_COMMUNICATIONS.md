@@ -6,27 +6,51 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 26 | **Configuration Générale** | `Group 8: Gouvernance & Configuration` | `/settings` | `Settings` | `Administration > Gouvernance > Configuration Générale` |
+| Page 27 | **Serveur Mail SMTP** | `Group 8: Gouvernance & Configuration` | `/(admin)/sms-config` | `Mail` | `Administration > Gouvernance > Serveur Mail SMTP` |
+| Page 29 | **Articles CMS & Politiques** | `Group 8: Gouvernance & Configuration` | `/(admin)/blog` | `BookOpen` | `Administration > Gouvernance > Articles CMS & Politiques` |
+| Page 30 | **Éditeur CMS & SEO** | `Group 8: Gouvernance & Configuration` | `/(admin)/blog/edit` | `Edit3` | `Administration > Gouvernance > Éditeur d'Article` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 26] Global Platform Configuration & Marketplace Settings
+
+- **Navigation Placement**: `Group 8: Gouvernance & Configuration` > **Configuration Générale**
+- **Primary Route**: `/settings`
+- **Breadcrumb Hierarchy**: `Administration > Gouvernance > Configuration Générale`
+- **Layer 6 Archetype**: `Platform Configuration Form with Maintenance Switch`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Gouvernance > Configuration Générale`
+2. **Header Bar**: Title `Global Platform Configuration & Marketplace Settings` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Platform Configuration Form with Maintenance Switch.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 26. Global Platform Configuration & Marketplace Settings
 - **Route Path**: `/settings`
@@ -109,6 +133,23 @@
 
 ### [Page 27] SMTP Transactional Mail Server & Test Dispatch
 
+- **Navigation Placement**: `Group 8: Gouvernance & Configuration` > **Serveur Mail SMTP**
+- **Primary Route**: `/(admin)/sms-config`
+- **Breadcrumb Hierarchy**: `Administration > Gouvernance > Serveur Mail SMTP`
+- **Layer 6 Archetype**: `SMTP Credential Vault & Real-Time Test Email Dispatcher`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Gouvernance > Serveur Mail SMTP`
+2. **Header Bar**: Title `SMTP Transactional Mail Server & Test Dispatch` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: SMTP Credential Vault & Real-Time Test Email Dispatcher.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 27. SMTP Transactional Mail Server & Test Dispatch
 - **Route Path**: `/smtp-config`
 - **Dashboard Realm**: Superadmin
@@ -141,6 +182,23 @@
 
 ### [Page 29] CMS Articles, Legal Policies & Blog Posts Directory
 
+- **Navigation Placement**: `Group 8: Gouvernance & Configuration` > **Articles CMS & Politiques**
+- **Primary Route**: `/(admin)/blog`
+- **Breadcrumb Hierarchy**: `Administration > Gouvernance > Articles CMS & Politiques`
+- **Layer 6 Archetype**: `Editorial Registry with Publication Status & Category Tags`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Gouvernance > Articles CMS & Politiques`
+2. **Header Bar**: Title `CMS Articles, Legal Policies & Blog Posts Directory` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Editorial Registry with Publication Status & Category Tags.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 29. CMS Articles, Legal Policies & Blog Posts Directory
 - **Route Path**: `/cms`
 - **Dashboard Realm**: Superadmin
@@ -170,6 +228,23 @@
 ---
 
 ### [Page 30] CMS Article Editor, Markdown Preview & SEO Publishing
+
+- **Navigation Placement**: `Group 8: Gouvernance & Configuration` > **Éditeur CMS & SEO**
+- **Primary Route**: `/(admin)/blog/edit`
+- **Breadcrumb Hierarchy**: `Administration > Gouvernance > Éditeur d'Article`
+- **Layer 6 Archetype**: `Split-Pane Markdown Editor with Real-Time Google SERP Preview`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Gouvernance > Éditeur d'Article`
+2. **Header Bar**: Title `CMS Article Editor, Markdown Preview & SEO Publishing` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Split-Pane Markdown Editor with Real-Time Google SERP Preview.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 30. CMS Article Editor, Markdown Preview & SEO Publishing
 - **Route Path**: `/cms/[id]`

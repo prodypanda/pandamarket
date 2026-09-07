@@ -6,27 +6,57 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 59 | **Litiges & Réclamations** | `Group 7: Studio IA & Support` | `/hub/dashboard/disputes` | `Flag` | `Accueil > Outils & Support > Litiges & Réclamations` |
+| Page 60 | **Dossier Litige & Preuves** | `Group 7: Studio IA & Support` | `/hub/dashboard/disputes/[id]` | `FileText` | `Accueil > Outils & Support > Dossier Litige` |
+| Page 61 | **Profil & Identité Boutique** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/settings` | `Settings` | `Accueil > Paramètres > Profil Boutique` |
+| Page 62 | **Dossier KYC Vendeur** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/kyc` | `Shield` | `Accueil > Paramètres > Vérification KYC` |
+| Page 63 | **Clés API REST Développeur** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/api-keys` | `Key` | `Accueil > Paramètres > Clés d'API` |
+| Page 64 | **Webhooks en Temps Réel** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/webhooks` | `Webhook` | `Accueil > Paramètres > Webhooks` |
+| Page 65 | **Centre de Notifications** | `Group 7: Studio IA & Support` | `/hub/dashboard/notifications` | `Bell` | `Accueil > Outils & Support > Notifications` |
+| Page 66 | **Centre d'Assistance Vendeur** | `Group 7: Studio IA & Support` | `/hub/dashboard/help` | `HelpCircle` | `Accueil > Outils & Support > Centre d'Aide` |
+| Page 67 | **Créer Nouvelle Boutique** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/create-store` | `PlusCircle` | `Accueil > Paramètres > Nouvelle Boutique` |
+| Page 68 | **Sélecteur Multi-Boutiques** | `Group 8: Paramètres & Organisation` | `/hub/dashboard/select-store` | `Store` | `Accueil > Paramètres > Mes Boutiques` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 59] Customer Disputes, Infringement Claims & Resolution Cases
+
+- **Navigation Placement**: `Group 7: Studio IA & Support` > **Litiges & Réclamations**
+- **Primary Route**: `/hub/dashboard/disputes`
+- **Breadcrumb Hierarchy**: `Accueil > Outils & Support > Litiges & Réclamations`
+- **Layer 6 Archetype**: `Dispute Claims Table with SLA Timers & Response Triggers`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Outils & Support > Litiges & Réclamations`
+2. **Header Bar**: Title `Customer Disputes, Infringement Claims & Resolution Cases` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Dispute Claims Table with SLA Timers & Response Triggers.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 59. Customer Disputes, Infringement Claims & Resolution Cases
 - **Route Path**: `/hub/dashboard/reports`
@@ -57,6 +87,23 @@
 
 ### [Page 60] Dispute Dossier View, Proof Upload & Resolution Response Submission
 
+- **Navigation Placement**: `Group 7: Studio IA & Support` > **Dossier Litige & Preuves**
+- **Primary Route**: `/hub/dashboard/disputes/[id]`
+- **Breadcrumb Hierarchy**: `Accueil > Outils & Support > Dossier Litige`
+- **Layer 6 Archetype**: `Evidence Uploader (Receipts, Photos) & Defense Statement Form`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Outils & Support > Dossier Litige`
+2. **Header Bar**: Title `Dispute Dossier View, Proof Upload & Resolution Response Submission` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Evidence Uploader (Receipts, Photos) & Defense Statement Form.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 60. Dispute Dossier View, Proof Upload & Resolution Response Submission
 - **Route Path**: `/hub/dashboard/reports/[id]`
 - **Dashboard Realm**: Seller Dashboard
@@ -78,6 +125,23 @@
 ---
 
 ### [Page 61] Store Identity, Business Profile & Operational Settings
+
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Profil & Identité Boutique**
+- **Primary Route**: `/hub/dashboard/settings`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Profil Boutique`
+- **Layer 6 Archetype**: `Store Identity Form (Branding, Legal Info, Working Hours)`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Profil Boutique`
+2. **Header Bar**: Title `Store Identity, Business Profile & Operational Settings` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Store Identity Form (Branding, Legal Info, Working Hours).
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 61. Store Identity, Business Profile & Operational Settings
 - **Route Path**: `/hub/dashboard/settings`
@@ -120,6 +184,23 @@
 
 ### [Page 62] Merchant KYC Verification Portal & Documents Upload
 
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Dossier KYC Vendeur**
+- **Primary Route**: `/hub/dashboard/kyc`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Vérification KYC`
+- **Layer 6 Archetype**: `KYC Verification Dossier Upload (CIN, RNE, RIB Certificate)`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Vérification KYC`
+2. **Header Bar**: Title `Merchant KYC Verification Portal & Documents Upload` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: KYC Verification Dossier Upload (CIN, RNE, RIB Certificate).
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 62. Merchant KYC Verification Portal & Documents Upload
 - **Route Path**: `/hub/dashboard/kyc`
 - **Dashboard Realm**: Seller Dashboard
@@ -151,6 +232,23 @@
 
 ### [Page 63] Developer REST API Credentials & Permission Scopes
 
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Clés API REST Développeur**
+- **Primary Route**: `/hub/dashboard/api-keys`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Clés d'API`
+- **Layer 6 Archetype**: `API Key Generator with Permission Scopes & Masked Secret`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Clés d'API`
+2. **Header Bar**: Title `Developer REST API Credentials & Permission Scopes` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: API Key Generator with Permission Scopes & Masked Secret.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 63. Developer REST API Credentials & Permission Scopes
 - **Route Path**: `/hub/dashboard/api-keys`
 - **Dashboard Realm**: Seller Dashboard
@@ -179,6 +277,23 @@
 ---
 
 ### [Page 64] Real-time Webhook Subscriptions & Delivery Logs
+
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Webhooks en Temps Réel**
+- **Primary Route**: `/hub/dashboard/webhooks`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Webhooks`
+- **Layer 6 Archetype**: `Webhook Endpoint Subscriptions & Delivery Log Viewer`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Webhooks`
+2. **Header Bar**: Title `Real-time Webhook Subscriptions & Delivery Logs` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Webhook Endpoint Subscriptions & Delivery Log Viewer.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 64. Real-time Webhook Subscriptions & Delivery Logs
 - **Route Path**: `/hub/dashboard/webhooks`
@@ -209,6 +324,23 @@
 
 ### [Page 65] Store Notification Center & Channel Alert Preferences
 
+- **Navigation Placement**: `Group 7: Studio IA & Support` > **Centre de Notifications**
+- **Primary Route**: `/hub/dashboard/notifications`
+- **Breadcrumb Hierarchy**: `Accueil > Outils & Support > Notifications`
+- **Layer 6 Archetype**: `Alert Switchboard across Web, Email & SMS Channels`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Outils & Support > Notifications`
+2. **Header Bar**: Title `Store Notification Center & Channel Alert Preferences` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Alert Switchboard across Web, Email & SMS Channels.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 65. Store Notification Center & Channel Alert Preferences
 - **Route Path**: `/hub/dashboard/notifications`
 - **Dashboard Realm**: Seller Dashboard
@@ -238,6 +370,23 @@
 ---
 
 ### [Page 66] Merchant Support Desk & Help Ticket Submission
+
+- **Navigation Placement**: `Group 7: Studio IA & Support` > **Centre d'Assistance Vendeur**
+- **Primary Route**: `/hub/dashboard/help`
+- **Breadcrumb Hierarchy**: `Accueil > Outils & Support > Centre d'Aide`
+- **Layer 6 Archetype**: `Knowledge Base Search & Support Ticket Creator`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Outils & Support > Centre d'Aide`
+2. **Header Bar**: Title `Merchant Support Desk & Help Ticket Submission` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Knowledge Base Search & Support Ticket Creator.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 66. Merchant Support Desk & Help Ticket Submission
 - **Route Path**: `/hub/dashboard/support`
@@ -270,6 +419,23 @@
 
 ### [Page 67] Create New Secondary Store Wizard
 
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Créer Nouvelle Boutique**
+- **Primary Route**: `/hub/dashboard/create-store`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Nouvelle Boutique`
+- **Layer 6 Archetype**: `Secondary Store Creation Multi-Step Wizard`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Nouvelle Boutique`
+2. **Header Bar**: Title `Create New Secondary Store Wizard` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Secondary Store Creation Multi-Step Wizard.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 67. Create New Secondary Store Wizard
 - **Route Path**: `/hub/dashboard/create-store`
 - **Dashboard Realm**: Seller Dashboard
@@ -291,6 +457,23 @@
 ---
 
 ### [Page 68] Multi-Store Switcher & Organization Selector
+
+- **Navigation Placement**: `Group 8: Paramètres & Organisation` > **Sélecteur Multi-Boutiques**
+- **Primary Route**: `/hub/dashboard/select-store`
+- **Breadcrumb Hierarchy**: `Accueil > Paramètres > Mes Boutiques`
+- **Layer 6 Archetype**: `Organization & Multi-Store Grid Card Switcher`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Paramètres > Mes Boutiques`
+2. **Header Bar**: Title `Multi-Store Switcher & Organization Selector` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Organization & Multi-Store Grid Card Switcher.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 68. Multi-Store Switcher & Organization Selector
 - **Route Path**: `/hub/dashboard/select-store`

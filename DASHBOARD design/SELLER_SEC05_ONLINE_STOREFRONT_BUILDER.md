@@ -6,27 +6,56 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 44 | **Vue d'ensemble Boutique** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store` | `Globe` | `Accueil > Boutique en Ligne > Vue d'ensemble` |
+| Page 45 | **Galerie de Thèmes** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/themes` | `Palette` | `Accueil > Boutique en Ligne > Galerie de Thèmes` |
+| Page 46 | **Personnalisateur Visuel** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/customize` | `Sparkles` | `Accueil > Boutique en Ligne > Personnalisation Visuelle` |
+| Page 47 | **Bannières & Carrousels** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/banners` | `Layout` | `Accueil > Boutique en Ligne > Bannières & Carrousels` |
+| Page 48 | **Navigation & Menus** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/navigation` | `Navigation` | `Accueil > Boutique en Ligne > Menus & Navigation` |
+| Page 49 | **Constructeur de Pages** | `Group 5: Boutique en Ligne` | `/hub/dashboard/page-builder` | `LayoutTemplate` | `Accueil > Boutique en Ligne > Constructeur de Pages` |
+| Page 50 | **Domaines & Certificats SSL** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/domains` | `Link2` | `Accueil > Boutique en Ligne > Domaines & DNS` |
+| Page 51 | **Référencement SEO** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/seo` | `Search` | `Accueil > Boutique en Ligne > Référencement & Pixels` |
+| Page 52 | **Transporteurs & Pixels** | `Group 5: Boutique en Ligne` | `/hub/dashboard/online-store/integrations` | `Code2` | `Accueil > Boutique en Ligne > Logistique & Intégrations` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 44] Online Storefront Hub & Domain Health Monitor
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Vue d'ensemble Boutique**
+- **Primary Route**: `/hub/dashboard/online-store`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Vue d'ensemble`
+- **Layer 6 Archetype**: `Storefront Status Health & Live Responsive Preview`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Vue d'ensemble`
+2. **Header Bar**: Title `Online Storefront Hub & Domain Health Monitor` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Storefront Status Health & Live Responsive Preview.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 44. Online Storefront Hub & Domain Health Monitor
 - **Route Path**: `/hub/dashboard/online-store`
@@ -58,6 +87,23 @@
 ---
 
 ### [Page 45] Storefront Themes Gallery & Viewport Previews
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Galerie de Thèmes**
+- **Primary Route**: `/hub/dashboard/online-store/themes`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Galerie de Thèmes`
+- **Layer 6 Archetype**: `Theme Cards Grid with Desktop/Tablet/Mobile Preview Modals`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Galerie de Thèmes`
+2. **Header Bar**: Title `Storefront Themes Gallery & Viewport Previews` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Theme Cards Grid with Desktop/Tablet/Mobile Preview Modals.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 45. Storefront Themes Gallery & Viewport Previews
 - **Route Path**: `/hub/dashboard/online-store/themes`
@@ -91,6 +137,23 @@
 ---
 
 ### [Page 46] Visual Theme Customizer, Brand Colors & Real-Time CSS Preview
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Personnalisateur Visuel**
+- **Primary Route**: `/hub/dashboard/online-store/customize`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Personnalisation Visuelle`
+- **Layer 6 Archetype**: `Color/Font Token Controls with Real-Time Iframe Preview`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Personnalisation Visuelle`
+2. **Header Bar**: Title `Visual Theme Customizer, Brand Colors & Real-Time CSS Preview` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Color/Font Token Controls with Real-Time Iframe Preview.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 46. Visual Theme Customizer, Brand Colors & Real-Time CSS Preview
 - **Route Path**: `/hub/dashboard/themes/customize` (accessible aussi via `/online-store/themes/customize`)
@@ -130,6 +193,23 @@
 
 ### [Page 47] Homepage Sections Customizer (Hero, Banners, Grids)
 
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Bannières & Carrousels**
+- **Primary Route**: `/hub/dashboard/online-store/banners`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Bannières & Carrousels`
+- **Layer 6 Archetype**: `Drag-and-Drop Hero Slide Manager & Promotional Banners`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Bannières & Carrousels`
+2. **Header Bar**: Title `Homepage Sections Customizer (Hero, Banners, Grids)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Drag-and-Drop Hero Slide Manager & Promotional Banners.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 47. Homepage Sections Customizer (Hero, Banners, Grids)
 - **Route Path**: `/hub/dashboard/online-store/customize`
 - **Dashboard Realm**: Seller Dashboard
@@ -162,6 +242,23 @@
 
 ### [Page 48] Navigation Menus Builder (Header & Footer)
 
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Navigation & Menus**
+- **Primary Route**: `/hub/dashboard/online-store/navigation`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Menus & Navigation`
+- **Layer 6 Archetype**: `Nested Link Hierarchy Builder with Drag Handles`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Menus & Navigation`
+2. **Header Bar**: Title `Navigation Menus Builder (Header & Footer)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Nested Link Hierarchy Builder with Drag Handles.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 48. Navigation Menus Builder (Header & Footer)
 - **Route Path**: `/hub/dashboard/online-store/navigation`
 - **Dashboard Realm**: Seller Dashboard
@@ -191,6 +288,23 @@
 ---
 
 ### [Page 49] Drag & Drop Custom Landing Page Builder
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Constructeur de Pages**
+- **Primary Route**: `/hub/dashboard/page-builder`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Constructeur de Pages`
+- **Layer 6 Archetype**: `Custom Content Page Editor with Rich Text & SEO Slug`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Constructeur de Pages`
+2. **Header Bar**: Title `Drag & Drop Custom Landing Page Builder` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Custom Content Page Editor with Rich Text & SEO Slug.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 49. Drag & Drop Custom Landing Page Builder
 - **Route Path**: `/hub/dashboard/page-builder`
@@ -227,6 +341,23 @@
 ---
 
 ### [Page 50] Custom Domains, SSL & DNS Records Configuration
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Domaines & Certificats SSL**
+- **Primary Route**: `/hub/dashboard/online-store/domains`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Domaines & DNS`
+- **Layer 6 Archetype**: `Custom Domain Configuration with Live DNS Check`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Domaines & DNS`
+2. **Header Bar**: Title `Custom Domains, SSL & DNS Records Configuration` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Custom Domain Configuration with Live DNS Check.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 50. Custom Domains, SSL & DNS Records Configuration
 - **Route Path**: `/hub/dashboard/online-store/domains`
@@ -269,6 +400,23 @@
 
 ### [Page 51] Storefront SEO Metadata, Google Search Preview & OpenGraph
 
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Référencement SEO**
+- **Primary Route**: `/hub/dashboard/online-store/seo`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Référencement & Pixels`
+- **Layer 6 Archetype**: `SEO Metadata Form with Google Search Snippet Preview`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Référencement & Pixels`
+2. **Header Bar**: Title `Storefront SEO Metadata, Google Search Preview & OpenGraph` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: SEO Metadata Form with Google Search Snippet Preview.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 51. Storefront SEO Metadata, Google Search Preview & OpenGraph
 - **Route Path**: `/hub/dashboard/online-store/seo`
 - **Dashboard Realm**: Seller Dashboard
@@ -299,6 +447,23 @@
 ---
 
 ### [Page 52] Tunisian Carriers Rate Simulator & Marketing Tracking Pixels
+
+- **Navigation Placement**: `Group 5: Boutique en Ligne` > **Transporteurs & Pixels**
+- **Primary Route**: `/hub/dashboard/online-store/integrations`
+- **Breadcrumb Hierarchy**: `Accueil > Boutique en Ligne > Logistique & Intégrations`
+- **Layer 6 Archetype**: `24-Governorate Shipping Matrix & Tracking Pixels (Meta, TikTok, GA4)`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Boutique en Ligne > Logistique & Intégrations`
+2. **Header Bar**: Title `Tunisian Carriers Rate Simulator & Marketing Tracking Pixels` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: 24-Governorate Shipping Matrix & Tracking Pixels (Meta, TikTok, GA4).
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 52. Tunisian Carriers Rate Simulator & Marketing Tracking Pixels
 - **Route Path**: `/hub/dashboard/online-store/integrations`

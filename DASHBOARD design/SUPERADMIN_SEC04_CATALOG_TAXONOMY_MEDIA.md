@@ -6,27 +6,50 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 11 | **Produits Marchands** | `Group 4: Catalogue & Modération` | `/products` | `Package` | `Administration > Catalogue > Produits Marchands` |
+| Page 12 | **Arborescence Catégories** | `Group 4: Catalogue & Modération` | `/marketplace-categories` | `Tags` | `Administration > Catalogue > Arborescence Catégories` |
+| Page 13 | **Stockage Médias CDN** | `Group 4: Catalogue & Modération` | `/platform-media` | `FolderOpen` | `Administration > Catalogue > Stockage Médias` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 11] Marketplace Global Products Moderation & Catalog
+
+- **Navigation Placement**: `Group 4: Catalogue & Modération` > **Produits Marchands**
+- **Primary Route**: `/products`
+- **Breadcrumb Hierarchy**: `Administration > Catalogue > Produits Marchands`
+- **Layer 6 Archetype**: `Data Table with Counterfeit AI Score & Status Actions`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Catalogue > Produits Marchands`
+2. **Header Bar**: Title `Marketplace Global Products Moderation & Catalog` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with Counterfeit AI Score & Status Actions.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 11. Marketplace Global Products Moderation & Catalog
 - **Route Path**: `/products`
@@ -73,6 +96,23 @@
 
 ### [Page 12] Global Category Tree Taxonomy & Commission Rates
 
+- **Navigation Placement**: `Group 4: Catalogue & Modération` > **Arborescence Catégories**
+- **Primary Route**: `/marketplace-categories`
+- **Breadcrumb Hierarchy**: `Administration > Catalogue > Arborescence Catégories`
+- **Layer 6 Archetype**: `Hierarchical Tree Taxonomy with Commission Overrides`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Catalogue > Arborescence Catégories`
+2. **Header Bar**: Title `Global Category Tree Taxonomy & Commission Rates` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Hierarchical Tree Taxonomy with Commission Overrides.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 12. Global Category Tree Taxonomy & Commission Rates
 - **Route Path**: `/marketplace-categories`
 - **Dashboard Realm**: Superadmin
@@ -114,6 +154,23 @@
 ---
 
 ### [Page 13] Platform Media Storage & CDN File Vault
+
+- **Navigation Placement**: `Group 4: Catalogue & Modération` > **Stockage Médias CDN**
+- **Primary Route**: `/platform-media`
+- **Breadcrumb Hierarchy**: `Administration > Catalogue > Stockage Médias`
+- **Layer 6 Archetype**: `Grid Media Browser with CDN Telemetry & Orphan Purge`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Catalogue > Stockage Médias`
+2. **Header Bar**: Title `Platform Media Storage & CDN File Vault` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Grid Media Browser with CDN Telemetry & Orphan Purge.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 13. Platform Media Storage & CDN File Vault
 - **Route Path**: `/platform-media`

@@ -6,27 +6,50 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 36 | **Produits & Variantes** | `Group 3: Catalogue & Stocks` | `/hub/dashboard/products` | `Package` | `Accueil > Catalogue > Produits` |
+| Page 37 | **Catégories & Collections** | `Group 3: Catalogue & Stocks` | `/hub/dashboard/categories` | `Tags` | `Accueil > Catalogue > Catégories & Collections` |
+| Page 39 | **Médiathèque Marchand** | `Group 3: Catalogue & Stocks` | `/hub/dashboard/media` | `ImageIcon` | `Accueil > Catalogue > Médiathèque` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 36] Product Catalog, Inventory Adjuster & Variant Matrix
+
+- **Navigation Placement**: `Group 3: Catalogue & Stocks` > **Produits & Variantes**
+- **Primary Route**: `/hub/dashboard/products`
+- **Breadcrumb Hierarchy**: `Accueil > Catalogue > Produits`
+- **Layer 6 Archetype**: `Product Data Table with Inline Variant & Stock Editor`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Catalogue > Produits`
+2. **Header Bar**: Title `Product Catalog, Inventory Adjuster & Variant Matrix` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Product Data Table with Inline Variant & Stock Editor.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 36. Product Catalog, Inventory Adjuster & Variant Matrix
 - **Route Path**: `/hub/dashboard/products`
@@ -114,6 +137,23 @@
 
 ### [Page 37] Store Product Categories & Custom Collections
 
+- **Navigation Placement**: `Group 3: Catalogue & Stocks` > **Catégories & Collections**
+- **Primary Route**: `/hub/dashboard/categories`
+- **Breadcrumb Hierarchy**: `Accueil > Catalogue > Catégories & Collections`
+- **Layer 6 Archetype**: `Collection Card Matrix with Automated Tagging Rules`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Catalogue > Catégories & Collections`
+2. **Header Bar**: Title `Store Product Categories & Custom Collections` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Collection Card Matrix with Automated Tagging Rules.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 37. Store Product Categories & Custom Collections
 - **Route Path**: `/hub/dashboard/categories`
 - **Dashboard Realm**: Seller Dashboard
@@ -140,6 +180,23 @@
 ---
 
 ### [Page 39] Store Media Library, Product Image Vault & Asset Uploader
+
+- **Navigation Placement**: `Group 3: Catalogue & Stocks` > **Médiathèque Marchand**
+- **Primary Route**: `/hub/dashboard/media`
+- **Breadcrumb Hierarchy**: `Accueil > Catalogue > Médiathèque`
+- **Layer 6 Archetype**: `Multi-Image Drag-and-Drop Vault with Crop Tool`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Catalogue > Médiathèque`
+2. **Header Bar**: Title `Store Media Library, Product Image Vault & Asset Uploader` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Multi-Image Drag-and-Drop Vault with Crop Tool.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 39. Store Media Library, Product Image Vault & Asset Uploader
 - **Route Path**: `/hub/dashboard/media`

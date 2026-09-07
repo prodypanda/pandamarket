@@ -6,27 +6,50 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 40 | **Commandes & Expéditions** | `Group 2: Ventes & Opérations` | `/hub/dashboard/orders` | `ShoppingCart` | `Accueil > Ventes > Commandes` |
+| Page 41 | **Messagerie & Validation COD** | `Group 2: Ventes & Opérations` | `/hub/dashboard/messages` | `MessageSquare` | `Accueil > Ventes > Messagerie clients` |
+| Page 71 | **Console Livreur Mobile** | `Group 2: Ventes & Opérations` | `/courier` | `Smartphone` | `Accueil > Ventes > Console Livreur Mobile` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 40] Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck
+
+- **Navigation Placement**: `Group 2: Ventes & Opérations` > **Commandes & Expéditions**
+- **Primary Route**: `/hub/dashboard/orders`
+- **Breadcrumb Hierarchy**: `Accueil > Ventes > Commandes`
+- **Layer 6 Archetype**: `Orders Pipeline with Tunisian Courier Dispatch & Anti-Refus Score`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Ventes > Commandes`
+2. **Header Bar**: Title `Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Orders Pipeline with Tunisian Courier Dispatch & Anti-Refus Score.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 40. Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck
 - **Route Path**: `/hub/dashboard/orders`
@@ -110,6 +133,23 @@
 
 ### [Page 41] Customer Direct Negotiation, Inquiry Chat & 1-Click COD Validation
 
+- **Navigation Placement**: `Group 2: Ventes & Opérations` > **Messagerie & Validation COD**
+- **Primary Route**: `/hub/dashboard/messages`
+- **Breadcrumb Hierarchy**: `Accueil > Ventes > Messagerie clients`
+- **Layer 6 Archetype**: `Live Negotiation Chat with 1-Click COD Order Validation Button`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Ventes > Messagerie clients`
+2. **Header Bar**: Title `Customer Direct Negotiation, Inquiry Chat & 1-Click COD Validation` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Live Negotiation Chat with 1-Click COD Order Validation Button.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 41. Customer Direct Negotiation, Inquiry Chat & 1-Click COD Validation
 - **Route Path**: `/hub/dashboard/messages`
 - **Dashboard Realm**: Seller Dashboard
@@ -133,6 +173,23 @@
 ---
 
 ### [Page 71] Courier / Driver Mobile Delivery Handshake Console
+
+- **Navigation Placement**: `Group 2: Ventes & Opérations` > **Console Livreur Mobile**
+- **Primary Route**: `/courier`
+- **Breadcrumb Hierarchy**: `Accueil > Ventes > Console Livreur Mobile`
+- **Layer 6 Archetype**: `Mobile Delivery Route Ledger with Click-to-Call & COD Cash Handshake`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Ventes > Console Livreur Mobile`
+2. **Header Bar**: Title `Courier / Driver Mobile Delivery Handshake Console` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Mobile Delivery Route Ledger with Click-to-Call & COD Cash Handshake.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 71. Courier / Driver Mobile Delivery Handshake Console
 - **Route Path**: `/courier`

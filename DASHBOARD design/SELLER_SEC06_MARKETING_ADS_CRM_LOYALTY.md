@@ -6,27 +6,52 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 35 | **PandaAds Marchand** | `Group 4: Clients & Marketing` | `/hub/dashboard/ads` | `Megaphone` | `Accueil > Clients & Marketing > PandaAds` |
+| Page 38 | **Coupons & Programme VIP** | `Group 4: Clients & Marketing` | `/hub/dashboard/loyalty` | `Crown` | `Accueil > Clients & Marketing > Abonnés & Fidélité` |
+| Page 53 | **Répertoire Clients** | `Group 4: Clients & Marketing` | `/hub/dashboard/customers` | `Users` | `Accueil > Clients & Marketing > Répertoire Clients` |
+| Page 69 | **Alias Programme Fidélité** | `Group 4: Clients & Marketing` | `/dashboard/loyalty` | `Crown` | `Accueil > Clients & Marketing > Fidélité (Alias)` |
+| Page 70 | **Alias Abonnés Newsletter** | `Group 4: Clients & Marketing` | `/dashboard/subscribers` | `Users` | `Accueil > Clients & Marketing > Abonnés (Alias)` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 35] PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin
+
+- **Navigation Placement**: `Group 4: Clients & Marketing` > **PandaAds Marchand**
+- **Primary Route**: `/hub/dashboard/ads`
+- **Breadcrumb Hierarchy**: `Accueil > Clients & Marketing > PandaAds`
+- **Layer 6 Archetype**: `Ad Campaign Budgeting Wizard & ROAS vs Margin Calculator`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Clients & Marketing > PandaAds`
+2. **Header Bar**: Title `PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Ad Campaign Budgeting Wizard & ROAS vs Margin Calculator.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 35. PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin
 - **Route Path**: `/hub/dashboard/ads`
@@ -84,6 +109,23 @@
 
 ### [Page 38] Followers, VIP Subscribers, Private Discount Coupons & Loyalty Points
 
+- **Navigation Placement**: `Group 4: Clients & Marketing` > **Coupons & Programme VIP**
+- **Primary Route**: `/hub/dashboard/loyalty`
+- **Breadcrumb Hierarchy**: `Accueil > Clients & Marketing > Abonnés & Fidélité`
+- **Layer 6 Archetype**: `Loyalty Points Rule Builder & VIP Coupon Generator`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Clients & Marketing > Abonnés & Fidélité`
+2. **Header Bar**: Title `Followers, VIP Subscribers, Private Discount Coupons & Loyalty Points` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Loyalty Points Rule Builder & VIP Coupon Generator.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 38. Followers, VIP Subscribers, Private Discount Coupons & Loyalty Points
 - **Route Path**: `/hub/dashboard/loyalty` (Accessible aussi via `/dashboard/loyalty`)
 - **Dashboard Realm**: Seller Dashboard
@@ -117,6 +159,23 @@
 ---
 
 ### [Page 53] Store Customers Directory & Purchasing History
+
+- **Navigation Placement**: `Group 4: Clients & Marketing` > **Répertoire Clients**
+- **Primary Route**: `/hub/dashboard/customers`
+- **Breadcrumb Hierarchy**: `Accueil > Clients & Marketing > Répertoire Clients`
+- **Layer 6 Archetype**: `Customer Registry with Spend Statistics & Order Drawer`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Clients & Marketing > Répertoire Clients`
+2. **Header Bar**: Title `Store Customers Directory & Purchasing History` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Customer Registry with Spend Statistics & Order Drawer.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 53. Store Customers Directory & Purchasing History
 - **Route Path**: `/hub/dashboard/online-store/customers`
@@ -152,6 +211,23 @@
 
 ### [Page 69] Growth Loyalty Alias (Direct Redirect to Seller Loyalty)
 
+- **Navigation Placement**: `Group 4: Clients & Marketing` > **Alias Programme Fidélité**
+- **Primary Route**: `/dashboard/loyalty`
+- **Breadcrumb Hierarchy**: `Accueil > Clients & Marketing > Fidélité (Alias)`
+- **Layer 6 Archetype**: `Automatic Redirect to /hub/dashboard/loyalty`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Clients & Marketing > Fidélité (Alias)`
+2. **Header Bar**: Title `Growth Loyalty Alias (Direct Redirect to Seller Loyalty)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Automatic Redirect to /hub/dashboard/loyalty.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 69. Growth Loyalty Alias (Direct Redirect to Seller Loyalty)
 - **Route Path**: `/dashboard/loyalty`
 - **Dashboard Realm**: Superadmin / Growth Alias
@@ -163,6 +239,23 @@
 ---
 
 ### [Page 70] Growth Subscribers Alias (Direct Redirect to Seller Loyalty)
+
+- **Navigation Placement**: `Group 4: Clients & Marketing` > **Alias Abonnés Newsletter**
+- **Primary Route**: `/dashboard/subscribers`
+- **Breadcrumb Hierarchy**: `Accueil > Clients & Marketing > Abonnés (Alias)`
+- **Layer 6 Archetype**: `Automatic Redirect to /hub/dashboard/loyalty`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Clients & Marketing > Abonnés (Alias)`
+2. **Header Bar**: Title `Growth Subscribers Alias (Direct Redirect to Seller Loyalty)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Automatic Redirect to /hub/dashboard/loyalty.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 70. Growth Subscribers Alias (Direct Redirect to Seller Loyalty)
 - **Route Path**: `/dashboard/subscribers`

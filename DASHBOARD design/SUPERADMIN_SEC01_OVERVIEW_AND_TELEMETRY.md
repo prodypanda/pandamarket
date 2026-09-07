@@ -1,32 +1,55 @@
 # Superadmin Section 1: Overview, Analytics & Operational Notes
 
 > **Operational Objective**: High-level platform executive telemetry, GMV metrics, business analytics, and quick admin operational notes.
-> **Application Routes**: `/(admin)/analytics`, `/(admin)/dashboard`, `/(admin)/overview`
+> **Application Routes**: `/(admin)/analytics`, `/(admin)/dashboard`, `/(admin)/notes`
 > **Pages Covered in this Section**: Page 1, Page 2, Page 3
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 1 | **Tableau de Bord Exécutif** | `Group 1: Pilotage & Télémétrie` | `/dashboard` | `LayoutDashboard` | `Administration > Pilotage > Tableau de bord` |
+| Page 2 | **Statistiques Plateforme** | `Group 1: Pilotage & Télémétrie` | `/platform-analytics` | `LineChart` | `Administration > Pilotage > Statistiques Globales` |
+| Page 3 | **Bloc-notes Opérationnels** | `Group 1: Pilotage & Télémétrie` | `/admin-notes` | `StickyNote` | `Administration > Pilotage > Notes & Rappels` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 1] Superadmin Overview & Executive Telemetry
+
+- **Navigation Placement**: `Group 1: Pilotage & Télémétrie` > **Tableau de Bord Exécutif**
+- **Primary Route**: `/dashboard`
+- **Breadcrumb Hierarchy**: `Administration > Pilotage > Tableau de bord`
+- **Layer 6 Archetype**: `Bento Grid Telemetry Matrix`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Pilotage > Tableau de bord`
+2. **Header Bar**: Title `Superadmin Overview & Executive Telemetry` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Bento Grid Telemetry Matrix.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 1. Superadmin Overview & Executive Telemetry
 - **Route Path**: `/dashboard`
@@ -79,6 +102,23 @@
 
 ### [Page 2] Platform-wide Business & Sales Analytics
 
+- **Navigation Placement**: `Group 1: Pilotage & Télémétrie` > **Statistiques Plateforme**
+- **Primary Route**: `/platform-analytics`
+- **Breadcrumb Hierarchy**: `Administration > Pilotage > Statistiques Globales`
+- **Layer 6 Archetype**: `Multi-Chart Time-Series & Conversion Funnel`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Pilotage > Statistiques Globales`
+2. **Header Bar**: Title `Platform-wide Business & Sales Analytics` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Multi-Chart Time-Series & Conversion Funnel.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 2. Platform-wide Business & Sales Analytics
 - **Route Path**: `/platform-analytics`
 - **Dashboard Realm**: Superadmin
@@ -120,6 +160,23 @@
 ---
 
 ### [Page 3] Operational Notes & Sticky Reminders Board
+
+- **Navigation Placement**: `Group 1: Pilotage & Télémétrie` > **Bloc-notes Opérationnels**
+- **Primary Route**: `/admin-notes`
+- **Breadcrumb Hierarchy**: `Administration > Pilotage > Notes & Rappels`
+- **Layer 6 Archetype**: `Kanban Board of Operational Sticky Notes`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Pilotage > Notes & Rappels`
+2. **Header Bar**: Title `Operational Notes & Sticky Reminders Board` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Kanban Board of Operational Sticky Notes.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 3. Operational Notes & Sticky Reminders Board
 - **Route Path**: `/admin-notes`

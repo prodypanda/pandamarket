@@ -6,27 +6,52 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 14 | **Chat de Médiation** | `Group 5: Confiance, Litiges & Support` | `/messages` | `MessageSquare` | `Administration > Confiance > Chat de Médiation` |
+| Page 15 | **Signalements d'Infractions** | `Group 5: Confiance, Litiges & Support` | `/reports` | `Flag` | `Administration > Confiance > Signalements & Infractions` |
+| Page 16 | **Dossiers de Litige** | `Group 5: Confiance, Litiges & Support` | `/(admin)/tickets/disputes` | `Gavel` | `Administration > Confiance > Dossiers de Litige` |
+| Page 19 | **Radar Anti-Fraude & RTO** | `Group 5: Confiance, Litiges & Support` | `/fraud-radar` | `ShieldAlert` | `Administration > Confiance > Radar Anti-Fraude` |
+| Page 28 | **Tickets Support Desk** | `Group 5: Confiance, Litiges & Support` | `/(admin)/tickets` | `LifeBuoy` | `Administration > Confiance > Tickets Support` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 14] Superadmin Unified Support Chat & Dispute Mediation
+
+- **Navigation Placement**: `Group 5: Confiance, Litiges & Support` > **Chat de Médiation**
+- **Primary Route**: `/messages`
+- **Breadcrumb Hierarchy**: `Administration > Confiance > Chat de Médiation`
+- **Layer 6 Archetype**: `Three-Way Split-Pane Mediation Console (Thread + Order Context)`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Confiance > Chat de Médiation`
+2. **Header Bar**: Title `Superadmin Unified Support Chat & Dispute Mediation` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Three-Way Split-Pane Mediation Console (Thread + Order Context).
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 14. Superadmin Unified Support Chat & Dispute Mediation
 - **Route Path**: `/messages`
@@ -58,6 +83,23 @@
 ---
 
 ### [Page 15] Fraud Reports & Platform Violations Queue
+
+- **Navigation Placement**: `Group 5: Confiance, Litiges & Support` > **Signalements d'Infractions**
+- **Primary Route**: `/reports`
+- **Breadcrumb Hierarchy**: `Administration > Confiance > Signalements & Infractions`
+- **Layer 6 Archetype**: `Incident Queue with Severity Score & Merchant Risk Profile`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Confiance > Signalements & Infractions`
+2. **Header Bar**: Title `Fraud Reports & Platform Violations Queue` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Incident Queue with Severity Score & Merchant Risk Profile.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 15. Fraud Reports & Platform Violations Queue
 - **Route Path**: `/reports`
@@ -94,6 +136,23 @@
 
 ### [Page 16] Dispute Dossier & Sanction Adjudication
 
+- **Navigation Placement**: `Group 5: Confiance, Litiges & Support` > **Dossiers de Litige**
+- **Primary Route**: `/(admin)/tickets/disputes`
+- **Breadcrumb Hierarchy**: `Administration > Confiance > Dossiers de Litige`
+- **Layer 6 Archetype**: `Evidence Gallery & Legal Verdict Adjudication Panel`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Confiance > Dossiers de Litige`
+2. **Header Bar**: Title `Dispute Dossier & Sanction Adjudication` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Evidence Gallery & Legal Verdict Adjudication Panel.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 16. Dispute Dossier & Sanction Adjudication
 - **Route Path**: `/reports/[id]`
 - **Dashboard Realm**: Superadmin
@@ -124,6 +183,23 @@
 ---
 
 ### [Page 19] Fraud Radar & High-Risk Transaction Engine
+
+- **Navigation Placement**: `Group 5: Confiance, Litiges & Support` > **Radar Anti-Fraude & RTO**
+- **Primary Route**: `/fraud-radar`
+- **Breadcrumb Hierarchy**: `Administration > Confiance > Radar Anti-Fraude`
+- **Layer 6 Archetype**: `Real-time Heuristic Threat Feed & High-Risk Blacklist`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Confiance > Radar Anti-Fraude`
+2. **Header Bar**: Title `Fraud Radar & High-Risk Transaction Engine` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Real-time Heuristic Threat Feed & High-Risk Blacklist.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 19. Fraud Radar & High-Risk Transaction Engine
 - **Route Path**: `/fraud-radar`
@@ -165,6 +241,23 @@
 ---
 
 ### [Page 28] Platform Support Desk & Agent Tickets
+
+- **Navigation Placement**: `Group 5: Confiance, Litiges & Support` > **Tickets Support Desk**
+- **Primary Route**: `/(admin)/tickets`
+- **Breadcrumb Hierarchy**: `Administration > Confiance > Tickets Support`
+- **Layer 6 Archetype**: `Helpdesk Triage Board with SLA Countdown Timers`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Confiance > Tickets Support`
+2. **Header Bar**: Title `Platform Support Desk & Agent Tickets` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Helpdesk Triage Board with SLA Countdown Timers.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 28. Platform Support Desk & Agent Tickets
 - **Route Path**: `/admin/support`

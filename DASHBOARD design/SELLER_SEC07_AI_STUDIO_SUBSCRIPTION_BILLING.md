@@ -6,27 +6,51 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 54 | **Studio IA PandaMarket** | `Group 7: Studio IA & Support` | `/hub/dashboard/ai` | `Sparkles` | `Accueil > Outils & Support > Studio IA` |
+| Page 55 | **Forfaits & Quotas SaaS** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/subscription` | `Crown` | `Accueil > Finance > Forfait & Abonnement` |
+| Page 56 | **Mode de Facturation Récurrente** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/billing` | `CreditCard` | `Accueil > Finance > Forfait & Facturation` |
+| Page 57 | **Factures d'Abonnement** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/my-subscription-orders` | `ReceiptText` | `Accueil > Finance > Factures d'Abonnement` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 54] AI Tools Studio (Copywriting, Titles, SEO & Support)
+
+- **Navigation Placement**: `Group 7: Studio IA & Support` > **Studio IA PandaMarket**
+- **Primary Route**: `/hub/dashboard/ai`
+- **Breadcrumb Hierarchy**: `Accueil > Outils & Support > Studio IA`
+- **Layer 6 Archetype**: `AI Content Studio with Multimodal Copywriting Tools`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Outils & Support > Studio IA`
+2. **Header Bar**: Title `AI Tools Studio (Copywriting, Titles, SEO & Support)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: AI Content Studio with Multimodal Copywriting Tools.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 54. AI Tools Studio (Copywriting, Titles, SEO & Support)
 - **Route Path**: `/hub/dashboard/ai`
@@ -59,6 +83,23 @@
 
 ### [Page 55] Subscription Plans, Feature Limits, Meter & Upgrade
 
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Forfaits & Quotas SaaS**
+- **Primary Route**: `/hub/dashboard/subscription`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Forfait & Abonnement`
+- **Layer 6 Archetype**: `SaaS Plan Comparison & Feature Quota Progress Meters`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Forfait & Abonnement`
+2. **Header Bar**: Title `Subscription Plans, Feature Limits, Meter & Upgrade` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: SaaS Plan Comparison & Feature Quota Progress Meters.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 55. Subscription Plans, Feature Limits, Meter & Upgrade
 - **Route Path**: `/hub/dashboard/subscription`
 - **Dashboard Realm**: Seller Dashboard
@@ -88,6 +129,23 @@
 
 ### [Page 56] Recurring Billing Payment Method Setup
 
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Mode de Facturation Récurrente**
+- **Primary Route**: `/hub/dashboard/billing`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Forfait & Facturation`
+- **Layer 6 Archetype**: `Payment Method Setup for Platform Subscription`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Forfait & Facturation`
+2. **Header Bar**: Title `Recurring Billing Payment Method Setup` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Payment Method Setup for Platform Subscription.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 56. Recurring Billing Payment Method Setup
 - **Route Path**: `/hub/dashboard/subscription/payment-method`
 - **Dashboard Realm**: Seller Dashboard
@@ -112,6 +170,23 @@
 ---
 
 ### [Page 57] Platform SaaS Invoices & Postal Mandat Receipt Upload
+
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Factures d'Abonnement**
+- **Primary Route**: `/hub/dashboard/my-subscription-orders`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Factures d'Abonnement`
+- **Layer 6 Archetype**: `Platform SaaS Invoices & Postal Mandat Receipt Attachment`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Factures d'Abonnement`
+2. **Header Bar**: Title `Platform SaaS Invoices & Postal Mandat Receipt Upload` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Platform SaaS Invoices & Postal Mandat Receipt Attachment.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 57. Platform SaaS Invoices & Postal Mandat Receipt Upload
 - **Route Path**: `/hub/dashboard/my-subscription-orders`

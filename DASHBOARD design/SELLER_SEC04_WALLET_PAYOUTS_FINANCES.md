@@ -6,27 +6,50 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 42 | **Portefeuille & Virements RIB** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/wallet` | `Wallet` | `Accueil > Finance > Portefeuille & Virements` |
+| Page 43 | **Rapports Financiers & TVA** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/financial` | `ReceiptText` | `Accueil > Finance > Rapports Financiers & Déclarations` |
+| Page 58 | **Passerelles de Paiement Store** | `Group 6: Finance & Trésorerie` | `/hub/dashboard/payment-config` | `CreditCard` | `Accueil > Finance > Passerelles de Paiement` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 42] Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher
+
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Portefeuille & Virements RIB**
+- **Primary Route**: `/hub/dashboard/wallet`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Portefeuille & Virements`
+- **Layer 6 Archetype**: `Wallet Ledger & 20-digit Tunisian RIB Modulo 97 Payout Form`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Portefeuille & Virements`
+2. **Header Bar**: Title `Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Wallet Ledger & 20-digit Tunisian RIB Modulo 97 Payout Form.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 42. Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher
 - **Route Path**: `/hub/dashboard/wallet`
@@ -77,6 +100,23 @@
 
 ### [Page 43] Financial Reports, Invoicing & Tax Declarations
 
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Rapports Financiers & TVA**
+- **Primary Route**: `/hub/dashboard/financial`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Rapports Financiers & Déclarations`
+- **Layer 6 Archetype**: `Accounting Statements, Tax Declarations & CSV Exporter`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Rapports Financiers & Déclarations`
+2. **Header Bar**: Title `Financial Reports, Invoicing & Tax Declarations` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Accounting Statements, Tax Declarations & CSV Exporter.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 43. Financial Reports, Invoicing & Tax Declarations
 - **Route Path**: `/hub/dashboard/financial`
 - **Dashboard Realm**: Seller Dashboard
@@ -111,6 +151,23 @@
 ---
 
 ### [Page 58] Merchant Store Payment Methods Setup (Flouci, Konnect, PayPal, COD)
+
+- **Navigation Placement**: `Group 6: Finance & Trésorerie` > **Passerelles de Paiement Store**
+- **Primary Route**: `/hub/dashboard/payment-config`
+- **Breadcrumb Hierarchy**: `Accueil > Finance > Passerelles de Paiement`
+- **Layer 6 Archetype**: `Store Gateways Setup (COD, Flouci, Konnect, PayPal)`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Accueil > Finance > Passerelles de Paiement`
+2. **Header Bar**: Title `Merchant Store Payment Methods Setup (Flouci, Konnect, PayPal, COD)` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Store Gateways Setup (COD, Flouci, Konnect, PayPal).
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 58. Merchant Store Payment Methods Setup (Flouci, Konnect, PayPal, COD)
 - **Route Path**: `/hub/dashboard/payment-config`

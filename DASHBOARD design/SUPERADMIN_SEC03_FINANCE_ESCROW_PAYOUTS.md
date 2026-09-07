@@ -6,27 +6,51 @@
 
 ---
 
-## Section Architectural & Theme Selection Notes
+## 1. Section Navigation & Menu Placement
 
-1. **Multi-Theme Adaptability**:
-   - This section's data and forms must render across all enabled themes without hardcoded inline CSS.
-   - Elements should leverage semantic tokens (e.g., surface, border, text-primary, accent) defined by the active theme.
-
-2. **Strict Raw Content Separation**:
-   - All headings, inputs, tables, action buttons, and modal dialogs documented below represent the semantic contract.
-   - When applying the new OpenDesign design, match every data field and action item without dropping operational capabilities.
-
-3. **Tunisian Commerce Specifics**:
-   - Currency formatting: `0.000 TND` (3 decimal places / millimes).
-   - Banking: 20-digit RIB with Modulo 97 verification.
-   - Geographic Coverage: 24 Tunisian Governorates across national hubs.
-   - COD Verification: Cash on Delivery verification with SMS OTP and RTO risk scores.
+| Page # | Menu Label | Sidebar Group | Route Path | Assigned Icon | Breadcrumb Trail |
+|---|---|---|---|---|---|
+| Page 7 | **Vérifications KYC** | `Group 3: Conformité & Finance` | `/kyc` | `ShieldCheck` | `Administration > Conformité > Vérifications KYC` |
+| Page 8 | **Mandats Postaux** | `Group 3: Conformité & Finance` | `/mandats` | `Receipt` | `Administration > Conformité > Mandats Postaux` |
+| Page 9 | **Virements RIB Vendeurs** | `Group 3: Conformité & Finance` | `/withdrawals` | `Wallet` | `Administration > Conformité > Virements & Décaissements` |
+| Page 10 | **Remboursements & Escrow** | `Group 3: Conformité & Finance` | `/refund-review` | `RotateCcw` | `Administration > Conformité > Remboursements & Escrow` |
 
 ---
 
-## Raw Content Specifications by Page
+## 2. Standardized 8-Layer Anatomical Layout Order
+
+Every page in this section strictly respects the universal top-to-bottom layout sequence:
+1. **Layer 1 (Breadcrumb)**: Clear clickable trail indicating exact location.
+2. **Layer 2 (Header Bar)**: Domain icon, page title, status tags, and primary action cluster.
+3. **Layer 3 (Operational Alert)**: Conditional alert banner (warnings, critical KYC/stock/COD alerts).
+4. **Layer 4 (Telemetry & KPI Strip)**: 3 to 5 standardized cards formatted in `TND 0.000` with comparative deltas.
+5. **Layer 5 (Control Toolbar)**: Full-text search, filter pills/dropdowns, date range picker, and batch actions.
+6. **Layer 6 (Main Working Area)**: Primary tabular data, interactive bento widgets, or configuration form.
+7. **Layer 7 (Inspection Drawer)**: Slide-out panel for fast record inspection without leaving page context.
+8. **Layer 8 (Modals & Dialogs)**: Focus-trapped confirmation or creation dialogs.
+
+---
+
+## 3. High-Fidelity Page Specifications & Raw Content
 
 ### [Page 7] KYC Merchant Identity Verifications & Document Audit
+
+- **Navigation Placement**: `Group 3: Conformité & Finance` > **Vérifications KYC**
+- **Primary Route**: `/kyc`
+- **Breadcrumb Hierarchy**: `Administration > Conformité > Vérifications KYC`
+- **Layer 6 Archetype**: `Split-Pane Document Audit & Approval Dossier`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Conformité > Vérifications KYC`
+2. **Header Bar**: Title `KYC Merchant Identity Verifications & Document Audit` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Split-Pane Document Audit & Approval Dossier.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 7. KYC Merchant Identity Verifications & Document Audit
 - **Route Path**: `/kyc`
@@ -74,6 +98,23 @@
 
 ### [Page 8] Postal Mandats & Offline Payment Proofs Review
 
+- **Navigation Placement**: `Group 3: Conformité & Finance` > **Mandats Postaux**
+- **Primary Route**: `/mandats`
+- **Breadcrumb Hierarchy**: `Administration > Conformité > Mandats Postaux`
+- **Layer 6 Archetype**: `Data Table with Image Proof Viewer & Transaction Reconciler`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Conformité > Mandats Postaux`
+2. **Header Bar**: Title `Postal Mandats & Offline Payment Proofs Review` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with Image Proof Viewer & Transaction Reconciler.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
+
 ### 8. Postal Mandats & Offline Payment Proofs Review
 - **Route Path**: `/mandats`
 - **Dashboard Realm**: Superadmin
@@ -113,6 +154,23 @@
 ---
 
 ### [Page 9] Seller Wallet Payout Requests & Bank Disbursement
+
+- **Navigation Placement**: `Group 3: Conformité & Finance` > **Virements RIB Vendeurs**
+- **Primary Route**: `/withdrawals`
+- **Breadcrumb Hierarchy**: `Administration > Conformité > Virements & Décaissements`
+- **Layer 6 Archetype**: `Data Table with 20-digit RIB Modulo 97 Batch Generator`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Conformité > Virements & Décaissements`
+2. **Header Bar**: Title `Seller Wallet Payout Requests & Bank Disbursement` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Data Table with 20-digit RIB Modulo 97 Batch Generator.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 9. Seller Wallet Payout Requests & Bank Disbursement
 - **Route Path**: `/withdrawals`
@@ -154,6 +212,23 @@
 ---
 
 ### [Page 10] Buyer Refund Reviews & Escalations
+
+- **Navigation Placement**: `Group 3: Conformité & Finance` > **Remboursements & Escrow**
+- **Primary Route**: `/refund-review`
+- **Breadcrumb Hierarchy**: `Administration > Conformité > Remboursements & Escrow`
+- **Layer 6 Archetype**: `Escrow Vault Ledger with Dispute Adjudication Trigger`
+
+#### Element Hierarchy & Exact Ordering on Page:
+1. **Breadcrumb**: `Administration > Conformité > Remboursements & Escrow`
+2. **Header Bar**: Title `Buyer Refund Reviews & Escalations` + Quick Action buttons.
+3. **Operational Banner**: Critical alert banner (active on operational alerts).
+4. **KPI Cards**: Summary telemetry cards with millimes precision.
+5. **Control Bar**: Filter, search, and view controls.
+6. **Primary Surface**: Escrow Vault Ledger with Dispute Adjudication Trigger.
+7. **Detail Drawer**: Slide-out inspection drawer.
+8. **Action Modals**: Dialog triggers for batch operations.
+
+#### Raw Content Contract:
 
 ### 10. Buyer Refund Reviews & Escalations
 - **Route Path**: `/refund-review`
