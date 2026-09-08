@@ -1,10 +1,10 @@
-# OpenDesign Visual Design System Specifications (PandaMarket Dashboards)
+# ReGo Visual Design System Specifications (PandaMarket Dashboards)
 
 ## 1. Executive Summary & Design Philosophy
 
-The **OpenDesign Design System** represents a state-of-the-art, modernist aesthetic engineered specifically for high-velocity e-commerce and multi-tenant marketplace governance.
+The **ReGo Design System** represents a state-of-the-art, modernist aesthetic engineered specifically for high-velocity e-commerce and multi-tenant marketplace governance.
 
-Extracted directly from the official OpenDesign project artifacts (`pandamarket-seller-cockpit.html` and the 67 template surfaces), this design language balances **maximum information density** with **tactile visual clarity**. It replaces traditional bulky card padding with refined hairline borders, subtle OKLCH color mixing, responsive typography scales, and modular bento grid primitives.
+Extracted directly from the official ReGo project artifacts (`pandamarket-seller-cockpit.html` and the 67 template surfaces), this design language balances **maximum information density** with **tactile visual clarity**. It replaces traditional bulky card padding with refined hairline borders, subtle OKLCH color mixing, responsive typography scales, and modular bento grid primitives.
 
 ---
 

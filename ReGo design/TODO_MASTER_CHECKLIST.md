@@ -1,21 +1,21 @@
-# Master Implementation TODO Checklist: Multi-Theme Dashboards & OpenDesign Template
+# Master Implementation TODO Checklist: Multi-Theme Dashboards & ReGo Template
 
-This checklist outlines the complete, step-by-step roadmap for implementing the multi-theme architecture and the incoming OpenDesign design across all 71 dashboard pages.
+This checklist outlines the complete, step-by-step roadmap for implementing the multi-theme architecture and the incoming ReGo design across all 71 dashboard pages.
 
 > [!IMPORTANT]
-> **Implementation Rule**: Do NOT modify frontend code until the new OpenDesign design files are provided and reviewed. This checklist prepares the exact sequence of execution.
+> **Implementation Rule**: Do NOT modify frontend code until the new ReGo design files are provided and reviewed. This checklist prepares the exact sequence of execution.
 
 ---
 
 ## Phase 0: Design Ingestion & Theme Architecture Foundation
 
-- [ ] **0.1. OpenDesign Project Asset Extraction**
-  - [ ] Inspect the incoming OpenDesign design specifications and export design tokens (colors, typography, radii, shadows, spacing).
+- [ ] **0.1. ReGo Project Asset Extraction**
+  - [ ] Inspect the incoming ReGo design specifications and export design tokens (colors, typography, radii, shadows, spacing).
   - [ ] Inventory custom icon sets, illustrations, and vector assets.
   - [ ] Audit component primitives (buttons, inputs, select dropdowns, modals, badges, data tables, metric cards).
 
 - [ ] **0.2. Dual Dashboard Theme Engine Setup**
-  - [ ] Create DashboardThemeProvider supporting independent scopes for Seller (ento, classique, opendesign) and Superadmin (mission-control, nterprise, opendesign).
+  - [ ] Create DashboardThemeProvider supporting independent scopes for Seller (ento, classique, rego) and Superadmin (mission-control, nterprise, rego).
   - [ ] Implement cookie-based hydration (pm_seller_theme, pm_superadmin_theme) to eliminate SSR Flash of Unstyled Content (FOUC).
   - [ ] Implement LocalStorage fallback and user profile database synchronization.
   - [ ] Configure Tailwind CSS / CSS Variables for dynamic data-seller-theme and data-admin-theme attributes.
@@ -48,7 +48,7 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [ ] Breadcrumb: Administration > Pilotage > Tableau de bord
   - [ ] Implement GMV, active merchants, total orders, and platform health telemetry cards (TND 0.000).
   - [ ] Implement quick shortcut jumps and live microservice status ticker.
-  - [ ] Render variants across Mission Control, Enterprise Clean, and OpenDesign.
+  - [ ] Render variants across Mission Control, Enterprise Clean, and ReGo.
 - [ ] **Page 2: Platform-wide Business & Sales Analytics** (/platform-analytics)
   - [ ] Breadcrumb: Administration > Pilotage > Statistiques Globales
   - [ ] Implement time-series sales velocity, cohort retention, and regional revenue by 24 Governorates.
@@ -169,7 +169,7 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [ ] Breadcrumb: Accueil > Tableau de bord
   - [ ] Implement Bento Cockpit theme variant (modular widgets, live order feed, fast action dock).
   - [ ] Implement Classique E-Commerce theme variant (traditional summary, linear tables).
-  - [ ] Implement OpenDesign theme variant (refined modernist aesthetic).
+  - [ ] Implement ReGo theme variant (refined modernist aesthetic).
 - [ ] **Page 33: Store Launch Checklist & Step-by-Step Onboarding Guide** (/hub/dashboard/onboarding)
   - [ ] Breadcrumb: Accueil > Tableau de bord > Guide de lancement
   - [ ] Implement progress bar, completed milestone badges, and dismissal persistence.
@@ -316,6 +316,6 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
 - [ ] **3.3. Banking & RIB Validation**
   - [ ] Verify 20-digit length and Modulo 97 checksum validator on all bank payout forms.
 - [ ] **3.4. Multi-Theme Switching Stress Test**
-  - [ ] Verify zero visual regression when switching between Bento, Classique, and OpenDesign on Seller Dashboard.
-  - [ ] Verify zero visual regression when switching between Command Center, Enterprise Clean, and OpenDesign on Superadmin Dashboard.
+  - [ ] Verify zero visual regression when switching between Bento, Classique, and ReGo on Seller Dashboard.
+  - [ ] Verify zero visual regression when switching between Command Center, Enterprise Clean, and ReGo on Superadmin Dashboard.
   - [ ] Verify persistent storage in cookies, LocalStorage, and backend user preferences.

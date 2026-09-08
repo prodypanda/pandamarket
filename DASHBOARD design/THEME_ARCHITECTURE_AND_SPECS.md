@@ -23,9 +23,9 @@ The architecture decouples **semantic information architecture (raw content)** f
    - **Visual Signature**: Clean vertical sidebar, linear layout hierarchy, spacious tabular grids, full-width data tables, standard pagination.
    - **Density**: Comfortable/spacious, high typography readability, minimal distractions.
 
-3. **Minimalist Apex / OpenDesign (Modern Modernist Mode)**:
+3. **Minimalist Apex / ReGo (Modern Modernist Mode)**:
    - **Target Audience**: Modern digital-native brands, luxury boutiques, creative entrepreneurs.
-   - **Visual Signature**: The incoming OpenDesign design language — refined borders, ultra-subtle elevation, sleek monochrome accents, fluid motion transitions.
+   - **Visual Signature**: The incoming ReGo design language — refined borders, ultra-subtle elevation, sleek monochrome accents, fluid motion transitions.
    - **Density**: Balanced ergonomic density with modern aesthetics.
 
 ---
@@ -42,9 +42,9 @@ The architecture decouples **semantic information architecture (raw content)** f
    - **Visual Signature**: Crisp daylight aesthetic, structured collapsible sidebars, multi-stage approval cards, clear status taxonomy.
    - **Density**: Standard enterprise density with expansive table views.
 
-3. **Apex Unified / OpenDesign (Unified Design System Mode)**:
+3. **Apex Unified / ReGo (Unified Design System Mode)**:
    - **Target Audience**: Executive leadership and administrators preferring a seamless visual harmony between frontend, seller hub, and admin center.
-   - **Visual Signature**: The incoming OpenDesign design language adapted for multi-tenant governance.
+   - **Visual Signature**: The incoming ReGo design language adapted for multi-tenant governance.
    - **Density**: Adaptive responsiveness with harmonious elevation and typography.
 
 ---
@@ -59,8 +59,8 @@ graph TD
     C -->|Superadmin Center| E[AdminThemeContext]
     D --> F[Theme Token Injector: data-seller-theme='...']
     E --> G[Theme Token Injector: data-admin-theme='...']
-    F --> H[Dynamic Component Renderer / Bento vs Classic vs OpenDesign]
-    G --> I[Dynamic Component Renderer / Command vs Enterprise vs OpenDesign]
+    F --> H[Dynamic Component Renderer / Bento vs Classic vs ReGo]
+    G --> I[Dynamic Component Renderer / Command vs Enterprise vs ReGo]
 ```
 
 ### A. State Management & Storage
@@ -85,7 +85,7 @@ Tokens defined in CSS/Tailwind:
 
 ### C. Theme Switcher UI Controls
 1. **Quick Switcher in Navigation Header**:
-   - Compact icon button with live theme badge (e.g. ⚡ Cockpit, 📄 Classique, 💎 OpenDesign).
+   - Compact icon button with live theme badge (e.g. ⚡ Cockpit, 📄 Classique, 💎 ReGo).
    - Instant dropdown menu with 1-click preview and switch.
 2. **Dedicated Appearance Page in Settings**:
    - `/hub/dashboard/settings` -> Tab: "Apparence & Thème"
@@ -94,10 +94,10 @@ Tokens defined in CSS/Tailwind:
 
 ---
 
-## 4. Design Guidelines for Ingesting New OpenDesign Specs
+## 4. Design Guidelines for Ingesting New ReGo Specs
 
-When the user supplies the new OpenDesign design:
+When the user supplies the new ReGo design:
 1. Extract design tokens (color palette, spacing scale, border radius, typography font family and scale, elevation shadows).
-2. Register the design as the `opendesign` theme variant in the theme registry.
-3. Map the raw content components from `DASHBOARD design/*.md` into the OpenDesign component structure.
+2. Register the design as the `rego` theme variant in the theme registry.
+3. Map the raw content components from `DASHBOARD design/*.md` into the ReGo component structure.
 4. Ensure components preserve all operational fields, filters, tables, and modal triggers without data loss.

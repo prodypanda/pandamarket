@@ -4,7 +4,7 @@
 
 To achieve supreme visual consistency, ergonomic flow, and seamless multi-theme switching, every page across the **Seller Dashboard** and **Superadmin Dashboard** must adhere to an uncompromising **8-Layer Anatomical Hierarchy**.
 
-Regardless of whether a user selects **Bento Cockpit**, **Classique E-Commerce**, or the incoming **OpenDesign** template, the top-to-bottom and contextual progression of elements follows this exact blueprint.
+Regardless of whether a user selects **Bento Cockpit**, **Classique E-Commerce**, or the incoming **ReGo** template, the top-to-bottom and contextual progression of elements follows this exact blueprint.
 
 ---
 
@@ -119,7 +119,7 @@ Regardless of whether a user selects **Bento Cockpit**, **Classique E-Commerce**
 
 ## 3. Theme Adaptation Matrix by Layout Archetype
 
-| Layer Component | Bento Cockpit Theme | Classique E-Commerce Theme | OpenDesign Minimalist Theme |
+| Layer Component | Bento Cockpit Theme | Classique E-Commerce Theme | ReGo Minimalist Theme |
 |---|---|---|---|
 | **Layer 1: Breadcrumbs** | Compact pill format with micro-separators | Traditional text hierarchy with slashes | Ultra-clean monospaced typography with subtle dot |
 | **Layer 2: Header Bar** | High-density compact bar with integrated switch dock | Generous vertical padding with full-width action bar | Floating sleek bar with hairline border separation |

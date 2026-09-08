@@ -1,13 +1,13 @@
-# Fully Actionable Implementation TODO Checklist: OpenDesign Dashboard Theme
+# Fully Actionable Implementation TODO Checklist: ReGo Dashboard Theme
 
-This checklist details every concrete engineering task required to implement the **OpenDesign Design System** across the entire PandaMarket platform, preserving all business logic and the raw content contract for **all 71 pages**.
+This checklist details every concrete engineering task required to implement the **ReGo Design System** across the entire PandaMarket platform, preserving all business logic and the raw content contract for **all 71 pages**.
 
 ---
 
 ## Phase 1: CSS & Design Token Foundation
 
 - [ ] **1.1. CSS Variables Injection (`src/styles/globals.css`)**
-  - [ ] Register `:root[data-theme="opendesign"]` with `--bg`, `--surface`, `--fg`, `--border`, `--accent`.
+  - [ ] Register `:root[data-theme="rego"]` with `--bg`, `--surface`, `--fg`, `--border`, `--accent`.
   - [ ] Implement derived OKLCH formulas (`--ink-2`, `--ink-3`, `--accent-soft`, `--accent-deep`, `--line-ink`).
   - [ ] Register `.dark` overrides for deep-slate high-contrast night mode.
   - [ ] Register 5 regional accent classes (`.acc-ocre`, `.acc-olive`, `.acc-bleu`, `.acc-prune`, `.acc-charbon`).
@@ -31,22 +31,22 @@ This checklist details every concrete engineering task required to implement the
   - [ ] Add interactive theme selector cards in `/hub/dashboard/settings` and `/(admin)/settings`.
 
 - [ ] **2.2. Core Visual Primitives**
-  - [ ] Build `<OpenDesignCard>` and `<OpenDesignSplitCard>` (`.cardsplit`).
-  - [ ] Build `<OpenDesignKpiHero>` with embedded sparkline support.
-  - [ ] Build `<OpenDesignAmtBox>` with millimes integer/decimal styling for Tunisian Dinars.
-  - [ ] Build `<OpenDesignStatusChip>` (`.bchip-ok`, `.bchip-warn`, `.bchip-err`).
-  - [ ] Build `<OpenDesignDataTable>` with sticky headers, checkbox selection, and pagination footer.
-  - [ ] Build `<OpenDesignDrawer>` slide-out panel with backdrop blur.
-  - [ ] Build `<OpenDesignModal>` focus-trapped dialog.
+  - [ ] Build `<ReGoCard>` and `<ReGoSplitCard>` (`.cardsplit`).
+  - [ ] Build `<ReGoKpiHero>` with embedded sparkline support.
+  - [ ] Build `<ReGoAmtBox>` with millimes integer/decimal styling for Tunisian Dinars.
+  - [ ] Build `<ReGoStatusChip>` (`.bchip-ok`, `.bchip-warn`, `.bchip-err`).
+  - [ ] Build `<ReGoDataTable>` with sticky headers, checkbox selection, and pagination footer.
+  - [ ] Build `<ReGoDrawer>` slide-out panel with backdrop blur.
+  - [ ] Build `<ReGoModal>` focus-trapped dialog.
   - [ ] Build `<DashboardPageWrapper>` enforcing the universal 8-layer anatomical layout order.
 
 ---
 
-## Phase 3: Seller Dashboard OpenDesign Implementation (Pages 32 to 71)
+## Phase 3: Seller Dashboard ReGo Implementation (Pages 32 to 71)
 
 ### Section 1: Cockpit, Onboarding & Analytics (`SELLER_SEC01_COCKPIT_ONBOARDING_ANALYTICS.md`)
 - [ ] **Page 32: Seller Cockpit** (`/hub/dashboard`)
-  - [ ] Apply OpenDesign bento layout with modular metrics and active orders feed.
+  - [ ] Apply ReGo bento layout with modular metrics and active orders feed.
 - [ ] **Page 33: Launch Checklist** (`/hub/dashboard/onboarding`)
   - [ ] Apply milestone stepper cards with progress percentage bar.
 - [ ] **Page 34: Store Analytics** (`/hub/dashboard/analytics`)
@@ -95,7 +95,7 @@ This checklist details every concrete engineering task required to implement the
 
 ---
 
-## Phase 4: Superadmin Dashboard OpenDesign Implementation (Pages 1 to 31)
+## Phase 4: Superadmin Dashboard ReGo Implementation (Pages 1 to 31)
 
 ### Section 1: Overview & Analytics (`SUPERADMIN_SEC01_OVERVIEW_AND_TELEMETRY.md`)
 - [ ] **Pages 1-3: Overview, Platform Analytics, Sticky Notes**
@@ -138,4 +138,4 @@ This checklist details every concrete engineering task required to implement the
 - [ ] **5.2. 24 Governorates Coverage**: Confirm all 24 Tunisian Governorates are present in all dropdowns and rate simulators.
 - [ ] **5.3. 20-Digit RIB Validation**: Confirm Modulo 97 checksum validator is active on all payout forms.
 - [ ] **5.4. COD Anti-Refus Verification**: Confirm SMS OTP and anti-refus score badges are functional.
-- [ ] **5.5. Multi-Theme Switching Stress Test**: Switch dynamically between Bento, Classique, and OpenDesign with zero visual breakdown.
+- [ ] **5.5. Multi-Theme Switching Stress Test**: Switch dynamically between Bento, Classique, and ReGo with zero visual breakdown.

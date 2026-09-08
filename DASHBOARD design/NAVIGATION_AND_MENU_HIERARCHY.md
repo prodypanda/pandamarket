@@ -35,7 +35,7 @@ The Seller navigation is organized into **8 core operational groups**, designed 
    - **Icon**: `LayoutDashboard`
    - **Badge**: Dynamic status indicator (e.g. `LIVE`, `3 alertes`)
    - **Breadcrumb**: `Accueil > Tableau de bord`
-   - **Theme Variants**: Bento Cockpit (default) | Classique E-Commerce | OpenDesign
+   - **Theme Variants**: Bento Cockpit (default) | Classique E-Commerce | ReGo
 2. **Guide de Lancement (Onboarding)**
    - **Route**: `/hub/dashboard/onboarding`
    - **Icon**: `CheckCircle2`
@@ -239,7 +239,7 @@ The Superadmin navigation is organized into **8 governance groups**, structured 
    - **Icon**: `LayoutDashboard`
    - **Badge**: System status pulse (`OK` / `Incident`)
    - **Breadcrumb**: `Administration > Pilotage > Tableau de bord`
-   - **Theme Variants**: Mission Control (default dark) | Enterprise Clean | OpenDesign
+   - **Theme Variants**: Mission Control (default dark) | Enterprise Clean | ReGo
 2. **Statistiques & Intelligence Plateforme (Platform Analytics)**
    - **Route**: `/platform-analytics` (Alias: `/(admin)/analytics`)
    - **Icon**: `LineChart`

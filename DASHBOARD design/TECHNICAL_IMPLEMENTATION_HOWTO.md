@@ -1,20 +1,20 @@
-# OpenDesign Technical Implementation How-To Guide
+# ReGo Technical Implementation How-To Guide
 
-This technical guide provides step-by-step instructions for engineering teams to integrate the **OpenDesign Design System** into the Next.js and Tailwind CSS codebase without data loss across all 71 pages.
+This technical guide provides step-by-step instructions for engineering teams to integrate the **ReGo Design System** into the Next.js and Tailwind CSS codebase without data loss across all 71 pages.
 
 ---
 
 ## 1. CSS Variables & Tailwind Setup
 
 ### Step 1: Register Tokens in `src/styles/globals.css`
-Add the OpenDesign token layer into `globals.css`:
+Add the ReGo token layer into `globals.css`:
 
 ```css
 @layer base {
-  /* OpenDesign Base Tokens */
-  :root[data-theme="opendesign"],
-  [data-seller-theme="opendesign"],
-  [data-admin-theme="opendesign"] {
+  /* ReGo Base Tokens */
+  :root[data-theme="rego"],
+  [data-seller-theme="rego"],
+  [data-admin-theme="rego"] {
     --bg: #ffffff;
     --surface: #f5f5f5;
     --fg: #111111;
@@ -35,9 +35,9 @@ Add the OpenDesign token layer into `globals.css`:
   }
 
   /* Dark Variant */
-  [data-theme="opendesign"].dark,
-  [data-seller-theme="opendesign"].dark,
-  [data-admin-theme="opendesign"].dark {
+  [data-theme="rego"].dark,
+  [data-seller-theme="rego"].dark,
+  [data-admin-theme="rego"].dark {
     --bg: #0f0f0f;
     --surface: #181818;
     --fg: #f3f3f3;
@@ -56,7 +56,7 @@ Add the OpenDesign token layer into `globals.css`:
 ```
 
 ### Step 2: Extend `tailwind.config.js`
-Expose the OpenDesign tokens as Tailwind utility classes:
+Expose the ReGo tokens as Tailwind utility classes:
 
 ```javascript
 module.exports = {
@@ -96,8 +96,8 @@ module.exports = {
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type SellerTheme = 'bento' | 'classique' | 'opendesign';
-type AdminTheme = 'mission-control' | 'enterprise' | 'opendesign';
+type SellerTheme = 'bento' | 'classique' | 'rego';
+type AdminTheme = 'mission-control' | 'enterprise' | 'rego';
 type AccentColor = 'rouge' | 'ocre' | 'olive' | 'bleu' | 'prune' | 'charbon';
 type Density = 'compact' | 'standard' | 'airy';
 
@@ -175,9 +175,9 @@ export const useDashboardTheme = () => {
 
 ## 3. Reusable React UI Primitives
 
-### A. `<OpenDesignCard>`
+### A. `<ReGoCard>`
 ```tsx
-export function OpenDesignCard({
+export function ReGoCard({
   title,
   subtitle,
   actions,
@@ -207,9 +207,9 @@ export function OpenDesignCard({
 }
 ```
 
-### B. `<OpenDesignKpiHero>`
+### B. `<ReGoKpiHero>`
 ```tsx
-export function OpenDesignKpiHero({
+export function ReGoKpiHero({
   label,
   value,
   delta,
@@ -241,9 +241,9 @@ export function OpenDesignKpiHero({
 }
 ```
 
-### C. `<OpenDesignAmtBox>` (Tunisian Dinar Formatter)
+### C. `<ReGoAmtBox>` (Tunisian Dinar Formatter)
 ```tsx
-export function OpenDesignAmtBox({ millimes }: { millimes: number }) {
+export function ReGoAmtBox({ millimes }: { millimes: number }) {
   const dinars = Math.floor(millimes / 1000);
   const remainder = String(millimes % 1000).padStart(3, '0');
 

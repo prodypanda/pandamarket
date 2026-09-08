@@ -1,6 +1,6 @@
 # PandaMarket Dashboard Architecture: Complete Raw Content & Information Architecture Blueprint
 
-> **Notice for OpenDesign / UI Prototyping & Template Engines**:
+> **Notice for ReGo / UI Prototyping & Template Engines**:
 > This specification provides the **complete semantic raw content, information architecture, data schema, tables, forms, modals, action triggers, and copy** for both the **Superadmin Dashboard** and the **Seller Dashboard** across the entire PandaMarket platform.
 >
 > - **Strictly Raw Content Only**: Contains **NO visual styling** (no CSS, no hex colors, no Tailwind utility classes, no font size declarations) and **NO layout positioning** (no grid systems, no flex directions, no margin/padding values, no column spans).
@@ -2410,4 +2410,4 @@
 | **Growth & Shortcut Aliases** | 2 Aliases (69, 70) | 100% Fully Documented |
 | **Total Operational Surfaces** | **71 Pages** | **Zero Missing Pages** |
 
-All components are stripped of design styles, colors, and layout positions, providing the pure semantic raw content blueprint ready for injection into OpenDesign, design tokens engines, and UI prototyping systems.
+All components are stripped of design styles, colors, and layout positions, providing the pure semantic raw content blueprint ready for injection into ReGo, design tokens engines, and UI prototyping systems.

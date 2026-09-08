@@ -1,23 +1,23 @@
-# PandaMarket OpenDesign Design & Style Implementation Repository
+# PandaMarket ReGo Design & Style Implementation Repository
 
-This directory contains the authoritative visual design system specifications, technical implementation guides, and fully actionable checklists extracted directly from the **OpenDesign Project** (*Pandamarket Dashboard Architecture Complete Raw Content*).
+This directory contains the authoritative visual design system specifications, technical implementation guides, and fully actionable checklists extracted directly from the **ReGo Project** (*Pandamarket Dashboard Architecture Complete Raw Content*).
 
 ---
 
 ## Directory Contents & Architectural Index
 
-### 1. OpenDesign Visual System & Technical Guides
-- [`OPENDESIGN_DESIGN_SYSTEM_SPECIFICATIONS.md`](./OPENDESIGN_DESIGN_SYSTEM_SPECIFICATIONS.md): The official visual design system specifications (OKLCH color mixing tokens, 6 regional palettes, typography weights, density engine, and component primitives).
-- [`TECHNICAL_IMPLEMENTATION_HOWTO.md`](./TECHNICAL_IMPLEMENTATION_HOWTO.md): Step-by-step technical guide on integrating OpenDesign tokens into Next.js, extending Tailwind CSS, building the theme provider, and creating reusable React primitives.
+### 1. ReGo Visual System & Technical Guides
+- [`REGO_DESIGN_SYSTEM_SPECIFICATIONS.md`](./REGO_DESIGN_SYSTEM_SPECIFICATIONS.md): The official visual design system specifications (OKLCH color mixing tokens, 6 regional palettes, typography weights, density engine, and component primitives).
+- [`TECHNICAL_IMPLEMENTATION_HOWTO.md`](./TECHNICAL_IMPLEMENTATION_HOWTO.md): Step-by-step technical guide on integrating ReGo tokens into Next.js, extending Tailwind CSS, building the theme provider, and creating reusable React primitives.
 - [`FULLY_ACTIONABLE_TODO_CHECKLIST.md`](./FULLY_ACTIONABLE_TODO_CHECKLIST.md): Complete, phase-by-phase implementation checklist for engineering teams across all 71 pages.
 - [`NAVIGATION_AND_MENU_HIERARCHY.md`](./NAVIGATION_AND_MENU_HIERARCHY.md): Authoritative 8-group sidebar menu hierarchy, routes, icons, and breadcrumb trails for both Seller and Superadmin dashboards.
 - [`PAGE_LAYOUT_AND_ORDERING_STANDARDS.md`](./PAGE_LAYOUT_AND_ORDERING_STANDARDS.md): Universal 8-layer anatomical layout sequence (Breadcrumbs -> Header -> Critical Banner -> KPI Strip -> Filter Toolbar -> Working Area -> Drawer -> Modals).
-- [`THEME_ARCHITECTURE_AND_SPECS.md`](./THEME_ARCHITECTURE_AND_SPECS.md): Specifications for the switchable theme engine (Bento Cockpit, Classique, OpenDesign, Mission Control, Enterprise Clean).
+- [`THEME_ARCHITECTURE_AND_SPECS.md`](./THEME_ARCHITECTURE_AND_SPECS.md): Specifications for the switchable theme engine (Bento Cockpit, Classique, ReGo, Mission Control, Enterprise Clean).
 - [`DASHBOARD_RAW_CONTENT_BLUEPRINT.md`](./DASHBOARD_RAW_CONTENT_BLUEPRINT.md): Unstyled master raw content contract for all 71 pages.
 
 ---
 
-### 2. Section Specifications with OpenDesign Style Mapping
+### 2. Section Specifications with ReGo Style Mapping
 
 #### Superadmin Dashboard (31 Pages Total)
 1. [`SUPERADMIN_SEC01_OVERVIEW_AND_TELEMETRY.md`](./SUPERADMIN_SEC01_OVERVIEW_AND_TELEMETRY.md): Pages 1, 2, 3 (Overview, Platform Analytics, Sticky Notes)
