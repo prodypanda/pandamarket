@@ -5,6 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { AnalyticsBentoCockpit, AdsData } from '@/components/dashboard/AnalyticsBentoCockpit';
+import { AnalyticsReGoCockpit } from '@/components/dashboard/rego/AnalyticsReGoCockpit';
 import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart3,
@@ -250,7 +251,17 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
-      {dashboardStyle === 'bento' ? (
+      {dashboardStyle === 'rego' ? (
+        <AnalyticsReGoCockpit
+          data={data}
+          adsData={adsData}
+          period={period}
+          onPeriodChange={(p) => setPeriod(p)}
+          loading={loading}
+          onRefresh={handleRefresh}
+          dir={dir}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <AnalyticsBentoCockpit
           data={data}
           adsData={adsData}
