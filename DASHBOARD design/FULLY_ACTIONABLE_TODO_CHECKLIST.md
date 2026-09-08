@@ -50,28 +50,28 @@ This checklist details every concrete engineering task required to implement the
   - [x] 4-carrier Tunisian SLA pipeline (Aramex, Rapid-Poste, Runex, First Delivery).
 - [ ] **Page 33: Launch Checklist** (`/hub/dashboard/onboarding`)
   - [ ] Apply milestone stepper cards with progress percentage bar.
-- [ ] **Page 34: Store Analytics** (`/hub/dashboard/analytics`)
-  - [ ] Apply split-card charts (`cardsplit`) and 24-Governorate sales velocity map.
+- [x] **Page 34: Store Analytics** (`/hub/dashboard/analytics`)
+  - [x] Apply split-card charts (`AnalyticsReGoCockpit.tsx`), vector SVG trend lines, and top star products.
 
 ### Section 2: Catalog, Inventory & Media (`SELLER_SEC02_CATALOG_INVENTORY_COLLECTIONS.md`)
-- [ ] **Page 36: Products & Variants** (`/hub/dashboard/products`)
-  - [ ] Apply tabular view with thumbnail previews, SKU chips, and quick stock adjuster.
+- [x] **Page 36: Products & Variants** (`/hub/dashboard/products`)
+  - [x] Apply ReGo modern view (`ProductsReGoCockpit.tsx`) with thumbnail previews, low stock alert deck, and 1-click stock adjuster.
 - [ ] **Page 37: Categories & Collections** (`/hub/dashboard/categories`)
   - [ ] Apply collection cards with automated tag rules.
 - [ ] **Page 39: Media Library** (`/hub/dashboard/media`)
   - [ ] Apply multi-file drag-and-drop vault with image cropper.
 
 ### Section 3: Orders, Fulfillment & Courier Handshake (`SELLER_SEC03_ORDERS_FULFILLMENT_NEGOTIATION.md`)
-- [ ] **Page 40: Orders Fulfillment & COD Deck** (`/hub/dashboard/orders`)
-  - [ ] Apply order status filter pills, Tunisian carrier dispatch triggers, and anti-refus score badges.
+- [x] **Page 40: Orders Fulfillment & COD Deck** (`/hub/dashboard/orders`)
+  - [x] Apply ReGo modern view (`OrdersReGoCockpit.tsx`) with order status filters, COD Anti-Refus radar, and Tunisian carrier SLA dispatch.
 - [ ] **Page 41: Buyer Chat & 1-Click COD** (`/hub/dashboard/messages`)
   - [ ] Apply three-pane conversation view with sticky order summary and 1-click COD confirmation button.
 - [ ] **Page 71: Courier Mobile Handshake Console** (`/courier`)
   - [ ] Apply high-contrast mobile driver ledger with click-to-call and POD photo signature capture.
 
 ### Section 4: Wallet, Payouts & Store Payments (`SELLER_SEC04_WALLET_PAYOUTS_FINANCES.md`)
-- [ ] **Page 42: Wallet & RIB Payouts** (`/hub/dashboard/wallet`)
-  - [ ] Apply wallet balance telemetry and 20-digit Tunisian RIB Modulo 97 validation form.
+- [x] **Page 42: Wallet & RIB Payouts** (`/hub/dashboard/wallet`)
+  - [x] Apply ReGo modern view (`WalletReGoCockpit.tsx`) with wallet balance telemetry, ledger stream, and 20-digit Tunisian RIB Modulo 97 validation form.
 - [ ] **Page 43: Financial Reports** (`/hub/dashboard/financial`)
   - [ ] Apply downloadable tax statement cards and TVA breakdown table.
 - [ ] **Page 58: Store Payment Gateways** (`/hub/dashboard/payment-config`)
