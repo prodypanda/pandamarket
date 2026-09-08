@@ -21,6 +21,7 @@ import {
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { WalletBentoCockpit } from '@/components/dashboard/WalletBentoCockpit';
+import { WalletReGoCockpit } from '@/components/dashboard/rego/WalletReGoCockpit';
 import {
   formatTunisianRib,
   validateTunisianRib,
@@ -268,7 +269,20 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-6" dir={dir}>
-      {dashboardStyle === 'bento' ? (
+      {dashboardStyle === 'rego' ? (
+        <WalletReGoCockpit
+          wallet={wallet}
+          transactions={transactions}
+          onRefresh={async () => {
+            await Promise.all([fetchWallet(), fetchTransactions()]);
+          }}
+          onRequestPayout={handleRequestPayout}
+          onPayoutModeChange={handlePayoutModeChange}
+          loading={loading}
+          requestingPayout={withdrawing}
+          dir={dir}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <WalletBentoCockpit
           wallet={wallet}
           transactions={transactions}
