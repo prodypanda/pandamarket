@@ -45,8 +45,8 @@ export default function AdminDashboard() {
   if (adminTheme === 'rego') {
     return (
       <AdminReGoOverview
-        platformGmv={stats?.total_revenue}
-        activeStoresCount={stats?.total_stores}
+        stats={stats}
+        loading={loading}
       />
     );
   }

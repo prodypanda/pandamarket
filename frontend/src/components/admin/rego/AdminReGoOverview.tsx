@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
@@ -17,6 +17,12 @@ import {
   Eye,
   Check,
   XCircle,
+  Clock,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Phone,
+  FileText,
 } from 'lucide-react';
 import {
   ReGoCard,
@@ -25,95 +31,121 @@ import {
   ReGoStatusChip,
   ReGoDrawer,
 } from '@/components/dashboard/rego/ReGoPrimitives';
+import { fetchWithCsrf } from '@/lib/api';
 
-interface KycItem {
-  id: string;
-  store_name: string;
-  merchant_name: string;
-  governorate: string;
-  doc_type: string;
-  submission_date: string;
-  status: 'pending' | 'approved' | 'rejected';
+export interface AdminStats {
+  total_stores: number;
+  total_orders: number;
+  total_revenue: number;
+  pending_kyc: number;
+  pending_mandats: number;
+  open_reports: number;
 }
 
-interface WithdrawalItem {
+interface KycSubmission {
   id: string;
   store_name: string;
-  rib: string;
-  bank_name: string;
+  owner_email: string;
+  phone_number: string | null;
+  phone_verified: boolean;
+  rc_document_url: string | null;
+  cin_document_url: string | null;
+  created_at: string;
+}
+
+interface Withdrawal {
+  id: string;
+  wallet_id: string;
+  type: string;
   amount: number;
-  status: 'pending' | 'processing' | 'completed';
-  request_date: string;
+  balance_after: number;
+  description: string | null;
+  created_at: string;
+  store_id: string;
+  store_name: string;
+}
+
+export interface AdminReGoOverviewProps {
+  stats: AdminStats | null;
+  loading: boolean;
+}
+
+function toNumber(value: unknown): number {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 export function AdminReGoOverview({
-  platformGmv = 124890.500,
-  activeStoresCount = 384,
-  escrowBalance = 32410.200,
-  buyersCount = 18920,
-}: {
-  platformGmv?: number;
-  activeStoresCount?: number;
-  escrowBalance?: number;
-  buyersCount?: number;
-}) {
-  const [selectedKyc, setSelectedKyc] = useState<KycItem | null>(null);
-  const [approvedKycIds, setApprovedKycIds] = useState<Record<string, boolean>>({});
+  stats,
+  loading: statsLoading,
+}: AdminReGoOverviewProps) {
+  const [kycQueue, setKycQueue] = useState<KycSubmission[]>([]);
+  const [kycLoading, setKycLoading] = useState(true);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<Record<string, boolean>>({});
+  const [selectedKyc, setSelectedKyc] = useState<KycSubmission | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const pendingKycs: KycItem[] = [
-    {
-      id: 'kyc-101',
-      store_name: 'Dar El Harka',
-      merchant_name: 'Karim Zouari',
-      governorate: 'Nabeul',
-      doc_type: 'CIN + Registre RNE',
-      submission_date: 'Aujourd\'hui 10:14',
-      status: 'pending',
-    },
-    {
-      id: 'kyc-102',
-      store_name: 'Medina Cuir',
-      merchant_name: 'Amira Ben Romdhane',
-      governorate: 'Tunis',
-      doc_type: 'CIN + Attestation RIB',
-      submission_date: 'Hier 18:30',
-      status: 'pending',
-    },
-    {
-      id: 'kyc-103',
-      store_name: 'Sud Terroir Huile',
-      merchant_name: 'Mabrouk Guesmi',
-      governorate: 'Sidi Bouzid',
-      doc_type: 'Registre Commercial RNE',
-      submission_date: 'Hier 14:15',
-      status: 'pending',
-    },
-  ];
+  const fetchKycQueue = useCallback(async () => {
+    setKycLoading(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/verifications/pending?limit=5');
+      if (res.ok) {
+        const data = await res.json();
+        setKycQueue(data.data || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setKycLoading(false);
+    }
+  }, []);
 
-  const pendingWithdrawals: WithdrawalItem[] = [
-    {
-      id: 'wth-201',
-      store_name: 'Artisanat Sahel',
-      rib: '08 045 0001234567890 44',
-      bank_name: 'BIAT Tunisie',
-      amount: 1450.000,
-      status: 'pending',
-      request_date: 'Ce matin',
-    },
-    {
-      id: 'wth-202',
-      store_name: 'Panda Électro Shop',
-      rib: '03 012 0109876543210 18',
-      bank_name: 'BNA Banque',
-      amount: 2890.500,
-      status: 'pending',
-      request_date: 'Hier',
-    },
-  ];
+  const fetchWithdrawals = useCallback(async () => {
+    setWithdrawalsLoading(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/withdrawals?page=1&limit=5', {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWithdrawals(data.data || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, []);
 
-  const handleApproveKyc = (id: string) => {
-    setApprovedKycIds((prev) => ({ ...prev, [id]: true }));
+  useEffect(() => {
+    void fetchKycQueue();
+    void fetchWithdrawals();
+  }, [fetchKycQueue, fetchWithdrawals]);
+
+  const handleApproveKyc = async (id: string) => {
+    setActionId(id);
+    setActionError(null);
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/verifications/${id}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error('Échec de la validation KYC');
+      setActionSuccess((prev) => ({ ...prev, [id]: true }));
+      await fetchKycQueue();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Erreur d\'approbation');
+    } finally {
+      setActionId(null);
+    }
   };
+
+  const totalActionsPending =
+    (stats?.pending_kyc ?? 0) + (stats?.pending_mandats ?? 0) + (stats?.open_reports ?? 0);
 
   return (
     <div className="space-y-6">
@@ -129,174 +161,262 @@ export function AdminReGoOverview({
               <ReGoStatusChip status="ok" label="Plateforme Opérationnelle" size="xs" />
             </div>
             <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-              Gouvernance ReGo · Supervision globale du volume d&apos;affaires et de l&apos;escrow national
+              Gouvernance ReGo · Supervision globale du volume d&apos;affaires et des validations nationales
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void fetchKycQueue();
+              void fetchWithdrawals();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] px-3 py-1.5 text-xs font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${kycLoading || withdrawalsLoading ? 'animate-spin' : ''}`} />
+            <span>Actualiser</span>
+          </button>
           <Link
             href="/kyc"
             className="inline-flex items-center gap-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] px-3 py-1.5 text-xs font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-all"
           >
-            <FileCheck className="w-3.5 h-3.5 text-[var(--rego-accent,#ad0505)]" />
-            <span>Audits KYC</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            <span>File KYC ({stats?.pending_kyc ?? 0})</span>
           </Link>
           <Link
             href="/withdrawals"
             className="inline-flex items-center gap-1.5 rounded-[var(--rego-r,8px)] bg-[var(--rego-accent,#ad0505)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--rego-accent-deep,#8f0404)] shadow-xs transition-all"
           >
-            <Wallet className="w-3.5 h-3.5" />
-            <span>Virements RIB</span>
+            <span>Trésorerie & Retraits</span>
           </Link>
         </div>
       </div>
 
-      {/* Layer 4: Platform KPIs Strip */}
+      {actionError && (
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-semibold">
+          {actionError}
+        </div>
+      )}
+
+      {/* Layer 4: Platform Telemetry & Executive Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <ReGoKpiHero
-          label="Volume d'Affaires Global (GMV)"
-          value={<ReGoAmtBox amount={platformGmv} size="lg" />}
-          delta={22.4}
-          deltaType="increase"
-          hint="Volume total traité sur le réseau"
-          icon={Activity}
+          label="Volume d'Affaires (GMV)"
+          value={
+            statsLoading ? (
+              '—'
+            ) : (
+              <ReGoAmtBox amount={toNumber(stats?.total_revenue)} size="lg" />
+            )
+          }
+          hint="Volume total des transactions marketplace"
         />
         <ReGoKpiHero
-          label="Fonds Sécurisés Escrow"
-          value={<ReGoAmtBox amount={escrowBalance} size="lg" />}
-          delta={9.1}
-          deltaType="increase"
-          hint="En attente de confirmation acheteur"
-          icon={Wallet}
+          label="Vendeurs Enregistrés"
+          value={statsLoading ? '—' : (stats?.total_stores ?? 0)}
+          hint="Boutiques actives sur PandaMarket"
         />
         <ReGoKpiHero
-          label="Boutiques Vendeurs Actives"
-          value={activeStoresCount}
-          delta={4.8}
-          deltaType="increase"
-          hint="Marchands validés sur 24 gouvernorats"
-          icon={Store}
+          label="Commandes Traitées"
+          value={statsLoading ? '—' : (stats?.total_orders ?? 0)}
+          hint="Total des commandes passées"
         />
         <ReGoKpiHero
-          label="Comptes Acheteurs"
-          value={buyersCount.toLocaleString('fr-TN')}
-          delta={12.0}
-          deltaType="increase"
-          hint="Clients enregistrés vérifiés"
-          icon={Users}
+          label="File d'Attente Opérationnelle"
+          value={statsLoading ? '—' : totalActionsPending}
+          hint={`${stats?.pending_kyc ?? 0} KYC · ${stats?.pending_mandats ?? 0} mandats · ${stats?.open_reports ?? 0} litiges`}
         />
       </div>
 
-      {/* High-Priority Governance Modules: Pending KYC Approvals & Withdrawals Queue */}
+      {/* Layer 5: Moderation Queues */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Pending KYC Dossiers (7 cols) */}
+        {/* Pending KYC Moderation Deck (7 cols) */}
         <div className="lg:col-span-7">
           <ReGoCard
-            title="Dossiers KYC Marchands en Attente"
-            subtitle="Vérification légale des pièces d'identité CIN et des matricules fiscaux RNE"
-            icon={FileCheck}
-            badge={<ReGoStatusChip status="warn" label="Prioritaire" size="xs" />}
+            title="Validation des Dossiers KYC Marchands"
+            subtitle="Conformité légale tunisienne (RNE, Registre de Commerce et CIN)"
+            icon={ShieldCheck}
+            badge={
+              (stats?.pending_kyc ?? kycQueue.length) > 0 ? (
+                <ReGoStatusChip status="warn" label={`${stats?.pending_kyc ?? kycQueue.length} en attente`} size="xs" />
+              ) : (
+                <ReGoStatusChip status="ok" label="À jour" size="xs" />
+              )
+            }
             actions={
-              <Link href="/kyc" className="text-xs font-bold text-[var(--rego-accent,#ad0505)] hover:underline">
-                Voir tous les dossiers
+              <Link href="/kyc" className="text-xs font-bold text-[var(--rego-accent,#ad0505)] hover:underline inline-flex items-center gap-1">
+                <span>Voir tout ({stats?.pending_kyc ?? kycQueue.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             }
           >
-            <div className="space-y-2.5">
-              {pendingKycs.map((item) => {
-                const isApproved = approvedKycIds[item.id];
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/40 hover:bg-[var(--rego-surface,#f5f5f5)]/80 transition-colors"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[var(--rego-fg,#111111)]">{item.store_name}</span>
-                        <span className="text-[10px] text-[var(--rego-ink-2,#737373)] font-semibold">({item.merchant_name})</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[var(--rego-ink-2,#737373)] font-medium">
-                          {item.governorate}
-                        </span>
+            {kycLoading ? (
+              <div className="py-8 flex justify-center items-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--rego-accent,#ad0505)]" />
+              </div>
+            ) : kycQueue.length > 0 ? (
+              <div className="space-y-2.5">
+                {kycQueue.map((item) => {
+                  const isActing = actionId === item.id;
+                  const isApproved = actionSuccess[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/40 hover:bg-[var(--rego-surface,#f5f5f5)]/80 transition-colors"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-[var(--rego-fg,#111111)]">
+                            {item.store_name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[var(--rego-ink-2,#737373)] font-medium">
+                            {item.owner_email}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-[var(--rego-ink-2,#737373)]">
+                          <span className="text-[11px] font-medium">
+                            {item.phone_number || 'Sans téléphone'}
+                          </span>
+                          <span>•</span>
+                          <span className="text-[10px] text-[var(--rego-ink-3,#949494)]">
+                            {new Date(item.created_at).toLocaleDateString('fr-TN', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                          <span>•</span>
+                          <div className="flex items-center gap-1 text-[10px]">
+                            {item.cin_document_url && (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">CIN</span>
+                            )}
+                            {item.rc_document_url && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">RNE/RC</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-                        <span className="font-medium text-[11px] text-[var(--rego-accent,#ad0505)]">{item.doc_type}</span>
-                        <span>•</span>
-                        <span className="text-[10px] text-[var(--rego-ink-3,#949494)]">{item.submission_date}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedKyc(item)}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-2.5 py-1 rounded border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] transition-colors"
-                      >
-                        <Eye className="w-3 h-3" />
-                        <span>Inspecter</span>
-                      </button>
-
-                      {isApproved ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 px-2 py-1 rounded bg-emerald-50">
-                          <Check className="w-3.5 h-3.5" /> Approuvé
-                        </span>
-                      ) : (
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => handleApproveKyc(item.id)}
-                          className="inline-flex items-center gap-1 text-xs font-bold bg-[var(--rego-accent,#ad0505)] text-white hover:bg-[var(--rego-accent-deep,#8f0404)] px-3 py-1 rounded-[var(--rego-r,8px)] transition-all shadow-2xs"
+                          onClick={() => setSelectedKyc(item)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs"
                         >
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Valider</span>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Détails</span>
                         </button>
-                      )}
+
+                        {isApproved ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 px-2.5 py-1.5 rounded bg-emerald-50">
+                            <Check className="w-3.5 h-3.5" /> Approuvé
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isActing}
+                            onClick={() => handleApproveKyc(item.id)}
+                            className="inline-flex items-center gap-1 text-xs font-bold bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] hover:bg-[var(--rego-accent,#ad0505)] disabled:opacity-50 px-3 py-1.5 rounded-[var(--rego-r,8px)] transition-all shadow-2xs cursor-pointer"
+                          >
+                            {isActing ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            )}
+                            <span>Valider</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center space-y-2">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
+                <p className="text-xs font-bold text-[var(--rego-fg,#111111)]">
+                  Aucun dossier KYC en attente
+                </p>
+                <p className="text-[11px] text-[var(--rego-ink-2,#737373)] max-w-sm mx-auto">
+                  Tous les dossiers d&apos;identité marchands récents ont été examinés et validés.
+                </p>
+              </div>
+            )}
           </ReGoCard>
         </div>
 
-        {/* Pending Payout Disbursements (5 cols) */}
+        {/* Pending Withdrawals & Disbursal Queue (5 cols) */}
         <div className="lg:col-span-5">
           <ReGoCard
-            title="Décaissements RIB Vendeurs"
-            subtitle="Ordres de virement bancaire 20 chiffres Modulo 97"
+            title="Derniers Retraits & Décaissements"
+            subtitle="Validation des virements bancaires vers les comptes marchands"
             icon={Wallet}
             actions={
-              <Link href="/withdrawals" className="text-xs font-bold text-[var(--rego-accent,#ad0505)] hover:underline">
-                Générer Fichier Batch
+              <Link href="/withdrawals" className="text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]">
+                Voir Retraits
               </Link>
             }
           >
-            <div className="space-y-2.5">
-              {pendingWithdrawals.map((w) => (
-                <div
-                  key={w.id}
-                  className="flex items-center justify-between p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]"
-                >
-                  <div>
-                    <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">{w.store_name}</span>
-                    <p className="font-mono text-[10px] text-[var(--rego-ink-2,#737373)] mt-0.5">{w.rib}</p>
-                    <span className="text-[10px] font-semibold text-emerald-600">{w.bank_name}</span>
+            {withdrawalsLoading ? (
+              <div className="py-8 flex justify-center items-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--rego-accent,#ad0505)]" />
+              </div>
+            ) : withdrawals.length > 0 ? (
+              <div className="space-y-2.5">
+                {withdrawals.map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]"
+                  >
+                    <div>
+                      <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">
+                        {w.store_name}
+                      </span>
+                      <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">
+                        {new Date(w.created_at).toLocaleDateString('fr-TN', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <ReGoAmtBox amount={Math.abs(w.amount)} size="sm" />
+                      <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Solde rest: {toNumber(w.balance_after).toFixed(3)} TND</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <ReGoAmtBox amount={w.amount} size="md" />
-                    <p className="text-[10px] text-amber-600 font-bold uppercase mt-0.5">En attente de virement</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center space-y-2">
+                <Wallet className="mx-auto h-8 w-8 text-[var(--rego-ink-3,#949494)]" />
+                <p className="text-xs font-bold text-[var(--rego-fg,#111111)]">
+                  Aucun retrait en cours
+                </p>
+                <p className="text-[11px] text-[var(--rego-ink-2,#737373)] max-w-xs mx-auto">
+                  Toutes les demandes de virement ont été traitées ou aucun décaissement n&apos;est en attente.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-[var(--rego-border,#dedede)]">
+              <Link
+                href="/withdrawals"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] hover:bg-[var(--rego-border,#dedede)]/30 text-xs font-bold text-[var(--rego-fg,#111111)] transition-colors"
+              >
+                <span>Accéder au Module Virements</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </ReGoCard>
         </div>
       </div>
 
-      {/* Layer 7: KYC Inspection Drawer */}
+      {/* Detail KYC Inspection Drawer */}
       <ReGoDrawer
         isOpen={Boolean(selectedKyc)}
         onClose={() => setSelectedKyc(null)}
-        title={`Audit KYC: ${selectedKyc?.store_name}`}
-        subtitle={`Marchand: ${selectedKyc?.merchant_name} · Gouvernorat de ${selectedKyc?.governorate}`}
+        title={selectedKyc?.store_name || 'Dossier KYC Marchand'}
+        subtitle={`Propriétaire: ${selectedKyc?.owner_email}`}
         footer={
           <>
             <button
@@ -306,43 +426,93 @@ export function AdminReGoOverview({
             >
               Fermer
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedKyc) handleApproveKyc(selectedKyc.id);
-                setSelectedKyc(null);
-              }}
-              className="px-3.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
-            >
-              Approuver le Dossier
-            </button>
+            {selectedKyc && (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleApproveKyc(selectedKyc.id);
+                  setSelectedKyc(null);
+                }}
+                className="px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] bg-[var(--rego-accent,#ad0505)] text-white hover:bg-[var(--rego-accent-deep,#8f0404)] shadow-xs cursor-pointer"
+              >
+                Approuver le Dossier
+              </button>
+            )}
           </>
         }
       >
         {selectedKyc && (
           <div className="space-y-4">
-            <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] p-3 bg-[var(--rego-surface,#f5f5f5)]/50 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase text-[var(--rego-ink-3,#949494)]">Type de Documents Reçus</span>
-              <p className="text-xs font-bold text-[var(--rego-fg,#111111)]">{selectedKyc.doc_type}</p>
-              <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">Reçu le {selectedKyc.submission_date}</p>
+            <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] p-3 bg-[var(--rego-surface,#f5f5f5)]/50">
+              <span className="text-[10px] font-extrabold uppercase text-[var(--rego-ink-3,#949494)]">Boutique</span>
+              <p className="text-sm font-black text-[var(--rego-fg,#111111)]">{selectedKyc.store_name}</p>
+              <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">{selectedKyc.owner_email}</p>
+              {selectedKyc.phone_number && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs font-mono text-[var(--rego-fg,#111111)]">
+                  <Phone className="w-3.5 h-3.5 text-[var(--rego-accent,#ad0505)]" />
+                  <span>{selectedKyc.phone_number}</span>
+                  {selectedKyc.phone_verified && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold">Vérifié</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Contrôles de Conformité</h4>
-              <ul className="text-xs space-y-1.5 text-[var(--rego-ink-2,#737373)]">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Carte d&apos;Identité Nationale (CIN) lisible recto-verso</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Matricule fiscal vérifié au Registre National des Entreprises (RNE)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Attestation RIB conforme (20 chiffres avec clé Modulo 97)</span>
-                </li>
-              </ul>
+              <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Pièces Justificatives Fournies</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[var(--rego-ink-2,#737373)]" />
+                    <div>
+                      <p className="text-xs font-bold text-[var(--rego-fg,#111111)]">Carte d&apos;Identité Nationale (CIN)</p>
+                      <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">{selectedKyc.cin_document_url ? 'Document joint' : 'Non fourni'}</p>
+                    </div>
+                  </div>
+                  {selectedKyc.cin_document_url && (
+                    <a
+                      href={selectedKyc.cin_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Ouvrir</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[var(--rego-ink-2,#737373)]" />
+                    <div>
+                      <p className="text-xs font-bold text-[var(--rego-fg,#111111)]">Registre de Commerce / RNE</p>
+                      <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">{selectedKyc.rc_document_url ? 'Document joint' : 'Non fourni'}</p>
+                    </div>
+                  </div>
+                  {selectedKyc.rc_document_url && (
+                    <a
+                      href={selectedKyc.rc_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Ouvrir</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[var(--rego-border,#dedede)]">
+              <Link
+                href="/kyc"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-white text-xs font-bold hover:bg-[var(--rego-accent,#ad0505)] transition-colors"
+              >
+                <span>Accéder au Dossier Complet sur la Page KYC</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
         )}

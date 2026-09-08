@@ -441,9 +441,20 @@ export default function DashboardOverview() {
       {/* Conditionally render ReGo Modern Cockpit OR Bento Cockpit OR Classic style */}
       {dashboardStyle === 'rego' ? (
         <SellerReGoCockpit
-          storeName={store?.name || undefined}
-          totalSales={wallet?.total_earned ? Number(wallet.total_earned) : undefined}
-          ordersCount={orderCount || undefined}
+          store={store}
+          wallet={wallet}
+          productCount={productCount}
+          orderCount={orderCount}
+          recentOrders={recentOrders}
+          allOrders={allOrders}
+          salesData={salesData}
+          totalRevenue30d={totalRevenue30d}
+          totalOrders30d={totalOrders30d}
+          maxSales={maxSales}
+          verificationStatus={verification?.status}
+          setupPercent={setupPercent}
+          loading={loading}
+          storefrontHref={storefrontHref}
         />
       ) : dashboardStyle === 'bento' ? (
         <SellerBentoCockpit
