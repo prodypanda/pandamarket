@@ -6,47 +6,48 @@ This checklist details every concrete engineering task required to implement the
 
 ## Phase 1: CSS & Design Token Foundation
 
-- [ ] **1.1. CSS Variables Injection (`src/styles/globals.css`)**
-  - [ ] Register `:root[data-theme="rego"]` with `--bg`, `--surface`, `--fg`, `--border`, `--accent`.
-  - [ ] Implement derived OKLCH formulas (`--ink-2`, `--ink-3`, `--accent-soft`, `--accent-deep`, `--line-ink`).
-  - [ ] Register `.dark` overrides for deep-slate high-contrast night mode.
-  - [ ] Register 5 regional accent classes (`.acc-ocre`, `.acc-olive`, `.acc-bleu`, `.acc-prune`, `.acc-charbon`).
-  - [ ] Register typography optical classes (`.ty-fort`, `.ty-clair`).
-  - [ ] Register density classes (`.den-comp`, `.den-air`).
+- [x] **1.1. CSS Variables Injection (`src/styles/globals.css`)**
+  - [x] Register `:root[data-theme="rego"]`, `[data-seller-theme="rego"]`, `[data-admin-theme="rego"]` with `--rego-bg`, `--rego-surface`, `--rego-border`, `--rego-accent`.
+  - [x] Implement derived OKLCH formulas (`--rego-text`, `--rego-text-muted`, `--rego-surface-subtle`, `--rego-accent-soft`).
+  - [x] Register `.dark` overrides for deep-slate high-contrast night mode.
+  - [x] Register 6 regional accent classes (`.acc-rouge`, `.acc-ocre`, `.acc-olive`, `.acc-bleu`, `.acc-prune`, `.acc-charbon`).
+  - [x] Register typography optical classes (`.ty-fort`, `.ty-clair`).
+  - [x] Register density classes (`.den-comp`, `.den-air`).
 
-- [ ] **1.2. Tailwind Configuration Extension (`tailwind.config.js`)**
-  - [ ] Map semantic color utilities (`bg-od-bg`, `text-od-fg`, `border-od-border`, `bg-od-accent`).
-  - [ ] Map border-radius token `rounded-od`.
-  - [ ] Map elevation shadows `shadow-od-s` and `shadow-od-2`.
+- [x] **1.2. Tailwind Configuration & Token Mapping (`globals.css`)**
+  - [x] Map semantic tokens and OKLCH color rules.
+  - [x] Map border-radius tokens and card styling.
+  - [x] Map elevation shadows and border definitions.
 
 ---
 
 ## Phase 2: React Component Primitives Construction
 
-- [ ] **2.1. Theme Switching Context & Hydration**
-  - [ ] Implement `src/contexts/DashboardThemeProvider.tsx` with SSR cookie reading (`pm_seller_theme`, `pm_admin_theme`).
-  - [ ] Prevent FOUC via `next/headers` cookie resolution in root layouts.
-  - [ ] Add `SellerThemeSwitcher` dropdown in `/hub/dashboard` header.
-  - [ ] Add `AdminThemeSwitcher` dropdown in `/(admin)` header.
+- [x] **2.1. Theme Switching Context & Hydration**
+  - [x] Implement `DashboardStyleContext.tsx` with 3 styles (`classic`, `bento`, `rego`) and cookie sync (`pm_seller_theme`).
+  - [x] Implement `AdminThemeContext.tsx` with 3 styles (`enterprise`, `command`, `rego`) and cookie sync (`pm_admin_theme`).
+  - [x] Add `SellerThemeSwitcherDropdown` in `/hub/dashboard` header with 6 accent colorways.
+  - [x] Add `AdminThemeSwitcherDropdown` in `/(admin)` header with 6 accent colorways.
   - [ ] Add interactive theme selector cards in `/hub/dashboard/settings` and `/(admin)/settings`.
 
-- [ ] **2.2. Core Visual Primitives**
-  - [ ] Build `<ReGoCard>` and `<ReGoSplitCard>` (`.cardsplit`).
-  - [ ] Build `<ReGoKpiHero>` with embedded sparkline support.
-  - [ ] Build `<ReGoAmtBox>` with millimes integer/decimal styling for Tunisian Dinars.
-  - [ ] Build `<ReGoStatusChip>` (`.bchip-ok`, `.bchip-warn`, `.bchip-err`).
-  - [ ] Build `<ReGoDataTable>` with sticky headers, checkbox selection, and pagination footer.
-  - [ ] Build `<ReGoDrawer>` slide-out panel with backdrop blur.
-  - [ ] Build `<ReGoModal>` focus-trapped dialog.
-  - [ ] Build `<DashboardPageWrapper>` enforcing the universal 8-layer anatomical layout order.
+- [x] **2.2. Core Visual Primitives**
+  - [x] Build `<ReGoCard>` and `<ReGoSplitCard>` (`.cardsplit`).
+  - [x] Build `<ReGoKpiHero>` with embedded sparkline support.
+  - [x] Build `<ReGoAmtBox>` with millimes integer/decimal styling for Tunisian Dinars (`0.000 TND`).
+  - [x] Build `<ReGoStatusChip>` (`.bchip-ok`, `.bchip-warn`, `.bchip-err`).
+  - [x] Build `<ReGoDrawer>` slide-out panel with backdrop blur and escape key handling.
+  - [x] Build `<ReGoModal>` focus-trapped dialog.
+  - [x] Build `<DashboardPageWrapper>` enforcing the universal 8-layer anatomical layout order.
 
 ---
 
 ## Phase 3: Seller Dashboard ReGo Implementation (Pages 32 to 71)
 
 ### Section 1: Cockpit, Onboarding & Analytics (`SELLER_SEC01_COCKPIT_ONBOARDING_ANALYTICS.md`)
-- [ ] **Page 32: Seller Cockpit** (`/hub/dashboard`)
-  - [ ] Apply ReGo bento layout with modular metrics and active orders feed.
+- [x] **Page 32: Seller Cockpit** (`/hub/dashboard`)
+  - [x] Apply ReGo modern layout with modular metrics and active orders feed (`SellerReGoCockpit.tsx`).
+  - [x] Urgent COD Anti-Refus deck with 1-click verification (Call, SMS OTP, Confirmation).
+  - [x] 4-carrier Tunisian SLA pipeline (Aramex, Rapid-Poste, Runex, First Delivery).
 - [ ] **Page 33: Launch Checklist** (`/hub/dashboard/onboarding`)
   - [ ] Apply milestone stepper cards with progress percentage bar.
 - [ ] **Page 34: Store Analytics** (`/hub/dashboard/analytics`)
@@ -98,7 +99,11 @@ This checklist details every concrete engineering task required to implement the
 ## Phase 4: Superadmin Dashboard ReGo Implementation (Pages 1 to 31)
 
 ### Section 1: Overview & Analytics (`SUPERADMIN_SEC01_OVERVIEW_AND_TELEMETRY.md`)
-- [ ] **Pages 1-3: Overview, Platform Analytics, Sticky Notes**
+- [x] **Page 1: Superadmin Overview** (`/dashboard`)
+  - [x] Apply ReGo modern overview (`AdminReGoOverview.tsx`) with platform GMV, active stores, and escrow balance.
+  - [x] KYC pending validation queue with 1-click review drawer.
+  - [x] Bank withdrawal queue with 20-digit RIB Modulo-97 verification.
+- [ ] **Pages 2-3: Platform Analytics, Sticky Notes**
   - [ ] Apply executive telemetry cards, microservice health tickers, and draggable sticky board.
 
 ### Section 2: Merchants, Users & Buyers (`SUPERADMIN_SEC02_MERCHANTS_USERS_BUYERS.md`)
