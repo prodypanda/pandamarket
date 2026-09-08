@@ -13,6 +13,8 @@ import {
   RefreshCw,
   ShieldAlert,
 } from 'lucide-react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoRefundReview } from '@/components/admin/rego/AdminReGoRefundReview';
 
 interface AdminRefundRow {
   id: string;
@@ -110,6 +112,26 @@ export default function AdminRefundReviewPage() {
       setDecidingId('');
     }
   };
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoRefundReview
+        refunds={refunds}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        decidingId={decidingId}
+        error={error}
+        feedback={feedback}
+        onPageChange={setPage}
+        onRefresh={fetchRefunds}
+        onDecide={decide}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
