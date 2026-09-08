@@ -114,6 +114,7 @@ This checklist details every concrete engineering task required to implement the
 - [x] **Pages 7-10: KYC Verifications, Mandats, RIB Disbursements, Refunds**
   - [x] Apply document inspection modal/drawer (CIN scan, RNE, phone OTP) with 1-click approval (`AdminReGoKyc.tsx`).
   - [x] Apply real bank disbursement and withdrawal queue manager (`AdminReGoWithdrawals.tsx`) with zero mock data.
+  - [x] Apply Mandat Minute postal verification queue (`AdminReGoMandats.tsx`) with receipt preview and 1-click approval.
 
 ### Section 4: Catalog, Taxonomy & Media (`SUPERADMIN_SEC04_CATALOG_TAXONOMY_MEDIA.md`)
 - [ ] **Pages 11-13: Products Moderation, Category Hierarchy, Media CDN Vault**

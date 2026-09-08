@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState } from 'react';
 import { Receipt, Check, X, Eye, DollarSign, Loader2 } from 'lucide-react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoMandats } from '@/components/admin/rego/AdminReGoMandats';
 
 interface MandatProof {
   id: string;
@@ -101,6 +103,39 @@ export default function AdminMandatsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open mandat proof');
     }
+  }
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoMandats
+        mandats={mandats}
+        loading={loading}
+        error={error}
+        actionId={actionId}
+        onRefresh={fetchMandats}
+        onApprove={approveMandat}
+        onReject={async (id, reason) => {
+          setRejectReasons((prev) => ({ ...prev, [id]: reason }));
+          setActionId(id);
+          setError(null);
+          try {
+            const res = await fetchWithCsrf(`/api/pd/admin/mandats/${id}/reject`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rejection_reason: reason }),
+            });
+            if (!res.ok) throw new Error('Failed to reject mandat proof');
+            await fetchMandats();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to reject mandat proof');
+          } finally {
+            setActionId(null);
+          }
+        }}
+      />
+    );
   }
 
   return (
