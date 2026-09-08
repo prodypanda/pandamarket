@@ -5,11 +5,12 @@ import { fetchWithCsrf } from '@/lib/api';
 import { exportToCsv, type CsvColumn } from '@/lib/csv-export';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy, LayoutGrid, Table } from 'lucide-react';
+import { Search, Filter, Eye, Truck, Loader2, MessageSquare, X, CalendarDays, CreditCard, PackageCheck, RefreshCw, TrendingUp, CheckCircle2, Clock3, Ban, ReceiptText, Package, Mail, Phone, MapPin, Printer, StickyNote, Save, Download, ExternalLink, Upload, ShieldAlert, PhoneCall, Check, RotateCcw, DollarSign, Copy, LayoutGrid, Table, Sparkles } from 'lucide-react';
 import { SellerOrderDrawer } from '@/components/dashboard/orders/SellerOrderDrawer';
 import { PromptDialog } from '@/components/ui/PromptDialog';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { OrdersBentoCockpit } from '@/components/dashboard/OrdersBentoCockpit';
+import { OrdersReGoCockpit } from '@/components/dashboard/rego/OrdersReGoCockpit';
 
 export type OrdersMainTab = 'all_orders' | 'cod_radar' | 'rto_returns' | 'courier_settlements';
 
@@ -2404,8 +2405,20 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* View Mode Toggle: Bento Cockpit vs Classic Table */}
+          {/* View Mode Toggle: ReGo vs Bento Cockpit vs Classic Table */}
           <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setDashboardStyle('rego')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                dashboardStyle === 'rego'
+                  ? 'bg-white dark:bg-slate-900 text-[#ad0505] shadow-2xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#ad0505]" />
+              <span>ReGo</span>
+            </button>
             <button
               type="button"
               onClick={() => setDashboardStyle('bento')}
@@ -2451,7 +2464,26 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {dashboardStyle === 'bento' ? (
+      {dashboardStyle === 'rego' ? (
+        <OrdersReGoCockpit
+          orders={orders}
+          meta={meta}
+          loading={loading}
+          onRefresh={fetchOrders}
+          onSelectOrder={openOrderDetail}
+          onFulfillOrder={openFulfillmentModal}
+          onGenerateLabel={generateShippingLabel}
+          onUpdateCodStatus={handleUpdateCodStatus}
+          onSendCodOtp={handleSendCodOtp}
+          onVerifyCodOtp={handleVerifyCodOtp}
+          onPrintOrder={(order, kind) => openOrderPrintDocument(order, kind, marketplaceName, t, locale)}
+          onCancelFulfillment={cancelSellerFulfillment}
+          updatingCodStatus={updatingCodStatus}
+          sendingCodOtp={sendingCodOtp}
+          codFeedback={codFeedback}
+          dir={dir}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <OrdersBentoCockpit
           orders={orders}
           meta={meta}
