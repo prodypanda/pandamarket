@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { buildHierarchicalCategoryList } from '@/lib/category-tree';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { ProductsBentoCockpit } from '@/components/dashboard/ProductsBentoCockpit';
+import { ProductsReGoCockpit } from '@/components/dashboard/rego/ProductsReGoCockpit';
 import {
   Activity,
   AlertCircle,
@@ -2915,8 +2916,20 @@ export default function ProductsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* View Mode Toggle: Bento Cockpit vs Classic Catalogue */}
+            {/* View Mode Toggle: ReGo vs Bento Cockpit vs Classic Catalogue */}
             <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setDashboardStyle('rego')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  dashboardStyle === 'rego'
+                    ? 'bg-white dark:bg-slate-900 text-[#ad0505] shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#ad0505]" />
+                <span>ReGo</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setDashboardStyle('bento')}
@@ -3108,7 +3121,26 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {dashboardStyle === 'bento' ? (
+      {dashboardStyle === 'rego' ? (
+        <ProductsReGoCockpit
+          products={products}
+          loading={loading}
+          totalProducts={totalProducts}
+          storeCounts={storeCounts}
+          categories={marketplaceCategories}
+          onRefresh={fetchProducts}
+          onEditProduct={startEdit}
+          onCreateProduct={() => {
+            resetForm();
+            setShowDrawer(true);
+          }}
+          onDeleteProduct={(product) => setProductToDelete(product)}
+          onStatusChange={handleStatusChange}
+          onQuickAdjustStock={handleQuickAdjustStock}
+          limits={limits ? { maxProducts: limits.max_products, currentProducts: totalProducts } : undefined}
+          dir={dir}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <ProductsBentoCockpit
           products={products}
           loading={loading}
