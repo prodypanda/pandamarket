@@ -4,6 +4,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Flag, Loader2, Receipt, ShieldCheck, ShoppingCart, Users, DollarSign, Settings, Activity, Store, Crown, Sparkles, Mail } from 'lucide-react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoOverview } from '@/components/admin/rego/AdminReGoOverview';
 
 interface AdminStats {
   total_stores: number;
@@ -15,6 +17,7 @@ interface AdminStats {
 }
 
 export default function AdminDashboard() {
+  const { adminTheme } = useAdminTheme();
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -38,6 +41,15 @@ export default function AdminDashboard() {
     }
     fetchStats();
   }, []);
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoOverview
+        platformGmv={stats?.total_revenue}
+        activeStoresCount={stats?.total_stores}
+      />
+    );
+  }
 
   const statCards = stats
     ? [

@@ -31,6 +31,8 @@ import {
 import { useLocale } from '../../contexts/LocaleContext';
 import { LocaleSwitcher } from '../../components/LocaleSwitcher';
 import { MarketplaceBrand } from '../../components/MarketplaceBrand';
+import { AdminThemeProvider } from '@/contexts/AdminThemeContext';
+import { AdminThemeSwitcherDropdown } from '@/components/dashboard/ThemeSwitcherDropdown';
 
 interface CurrentUser {
   role?: string;
@@ -157,7 +159,7 @@ function CollapsedNavItem({
 }
 
 
-export default function AdminLayout({
+function AdminLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -592,6 +594,7 @@ export default function AdminLayout({
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <AdminThemeSwitcherDropdown />
             <LocaleSwitcher />
             <Link
               href="/hub"
@@ -617,5 +620,17 @@ export default function AdminLayout({
         <div className="p-8">{children}</div>
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AdminThemeProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AdminThemeProvider>
   );
 }

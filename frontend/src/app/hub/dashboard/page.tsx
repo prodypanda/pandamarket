@@ -28,6 +28,7 @@ import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { SellerBentoCockpit } from '@/components/dashboard/SellerBentoCockpit';
+import { SellerReGoCockpit } from '@/components/dashboard/rego/SellerReGoCockpit';
 
 interface WalletData {
   balance?: number | string | null;
@@ -437,8 +438,14 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Conditionally render Bento Cockpit style OR Classic style */}
-      {dashboardStyle === 'bento' ? (
+      {/* Conditionally render ReGo Modern Cockpit OR Bento Cockpit OR Classic style */}
+      {dashboardStyle === 'rego' ? (
+        <SellerReGoCockpit
+          storeName={store?.name || undefined}
+          totalSales={wallet?.total_earned ? Number(wallet.total_earned) : undefined}
+          ordersCount={orderCount || undefined}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <SellerBentoCockpit
           store={store}
           wallet={wallet}

@@ -422,3 +422,74 @@ body {
 [dir="rtl"] .icon-directional {
   transform: scaleX(-1);
 }
+
+/* =====================================================
+   ReGo Design System Tokens & OKLCH Theme Layer
+   ===================================================== */
+
+:root[data-theme="rego"],
+[data-seller-theme="rego"],
+[data-admin-theme="rego"],
+.theme-rego {
+  --rego-bg: #ffffff;
+  --rego-surface: #f5f5f5;
+  --rego-fg: #111111;
+  --rego-muted: #949494;
+  --rego-border: #dedede;
+  --rego-accent: #ad0505;
+
+  --rego-ink-2: color-mix(in oklch, var(--rego-fg) 55%, var(--rego-muted));
+  --rego-ink-3: color-mix(in oklch, var(--rego-fg) 32%, var(--rego-muted));
+  --rego-accent-soft: color-mix(in oklch, var(--rego-accent) 10%, transparent);
+  --rego-accent-soft2: color-mix(in oklch, var(--rego-accent) 16%, #ffffff);
+  --rego-accent-ink: color-mix(in oklch, var(--rego-accent) 14%, var(--rego-fg));
+  --rego-accent-deep: color-mix(in oklch, var(--rego-accent) 86%, #111111);
+  --rego-accent-line: color-mix(in oklch, var(--rego-accent) 38%, #ffffff);
+  --rego-accent-live: color-mix(in oklch, var(--rego-accent) 55%, transparent);
+
+  --rego-line-ink: color-mix(in oklch, var(--rego-bg) 18%, transparent);
+  --rego-glass: color-mix(in oklch, #ffffff 80%, transparent);
+
+  --rego-shadow-s: 0 1px 2px color-mix(in oklch, var(--rego-fg) 5%, transparent), 0 1px 1px color-mix(in oklch, var(--rego-fg) 4%, transparent);
+  --rego-sh2: 0 10px 30px -12px color-mix(in oklch, #111111 22%, transparent), 0 2px 6px color-mix(in oklch, #111111 6%, transparent);
+  --rego-r: 8px;
+  --rego-font: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --rego-thw: 650;
+  --rego-thls: -0.018em;
+  --rego-cp: 8px;
+  --rego-gg: 8px;
+}
+
+/* Dark Mode for ReGo */
+[data-theme="rego"].dark,
+[data-seller-theme="rego"].dark,
+[data-admin-theme="rego"].dark,
+.dark [data-seller-theme="rego"],
+.dark [data-admin-theme="rego"] {
+  --rego-bg: #0f0f0f;
+  --rego-surface: #181818;
+  --rego-fg: #f3f3f3;
+  --rego-muted: #787878;
+  --rego-border: #282828;
+  --rego-glass: color-mix(in oklch, #181818 80%, transparent);
+  --rego-shadow-s: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --rego-sh2: 0 10px 30px -12px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* 6 Regional Accent Colorways */
+.acc-rouge, [data-accent="rouge"] { --rego-accent: #ad0505; }
+.acc-ocre, [data-accent="ocre"] { --rego-accent: #c25e2e; }
+.acc-olive, [data-accent="olive"] { --rego-accent: #5a7d36; }
+.acc-bleu, [data-accent="bleu"] { --rego-accent: #1e6091; }
+.acc-prune, [data-accent="prune"] { --rego-accent: #7b2cbf; }
+.acc-charbon, [data-accent="charbon"] { --rego-accent: #343a40; }
+
+/* Typography Weight Variants */
+.ty-fort, [data-typography="fort"] { --rego-thw: 820; --rego-thls: -0.03em; }
+.ty-clair, [data-typography="clair"] { --rego-thw: 520; --rego-thls: -0.004em; }
+
+/* Density Variants */
+.den-comp, [data-density="compact"] { --rego-cp: 5px; --rego-gg: 6px; }
+.den-air, [data-density="airy"] { --rego-cp: 11px; --rego-gg: 12px; }
+

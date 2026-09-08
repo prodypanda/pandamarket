@@ -4,6 +4,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { fetchOnboardingState } from '@/lib/onboarding';
 import { DashboardSubscriptionProvider } from '@/contexts/DashboardSubscriptionContext';
 import { DashboardStyleProvider, useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerThemeSwitcherDropdown } from '@/components/dashboard/ThemeSwitcherDropdown';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -604,42 +605,8 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Style Switcher Segmented Control */}
-            <div
-              role="group"
-              aria-label="Style d'affichage du tableau de bord"
-              className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700"
-            >
-              <button
-                type="button"
-                onClick={() => setDashboardStyle('classic')}
-                aria-pressed={dashboardStyle === 'classic'}
-                aria-label="Vue Classique"
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  dashboardStyle === 'classic'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Layout className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Classique</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDashboardStyle('bento')}
-                aria-pressed={dashboardStyle === 'bento'}
-                aria-label="Vue Bento Cockpit"
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  dashboardStyle === 'bento'
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Bento Cockpit</span>
-              </button>
-            </div>
+            {/* 3-Way Style Switcher (ReGo, Bento Cockpit, Classique + Accents) */}
+            <SellerThemeSwitcherDropdown />
 
             <LocaleSwitcher />
 
