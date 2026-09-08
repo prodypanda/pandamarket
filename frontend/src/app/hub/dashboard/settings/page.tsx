@@ -11,6 +11,7 @@ import { AccountSecurityActivityPanel } from '../../../../components/AccountSecu
 import { AccountTwoFactorPanel } from '../../../../components/AccountTwoFactorPanel';
 import { LocaleSwitcher } from '../../../../components/LocaleSwitcher';
 import { useLocale } from '../../../../contexts/LocaleContext';
+import { useDashboardStyle, type DashboardStyle, type AccentColor, type DashboardDensity } from '@/contexts/DashboardStyleContext';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { getSellerTypeOptions, type SellerTypeValue } from '../../../../lib/seller-type';
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '../../../../lib/onboarding';
@@ -85,6 +86,7 @@ async function getErrorMessage(res: Response, fallback = 'Error') {
 
 export default function SettingsPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle, setDashboardStyle, accent, setAccent } = useDashboardStyle();
   const sellerTypeOptions = getSellerTypeOptions(t);
   const isRtl = dir === 'rtl';
   const [activeTab, setActiveTab] = useState<Tab>('store');
@@ -1423,10 +1425,135 @@ export default function SettingsPage() {
         {/* Theme Tab */}
         {activeTab === 'theme' && (
           <div className="space-y-6">
+            {/* Dashboard Workspace Style & Theme (ReGo / Bento / Classic) */}
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/60 p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[var(--rego-accent,#ad0505)]" />
+                    <h2 className="font-bold text-slate-900 dark:text-white">Style & Thème de votre Espace Vendeur</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Sélectionnez votre style de cockpit préféré pour piloter votre catalogue, vos commandes et vos expéditions.
+                  </p>
+                </div>
+                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                  Actuel: {dashboardStyle === 'rego' ? 'Cockpit ReGo' : dashboardStyle === 'bento' ? 'Cockpit Bento' : 'Tableau Classique'}
+                </span>
+              </div>
+
+              {/* 3 Main Styles Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* ReGo */}
+                <button
+                  type="button"
+                  onClick={() => setDashboardStyle('rego')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                    dashboardStyle === 'rego'
+                      ? 'border-[var(--rego-accent,#ad0505)] bg-rose-50/30 dark:bg-rose-950/20 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">Cockpit ReGo</span>
+                    {dashboardStyle === 'rego' && (
+                      <span className="h-2 w-2 rounded-full bg-[var(--rego-accent,#ad0505)]" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Design haute performance, radar Anti-Refus COD & télémétrie 4 transporteurs tunisiens.
+                  </p>
+                </button>
+
+                {/* Bento */}
+                <button
+                  type="button"
+                  onClick={() => setDashboardStyle('bento')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                    dashboardStyle === 'bento'
+                      ? 'border-slate-900 dark:border-white bg-slate-100/60 dark:bg-slate-800 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">Cockpit Bento</span>
+                    {dashboardStyle === 'bento' && (
+                      <span className="h-2 w-2 rounded-full bg-slate-900 dark:bg-white" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Grille modulaire bento, widgets visuels d&apos;onboarding et actions rapides condensées.
+                  </p>
+                </button>
+
+                {/* Classique */}
+                <button
+                  type="button"
+                  onClick={() => setDashboardStyle('classic')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                    dashboardStyle === 'classic'
+                      ? 'border-slate-900 dark:border-white bg-slate-100/60 dark:bg-slate-800 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">Tableau Classique</span>
+                    {dashboardStyle === 'classic' && (
+                      <span className="h-2 w-2 rounded-full bg-slate-900 dark:bg-white" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Disposition traditionnelle standard pour consultations linéaires sur grand écran.
+                  </p>
+                </button>
+              </div>
+
+              {/* Regional Accent Pickers (Visible when ReGo is active) */}
+              {dashboardStyle === 'rego' && (
+                <div className="pt-3 border-t border-slate-200/80 dark:border-slate-750 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Teinte Régionale Tunisienne (ReGo Accent)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 capitalize">{accent}</span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { id: 'rouge', name: 'Carthage', color: '#ad0505' },
+                      { id: 'ocre', name: 'Sahara', color: '#c46808' },
+                      { id: 'olive', name: 'Sahel', color: '#2d6b38' },
+                      { id: 'bleu', name: 'Sidi Bou', color: '#1565c0' },
+                      { id: 'prune', name: 'Médina', color: '#6b2d6b' },
+                      { id: 'charbon', name: 'Industriel', color: '#262626' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setAccent(item.id as AccentColor)}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
+                          accent === item.id
+                            ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-2xs font-bold'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 hover:bg-white'
+                        }`}
+                      >
+                        <span
+                          className="h-3.5 w-3.5 rounded-full shadow-2xs"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-[10px] text-slate-700 dark:text-slate-300 truncate">
+                          {item.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Theme Selector */}
             <div>
-              <h2 className="font-bold text-slate-900 dark:text-white mb-1">Choisir un thème</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{themeList.length} thèmes disponibles. Les thèmes premium nécessitent un achat.</p>
+              <h2 className="font-bold text-slate-900 dark:text-white mb-1">Thème de la Vitrine Publique</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{themeList.length} thèmes disponibles pour vos visiteurs.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {themeList.map((t) => {
                   const cfg = themes[t.id];

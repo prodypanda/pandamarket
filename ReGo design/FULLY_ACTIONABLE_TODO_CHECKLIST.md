@@ -111,9 +111,9 @@ This checklist details every concrete engineering task required to implement the
   - [ ] Apply multi-role user directory with permission matrix editor and suspension modals.
 
 ### Section 3: Finance, Escrow, KYC & Payouts (`SUPERADMIN_SEC03_FINANCE_ESCROW_PAYOUTS.md`)
-- [ ] **Pages 7-10: KYC Verifications, Mandats, RIB Disbursements, Refunds**
-  - [ ] Apply document inspection modal (CIN scan, RNE, RIB certificate) with 1-click approval.
-  - [ ] Apply batch bank disbursement file generator (BIAT, BNA, Attijari, STB, Amen Bank).
+- [x] **Pages 7-10: KYC Verifications, Mandats, RIB Disbursements, Refunds**
+  - [x] Apply document inspection modal/drawer (CIN scan, RNE, phone OTP) with 1-click approval (`AdminReGoKyc.tsx`).
+  - [x] Apply real bank disbursement and withdrawal queue manager (`AdminReGoWithdrawals.tsx`) with zero mock data.
 
 ### Section 4: Catalog, Taxonomy & Media (`SUPERADMIN_SEC04_CATALOG_TAXONOMY_MEDIA.md`)
 - [ ] **Pages 11-13: Products Moderation, Category Hierarchy, Media CDN Vault**

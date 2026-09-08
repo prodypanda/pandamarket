@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState } from 'react';
 import { ShieldCheck, Check, X, Phone, FileText, Eye, Loader2 } from 'lucide-react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoKyc } from '@/components/admin/rego/AdminReGoKyc';
 
 interface KycSubmission {
   id: string;
@@ -100,6 +102,40 @@ export default function AdminKycPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open document');
     }
+  }
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoKyc
+        queue={queue}
+        loading={loading}
+        error={error}
+        onRefresh={fetchQueue}
+        onApprove={approveKyc}
+        onReject={async (id, reason) => {
+          setRejectReasons((prev) => ({ ...prev, [id]: reason }));
+          setActionId(id);
+          setError(null);
+          try {
+            const res = await fetchWithCsrf(`/api/pd/admin/verifications/${id}/reject`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rejection_reason: reason }),
+            });
+            if (!res.ok) throw new Error('Failed to reject KYC submission');
+            await fetchQueue();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to reject KYC submission');
+          } finally {
+            setActionId(null);
+          }
+        }}
+        actionId={actionId}
+        onOpenDocument={openDocument}
+      />
+    );
   }
 
   return (

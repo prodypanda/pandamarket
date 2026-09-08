@@ -11,6 +11,8 @@ import {
   Store,
   RefreshCw,
 } from 'lucide-react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoWithdrawals } from '@/components/admin/rego/AdminReGoWithdrawals';
 
 interface Withdrawal {
   id: string;
@@ -57,6 +59,22 @@ export default function AdminWithdrawalsPage() {
     void fetchWithdrawals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoWithdrawals
+        withdrawals={withdrawals}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onRefresh={fetchWithdrawals}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
