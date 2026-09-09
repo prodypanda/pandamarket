@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoCustomers } from '@/components/dashboard/rego/SellerReGoCustomers';
 import { Users, Search, RefreshCw, Mail, Calendar, ShoppingBag } from 'lucide-react';
 
 interface StorefrontCustomer {
@@ -17,6 +19,7 @@ interface StorefrontCustomer {
 
 export default function StorefrontCustomersPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [customers, setCustomers] = useState<StorefrontCustomer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,18 @@ export default function StorefrontCustomersPage() {
       <div dir={dir} className="flex h-64 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoCustomers
+        customers={customers}
+        loading={loading}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        dir={dir}
+      />
     );
   }
 

@@ -5,6 +5,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Download, Search, Users, Crown, RefreshCw, Send, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { BroadcastComposer } from './BroadcastComposer';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoLoyalty } from './rego/SellerReGoLoyalty';
 
 export interface LoyaltyKpiData {
   total_subscribers: number;
@@ -63,6 +65,7 @@ export const SellerLoyaltyDashboard: React.FC<{
   initialData?: LoyaltyDashboardData | null;
 }> = ({ initialData = null }) => {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [data, setData] = useState<LoyaltyDashboardData | null>(initialData);
   const [loading, setLoading] = useState<boolean>(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -270,6 +273,33 @@ export const SellerLoyaltyDashboard: React.FC<{
   const totalGovSubs = Object.values(governorates).reduce((a, b) => a + b, 0);
   const totalFollowers = data?.total_subscribers ?? kpis.total_subscribers ?? 0;
   const verifiedFollowers = data?.verified_subscribers ?? Math.round((totalFollowers * kpis.verified_pct) / 100);
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoLoyalty
+        data={data}
+        loading={loading}
+        error={error}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        subscribers={subscribers}
+        subscribersLoading={subscribersLoading}
+        subscribersTotal={subscribersTotal}
+        subscribersPage={subscribersPage}
+        subscribersTotalPages={subscribersTotalPages}
+        subscribersSearch={subscribersSearch}
+        onSubscribersSearchChange={setSubscribersSearch}
+        subscribersVerifiedFilter={subscribersVerifiedFilter}
+        onSubscribersVerifiedFilterChange={setSubscribersVerifiedFilter}
+        onSubscribersPageChange={setSubscribersPage}
+        onExportCsv={handleExportCsv}
+        exportingCsv={exportingCsv}
+        onRefresh={fetchLoyaltyData}
+        onBroadcastSuccess={handleBroadcastSuccess}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8" dir={dir} data-testid="seller-loyalty-dashboard">

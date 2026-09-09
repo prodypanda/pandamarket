@@ -28,6 +28,7 @@ import { AdsPerformanceCharts } from '../../../../components/dashboard/AdsPerfor
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { AnalyticsBentoCockpit, AnalyticsData } from '@/components/dashboard/AnalyticsBentoCockpit';
+import { SellerReGoAds } from '@/components/dashboard/rego/SellerReGoAds';
 
 type Placement = { id: string; name: string; format: string; default_price: string };
 type Account = {
@@ -422,7 +423,29 @@ export default function SellerAdsPage() {
 
   return (
     <div dir={dir} className="space-y-6">
-      {dashboardStyle === 'bento' ? (
+      {dashboardStyle === 'rego' ? (
+        <SellerReGoAds
+          account={account}
+          campaigns={campaigns}
+          analytics={analytics}
+          daily={daily}
+          placements={placements}
+          from={from}
+          to={to}
+          onSetSellerPreset={setSellerPreset}
+          onCreateCampaign={() => setCreating(true)}
+          onRefill={() => setRefilling(true)}
+          onRedeemPromo={() => setPromoModalOpen(true)}
+          onAction={action}
+          onEditCampaign={openEditModal}
+          onPreviewCampaign={setPreviewCampaign}
+          onDeleteCampaign={setCampaignToHide}
+          error={error}
+          successMsg={successMsg}
+          loading={loading}
+          dir={dir}
+        />
+      ) : dashboardStyle === 'bento' ? (
         <AnalyticsBentoCockpit
           data={storeAnalytics}
           adsData={{ account, analytics, daily }}

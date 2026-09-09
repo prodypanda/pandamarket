@@ -246,17 +246,17 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Implement regional shipping rate matrix across 24 Governorates and pixel integration inputs (Meta, TikTok, GA4).
 
 ### Section 6: Marketing, Advertising, CRM & Loyalty (SELLER_SEC06_MARKETING_ADS_CRM_LOYALTY.md)
-- [ ] **Page 35: PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin** (/hub/dashboard/ads)
-  - [ ] Breadcrumb: Accueil > Clients & Marketing > PandaAds
-  - [ ] Implement ad campaign wizard, daily budget setter, and live ROAS vs net profit calculator.
-- [ ] **Page 38: Followers, VIP Subscribers, Private Discount Coupons & Loyalty Points** (/hub/dashboard/loyalty)
-  - [ ] Breadcrumb: Accueil > Clients & Marketing > Abonnés & Fidélité
-  - [ ] Implement voucher generator (percentage vs fixed TND discount), minimum purchase limit, and loyalty rules.
-- [ ] **Page 53: Store Customers Directory & Purchasing History** (/hub/dashboard/customers)
-  - [ ] Breadcrumb: Accueil > Clients & Marketing > Répertoire Clients
-  - [ ] Implement customer roster, purchase frequency, order history drawer, and VIP status tags.
-- [ ] **Page 69 & 70: Growth Loyalty & Subscribers Aliases** (/dashboard/loyalty, /dashboard/subscribers)
-  - [ ] Ensure seamless redirection to unified loyalty and marketing settings.
+- [x] **Page 35: PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin** (/hub/dashboard/ads)
+  - [x] Breadcrumb: Accueil > Clients & Marketing > PandaAds
+  - [x] Implement ad campaign wizard, daily budget setter, and live ROAS vs net profit calculator.
+- [x] **Page 38: Followers, VIP Subscribers, Private Discount Coupons & Loyalty Points** (/hub/dashboard/loyalty)
+  - [x] Breadcrumb: Accueil > Clients & Marketing > Abonnés & Fidélité
+  - [x] Implement voucher generator (percentage vs fixed TND discount), minimum purchase limit, and loyalty rules.
+- [x] **Page 53: Store Customers Directory & Purchasing History** (/hub/dashboard/customers)
+  - [x] Breadcrumb: Accueil > Clients & Marketing > Répertoire Clients
+  - [x] Implement customer roster, purchase frequency, order history drawer, and VIP status tags.
+- [x] **Page 69 & 70: Growth Loyalty & Subscribers Aliases** (/dashboard/loyalty, /dashboard/subscribers)
+  - [x] Ensure seamless redirection to unified loyalty and marketing settings.
 
 ### Section 7: AI Studio, Plans & SaaS Billing (SELLER_SEC07_AI_STUDIO_SUBSCRIPTION_BILLING.md)
 - [ ] **Page 54: AI Tools Studio (Copywriting, Titles, SEO & Support)** (/hub/dashboard/ai)
