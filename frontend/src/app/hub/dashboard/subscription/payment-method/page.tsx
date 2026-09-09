@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoPaymentMethod } from '@/components/dashboard/rego/SellerReGoPaymentMethod';
 import { CreditCard, CheckCircle2, AlertCircle, ShieldCheck, Lock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function VendorPaymentMethodUpdatePage() {
   const { t, locale } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -45,6 +48,25 @@ export default function VendorPaymentMethodUpdatePage() {
       setLoading(false);
     }
   };
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoPaymentMethod
+        cardHolder={cardHolder}
+        cardNumber={cardNumber}
+        expiry={expiry}
+        cvv={cvv}
+        loading={loading}
+        success={success}
+        error={error}
+        onCardHolderChange={setCardHolder}
+        onCardNumberChange={setCardNumber}
+        onExpiryChange={setExpiry}
+        onCvvChange={setCvv}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center p-4">

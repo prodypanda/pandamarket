@@ -259,18 +259,18 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Ensure seamless redirection to unified loyalty and marketing settings.
 
 ### Section 7: AI Studio, Plans & SaaS Billing (SELLER_SEC07_AI_STUDIO_SUBSCRIPTION_BILLING.md)
-- [ ] **Page 54: AI Tools Studio (Copywriting, Titles, SEO & Support)** (/hub/dashboard/ai)
-  - [ ] Breadcrumb: Accueil > Outils & Support > Studio IA
-  - [ ] Implement AI product description generator, tone selector (Professional, Casual, Luxury), and image enhancer.
-- [ ] **Page 55: Subscription Plans, Feature Limits, Meter & Upgrade** (/hub/dashboard/subscription)
-  - [ ] Breadcrumb: Accueil > Finance > Forfait & Abonnement
-  - [ ] Implement current plan quota bars (Products used, Storage used, AI tokens) and upgrade modal.
-- [ ] **Page 56: Recurring Billing Payment Method Setup** (/hub/dashboard/billing)
-  - [ ] Breadcrumb: Accueil > Finance > Forfait & Facturation
-  - [ ] Implement recurring credit card / bank mandate setup form.
-- [ ] **Page 57: Platform SaaS Invoices & Postal Mandat Receipt Upload** (/hub/dashboard/my-subscription-orders)
-  - [ ] Breadcrumb: Accueil > Finance > Factures d'Abonnement
-  - [ ] Implement invoice list, PDF download, and offline postal mandat receipt attachment.
+- [x] **Page 54: AI Tools Studio (Copywriting, Titles, SEO & Support)** (/hub/dashboard/ai)
+  - [x] Breadcrumb: Accueil > Outils & Support > Studio IA
+  - [x] Implement AI product description generator, tone selector (Professional, Casual, Luxury), and image enhancer.
+- [x] **Page 55: Subscription Plans, Feature Limits, Meter & Upgrade** (/hub/dashboard/subscription)
+  - [x] Breadcrumb: Accueil > Finance > Forfait & Abonnement
+  - [x] Implement current plan quota bars (Products used, Storage used, AI tokens) and upgrade modal.
+- [x] **Page 56: Recurring Billing Payment Method Setup** (/hub/dashboard/billing)
+  - [x] Breadcrumb: Accueil > Finance > Forfait & Facturation
+  - [x] Implement recurring credit card / bank mandate setup form.
+- [x] **Page 57: Platform SaaS Invoices & Postal Mandat Receipt Upload** (/hub/dashboard/my-subscription-orders)
+  - [x] Breadcrumb: Accueil > Finance > Factures d'Abonnement
+  - [x] Implement invoice list, PDF download, and offline postal mandat receipt attachment.
 
 ### Section 8: Disputes, Settings, KYC & Developer APIs (SELLER_SEC08_DISPUTES_SETTINGS_DEV_ORGANIZATION.md)
 - [ ] **Page 59: Customer Disputes, Infringement Claims & Resolution Cases** (/hub/dashboard/disputes)

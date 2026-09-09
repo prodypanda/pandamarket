@@ -4,6 +4,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, Suspense, ChangeEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoSubscription } from '@/components/dashboard/rego/SellerReGoSubscription';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   Crown,
@@ -77,6 +79,7 @@ function formatPrice(price: number): string {
 
 function SubscriptionContent() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const searchParams = useSearchParams();
   const localeCode = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const planName = useCallback(
@@ -372,8 +375,26 @@ function SubscriptionContent() {
   };
 
   return (
-    <div dir={dir} className="space-y-6 sm:space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.subscription.heading')}</h1>
+    <div dir={dir} className={dashboardStyle === 'rego' ? '' : 'space-y-6 sm:space-y-8'}>
+      {dashboardStyle === 'rego' ? (
+        <SellerReGoSubscription
+          currentPlan={currentPlan}
+          allPlans={allPlans}
+          loading={loading}
+          changing={changing}
+          error={error}
+          success={success}
+          onRefresh={() => {
+            void Promise.all([fetchCurrentPlan(), fetchPlans()]);
+          }}
+          onOpenUpgradeModal={(plan) => setSelectedPlanForPayment(plan)}
+          onCancelIntent={handleCancelIntent}
+          cancellingIntent={cancellingIntent}
+          dir={dir}
+        />
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.subscription.heading')}</h1>
 
       {/* Feedback */}
       {success && (
@@ -573,6 +594,8 @@ function SubscriptionContent() {
           );
         })}
       </div>
+      </>
+      )}
 
       {/* Payment Gateway Modal for Subscription Purchase */}
       {selectedPlanForPayment && (

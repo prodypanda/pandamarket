@@ -2,6 +2,8 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoAiStudio } from '@/components/dashboard/rego/SellerReGoAiStudio';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -529,6 +531,66 @@ export default function AiToolsStudio() {
     if (job.input_url) return t('dashboardPages.ai.jobTargetImage');
     return productId || '—';
   };
+
+  const { dashboardStyle } = useDashboardStyle();
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoAiStudio
+        credits={credits}
+        jobs={jobs}
+        products={products}
+        meta={meta}
+        loading={loading}
+        refreshing={refreshing}
+        error={error}
+        success={success}
+        onRefresh={refreshAll}
+        compressUrl={compressUrl}
+        compressProductId={compressProductId}
+        compressing={compressing}
+        onCompressUrlChange={setCompressUrl}
+        onCompressProductIdChange={setCompressProductId}
+        onCompress={handleCompress}
+        seoProductId={seoProductId}
+        seoLanguage={seoLanguage}
+        generatingSeo={generating}
+        onSeoProductIdChange={setSeoProductId}
+        onSeoLanguageChange={setSeoLanguage}
+        onSeoGenerate={handleSeoGenerate}
+        copyLanguage={copyLanguage}
+        pageTitle={pageTitle}
+        currentSeoTitle={currentSeoTitle}
+        currentSeoDescription={currentSeoDescription}
+        sectionOutline={sectionOutline}
+        copyGenerating={copyGenerating}
+        copySuggestions={copySuggestions}
+        onCopyLanguageChange={setCopyLanguage}
+        onPageTitleChange={setPageTitle}
+        onCurrentSeoTitleChange={setCurrentSeoTitle}
+        onCurrentSeoDescriptionChange={setCurrentSeoDescription}
+        onSectionOutlineChange={setSectionOutline}
+        onPageCopy={handlePageCopy}
+        historyType={historyType}
+        historyStatus={historyStatus}
+        historyPage={historyPage}
+        onHistoryTypeChange={setHistoryType}
+        onHistoryStatusChange={setHistoryStatus}
+        onHistoryPageChange={setHistoryPage}
+        pricing={pricing}
+        tokenPacks={tokenPacks}
+        buyingPackId={buyingPackId}
+        onBuyTokenPack={handleBuyTokenPack}
+        providerState={providerState}
+        providerForm={providerForm}
+        savingProvider={savingProvider}
+        onProviderFormChange={setProviderForm}
+        onSaveProvider={handleSaveProvider}
+        onDeleteProvider={handleDeleteProvider}
+        dir={dir}
+      />
+    );
+  }
 
   if (loading) {
     return (

@@ -4,6 +4,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import Link from 'next/link';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoSubscriptionOrders } from '@/components/dashboard/rego/SellerReGoSubscriptionOrders';
 import {
   ReceiptText,
   Search,
@@ -96,6 +98,7 @@ function buildStatusBadges(t: (key: string, params?: Record<string, string | num
 
 export default function SubscriptionOrdersPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const localeCode = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const GATEWAY_NAMES = buildGatewayNames(t);
   const STATUS_BADGES = buildStatusBadges(t);
@@ -283,9 +286,31 @@ export default function SubscriptionOrdersPage() {
   };
 
   return (
-    <div dir={dir} className="space-y-6 sm:space-y-8">
-      {/* Header Banner */}
-      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
+    <div dir={dir} className={dashboardStyle === 'rego' ? '' : 'space-y-6 sm:space-y-8'}>
+      {dashboardStyle === 'rego' ? (
+        <SellerReGoSubscriptionOrders
+          orders={orders}
+          userStores={userStores}
+          summary={summary}
+          loading={loading}
+          searchQuery={searchQuery}
+          statusFilter={statusFilter}
+          storeFilter={storeFilter}
+          page={page}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          onSearchChange={setSearchQuery}
+          onStatusFilterChange={setStatusFilter}
+          onStoreFilterChange={setStoreFilter}
+          onPageChange={setPage}
+          onRefresh={loadOrders}
+          onOpenUploadModal={(ord) => setUploadModalOrder(ord)}
+          dir={dir}
+        />
+      ) : (
+        <>
+          {/* Header Banner */}
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300 self-start">
             <ReceiptText className="h-4 w-4" />
@@ -576,6 +601,8 @@ export default function SubscriptionOrdersPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Printable Invoice Modal */}
       {selectedInvoice && (
