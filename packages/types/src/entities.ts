@@ -70,6 +70,19 @@ export interface IStorePaymentConfig {
   flouci_app_secret?: string;
   konnect_api_key?: string;
   konnect_receiver_wallet?: string;
+  paypal_client_id?: string;
+  paypal_sandbox_client_id?: string;
+  paypal_sandbox_client_secret?: string;
+  paypal_live_client_id?: string;
+  paypal_live_client_secret?: string;
+}
+
+export interface ISavedPaymentMethod {
+  brand: string;
+  last4: string;
+  expiry: string;
+  cardholder: string;
+  updated_at: string;
 }
 
 export interface IStore {

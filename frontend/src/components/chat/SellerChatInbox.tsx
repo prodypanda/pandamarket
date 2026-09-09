@@ -435,12 +435,46 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
     return attachments;
   };
 
-  const sendMessageWithText = async (textToSend: string) => {
-    if (!activeConversation || (!textToSend.trim() && pendingImages.length === 0)) return;
+  const sendMessageWithText = async (textToSend: string, additionalFiles?: File[]) => {
+    if (!activeConversation || (!textToSend.trim() && pendingImages.length === 0 && (!additionalFiles || additionalFiles.length === 0))) return;
     setSending(true);
     setError(null);
     try {
       const attachments = await uploadPendingImages();
+      if (additionalFiles && additionalFiles.length > 0) {
+        for (const file of additionalFiles) {
+          try {
+            const presignRes = await fetchWithCsrf('/api/pd/files/presign', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: file.name,
+                content_type: file.type,
+                file_size: file.size,
+                purpose: 'chat_image',
+              }),
+            });
+            if (presignRes.ok) {
+              const presignData = await presignRes.json();
+              const uploadRes = await fetch(presignData.upload_url, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type },
+                body: file,
+              });
+              if (uploadRes.ok) {
+                attachments.push({
+                  file_key: presignData.file_key,
+                  file_name: file.name,
+                  content_type: file.type,
+                  file_size: file.size,
+                });
+              }
+            }
+          } catch {
+            // continue with any other attachments
+          }
+        }
+      }
       const res = await fetchWithCsrf(`/api/pd/chats/store/${activeConversation.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -581,8 +615,8 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
           setActiveId(id);
           void loadConversation(id);
         }}
-        onSendMessage={async (text) => {
-          await sendMessageWithText(text);
+        onSendMessage={async (text, files) => {
+          await sendMessageWithText(text, files);
         }}
         onValidateCodOrder={async () => {
           await handleValidateCod();

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from '@/contexts/LocaleContext';
+import { fetchWithCsrf } from '@/lib/api';
 
 export interface ThemeConfig {
   primaryColor: string;
@@ -33,6 +34,26 @@ export default function ThemeCustomizerPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  useEffect(() => {
+    async function loadThemeConfig() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/stores/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const savedConfig =
+            data.store?.settings?.draftThemeCustomization ||
+            data.store?.settings?.themeCustomization;
+          if (savedConfig && typeof savedConfig === 'object') {
+            setConfig((prev) => ({ ...prev, ...savedConfig }));
+          }
+        }
+      } catch {
+        // preserve default
+      }
+    }
+    loadThemeConfig();
+  }, []);
+
   const handleColorChange = (key: keyof ThemeConfig, val: string) => {
     setConfig((prev) => ({ ...prev, [key]: val }));
   };
@@ -40,10 +61,22 @@ export default function ThemeCustomizerPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Simulate saving to API or local persistence
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+      const draftRes = await fetchWithCsrf('/api/pd/stores/me/theme/draft', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ draftThemeCustomization: config }),
+      });
+      if (draftRes.ok) {
+        await fetchWithCsrf('/api/pd/stores/me/theme/publish-draft', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+      }
+    } catch {
+      // save failed
     } finally {
       setIsSaving(false);
     }

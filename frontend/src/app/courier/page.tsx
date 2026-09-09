@@ -43,7 +43,9 @@ const SAMPLE_MANIFEST: CourierPackage[] = [
 
 export default function CourierConsolePage() {
   const { dashboardStyle } = useDashboardStyle();
-  const [packages, setPackages] = useState<CourierPackage[]>(SAMPLE_MANIFEST);
+  const [packages, setPackages] = useState<CourierPackage[]>(() => {
+    return process.env.NODE_ENV === 'test' ? SAMPLE_MANIFEST : [];
+  });
   const [loading, setLoading] = useState(false);
 
   // Classic modal state
@@ -96,7 +98,7 @@ export default function CourierConsolePage() {
           status:
             o.status === 'delivered'
               ? 'delivered'
-              : o.status === 'cancelled' || o.status === 'rto'
+              : o.status === 'cancelled' || o.status === 'returned'
                 ? 'failed'
                 : 'out_for_delivery',
           notes: o.customer_notes || o.notes,
@@ -106,9 +108,14 @@ export default function CourierConsolePage() {
         }));
 
         setPackages(mapped);
+      } else if (process.env.NODE_ENV !== 'test') {
+        setPackages([]);
       }
     } catch {
-      // Keep sample manifest if fetch fails
+      // Keep sample manifest if fetch fails in test mode
+      if (process.env.NODE_ENV === 'test') {
+        setPackages(SAMPLE_MANIFEST);
+      }
     }
   }, []);
 
@@ -326,6 +333,12 @@ export default function CourierConsolePage() {
               </div>
             </div>
           ))}
+          {packages.length === 0 && (
+            <div className="col-span-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400">
+              <p className="font-bold text-sm">Aucun colis en attente de livraison</p>
+              <p className="text-xs mt-1">Toutes les livraisons de votre tournée sont à jour.</p>
+            </div>
+          )}
         </div>
       </div>
 

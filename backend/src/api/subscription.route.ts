@@ -312,4 +312,77 @@ router.post(
   }),
 );
 
+// Vendor: Update saved subscription billing payment method
+const updateSubscriptionPaymentMethodSchema = z.object({
+  card_holder: z.string().min(2).max(100),
+  card_number: z.string().min(12).max(24),
+  expiry: z.string().min(4).max(7),
+  cvv: z.string().min(3).max(4),
+});
+
+router.post(
+  '/payment-method',
+  requireStore,
+  validate(updateSubscriptionPaymentMethodSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const cleanDigits = req.body.card_number.replace(/\D/g, '');
+    if (cleanDigits.length < 13 || cleanDigits.length > 19) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_CARD',
+          message: 'Numéro de carte bancaire invalide.',
+        },
+      });
+      return;
+    }
+
+    const last4 = cleanDigits.slice(-4);
+    let brand = 'Carte Bancaire';
+    if (cleanDigits.startsWith('4')) brand = 'Visa';
+    else if (/^5[1-5]/.test(cleanDigits) || /^2[2-7]/.test(cleanDigits)) brand = 'Mastercard';
+    else if (/^3[47]/.test(cleanDigits)) brand = 'American Express';
+
+    const paymentMethodRecord = {
+      brand,
+      last4,
+      expiry: req.body.expiry,
+      cardholder: req.body.card_holder,
+      updated_at: new Date().toISOString(),
+    };
+
+    await query(
+      `UPDATE pd_store 
+       SET settings = jsonb_set(COALESCE(settings, '{}'::jsonb), '{default_payment_method}', $2::jsonb),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [req.user!.store_id!, JSON.stringify(paymentMethodRecord)],
+    );
+
+    res.status(200).json({
+      success: true,
+      payment_method: paymentMethodRecord,
+      message: 'Moyen de paiement de facturation enregistré avec succès.',
+    });
+  }),
+);
+
+// Vendor: Get saved subscription payment method
+router.get(
+  '/payment-method',
+  requireStore,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { rows } = await query<{ settings: Record<string, unknown> | null }>(
+      'SELECT settings FROM pd_store WHERE id = $1',
+      [req.user!.store_id!],
+    );
+
+    const storeSettings = rows[0]?.settings || {};
+    const paymentMethod = storeSettings.default_payment_method || null;
+
+    res.status(200).json({
+      payment_method: paymentMethod,
+    });
+  }),
+);
+
 export default router;

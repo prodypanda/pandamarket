@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { fetchWithCsrf } from '@/lib/api';
 import {
   CreditCard,
   Save,
@@ -49,6 +50,7 @@ export interface SellerReGoPaymentConfigProps {
   error?: string;
   success?: string;
   onSave: (payload: Record<string, string>) => Promise<void>;
+  onTestGateway?: (gateway: string, payload?: Record<string, string>) => Promise<{ ok: boolean; message: string }>;
   onDismissAlert?: () => void;
   dir?: 'ltr' | 'rtl';
 }
@@ -60,6 +62,7 @@ export function SellerReGoPaymentConfig({
   error,
   success,
   onSave,
+  onTestGateway,
   onDismissAlert,
   dir = 'ltr',
 }: SellerReGoPaymentConfigProps) {
@@ -141,15 +144,60 @@ export function SellerReGoPaymentConfig({
     setTestingModalOpen(true);
     setTestResult(null);
 
-    // Simulated credential check
-    setTimeout(() => {
-      setTestingInProgress(false);
+    const payload: Record<string, string> = { gateway };
+    if (gateway === 'flouci') {
+      if (flouciAppToken) payload.flouci_app_token = flouciAppToken;
+      if (flouciAppSecret) payload.flouci_app_secret = flouciAppSecret;
+    } else if (gateway === 'konnect') {
+      if (konnectApiKey) payload.konnect_api_key = konnectApiKey;
+      if (konnectReceiverWallet) payload.konnect_receiver_wallet = konnectReceiverWallet;
+    } else if (gateway === 'paypal') {
+      if (paypalClientId) {
+        payload.paypal_client_id = paypalClientId;
+        payload.paypal_live_client_id = paypalClientId;
+      }
+      if (paypalClientSecret) payload.paypal_live_client_secret = paypalClientSecret;
+    }
+
+    try {
+      if (onTestGateway) {
+        const res = await onTestGateway(gateway, payload);
+        setTestResult({
+          gateway,
+          ok: res.ok,
+          message: res.message,
+        });
+      } else {
+        const res = await fetchWithCsrf('/api/pd/stores/me/payment-config/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) {
+          setTestResult({
+            gateway,
+            ok: true,
+            message: data.message || `Connexion sécurisée établie avec succès avec l'API ${gateway}. Clés valides.`,
+          });
+        } else {
+          setTestResult({
+            gateway,
+            ok: false,
+            message: data.message || data.error?.message || `Échec du test de connexion pour la passerelle ${gateway}.`,
+          });
+        }
+      }
+    } catch (err) {
       setTestResult({
         gateway,
-        ok: true,
-        message: `Connexion sécurisée établie avec succès avec l'API ${gateway}. Clés valides.`,
+        ok: false,
+        message: err instanceof Error ? err.message : `Erreur de communication avec le serveur pour ${gateway}.`,
       });
-    }, 1200);
+    } finally {
+      setTestingInProgress(false);
+    }
   };
 
   // Count active gateways
@@ -266,7 +314,7 @@ export function SellerReGoPaymentConfig({
           />
           <ReGoKpiHero
             label="Devise de Référence"
-            value="0.000 TND"
+            value="TND (DT)"
             hint="Dinar Tunisien avec fractionnement millimes"
             delta={100}
             deltaLabel="national"

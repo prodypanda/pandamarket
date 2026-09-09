@@ -108,6 +108,11 @@ export const updatePaymentConfigSchema = z.object({
   flouci_app_secret: z.string().min(1).optional(),
   konnect_api_key: z.string().min(1).optional(),
   konnect_receiver_wallet: z.string().min(1).optional(),
+  paypal_client_id: z.string().min(1).optional(),
+  paypal_sandbox_client_id: z.string().min(1).optional(),
+  paypal_sandbox_client_secret: z.string().min(1).optional(),
+  paypal_live_client_id: z.string().min(1).optional(),
+  paypal_live_client_secret: z.string().min(1).optional(),
 });
 
 // =====================================================

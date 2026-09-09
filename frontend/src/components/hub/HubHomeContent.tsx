@@ -108,6 +108,7 @@ function ProductCard({
   showCart?: boolean;
   marketplaceSettings?: MarketplaceSettings;
 }) {
+  const { t } = useLocale();
   const image = getProductImage(product);
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
@@ -191,7 +192,7 @@ function ProductCard({
             <button
               type="button"
               onClick={handleQuickAdd}
-              aria-label={`Ajouter ${product.title} au panier`}
+              aria-label={`${t('nav.cart') || 'Panier'} — ${product.title}`}
               className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition-all shadow-sm ${
                 added
                   ? 'bg-emerald-600 text-white shadow-emerald-600/30'
@@ -201,12 +202,12 @@ function ProductCard({
               {added ? (
                 <>
                   <Check className="h-3.5 w-3.5" />
-                  <span>Ajouté</span>
+                  <span>{t('common.added') || 'Ajouté'}</span>
                 </>
               ) : (
                 <>
                   <ShoppingCart className="h-3.5 w-3.5" />
-                  <span>Panier</span>
+                  <span>{t('nav.cart') || 'Panier'}</span>
                 </>
               )}
             </button>
@@ -266,9 +267,9 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
     ? totalProducts
     : trendingProducts.length;
   const marketplaceStats = [
-    { label: 'Produits actifs', value: `${activeProductCount.toLocaleString()}+` },
-    { label: 'Catégories', value: `${publicCategories.length}+` },
-    { label: 'Paiements', value: '4 modes' },
+    { label: t('hub.activeProducts') || 'Produits actifs', value: `${activeProductCount.toLocaleString()}+` },
+    { label: t('hub.categories') || 'Catégories', value: `${publicCategories.length}+` },
+    { label: t('hub.paymentModes') || 'Paiements', value: t('hub.paymentCount') || '4 modes' },
   ];
 
   const features = [
@@ -290,10 +291,10 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
   ];
 
   const serviceBadges = [
-    { icon: Truck, title: 'Livraison rapide', desc: 'Expédition locale par les vendeurs' },
-    { icon: CreditCard, title: 'Paiement sécurisé', desc: 'Flouci, Konnect, mandat et COD' },
-    { icon: BadgeCheck, title: 'Boutiques vérifiées', desc: 'Vendeurs tunisiens contrôlés' },
-    { icon: Headphones, title: 'Support acheteur', desc: 'Assistance marketplace centralisée' },
+    { icon: Truck, title: t('hub.valueProps.fast.title') || 'Livraison rapide', desc: t('hub.valueProps.fast.desc') || 'Expédition locale par les vendeurs' },
+    { icon: CreditCard, title: t('hub.valueProps.payment.title') || 'Paiement sécurisé', desc: t('hub.valueProps.payment.desc') || 'Flouci, Konnect, mandat et COD' },
+    { icon: BadgeCheck, title: t('hub.valueProps.verified.title') || 'Boutiques vérifiées', desc: t('hub.valueProps.verified.desc') || 'Vendeurs tunisiens contrôlés' },
+    { icon: Headphones, title: t('hub.buyerSupport') || 'Support acheteur', desc: t('hub.buyerSupportDesc') || 'Assistance marketplace centralisée' },
   ];
 
   const renderFeatures = (): ReactNode => (
@@ -366,10 +367,10 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-[2rem] bg-gradient-to-br from-[#16C784] to-[#0f9f6e] p-8 text-white shadow-xl shadow-[#16C784]/20">
           <Sparkles className="mb-5 h-10 w-10" />
-          <h2 className="text-3xl font-black">{blockTitle('deals_spotlight', 'Daily marketplace deals')}</h2>
-          <p className="mt-3 text-white/75">Discover new offers from independent Tunisian sellers every day.</p>
+          <h2 className="text-3xl font-black">{blockTitle('deals_spotlight', t('hub.dealsTitle') || 'Offres du jour')}</h2>
+          <p className="mt-3 text-white/75">{t('hub.dealsSubtitle') || 'Découvrez chaque jour de nouvelles offres exclusives des vendeurs tunisiens.'}</p>
           <Link href="/hub/search" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#0f9f6e]">
-            Shop deals <ArrowRight className="h-4 w-4" />
+            {t('hub.dealsShop') || 'Voir les offres'} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
@@ -390,7 +391,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
                 <div className="min-w-0">
                   <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[11px] font-black text-red-600">
                     <Flame className="h-3 w-3" />
-                    Trending
+                    {t('hub.trendingNow') || 'Tendances'}
                   </div>
                   <h3 className="line-clamp-2 font-bold text-gray-900 dark:text-white">{product.title}</h3>
                   <div>
@@ -419,7 +420,7 @@ export function HubHomeContent({ trendingProducts, categories, marketplaceSettin
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-600">
               <Flame className="h-3.5 w-3.5" />
-              Trending now
+              {t('hub.trendingNow') || 'Tendances du moment'}
             </div>
             <h2 className="text-3xl font-black text-gray-900 dark:text-white">{blockTitle('trending', t('hub.trending'))}</h2>
             <p className="mt-2 text-gray-500 dark:text-gray-400">{t('hub.trendingSubtitle')}</p>

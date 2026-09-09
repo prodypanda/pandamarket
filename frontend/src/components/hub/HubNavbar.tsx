@@ -333,8 +333,8 @@ export function HubNavbar({ marketplaceName, marketplaceLogoUrl, marketplaceLogo
             </Link>
             <Link
               href="/hub/cart"
-              aria-label={isHydrated && cartCount > 0 ? `Cart — ${cartCount} ${cartCount === 1 ? 'item' : 'items'}` : 'Cart'}
-              title="Cart"
+              aria-label={isHydrated && cartCount > 0 ? `${t('nav.cart') || 'Panier'} (${cartCount})` : (t('nav.cart') || 'Panier')}
+              title={t('nav.cart') || 'Panier'}
               className={`flex items-center transition-colors relative ${isAliExpress2 ? 'text-white/60 hover:text-[#ff6b6b]' : isAliExpress ? 'text-gray-600 dark:text-gray-300 hover:text-[#ff4747]' : 'text-gray-600 dark:text-gray-300 hover:text-[#16C784]'}`}
             >
               <ShoppingBag className="w-5 h-5" strokeWidth={1.75} />

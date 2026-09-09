@@ -167,6 +167,33 @@ export default function PaymentConfigPage() {
     }
   };
 
+  const handleTestGateway = async (gateway: string, payload?: Record<string, string>) => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/payment-config/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload || { gateway }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        return {
+          ok: true,
+          message: data.message || `Connexion sécurisée établie avec succès avec l'API ${gateway}. Clés valides.`,
+        };
+      }
+      return {
+        ok: false,
+        message: data.message || data.error?.message || `Échec du test de connexion pour la passerelle ${gateway}.`,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : `Erreur lors du test de ${gateway}.`,
+      };
+    }
+  };
+
   if (dashboardStyle === 'rego') {
     return (
       <SellerReGoPaymentConfig
@@ -176,6 +203,7 @@ export default function PaymentConfigPage() {
         error={error}
         success={success}
         onSave={handleDirectSave}
+        onTestGateway={handleTestGateway}
         onDismissAlert={() => {
           setError('');
           setSuccess('');

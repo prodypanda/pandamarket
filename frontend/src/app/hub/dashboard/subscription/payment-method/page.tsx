@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { SellerReGoPaymentMethod } from '@/components/dashboard/rego/SellerReGoPaymentMethod';
+import { fetchWithCsrf } from '@/lib/api';
 import { CreditCard, CheckCircle2, AlertCircle, ShieldCheck, Lock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,6 +23,29 @@ export default function VendorPaymentMethodUpdatePage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [savedMethod, setSavedMethod] = useState<{ brand: string; last4: string; expiry: string; cardholder: string } | null>(null);
+
+  useEffect(() => {
+    async function loadSavedMethod() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/subscriptions/payment-method', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.payment_method) {
+            setSavedMethod(data.payment_method);
+            if (!cardHolder && data.payment_method.cardholder) {
+              setCardHolder(data.payment_method.cardholder);
+            }
+          }
+        }
+      } catch {
+        // silent fail on fetch
+      }
+    }
+    loadSavedMethod();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,15 +59,32 @@ export default function VendorPaymentMethodUpdatePage() {
     setSuccess('');
 
     try {
-      // Simulate secure tokenized card update
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await fetchWithCsrf('/api/pd/subscriptions/payment-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          card_holder: cardHolder,
+          card_number: cardNumber,
+          expiry,
+          cvv,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error?.message || data.message || t('dashboardPages.paymentMethod.errors.updateFailed'));
+      }
+
       setSuccess(t('dashboardPages.paymentMethod.success.updated'));
+      if (data.payment_method) {
+        setSavedMethod(data.payment_method);
+      }
       setCardNumber('');
       setExpiry('');
       setCvv('');
-      setCardHolder('');
-    } catch {
-      setError(t('dashboardPages.paymentMethod.errors.updateFailed'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboardPages.paymentMethod.errors.updateFailed'));
     } finally {
       setLoading(false);
     }
