@@ -22,6 +22,8 @@ import { useDashboardSubscription } from '@/contexts/DashboardSubscriptionContex
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoDomains } from '@/components/dashboard/rego/SellerReGoDomains';
 
 interface DnsRecord {
   id: string;
@@ -35,6 +37,7 @@ interface DnsRecord {
 
 export default function DomainsPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const { limits } = useDashboardSubscription();
   const hasCustomDomainAccess = limits === null || limits.has_custom_domain;
   const [subdomain, setSubdomain] = useState('');
@@ -156,6 +159,28 @@ export default function DomainsPage() {
       <div className="flex h-64 items-center justify-center" dir={dir}>
         <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoDomains
+        subdomain={subdomain}
+        customDomain={customDomain}
+        initialCustomDomain={initialCustomDomain}
+        dnsRecords={dnsRecords}
+        hasCustomDomainAccess={hasCustomDomainAccess}
+        saving={saving}
+        isDirty={isDirty}
+        feedback={feedback}
+        onCustomDomainChange={(val) => {
+          setCustomDomain(val);
+          setIsDirty(val !== initialCustomDomain);
+        }}
+        onSave={handleSave}
+        onReset={handleReset}
+        dir={dir}
+      />
     );
   }
 

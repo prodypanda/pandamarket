@@ -6,6 +6,8 @@ import { Search, Save, RefreshCw } from 'lucide-react';
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoSeo } from '@/components/dashboard/rego/SellerReGoSeo';
 
 interface SeoSettings {
   meta_title?: string;
@@ -16,6 +18,7 @@ interface SeoSettings {
 
 export default function SeoSettingsPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [seo, setSeo] = useState<SeoSettings>({
     meta_title: '',
     meta_description: '',
@@ -94,6 +97,23 @@ export default function SeoSettingsPage() {
       <div dir={dir} className="flex h-64 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoSeo
+        seo={seo}
+        subdomain={subdomain}
+        customDomain={customDomain}
+        saving={saving}
+        isDirty={isDirty}
+        feedback={feedback}
+        onChange={handleChange}
+        onSave={handleSave}
+        onReset={handleReset}
+        dir={dir}
+      />
     );
   }
 

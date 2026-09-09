@@ -235,15 +235,15 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
 - [x] **Page 49: Drag & Drop Custom Landing Page Builder** (/hub/dashboard/page-builder)
   - [x] Breadcrumb: Accueil > Boutique en Ligne > Constructeur de Pages
   - [x] Implement custom content page editor (About Us, Contact, Privacy, Terms) with rich text.
-- [ ] **Page 50: Custom Domains, SSL & DNS Records Configuration** (/hub/dashboard/online-store/domains)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Domaines & DNS
-  - [ ] Implement custom domain input, CNAME/A record verification checker, and automatic SSL badge.
-- [ ] **Page 51: Storefront SEO Metadata, Google Search Preview & OpenGraph** (/hub/dashboard/online-store/seo)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Référencement & Pixels
-  - [ ] Implement title, meta description, Google snippet simulator, and social share preview.
-- [ ] **Page 52: Tunisian Carriers Rate Simulator & Marketing Tracking Pixels** (/hub/dashboard/online-store/integrations)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Logistique & Intégrations
-  - [ ] Implement regional shipping rate matrix across 24 Governorates and pixel integration inputs (Meta, TikTok, GA4).
+- [x] **Page 50: Custom Domains, SSL & DNS Records Configuration** (/hub/dashboard/online-store/domains)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Domaines & DNS
+  - [x] Implement custom domain input, CNAME/A record verification checker, and automatic SSL badge.
+- [x] **Page 51: Storefront SEO Metadata, Google Search Preview & OpenGraph** (/hub/dashboard/online-store/seo)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Référencement & Pixels
+  - [x] Implement title, meta description, Google snippet simulator, and social share preview.
+- [x] **Page 52: Tunisian Carriers Rate Simulator & Marketing Tracking Pixels** (/hub/dashboard/online-store/integrations)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Logistique & Intégrations
+  - [x] Implement regional shipping rate matrix across 24 Governorates and pixel integration inputs (Meta, TikTok, GA4).
 
 ### Section 6: Marketing, Advertising, CRM & Loyalty (SELLER_SEC06_MARKETING_ADS_CRM_LOYALTY.md)
 - [ ] **Page 35: PandaAds Center: Campaign Creator, Budgeting & ROAS vs Net Margin** (/hub/dashboard/ads)

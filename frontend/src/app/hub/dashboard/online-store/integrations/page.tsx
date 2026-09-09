@@ -25,6 +25,8 @@ import {
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoIntegrations } from '@/components/dashboard/rego/SellerReGoIntegrations';
 
 interface IntegrationsSettings {
   google_analytics_id?: string;
@@ -212,6 +214,7 @@ const DEFAULT_CARRIERS: CarrierInfo[] = [
 
 export default function IntegrationsPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [activeTab, setActiveTab] = useState<'logistics' | 'pixels'>('logistics');
 
   // Integrations state
@@ -592,6 +595,39 @@ export default function IntegrationsPage() {
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoIntegrations
+        integrations={integrations}
+        carriers={carriers}
+        governorates={governorates}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        simOriginCity={simOriginCity}
+        onSimOriginCityChange={setSimOriginCity}
+        simDestGov={simDestGov}
+        onSimDestGovChange={setSimDestGov}
+        simWeight={simWeight}
+        onSimWeightChange={setSimWeight}
+        simCodAmount={simCodAmount}
+        onSimCodAmountChange={setSimCodAmount}
+        simQuotes={simQuotes}
+        simBestRate={simBestRate}
+        simFastest={simFastest}
+        simRecommended={simRecommended}
+        saving={saving}
+        isDirty={isDirty}
+        feedback={feedback}
+        onChange={handleChange}
+        onToggleCarrier={handleToggleCarrier}
+        onCarrierAdjustment={handleCarrierAdjustment}
+        onSave={handleSave}
+        onReset={handleReset}
+        dir={dir}
+      />
     );
   }
 
