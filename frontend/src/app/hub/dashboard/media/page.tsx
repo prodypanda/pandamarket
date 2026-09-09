@@ -2,7 +2,9 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { fetchWithCsrf } from '@/lib/api';
+import { SellerReGoMedia } from '@/components/dashboard/rego/SellerReGoMedia';
 import {
   Check,
   Copy,
@@ -90,6 +92,7 @@ function formatDate(dateStr?: string, locale = 'fr-TN') {
 }
 
 export default function SellerMediaPage() {
+  const { dashboardStyle } = useDashboardStyle();
   const { t, locale, dir } = useLocale();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
@@ -412,6 +415,62 @@ export default function SellerMediaPage() {
     ],
     [t, summary],
   );
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoMedia
+        items={items}
+        summary={summary}
+        loading={loading}
+        onRefresh={fetchMediaItems}
+        onUploadFiles={async (files) => {
+          for (let i = 0; i < files.length; i++) {
+            await processUpload(files[i], activeFolder === 'all' ? 'uncategorized' : activeFolder);
+          }
+        }}
+        onRename={async (item, newName) => {
+          const res = await fetchWithCsrf('/api/pd/stores/me/media/rename', {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              key: item.key,
+              new_filename: newName.trim(),
+            }),
+          });
+          if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to rename media'));
+          await fetchMediaItems();
+        }}
+        onDelete={async (item) => {
+          const res = await fetchWithCsrf('/api/pd/stores/me/media', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: item.key }),
+          });
+          if (!res.ok) throw new Error(await getErrorMessage(res, 'Failed to delete media asset'));
+          await fetchMediaItems();
+        }}
+        onOptimize={async (item, options) => {
+          const res = await fetchWithCsrf('/api/pd/stores/me/media/optimize', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              key: item.key,
+              quality: options.quality,
+              maxWidth: options.maxWidth,
+              format: options.format,
+            }),
+          });
+          if (!res.ok) throw new Error(await getErrorMessage(res, 'Optimization failed'));
+          await fetchMediaItems();
+        }}
+        uploading={uploading}
+        uploadProgress={uploadProgress}
+      />
+    );
+  }
 
   return (
     <div

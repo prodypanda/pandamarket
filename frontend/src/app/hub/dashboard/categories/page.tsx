@@ -3,6 +3,8 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoCategories } from '@/components/dashboard/rego/SellerReGoCategories';
 import {
   AlertTriangle,
   ArrowDown,
@@ -614,6 +616,7 @@ function DeleteImpactModal({
 }
 
 export default function StorefrontCategoriesPage() {
+  const { dashboardStyle } = useDashboardStyle();
   const { t } = useLocale();
   const [categoriesTree, setCategoriesTree] = useState<Category[]>([]);
   const [flatCategories, setFlatCategories] = useState<Category[]>([]);
@@ -907,6 +910,51 @@ export default function StorefrontCategoriesPage() {
   const subcategoriesCount = flatCategories.filter((c) => c.parent_id).length;
   const activeCount = flatCategories.filter((c) => c.is_active).length;
   const totalAssignedProducts = flatCategories.reduce((sum, c) => sum + (c.product_count || 0), 0);
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoCategories
+        categories={flatCategories}
+        loading={loading}
+        onRefresh={fetchCategories}
+        onSaveCategory={async (data) => {
+          const isEditing = Boolean(data.id);
+          const payload = {
+            ...data,
+            name_fr: data.name_fr || data.name,
+            parent_id: data.parent_id || null,
+          };
+          const url = isEditing
+            ? `/api/pd/stores/me/categories/${data.id}`
+            : '/api/pd/stores/me/categories';
+          const method = isEditing ? 'PUT' : 'POST';
+
+          const res = await fetchWithCsrf(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error(await getErrorMessage(res, 'Erreur lors de la sauvegarde de la catégorie'));
+          await fetchCategories();
+        }}
+        onDeleteCategory={async (cat) => {
+          const res = await fetchWithCsrf(`/api/pd/stores/me/categories/${cat.id}?confirm=true`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          if (!res.ok) throw new Error(await getErrorMessage(res, 'Erreur lors de la suppression'));
+          await fetchCategories();
+        }}
+        onMovePosition={async (category, direction) => {
+          await movePosition(category, direction);
+        }}
+        onUploadImage={async (file) => {
+          return await uploadImage(file);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

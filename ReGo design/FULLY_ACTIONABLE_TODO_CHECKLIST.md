@@ -48,18 +48,18 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply ReGo modern layout with modular metrics and active orders feed (`SellerReGoCockpit.tsx`).
   - [x] Urgent COD Anti-Refus deck with 1-click verification (Call, SMS OTP, Confirmation).
   - [x] 4-carrier Tunisian SLA pipeline (Aramex, Rapid-Poste, Runex, First Delivery).
-- [ ] **Page 33: Launch Checklist** (`/hub/dashboard/onboarding`)
-  - [ ] Apply milestone stepper cards with progress percentage bar.
+- [x] **Page 33: Launch Checklist** (`/hub/dashboard/onboarding`)
+  - [x] Apply milestone stepper cards with progress percentage bar (`SellerReGoOnboarding.tsx`).
 - [x] **Page 34: Store Analytics** (`/hub/dashboard/analytics`)
   - [x] Apply split-card charts (`AnalyticsReGoCockpit.tsx`), vector SVG trend lines, and top star products.
 
 ### Section 2: Catalog, Inventory & Media (`SELLER_SEC02_CATALOG_INVENTORY_COLLECTIONS.md`)
 - [x] **Page 36: Products & Variants** (`/hub/dashboard/products`)
   - [x] Apply ReGo modern view (`ProductsReGoCockpit.tsx`) with thumbnail previews, low stock alert deck, and 1-click stock adjuster.
-- [ ] **Page 37: Categories & Collections** (`/hub/dashboard/categories`)
-  - [ ] Apply collection cards with automated tag rules.
-- [ ] **Page 39: Media Library** (`/hub/dashboard/media`)
-  - [ ] Apply multi-file drag-and-drop vault with image cropper.
+- [x] **Page 37: Categories & Collections** (`/hub/dashboard/categories`)
+  - [x] Apply collection cards with automated tag rules (`SellerReGoCategories.tsx`).
+- [x] **Page 39: Media Library** (`/hub/dashboard/media`)
+  - [x] Apply multi-file drag-and-drop vault with image cropper and WebP optimization (`SellerReGoMedia.tsx`).
 
 ### Section 3: Orders, Fulfillment & Courier Handshake (`SELLER_SEC03_ORDERS_FULFILLMENT_NEGOTIATION.md`)
 - [x] **Page 40: Orders Fulfillment & COD Deck** (`/hub/dashboard/orders`)

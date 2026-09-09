@@ -32,7 +32,9 @@ import {
 import { fetchOnboardingState, updateOnboardingStep, type OnboardingState } from '@/lib/onboarding';
 import { themes, type ThemeId } from '@/lib/themes';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { SellerReGoOnboarding } from '@/components/dashboard/rego/SellerReGoOnboarding';
 
 interface ThemeCustomizationState {
   layoutVariation?: string | null;
@@ -98,6 +100,7 @@ function getResumeStep(state: OnboardingState): number {
 }
 
 export default function SellerOnboardingPage() {
+  const { dashboardStyle } = useDashboardStyle();
   const { locale } = useLocale();
   const [store, setStore] = useState<StoreState | null>(null);
   const [verification, setVerification] = useState<VerificationState | null>(null);
@@ -504,6 +507,65 @@ export default function SellerOnboardingPage() {
   }
 
   const storefrontHref = store?.subdomain ? `/store/${encodeURIComponent(store.subdomain)}?view=website` : '/hub';
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoOnboarding
+        store={store}
+        verification={verification}
+        productCount={productCount}
+        firstProduct={firstProduct}
+        categories={categories}
+        loading={loading}
+        platformDomain={platformDomain}
+        storefrontHref={storefrontHref}
+        showWizard={showWizard}
+        setShowWizard={setShowWizard}
+        currentStep={currentStep}
+        setCurrentStep={setCurrentStep}
+        savingStep={savingStep}
+        wizardError={wizardError}
+        storeName={storeName}
+        setStoreName={setStoreName}
+        logoUrl={logoUrl}
+        setLogoUrl={setLogoUrl}
+        logoDarkUrl={logoDarkUrl}
+        setLogoDarkUrl={setLogoDarkUrl}
+        selectedTheme={selectedTheme}
+        setSelectedTheme={setSelectedTheme}
+        phone={phone}
+        setPhone={setPhone}
+        rcFileUrl={rcFileUrl}
+        setRcFileUrl={setRcFileUrl}
+        cinFileUrl={cinFileUrl}
+        setCinFileUrl={setCinFileUrl}
+        productTitle={productTitle}
+        setProductTitle={setProductTitle}
+        productPrice={productPrice}
+        setProductPrice={setProductPrice}
+        productDescription={productDescription}
+        setProductDescription={setProductDescription}
+        selectedCategoryId={selectedCategoryId}
+        setSelectedCategoryId={setSelectedCategoryId}
+        productThumbnail={productThumbnail}
+        setProductThumbnail={setProductThumbnail}
+        shippingFee={shippingFee}
+        setShippingFee={setShippingFee}
+        codEnabled={codEnabled}
+        setCodEnabled={setCodEnabled}
+        bankTransferDetails={bankTransferDetails}
+        setBankTransferDetails={setBankTransferDetails}
+        onSaveBasics={saveStoreBasics}
+        onSaveTheme={saveThemeSelection}
+        onSaveKyc={saveKyc}
+        onSaveProduct={saveFirstProduct}
+        onSaveShippingPayment={savePaymentsAndShipping}
+        onPublishToggle={publishStoreToggle}
+        onFileUpload={handleFileUpload}
+        onRefresh={loadOnboardingData}
+      />
+    );
+  }
 
   return (
     <div className="relative space-y-6">

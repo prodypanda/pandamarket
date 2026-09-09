@@ -165,29 +165,29 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
 ## Phase 2: Seller Dashboard Implementation (Pages 32 to 71)
 
 ### Section 1: Cockpit, Onboarding & Store Analytics (SELLER_SEC01_COCKPIT_ONBOARDING_ANALYTICS.md)
-- [ ] **Page 32: Seller Cockpit & Executive Business Summary** (/hub/dashboard)
-  - [ ] Breadcrumb: Accueil > Tableau de bord
-  - [ ] Implement Bento Cockpit theme variant (modular widgets, live order feed, fast action dock).
-  - [ ] Implement Classique E-Commerce theme variant (traditional summary, linear tables).
-  - [ ] Implement ReGo theme variant (refined modernist aesthetic).
-- [ ] **Page 33: Store Launch Checklist & Step-by-Step Onboarding Guide** (/hub/dashboard/onboarding)
-  - [ ] Breadcrumb: Accueil > Tableau de bord > Guide de lancement
-  - [ ] Implement progress bar, completed milestone badges, and dismissal persistence.
-- [ ] **Page 34: Store Analytics, Traffic, Conversion & Sales Velocity** (/hub/dashboard/analytics)
-  - [ ] Breadcrumb: Accueil > Tableau de bord > Statistiques
-  - [ ] Implement revenue trends, top performing products, traffic referral sources, and conversion funnel.
+- [x] **Page 32: Seller Cockpit & Executive Business Summary** (/hub/dashboard)
+  - [x] Breadcrumb: Accueil > Tableau de bord
+  - [x] Implement Bento Cockpit theme variant (modular widgets, live order feed, fast action dock).
+  - [x] Implement Classique E-Commerce theme variant (traditional summary, linear tables).
+  - [x] Implement ReGo theme variant (refined modernist aesthetic).
+- [x] **Page 33: Store Launch Checklist & Step-by-Step Onboarding Guide** (/hub/dashboard/onboarding)
+  - [x] Breadcrumb: Accueil > Tableau de bord > Guide de lancement
+  - [x] Implement progress bar, completed milestone badges, and dismissal persistence.
+- [x] **Page 34: Store Analytics, Traffic, Conversion & Sales Velocity** (/hub/dashboard/analytics)
+  - [x] Breadcrumb: Accueil > Tableau de bord > Statistiques
+  - [x] Implement revenue trends, top performing products, traffic referral sources, and conversion funnel.
 
 ### Section 2: Products, Inventory & Media Library (SELLER_SEC02_CATALOG_INVENTORY_COLLECTIONS.md)
-- [ ] **Page 36: Product Catalog, Inventory Adjuster & Variant Matrix** (/hub/dashboard/products)
-  - [ ] Breadcrumb: Accueil > Catalogue > Produits
-  - [ ] Implement product table with thumbnail, SKU, stock level badges, price in TND 0.000, and actions.
-  - [ ] Implement quick inline stock adjuster and multi-variant creator (size, color, material).
-- [ ] **Page 37: Store Product Categories & Custom Collections** (/hub/dashboard/categories)
-  - [ ] Breadcrumb: Accueil > Catalogue > Catégories & Collections
-  - [ ] Implement custom collections manager with automatic product tagging rules.
-- [ ] **Page 39: Store Media Library, Product Image Vault & Asset Uploader** (/hub/dashboard/media)
-  - [ ] Breadcrumb: Accueil > Catalogue > Médiathèque
-  - [ ] Implement multi-file drag & drop uploader, image cropper, and CDN URL copy utility.
+- [x] **Page 36: Product Catalog, Inventory Adjuster & Variant Matrix** (/hub/dashboard/products)
+  - [x] Breadcrumb: Accueil > Catalogue > Produits
+  - [x] Implement product table with thumbnail, SKU, stock level badges, price in TND 0.000, and actions.
+  - [x] Implement quick inline stock adjuster and multi-variant creator (size, color, material).
+- [x] **Page 37: Store Product Categories & Custom Collections** (/hub/dashboard/categories)
+  - [x] Breadcrumb: Accueil > Catalogue > Catégories & Collections
+  - [x] Implement custom collections manager with automatic product tagging rules.
+- [x] **Page 39: Store Media Library, Product Image Vault & Asset Uploader** (/hub/dashboard/media)
+  - [x] Breadcrumb: Accueil > Catalogue > Médiathèque
+  - [x] Implement multi-file drag & drop uploader, image cropper, and CDN URL copy utility.
 
 ### Section 3: Orders, Fulfillment, COD & Courier Handshake (SELLER_SEC03_ORDERS_FULFILLMENT_NEGOTIATION.md)
 - [ ] **Page 40: Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck** (/hub/dashboard/orders)
