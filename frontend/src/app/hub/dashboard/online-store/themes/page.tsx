@@ -6,6 +6,8 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { fetchWithCsrf } from '@/lib/api';
 import { themes, type ThemeId, type ThemeConfig, type ColorPreset } from '@/lib/themes';
 import { revalidateStoreCache } from '@/lib/store-cache';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoThemes } from '@/components/dashboard/rego/SellerReGoThemes';
 import {
   Palette,
   Check,
@@ -31,6 +33,7 @@ type ViewportMode = 'desktop' | 'tablet' | 'mobile';
 
 export default function ThemesPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [activeThemeId, setActiveThemeId] = useState<ThemeId | null>(null);
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState<string | null>(null);
@@ -131,6 +134,22 @@ export default function ThemesPage() {
       : activePreviewTheme
         ? activePreviewTheme.colorPresets[0]
         : null;
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoThemes
+        activeThemeId={activeThemeId}
+        subdomain={subdomain}
+        customDomain={customDomain}
+        loading={loading}
+        applying={applying}
+        feedback={feedback}
+        onApplyTheme={handleApplyTheme}
+        onRefresh={fetchStore}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6" dir={dir}>

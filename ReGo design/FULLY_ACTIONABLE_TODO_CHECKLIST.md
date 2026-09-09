@@ -78,9 +78,14 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply toggle cards for COD, Flouci, Konnect, and PayPal credentials (`SellerReGoPaymentConfig.tsx`).
 
 ### Section 5: Online Storefront Builder (`SELLER_SEC05_ONLINE_STOREFRONT_BUILDER.md`)
-- [ ] **Pages 44-52: Storefront Hub, Themes, CSS Customizer, Banners, Menus, Pages, SEO, Carriers**
-  - [ ] Apply split-view visual customizer with responsive preview iframe (Desktop, Tablet, Mobile).
-  - [ ] Apply drag-and-drop reordering handles for navigation links and hero slides.
+- [x] **Page 44: Online Storefront Hub & Domain Health Monitor** (`/hub/dashboard/online-store`)
+  - [x] Apply ReGo modern view (`SellerReGoOnlineStore.tsx`) with domain identity cards, SSL indicators, and 8-module shortcut directory.
+- [x] **Page 45: Storefront Themes Gallery & Viewport Previews** (`/hub/dashboard/online-store/themes`)
+  - [x] Apply theme cards grid with active badge (`SellerReGoThemes.tsx`), color swatches, and interactive desktop/tablet/mobile viewport simulation modal.
+- [x] **Page 46: Visual Theme Customizer, Brand Colors & Real-Time CSS Preview** (`/hub/dashboard/online-store/customize`)
+  - [x] Apply split-view visual customizer (`SellerReGoCustomize.tsx`) with live color swatches, layout variations, grid density, and responsive simulated storefront frame.
+- [ ] **Pages 47-52: Banners, Menus, Pages, Domains, SEO, Carriers & Tracking**
+  - [ ] Apply drag-and-drop reordering handles for navigation links, custom pages, DNS verify badges, SEO simulator, and regional carrier matrix.
 
 ### Section 6: Marketing, Ads, CRM & Loyalty (`SELLER_SEC06_MARKETING_ADS_CRM_LOYALTY.md`)
 - [ ] **Pages 35, 38, 53, 69, 70: PandaAds, VIP Coupons, Customers Directory, Aliases**

@@ -22,6 +22,8 @@ import {
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { getStorefrontUrl } from '@/lib/store-hosts';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoOnlineStore } from '@/components/dashboard/rego/SellerReGoOnlineStore';
 
 interface StoreData {
   id: string;
@@ -39,6 +41,7 @@ interface StoreData {
 
 export default function OnlineStoreOverviewPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [store, setStore] = useState<StoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -167,6 +170,20 @@ export default function OnlineStoreOverviewPage() {
       icon: Users,
     },
   ];
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoOnlineStore
+        store={store}
+        loading={loading}
+        publishing={publishing}
+        feedback={feedback}
+        onTogglePublish={handleTogglePublish}
+        onRefresh={fetchStore}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-6">

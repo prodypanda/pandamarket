@@ -9,9 +9,12 @@ import { Sparkles, RefreshCw } from 'lucide-react';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { getStorefrontUrl } from '@/lib/store-hosts';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoCustomize } from '@/components/dashboard/rego/SellerReGoCustomize';
 
 export default function ThemeCustomizePage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [themeId, setThemeId] = useState<ThemeId>('classic');
   const [initialCustomization, setInitialCustomization] = useState<ThemeCustomization>({});
   const [currentCustomization, setCurrentCustomization] = useState<ThemeCustomization>({});
@@ -85,6 +88,28 @@ export default function ThemeCustomizePage() {
       <div dir={dir} className="flex h-64 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoCustomize
+        themeId={themeId}
+        subdomain={subdomain}
+        customDomain={customDomain}
+        initialCustomization={initialCustomization}
+        currentCustomization={currentCustomization}
+        isDirty={isDirty}
+        saving={saving}
+        feedback={feedback}
+        onSave={handleSave}
+        onReset={handleReset}
+        onChange={(newCust) => {
+          setCurrentCustomization(newCust);
+          setIsDirty(true);
+        }}
+        dir={dir}
+      />
     );
   }
 

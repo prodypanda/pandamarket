@@ -217,15 +217,15 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Implement payment method toggle cards (COD, Flouci merchant credentials, Konnect API keys).
 
 ### Section 5: Online Storefront, Themes & Page Builder (SELLER_SEC05_ONLINE_STOREFRONT_BUILDER.md)
-- [ ] **Page 44: Online Storefront Hub & Domain Health Monitor** (/hub/dashboard/online-store)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Vue d'ensemble
-  - [ ] Implement storefront status dashboard, SSL certificate indicator, and preview frame.
-- [ ] **Page 45: Storefront Themes Gallery & Viewport Previews** (/hub/dashboard/online-store/themes)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Galerie de Thèmes
-  - [ ] Implement theme gallery with desktop, tablet, and mobile device viewport switchers.
-- [ ] **Page 46: Visual Theme Customizer, Brand Colors & Real-Time CSS Preview** (/hub/dashboard/online-store/customize)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Personnalisation Visuelle
-  - [ ] Implement color picker, font family selector, border radius presets, and live preview iframe.
+- [x] **Page 44: Online Storefront Hub & Domain Health Monitor** (/hub/dashboard/online-store)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Vue d'ensemble
+  - [x] Implement storefront status dashboard, SSL certificate indicator, and preview frame.
+- [x] **Page 45: Storefront Themes Gallery & Viewport Previews** (/hub/dashboard/online-store/themes)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Galerie de Thèmes
+  - [x] Implement theme gallery with desktop, tablet, and mobile device viewport switchers.
+- [x] **Page 46: Visual Theme Customizer, Brand Colors & Real-Time CSS Preview** (/hub/dashboard/online-store/customize)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Personnalisation Visuelle
+  - [x] Implement color picker, font family selector, border radius presets, and live preview iframe.
 - [ ] **Page 47: Homepage Sections Customizer (Hero, Banners, Grids)** (/hub/dashboard/online-store/banners)
   - [ ] Breadcrumb: Accueil > Boutique en Ligne > Bannières & Carrousels
   - [ ] Implement drag-and-drop homepage block reordering, hero slide manager, and product carousels.
