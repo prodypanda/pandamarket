@@ -91,8 +91,10 @@ This checklist details every concrete engineering task required to implement the
   - [ ] Apply AI prompt builder with tone selector pills and quota meters.
 
 ### Section 8: Disputes, Settings & Organization (`SELLER_SEC08_DISPUTES_SETTINGS_DEV_ORGANIZATION.md`)
-- [ ] **Pages 59-68: Disputes, Identity, KYC Dossier, API Keys, Webhooks, Multi-Store**
-  - [ ] Apply dispute dossier timeline, KYC document inspection viewer, and multi-store switcher.
+- [x] **Page 62: Merchant KYC Verification Portal & Documents Upload** (`/hub/dashboard/kyc`)
+  - [x] Apply ReGo modern view (`SellerReGoKyc.tsx`) with real CIN/RNE document uploaders, presigned storage handling, phone verification, and BCT regulatory notices.
+- [ ] **Pages 59-61, 63-68: Disputes, Identity, API Keys, Webhooks, Multi-Store**
+  - [ ] Apply dispute dossier timeline, settings forms, API key generator, and multi-store switcher.
 
 ---
 

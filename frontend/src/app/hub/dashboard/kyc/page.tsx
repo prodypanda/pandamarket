@@ -5,6 +5,8 @@ import { updateOnboardingStep } from '@/lib/onboarding';
 import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, XCircle, Upload, Clock, FileText, AlertCircle } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoKyc } from '@/components/dashboard/rego/SellerReGoKyc';
 
 interface Verification {
   id: string;
@@ -33,6 +35,7 @@ function getKycMetadata(verification: Verification) {
 }
 
 export default function KycPage() {
+  const { dashboardStyle } = useDashboardStyle();
   const { t, locale, dir } = useLocale();
   const [verification, setVerification] = useState<Verification | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,6 +173,28 @@ export default function KycPage() {
   };
 
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoKyc
+        verification={verification}
+        loading={loading}
+        submitting={submitting}
+        rcDocUrl={rcDocUrl}
+        cinDocUrl={cinDocUrl}
+        phone={phone}
+        uploadingRc={uploadingRc}
+        uploadingCin={uploadingCin}
+        error={error}
+        success={success}
+        onUploadRc={(file) => handleFileUpload(file, setRcDocUrl, setUploadingRc)}
+        onUploadCin={(file) => handleFileUpload(file, setCinDocUrl, setUploadingCin)}
+        onPhoneChange={setPhone}
+        onSubmit={handleSubmit}
+        onRefresh={fetchStatus}
+      />
+    );
+  }
 
   if (loading) {
     return (
