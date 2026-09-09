@@ -21,6 +21,7 @@ import {
   normalizeStorefrontProductLoadingMode,
 } from '../../../../lib/storefront-product-loading';
 import type { StorefrontProductLoadingMode } from '@pandamarket/types';
+import { SellerReGoSettings } from '@/components/dashboard/rego/SellerReGoSettings';
 
 type Tab = 'store' | 'security' | 'theme' | 'domain' | 'shipping' | 'emails' | 'payments' | 'analytics';
 
@@ -117,6 +118,10 @@ export default function SettingsPage() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('TN');
+  const [postalCode, setPostalCode] = useState('');
+  const [slogan, setSlogan] = useState('');
+  const [operatingHours, setOperatingHours] = useState('');
+  const [preparationTime, setPreparationTime] = useState('24h');
   const [mapEmbedUrl, setMapEmbedUrl] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(emptySocialLinks);
   const [logoUrl, setLogoUrl] = useState('');
@@ -193,6 +198,10 @@ export default function SettingsPage() {
         setAddress(store.settings?.address || '');
         setCity(store.settings?.city || '');
         setCountry(store.settings?.country || 'TN');
+        setPostalCode(store.settings?.postal_code || '');
+        setSlogan(store.settings?.slogan || '');
+        setOperatingHours(store.settings?.operating_hours || '');
+        setPreparationTime(store.settings?.preparation_time || '24h');
         setMapEmbedUrl(store.settings?.map_embed_url || '');
         setSocialLinks({
           ...emptySocialLinks,
@@ -365,6 +374,10 @@ export default function SettingsPage() {
             address,
             city,
             country,
+            postal_code: postalCode,
+            slogan,
+            operating_hours: operatingHours,
+            preparation_time: preparationTime,
             map_embed_url: mapEmbedUrl,
             social: cleanSocialLinks(),
             logo_url: logoUrl,
@@ -855,6 +868,51 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoSettings
+        storeName={storeName}
+        subdomain={subdomain}
+        slogan={slogan}
+        description={storeDescription}
+        logoUrl={logoUrl}
+        bannerUrl={marketplaceHeaderImageUrl}
+        contactEmail={contactEmail}
+        phone={contactPhone}
+        address={address}
+        governorate={city}
+        postalCode={postalCode}
+        operatingHours={operatingHours}
+        preparationTime={preparationTime}
+        returnPolicy={returnsPolicy}
+        loading={loading}
+        saving={saving}
+        success={success}
+        error={error}
+        onStoreNameChange={setStoreName}
+        onSubdomainChange={setSubdomain}
+        onSloganChange={setSlogan}
+        onDescriptionChange={setStoreDescription}
+        onLogoUrlChange={setLogoUrl}
+        onBannerUrlChange={setMarketplaceHeaderImageUrl}
+        onContactEmailChange={setContactEmail}
+        onPhoneChange={setContactPhone}
+        onAddressChange={setAddress}
+        onGovernorateChange={setCity}
+        onPostalCodeChange={setPostalCode}
+        onOperatingHoursChange={setOperatingHours}
+        onPreparationTimeChange={setPreparationTime}
+        onReturnPolicyChange={setReturnsPolicy}
+        onSave={saveStoreSettings}
+        dashboardStyle={dashboardStyle}
+        onDashboardStyleChange={setDashboardStyle}
+        accent={accent}
+        onAccentChange={setAccent}
+        dir={dir}
+      />
     );
   }
 
@@ -1438,7 +1496,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
-                  Actuel: {dashboardStyle === 'rego' ? 'Cockpit ReGo' : dashboardStyle === 'bento' ? 'Cockpit Bento' : 'Tableau Classique'}
+                  Actuel: {(dashboardStyle as string) === 'rego' ? 'Cockpit ReGo' : dashboardStyle === 'bento' ? 'Cockpit Bento' : 'Tableau Classique'}
                 </span>
               </div>
 
@@ -1449,14 +1507,14 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setDashboardStyle('rego')}
                   className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                    dashboardStyle === 'rego'
+                    (dashboardStyle as string) === 'rego'
                       ? 'border-[var(--rego-accent,#ad0505)] bg-rose-50/30 dark:bg-rose-950/20 shadow-xs'
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-slate-900 dark:text-white">Cockpit ReGo</span>
-                    {dashboardStyle === 'rego' && (
+                    {(dashboardStyle as string) === 'rego' && (
                       <span className="h-2 w-2 rounded-full bg-[var(--rego-accent,#ad0505)]" />
                     )}
                   </div>
@@ -1509,7 +1567,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Regional Accent Pickers (Visible when ReGo is active) */}
-              {dashboardStyle === 'rego' && (
+              {(dashboardStyle as string) === 'rego' && (
                 <div className="pt-3 border-t border-slate-200/80 dark:border-slate-750 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">

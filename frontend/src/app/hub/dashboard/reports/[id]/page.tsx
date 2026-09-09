@@ -6,6 +6,8 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Download, Loader2, MessageSquare, Paperclip, Send, Upload, XCircle } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoDisputeDetail } from '@/components/dashboard/rego/SellerReGoDisputeDetail';
 
 type ReportStatus = 'open' | 'investigating' | 'awaiting_buyer' | 'awaiting_seller' | 'resolved' | 'dismissed';
 
@@ -158,6 +160,25 @@ export default function VendorReportDetailPage() {
       <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <Loader2 className="h-8 w-8 animate-spin text-slate-500 dark:text-slate-400" />
       </div>
+    );
+  }
+
+  const { dashboardStyle } = useDashboardStyle();
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoDisputeDetail
+        details={details}
+        loading={loading}
+        body={body}
+        files={files}
+        submitting={submitting}
+        feedback={feedback}
+        onBodyChange={setBody}
+        onFileChange={onFileChange}
+        onSubmitReply={submitMessage}
+        dir={dir}
+      />
     );
   }
 

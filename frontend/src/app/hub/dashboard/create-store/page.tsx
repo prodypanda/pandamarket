@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, Store } from 'lucide-react';
 import { getSellerTypeOptions, type SellerTypeValue } from '@/lib/seller-type';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoCreateStore } from '@/components/dashboard/rego/SellerReGoCreateStore';
 import { getMarketplaceDomain } from '@/lib/store-hosts';
 
 function slugify(value: string) {
@@ -27,6 +29,7 @@ async function getErrorMessage(res: Response, fallback: string) {
 
 export default function CreateStorePage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const sellerTypes = getSellerTypeOptions(t);
   const [form, setForm] = useState({
     name: '',
@@ -93,6 +96,24 @@ export default function CreateStorePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoCreateStore
+        name={form.name}
+        subdomain={form.subdomain}
+        sellerType={form.seller_type}
+        canCreateFreeStore={canCreateFreeStore}
+        saving={saving}
+        error={error}
+        sellerTypes={sellerTypes}
+        marketplaceDomain={getMarketplaceDomain()}
+        onFieldChange={(field, val) => updateField(field, val)}
+        onSubmit={handleSubmit}
+        dir={dir}
+      />
+    );
   }
 
   return (

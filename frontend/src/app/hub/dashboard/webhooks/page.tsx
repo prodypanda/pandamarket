@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoWebhooks } from '@/components/dashboard/rego/SellerReGoWebhooks';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   Webhook,
@@ -54,6 +56,7 @@ const API_BASE = '/api/pd';
 
 export default function WebhooksPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const [webhooks, setWebhooks] = useState<WebhookSubscription[]>([]);
@@ -187,6 +190,36 @@ export default function WebhooksPage() {
       <div dir={dir} className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoWebhooks
+        webhooks={webhooks}
+        deliveries={deliveries}
+        loading={loading}
+        error={error}
+        selectedWebhook={selectedWebhook}
+        onSelectWebhook={setSelectedWebhook}
+        showCreate={showCreate}
+        onShowCreateChange={setShowCreate}
+        newUrl={newUrl}
+        onNewUrlChange={setNewUrl}
+        newEvents={newEvents}
+        onToggleEvent={toggleEvent}
+        creating={creating}
+        onCreate={handleCreate}
+        newSecret={newSecret}
+        onClearNewSecret={() => setNewSecret(null)}
+        onToggleActive={handleToggle}
+        deleteTargetId={deleteTargetId}
+        onDeleteTargetIdChange={setDeleteTargetId}
+        deleting={deleting}
+        onConfirmDelete={confirmDelete}
+        onRefresh={fetchWebhooks}
+        dir={dir}
+      />
     );
   }
 

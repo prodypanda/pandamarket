@@ -2,6 +2,8 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoNotifications } from '@/components/dashboard/rego/SellerReGoNotifications';
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, Check, CheckCheck, Loader2, Filter, Trash2 } from 'lucide-react';
 
@@ -32,6 +34,7 @@ const typeIcons: Record<string, string> = {
 
 export default function NotificationsPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -138,6 +141,26 @@ export default function NotificationsPage() {
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoNotifications
+        notifications={notifications}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        filter={filter}
+        markingAll={markingAll}
+        error={error}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onPageChange={setPage}
+        onFilterChange={setFilter}
+        onRefresh={fetchNotifications}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-6">

@@ -2,6 +2,8 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoDisputes } from '@/components/dashboard/rego/SellerReGoDisputes';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Clock, Eye, Loader2, MessageSquare, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
@@ -121,6 +123,25 @@ export default function VendorReportsPage() {
 
   function priorityConfig(priority?: ReportPriority | null) {
     return PRIORITY_CONFIG[priority || 'medium'] || PRIORITY_CONFIG.medium;
+  }
+
+  const { dashboardStyle } = useDashboardStyle();
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoDisputes
+        reports={reports}
+        meta={meta}
+        loading={loading}
+        filter={filter}
+        onFilterChange={selectFilter}
+        page={page}
+        onPageChange={setPage}
+        onRefresh={() => void fetchReports()}
+        error={error}
+        dir={dir}
+      />
+    );
   }
 
   return (

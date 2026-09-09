@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoApiKeys } from '@/components/dashboard/rego/SellerReGoApiKeys';
 import {
   Key,
   Plus,
@@ -35,6 +37,7 @@ const AVAILABLE_SCOPES = [
 
 export default function ApiKeysPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const scopeInfo: Record<string, { label: string; desc: string }> = {
@@ -191,6 +194,37 @@ export default function ApiKeysPage() {
           <Loader2 className="w-8 h-8 text-slate-400 dark:text-slate-500 animate-spin" />
         </div>
       </div>
+    );
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoApiKeys
+        keys={keys}
+        loading={loading}
+        error={error}
+        showCreate={showCreate}
+        onShowCreateChange={setShowCreate}
+        newLabel={newLabel}
+        onNewLabelChange={setNewLabel}
+        newScopes={newScopes}
+        onToggleScope={toggleScope}
+        newExpiresAt={newExpiresAt}
+        onNewExpiresAtChange={setNewExpiresAt}
+        creating={creating}
+        createError={createError}
+        onCreateKey={handleCreate}
+        newlyCreatedKey={newlyCreatedKey}
+        onClearNewlyCreatedKey={() => setNewlyCreatedKey(null)}
+        copied={copied}
+        onCopyKey={handleCopyKey}
+        revokeId={revokeId}
+        onRevokeIdChange={setRevokeId}
+        revoking={revoking}
+        onRevokeKey={handleRevoke}
+        onRefresh={fetchKeys}
+        dir={dir}
+      />
     );
   }
 

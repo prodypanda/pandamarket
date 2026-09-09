@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, Plus, Store, ExternalLink, ReceiptText } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoSelectStore } from '@/components/dashboard/rego/SellerReGoSelectStore';
 import { getMarketplaceDomain, getStorefrontUrl } from '@/lib/store-hosts';
 
 interface SellerStore {
@@ -30,6 +32,7 @@ async function getErrorMessage(res: Response, fallback: string) {
 
 export default function SelectStorePage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [stores, setStores] = useState<SellerStore[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +80,20 @@ export default function SelectStorePage() {
       setError(err instanceof Error ? err.message : t('dashboardPages.selectStore.errorSelectStore'));
       setSelectingId(null);
     }
+  }
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoSelectStore
+        stores={stores}
+        selectedStoreId={selectedStoreId}
+        loading={loading}
+        selectingId={selectingId}
+        error={error}
+        onSelectStore={selectStore}
+        dir={dir}
+      />
+    );
   }
 
   return (

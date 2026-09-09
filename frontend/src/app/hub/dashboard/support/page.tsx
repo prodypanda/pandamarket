@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoSupport } from '@/components/dashboard/rego/SellerReGoSupport';
 
 type Ticket = {
   id: string;
@@ -36,6 +38,7 @@ type TicketAttachment = {
 
 export default function SellerSupportPage() {
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -182,6 +185,34 @@ export default function SellerSupportPage() {
 
   useEffect(() => { void loadTickets(); }, [statusFilter]);
   useEffect(() => { if (selectedTicketId) void loadTicketDetail(selectedTicketId); }, [selectedTicketId]);
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoSupport
+        tickets={tickets}
+        selectedTicketId={selectedTicketId}
+        messages={messages}
+        attachments={attachments}
+        replyBody={replyBody}
+        subject={subject}
+        description={description}
+        loading={loading}
+        submitting={submitting}
+        error={error}
+        statusFilter={statusFilter}
+        onSelectTicket={setSelectedTicketId}
+        onStatusFilterChange={setStatusFilter}
+        onSubjectChange={setSubject}
+        onDescriptionChange={setDescription}
+        onReplyBodyChange={setReplyBody}
+        onCreateTicket={createTicket}
+        onSendReply={sendReply}
+        onUpdateStatus={updateSellerStatus}
+        onRefresh={loadTickets}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-6">

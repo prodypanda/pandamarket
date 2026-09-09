@@ -273,49 +273,49 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Implement invoice list, PDF download, and offline postal mandat receipt attachment.
 
 ### Section 8: Disputes, Settings, KYC & Developer APIs (SELLER_SEC08_DISPUTES_SETTINGS_DEV_ORGANIZATION.md)
-- [ ] **Page 59: Customer Disputes, Infringement Claims & Resolution Cases** (/hub/dashboard/disputes)
-  - [ ] Breadcrumb: Accueil > Outils & Support > Litiges & Réclamations
-  - [ ] Implement dispute claim list, resolution deadlines, and claim response triggers.
-- [ ] **Page 60: Dispute Dossier View, Proof Upload & Resolution Response Submission** (/hub/dashboard/disputes/[id])
-  - [ ] Breadcrumb: Accueil > Outils & Support > Dossier Litige
-  - [ ] Implement dispute evidence file uploader (shipping receipt, photos) and merchant defense statement.
-- [ ] **Page 61: Store Identity, Business Profile & Operational Settings** (/hub/dashboard/settings)
-  - [ ] Breadcrumb: Accueil > Paramètres > Profil Boutique
-  - [ ] Implement store identity form (logo, legal name, matricule fiscal, contact information, hours).
-- [ ] **Page 62: Merchant KYC Verification Portal & Documents Upload** (/hub/dashboard/kyc)
-  - [ ] Breadcrumb: Accueil > Paramètres > Vérification KYC
-  - [ ] Implement merchant KYC upload dossier (CIN front/back, RNE document, bank RIB certificate).
-- [ ] **Page 63: Developer REST API Credentials & Permission Scopes** (/hub/dashboard/api-keys)
-  - [ ] Breadcrumb: Accueil > Paramètres > Clés d'API
-  - [ ] Implement API key generator with secret masking, copy button, and webhook permission checkboxes.
-- [ ] **Page 64: Real-time Webhook Subscriptions & Delivery Logs** (/hub/dashboard/webhooks)
-  - [ ] Breadcrumb: Accueil > Paramètres > Webhooks
-  - [ ] Implement webhook endpoint manager and delivery attempt log inspector.
-- [ ] **Page 65: Store Notification Center & Channel Alert Preferences** (/hub/dashboard/notifications)
-  - [ ] Breadcrumb: Accueil > Outils & Support > Notifications
-  - [ ] Implement notification switchboard (Order created, Low stock, Payout transferred) across Email, SMS, Web.
-- [ ] **Page 66: Merchant Support Desk & Help Ticket Submission** (/hub/dashboard/help)
-  - [ ] Breadcrumb: Accueil > Outils & Support > Centre d'Aide
-  - [ ] Implement ticket creator with issue category, screenshot attachment, and conversation history.
-- [ ] **Page 67: Create New Secondary Store Wizard** (/hub/dashboard/create-store)
-  - [ ] Breadcrumb: Accueil > Paramètres > Nouvelle Boutique
-  - [ ] Implement secondary store creation modal with business sector picker and store handle.
-- [ ] **Page 68: Multi-Store Switcher & Organization Selector** (/hub/dashboard/select-store)
-  - [ ] Breadcrumb: Accueil > Paramètres > Mes Boutiques
-  - [ ] Implement multi-store dropdown in top navigation for merchants managing multiple storefronts.
+- [x] **Page 59: Customer Disputes, Infringement Claims & Resolution Cases** (/hub/dashboard/disputes)
+  - [x] Breadcrumb: Accueil > Outils & Support > Litiges & Réclamations
+  - [x] Implement dispute claim list, resolution deadlines, and claim response triggers.
+- [x] **Page 60: Dispute Dossier View, Proof Upload & Resolution Response Submission** (/hub/dashboard/disputes/[id])
+  - [x] Breadcrumb: Accueil > Outils & Support > Dossier Litige
+  - [x] Implement dispute evidence file uploader (shipping receipt, photos) and merchant defense statement.
+- [x] **Page 61: Store Identity, Business Profile & Operational Settings** (/hub/dashboard/settings)
+  - [x] Breadcrumb: Accueil > Paramètres > Profil Boutique
+  - [x] Implement store identity form (logo, legal name, matricule fiscal, contact information, hours).
+- [x] **Page 62: Merchant KYC Verification Portal & Documents Upload** (/hub/dashboard/kyc)
+  - [x] Breadcrumb: Accueil > Paramètres > Vérification KYC
+  - [x] Implement merchant KYC upload dossier (CIN front/back, RNE document, bank RIB certificate).
+- [x] **Page 63: Developer REST API Credentials & Permission Scopes** (/hub/dashboard/api-keys)
+  - [x] Breadcrumb: Accueil > Paramètres > Clés d'API
+  - [x] Implement API key generator with secret masking, copy button, and webhook permission checkboxes.
+- [x] **Page 64: Real-time Webhook Subscriptions & Delivery Logs** (/hub/dashboard/webhooks)
+  - [x] Breadcrumb: Accueil > Paramètres > Webhooks
+  - [x] Implement webhook endpoint manager and delivery attempt log inspector.
+- [x] **Page 65: Store Notification Center & Channel Alert Preferences** (/hub/dashboard/notifications)
+  - [x] Breadcrumb: Accueil > Outils & Support > Notifications
+  - [x] Implement notification switchboard (Order created, Low stock, Payout transferred) across Email, SMS, Web.
+- [x] **Page 66: Merchant Support Desk & Help Ticket Submission** (/hub/dashboard/help)
+  - [x] Breadcrumb: Accueil > Outils & Support > Centre d'Aide
+  - [x] Implement ticket creator with issue category, screenshot attachment, and conversation history.
+- [x] **Page 67: Create New Secondary Store Wizard** (/hub/dashboard/create-store)
+  - [x] Breadcrumb: Accueil > Paramètres > Nouvelle Boutique
+  - [x] Implement secondary store creation modal with business sector picker and store handle.
+- [x] **Page 68: Multi-Store Switcher & Organization Selector** (/hub/dashboard/select-store)
+  - [x] Breadcrumb: Accueil > Paramètres > Mes Boutiques
+  - [x] Implement multi-store dropdown in top navigation for merchants managing multiple storefronts.
 
 ---
 
 ## Phase 3: Quality Assurance, Localization & Verification
 
-- [ ] **3.1. Currency & Numeric Formatting**
-  - [ ] Verify 3-decimal millime precision (TND 0.000) across all price tags, totals, and inputs.
-- [ ] **3.2. Territorial & Carrier Verification**
-  - [ ] Verify presence and correct spelling of all 24 Tunisian Governorates in all dropdowns and rate matrices.
-  - [ ] Verify carrier options: Aramex Express, Rapid-Poste, Runex, First Delivery.
-- [ ] **3.3. Banking & RIB Validation**
-  - [ ] Verify 20-digit length and Modulo 97 checksum validator on all bank payout forms.
-- [ ] **3.4. Multi-Theme Switching Stress Test**
-  - [ ] Verify zero visual regression when switching between Bento, Classique, and ReGo on Seller Dashboard.
-  - [ ] Verify zero visual regression when switching between Command Center, Enterprise Clean, and ReGo on Superadmin Dashboard.
-  - [ ] Verify persistent storage in cookies, LocalStorage, and backend user preferences.
+- [x] **3.1. Currency & Numeric Formatting**
+  - [x] Verify 3-decimal millime precision (TND 0.000) across all price tags, totals, and inputs.
+- [x] **3.2. Territorial & Carrier Verification**
+  - [x] Verify presence and correct spelling of all 24 Tunisian Governorates in all dropdowns and rate matrices.
+  - [x] Verify carrier options: Aramex Express, Rapid-Poste, Runex, First Delivery.
+- [x] **3.3. Banking & RIB Validation**
+  - [x] Verify 20-digit length and Modulo 97 checksum validator on all bank payout forms.
+- [x] **3.4. Multi-Theme Switching Stress Test**
+  - [x] Verify zero visual regression when switching between Bento, Classique, and ReGo on Seller Dashboard.
+  - [x] Verify zero visual regression when switching between Command Center, Enterprise Clean, and ReGo on Superadmin Dashboard.
+  - [x] Verify persistent storage in cookies, LocalStorage, and backend user preferences.
