@@ -21,6 +21,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoReports } from '@/components/admin/rego/AdminReGoReports';
 
 type ReportStatus = 'open' | 'investigating' | 'awaiting_buyer' | 'awaiting_seller' | 'resolved' | 'dismissed';
 type ReportTargetType = 'seller' | 'buyer';
@@ -124,6 +126,7 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
 
 export default function AdminReportsPage() {
   const { t, locale, dir } = useLocale();
+  const { adminTheme } = useAdminTheme();
   const [reports, setReports] = useState<Report[]>([]);
   const [summary, setSummary] = useState<ReportSummary>(defaultSummary);
   const [loading, setLoading] = useState(true);
@@ -322,6 +325,66 @@ export default function AdminReportsPage() {
     } finally {
       setActiveAction(null);
     }
+  }
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoReports
+        reports={reports}
+        summary={summary}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        targetFilter={targetFilter}
+        onTargetFilterChange={setTargetFilter}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={setPriorityFilter}
+        search={search}
+        onSearchChange={setSearch}
+        statusDrafts={statusDrafts}
+        onStatusDraftChange={(reportId, status) =>
+          setStatusDrafts((prev) => ({ ...prev, [reportId]: status }))
+        }
+        notesDrafts={notesDrafts}
+        onNotesDraftChange={(reportId, notes) =>
+          setNotesDrafts((prev) => ({ ...prev, [reportId]: notes }))
+        }
+        activeAction={activeAction}
+        error={error}
+        success={success}
+        onUpdateStatus={updateStatus}
+        onSuspendStore={suspendStore}
+        onSuspendBuyer={suspendBuyer}
+        onReactivateBuyer={reactivateBuyer}
+        onRefresh={fetchReports}
+        showCreate={showCreate}
+        onToggleShowCreate={() => setShowCreate((curr) => !curr)}
+        targetType={targetType}
+        onTargetTypeChange={setTargetType}
+        targetSearch={targetSearch}
+        onTargetSearchChange={setTargetSearch}
+        targets={targets}
+        selectedTargetId={selectedTargetId}
+        onSelectTargetId={setSelectedTargetId}
+        createPriority={createPriority}
+        onCreatePriorityChange={setCreatePriority}
+        createCategory={createCategory}
+        onCreateCategoryChange={setCreateCategory}
+        createOrderId={createOrderId}
+        onCreateOrderIdChange={setCreateOrderId}
+        createReason={createReason}
+        onCreateReasonChange={setCreateReason}
+        createNotes={createNotes}
+        onCreateNotesChange={setCreateNotes}
+        onCreateReport={createAdminReport}
+      />
+    );
   }
 
   return (

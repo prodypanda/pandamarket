@@ -128,8 +128,10 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply cloud media CDN vault with WebP optimization triggers, file renames, and folder telemetry (`AdminReGoMedia.tsx`).
 
 ### Section 5: Support, Disputes, Fraud & Tickets (`SUPERADMIN_SEC05_SUPPORT_DISPUTES_FRAUD.md`)
-- [ ] **Pages 14-16, 19, 28: Mediation Chat, Fraud Radar, Violations, Helpdesk**
-  - [ ] Apply three-way mediation console and fraud heuristic threat feed.
+- [x] **Pages 14-16, 19, 28: Mediation Chat, Fraud Radar, Violations, Helpdesk**
+  - [x] Apply three-way mediation console and unified support chat (`AdminReGoMessages`).
+  - [x] Apply fraud heuristic threat radar with disposable email detection, store freeze, and magic link generator (`AdminReGoFraudRadar.tsx`).
+  - [x] Apply regulatory violations & infringement management with KPI telemetry, case drawer, and moderation enforcement (`AdminReGoReports.tsx`).
 
 ### Section 6: Ads & Subscriptions (`SUPERADMIN_SEC06_ADS_SUBSCRIPTIONS_SAAS.md`)
 - [ ] **Pages 17, 18, 20: PandaAds Global, SaaS Orders, Plans & Feature Limits**

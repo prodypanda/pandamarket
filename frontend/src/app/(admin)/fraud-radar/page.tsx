@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoFraudRadar } from '@/components/admin/rego/AdminReGoFraudRadar';
 import {
   Radar,
   ShieldAlert,
@@ -47,6 +49,7 @@ interface FraudRadarItem {
 
 export default function DedicatedFraudRadarPage() {
   const { t, dir } = useLocale();
+  const { adminTheme } = useAdminTheme();
   const [radarList, setRadarList] = useState<FraudRadarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -145,6 +148,44 @@ export default function DedicatedFraudRadarPage() {
     link.download = `fraud_radar_report_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
   };
+
+  const handleMarkManualVerified = async (intentId: string) => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${intentId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ decision: 'approved', reason: 'Verified via Fraud Radar' }),
+      });
+      if (res.ok) {
+        setSuccess('✅ Souscription vérifiée et approuvée manuellement !');
+        fetchRadar();
+      } else {
+        setError('Erreur lors de la validation manuelle');
+      }
+    } catch {
+      setError('Erreur réseau');
+    }
+  };
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoFraudRadar
+        radarList={radarList}
+        loading={loading}
+        error={error}
+        success={success}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        riskFilter={riskFilter}
+        onRiskFilterChange={setRiskFilter}
+        onFreezeStore={handleFreezeStore}
+        onGenerateMagicLink={handleGenerateMagicLink}
+        onMarkManualVerified={handleMarkManualVerified}
+        onRefresh={fetchRadar}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
