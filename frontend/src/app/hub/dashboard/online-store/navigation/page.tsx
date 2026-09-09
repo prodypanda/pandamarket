@@ -17,6 +17,8 @@ import {
 import { UnsavedChangesBanner } from '@/components/dashboard/UnsavedChangesBanner';
 import { ReferenceSelector } from '@/components/dashboard/ReferenceSelector';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoNavigation } from '@/components/dashboard/rego/SellerReGoNavigation';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -136,6 +138,7 @@ function addChildToTree(items: MenuItem[], parentId: string, child: MenuItem): M
 
 export default function NavigationManagerPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [menus, setMenus] = useState<Menu[]>([]);
   const [initialMenus, setInitialMenus] = useState<Menu[]>([]);
   const [footerBlocks, setFooterBlocks] = useState<FooterBlock[]>([]);
@@ -265,6 +268,22 @@ export default function NavigationManagerPage() {
           ...m,
           items: addChildToTree(m.items, parentId, newChild),
         };
+      }),
+    );
+    setIsDirty(true);
+  };
+
+  const handleMoveItem = (location: Menu['location'], itemId: string, direction: 'up' | 'down') => {
+    setMenus((prev) =>
+      prev.map((m) => {
+        if (m.location !== location) return m;
+        const index = m.items.findIndex((item) => item.id === itemId);
+        if (index === -1) return m;
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= m.items.length) return m;
+        const arr = [...m.items];
+        [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+        return { ...m, items: arr };
       }),
     );
     setIsDirty(true);
@@ -400,6 +419,31 @@ export default function NavigationManagerPage() {
     { key: 'footer', label: t('storefrontNav.locations.footer'), desc: t('storefrontNav.locations.footerDesc') },
     { key: 'utility', label: t('storefrontNav.locations.utility'), desc: t('storefrontNav.locations.utilityDesc') },
   ];
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoNavigation
+        menus={menus}
+        footerBlocks={footerBlocks}
+        isDirty={isDirty}
+        saving={saving}
+        publishing={publishing}
+        feedback={feedback}
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        onAddItem={handleAddItem}
+        onUpdateItem={handleUpdateItem}
+        onRemoveItem={handleRemoveItem}
+        onMoveItem={handleMoveItem}
+        onAddChildItem={handleAddChildItem}
+        onAddBlock={handleAddBlock}
+        onUpdateBlock={handleUpdateBlock}
+        onRemoveBlock={handleRemoveBlock}
+        onMoveBlock={handleMoveBlock}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-6">

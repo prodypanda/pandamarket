@@ -226,15 +226,15 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
 - [x] **Page 46: Visual Theme Customizer, Brand Colors & Real-Time CSS Preview** (/hub/dashboard/online-store/customize)
   - [x] Breadcrumb: Accueil > Boutique en Ligne > Personnalisation Visuelle
   - [x] Implement color picker, font family selector, border radius presets, and live preview iframe.
-- [ ] **Page 47: Homepage Sections Customizer (Hero, Banners, Grids)** (/hub/dashboard/online-store/banners)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Bannières & Carrousels
-  - [ ] Implement drag-and-drop homepage block reordering, hero slide manager, and product carousels.
-- [ ] **Page 48: Navigation Menus Builder (Header & Footer)** (/hub/dashboard/online-store/navigation)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Menus & Navigation
-  - [ ] Implement nested menu link editor with drag handles and target link selector.
-- [ ] **Page 49: Drag & Drop Custom Landing Page Builder** (/hub/dashboard/page-builder)
-  - [ ] Breadcrumb: Accueil > Boutique en Ligne > Constructeur de Pages
-  - [ ] Implement custom content page editor (About Us, Contact, Privacy, Terms) with rich text.
+- [x] **Page 47: Homepage Sections Customizer (Hero, Banners, Grids)** (/hub/dashboard/online-store/banners)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Bannières & Carrousels
+  - [x] Implement drag-and-drop homepage block reordering, hero slide manager, and product carousels.
+- [x] **Page 48: Navigation Menus Builder (Header & Footer)** (/hub/dashboard/online-store/navigation)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Menus & Navigation
+  - [x] Implement nested menu link editor with drag handles and target link selector.
+- [x] **Page 49: Drag & Drop Custom Landing Page Builder** (/hub/dashboard/page-builder)
+  - [x] Breadcrumb: Accueil > Boutique en Ligne > Constructeur de Pages
+  - [x] Implement custom content page editor (About Us, Contact, Privacy, Terms) with rich text.
 - [ ] **Page 50: Custom Domains, SSL & DNS Records Configuration** (/hub/dashboard/online-store/domains)
   - [ ] Breadcrumb: Accueil > Boutique en Ligne > Domaines & DNS
   - [ ] Implement custom domain input, CNAME/A record verification checker, and automatic SSL badge.

@@ -38,6 +38,8 @@ import { revalidatePageBuilderCache } from '@/lib/page-builder-cache';
 import { pageBuilderDashboardStatsLabels } from '@/lib/page-builder-dashboard-stats';
 import { useLocale } from '@/contexts/LocaleContext';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoPageBuilder } from '@/components/dashboard/rego/SellerReGoPageBuilder';
 
 interface StorePage {
   id: string;
@@ -149,6 +151,7 @@ export default function PageBuilderDashboard() {
   const [deletingPage, setDeletingPage] = useState(false);
 
   const { t, locale, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
 
   const existingSlugs = useMemo(() => new Set(pages.map((page) => page.slug)), [pages]);
   const maintenancePage = useMemo(() => pages.find((page) => page.slug === MAINTENANCE_PAGE_SLUG) || null, [pages]);
@@ -578,7 +581,30 @@ export default function PageBuilderDashboard() {
 
   return (
     <div dir={dir} className="space-y-6 text-slate-900 dark:text-white">
-      <div className="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
+      {dashboardStyle === 'rego' ? (
+        <SellerReGoPageBuilder
+          pages={pages}
+          store={store}
+          pageBuilderLimits={pageBuilderLimits}
+          loading={loading}
+          hasAccess={hasAccess}
+          error={error}
+          success={success}
+          onOpenEditor={openEditor}
+          onOpenCreateModal={openCreateModal}
+          onOpenTemplatePicker={() => setShowTemplatePicker(true)}
+          onTogglePublish={handleTogglePublish}
+          onSetHomepage={handleSetHomepage}
+          onDuplicatePage={handleDuplicatePage}
+          onDeletePage={handleDeletePage}
+          onMaintenancePage={handleMaintenancePage}
+          maintenancePage={maintenancePage}
+          creating={creating}
+          dir={dir}
+        />
+      ) : (
+        <>
+          <div className="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xs">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{t('dashboardPages.pageBuilder.eyebrow')}</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{t('dashboardPages.pageBuilder.title')}</h1>
@@ -877,6 +903,8 @@ export default function PageBuilderDashboard() {
           );
           })}
         </div>
+      )}
+        </>
       )}
 
       {/* Create Page Modal */}
