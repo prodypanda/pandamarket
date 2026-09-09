@@ -44,90 +44,90 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
 ## Phase 1: Superadmin Dashboard Implementation (Pages 1 to 31)
 
 ### Section 1: Overview, Analytics & Operational Notes (SUPERADMIN_SEC01_OVERVIEW_AND_TELEMETRY.md)
-- [ ] **Page 1: Superadmin Overview & Executive Telemetry** (/dashboard)
-  - [ ] Breadcrumb: Administration > Pilotage > Tableau de bord
-  - [ ] Implement GMV, active merchants, total orders, and platform health telemetry cards (TND 0.000).
-  - [ ] Implement quick shortcut jumps and live microservice status ticker.
-  - [ ] Render variants across Mission Control, Enterprise Clean, and ReGo.
-- [ ] **Page 2: Platform-wide Business & Sales Analytics** (/platform-analytics)
-  - [ ] Breadcrumb: Administration > Pilotage > Statistiques Globales
-  - [ ] Implement time-series sales velocity, cohort retention, and regional revenue by 24 Governorates.
-  - [ ] Implement payment gateway volume breakdown (Flouci, Konnect, Postal Mandat, COD).
-- [ ] **Page 3: Operational Notes & Sticky Reminders Board** (/admin-notes)
-  - [ ] Breadcrumb: Administration > Pilotage > Notes & Rappels
-  - [ ] Implement color-coded sticky priority notes board with drag-and-drop or pin/archive states.
+- [x] **Page 1: Superadmin Overview & Executive Telemetry** (/dashboard)
+  - [x] Breadcrumb: Administration > Pilotage > Tableau de bord
+  - [x] Implement GMV, active merchants, total orders, and platform health telemetry cards (TND 0.000).
+  - [x] Implement quick shortcut jumps and live microservice status ticker.
+  - [x] Render variants across Mission Control, Enterprise Clean, and ReGo.
+- [x] **Page 2: Platform-wide Business & Sales Analytics** (/platform-analytics)
+  - [x] Breadcrumb: Administration > Pilotage > Statistiques Globales
+  - [x] Implement time-series sales velocity, cohort retention, and regional revenue by 24 Governorates.
+  - [x] Implement payment gateway volume breakdown (Flouci, Konnect, Postal Mandat, COD).
+- [x] **Page 3: Operational Notes & Sticky Reminders Board** (/admin-notes)
+  - [x] Breadcrumb: Administration > Pilotage > Notes & Rappels
+  - [x] Implement color-coded sticky priority notes board with drag-and-drop or pin/archive states.
 
 ### Section 2: Merchants, Users & Buyers Management (SUPERADMIN_SEC02_MERCHANTS_USERS_BUYERS.md)
-- [ ] **Page 4: Stores & Merchant Accounts Management** (/stores)
-  - [ ] Breadcrumb: Administration > Commerces > Boutiques
-  - [ ] Implement merchant store table with GMV, store status badges, KYC indicators, and commission tiers.
-  - [ ] Implement store suspension / reactivation and manual tier upgrade modals.
-- [ ] **Page 5: Platform Users & Vendors Directory** (/users)
-  - [ ] Breadcrumb: Administration > Commerces > Utilisateurs & Vendeurs
-  - [ ] Implement multi-role user directory (Superadmin, Moderator, Support, Vendor, Staff).
-  - [ ] Implement role permission editor and 2FA enforcement toggles.
-- [ ] **Page 6: Registered Buyers & Shoppers Directory** (/buyers)
-  - [ ] Breadcrumb: Administration > Commerces > Acheteurs
-  - [ ] Implement buyer accounts table with lifetime value, order frequency, and account status.
-- [ ] **Page 31: Vendors Navigation Shortcut** (/(admin)/vendors)
-  - [ ] Breadcrumb: Administration > Commerces > Vendeurs (Filtre Direct)
-  - [ ] Verify instant redirection / alias link to /users?role=vendor.
+- [x] **Page 4: Stores & Merchant Accounts Management** (/stores)
+  - [x] Breadcrumb: Administration > Commerces > Boutiques
+  - [x] Implement merchant store table with GMV, store status badges, KYC indicators, and commission tiers.
+  - [x] Implement store suspension / reactivation and manual tier upgrade modals.
+- [x] **Page 5: Platform Users & Vendors Directory** (/users)
+  - [x] Breadcrumb: Administration > Commerces > Utilisateurs & Vendeurs
+  - [x] Implement multi-role user directory (Superadmin, Moderator, Support, Vendor, Staff).
+  - [x] Implement role permission editor and 2FA enforcement toggles.
+- [x] **Page 6: Registered Buyers & Shoppers Directory** (/buyers)
+  - [x] Breadcrumb: Administration > Commerces > Acheteurs
+  - [x] Implement buyer accounts table with lifetime value, order frequency, and account status.
+- [x] **Page 31: Vendors Navigation Shortcut** (/(admin)/vendors)
+  - [x] Breadcrumb: Administration > Commerces > Vendeurs (Filtre Direct)
+  - [x] Verify instant redirection / alias link to /users?role=vendor.
 
 ### Section 3: Finance, Escrow, KYC & Payouts (SUPERADMIN_SEC03_FINANCE_ESCROW_PAYOUTS.md)
-- [ ] **Page 7: KYC Merchant Identity Verifications & Document Audit** (/kyc)
-  - [ ] Breadcrumb: Administration > Conformité > Vérifications KYC
-  - [ ] Implement document inspection modal (CIN scan, RNE commercial registry, RIB certificate).
-  - [ ] Implement 1-click Approve / Reject with custom feedback notes.
-- [ ] **Page 8: Postal Mandats & Offline Payment Proofs Review** (/mandats)
-  - [ ] Breadcrumb: Administration > Conformité > Mandats Postaux
-  - [ ] Implement postal receipt viewer and verification queue with transaction matching.
-- [ ] **Page 9: Seller Wallet Payout Requests & Bank Disbursement** (/withdrawals)
-  - [ ] Breadcrumb: Administration > Conformité > Virements & Décaissements
-  - [ ] Implement 20-digit Tunisian RIB Modulo 97 validation ledger.
-  - [ ] Implement batch bank disbursement export (BIAT, BNA, Attijari, STB, Amen Bank, etc.).
-- [ ] **Page 10: Buyer Refund Reviews & Escalations** (/refund-review)
-  - [ ] Breadcrumb: Administration > Conformité > Remboursements & Escrow
-  - [ ] Implement refund dispute queue, escrow hold releases, and automated credit note issuance.
+- [x] **Page 7: KYC Merchant Identity Verifications & Document Audit** (/kyc)
+  - [x] Breadcrumb: Administration > Conformité > Vérifications KYC
+  - [x] Implement document inspection modal (CIN scan, RNE commercial registry, RIB certificate).
+  - [x] Implement 1-click Approve / Reject with custom feedback notes.
+- [x] **Page 8: Postal Mandats & Offline Payment Proofs Review** (/mandats)
+  - [x] Breadcrumb: Administration > Conformité > Mandats Postaux
+  - [x] Implement postal receipt viewer and verification queue with transaction matching.
+- [x] **Page 9: Seller Wallet Payout Requests & Bank Disbursement** (/withdrawals)
+  - [x] Breadcrumb: Administration > Conformité > Virements & Décaissements
+  - [x] Implement 20-digit Tunisian RIB Modulo 97 validation ledger.
+  - [x] Implement batch bank disbursement export (BIAT, BNA, Attijari, STB, Amen Bank, etc.).
+- [x] **Page 10: Buyer Refund Reviews & Escalations** (/refund-review)
+  - [x] Breadcrumb: Administration > Conformité > Remboursements & Escrow
+  - [x] Implement refund dispute queue, escrow hold releases, and automated credit note issuance.
 
 ### Section 4: Catalog, Taxonomy & Media Storage (SUPERADMIN_SEC04_CATALOG_TAXONOMY_MEDIA.md)
-- [ ] **Page 11: Marketplace Global Products Moderation & Catalog** (/products)
-  - [ ] Breadcrumb: Administration > Catalogue > Produits Marchands
-  - [ ] Implement product moderation queue with counterfeit risk flags and merchant attribution.
-  - [ ] Implement bulk approve / reject / request edit actions.
-- [ ] **Page 12: Global Category Tree Taxonomy & Commission Rates** (/marketplace-categories)
-  - [ ] Breadcrumb: Administration > Catalogue > Arborescence Catégories
-  - [ ] Implement multi-level category tree with per-category marketplace commission overrides.
-- [ ] **Page 13: Platform Media Storage & CDN File Vault** (/platform-media)
-  - [ ] Breadcrumb: Administration > Catalogue > Stockage Médias
-  - [ ] Implement storage quota telemetry, asset browser, and orphaned image cleanup utilities.
+- [x] **Page 11: Marketplace Global Products Moderation & Catalog** (/products)
+  - [x] Breadcrumb: Administration > Catalogue > Produits Marchands
+  - [x] Implement product moderation queue with counterfeit risk flags and merchant attribution.
+  - [x] Implement bulk approve / reject / request edit actions.
+- [x] **Page 12: Global Category Tree Taxonomy & Commission Rates** (/marketplace-categories)
+  - [x] Breadcrumb: Administration > Catalogue > Arborescence Catégories
+  - [x] Implement multi-level category tree with per-category marketplace commission overrides.
+- [x] **Page 13: Platform Media Storage & CDN File Vault** (/platform-media)
+  - [x] Breadcrumb: Administration > Catalogue > Stockage Médias
+  - [x] Implement storage quota telemetry, asset browser, and orphaned image cleanup utilities.
 
 ### Section 5: Support, Disputes, Fraud & Tickets (SUPERADMIN_SEC05_SUPPORT_DISPUTES_FRAUD.md)
-- [ ] **Page 14: Superadmin Unified Support Chat & Dispute Mediation** (/messages)
-  - [ ] Breadcrumb: Administration > Confiance > Chat de Médiation
-  - [ ] Implement three-party mediation chat (Admin, Seller, Buyer) with order context drawer.
-- [ ] **Page 15: Fraud Reports & Platform Violations Queue** (/reports)
-  - [ ] Breadcrumb: Administration > Confiance > Signalements & Infractions
-  - [ ] Implement incident reporting queue with severity scoring and seller risk matrix.
-- [ ] **Page 16: Dispute Dossier & Sanction Adjudication** (/(admin)/tickets/disputes)
-  - [ ] Breadcrumb: Administration > Confiance > Dossiers de Litige
-  - [ ] Implement full dispute timeline, evidence gallery, and binding verdict adjudication.
-- [ ] **Page 19: Fraud Radar & High-Risk Transaction Engine** (/fraud-radar)
-  - [ ] Breadcrumb: Administration > Confiance > Radar Anti-Fraude
-  - [ ] Implement real-time risk heuristics, suspicious IP flagging, and abnormal COD refusal tracking.
-- [ ] **Page 28: Platform Support Desk & Agent Tickets** (/(admin)/tickets)
-  - [ ] Breadcrumb: Administration > Confiance > Tickets Support
-  - [ ] Implement ticket triage board, SLA timers, priority filters, and agent assignment.
+- [x] **Page 14: Superadmin Unified Support Chat & Dispute Mediation** (/messages)
+  - [x] Breadcrumb: Administration > Confiance > Chat de Médiation
+  - [x] Implement three-party mediation chat (Admin, Seller, Buyer) with order context drawer.
+- [x] **Page 15: Fraud Reports & Platform Violations Queue** (/reports)
+  - [x] Breadcrumb: Administration > Confiance > Signalements & Infractions
+  - [x] Implement incident reporting queue with severity scoring and seller risk matrix.
+- [x] **Page 16: Dispute Dossier & Sanction Adjudication** (/(admin)/tickets/disputes)
+  - [x] Breadcrumb: Administration > Confiance > Dossiers de Litige
+  - [x] Implement full dispute timeline, evidence gallery, and binding verdict adjudication.
+- [x] **Page 19: Fraud Radar & High-Risk Transaction Engine** (/fraud-radar)
+  - [x] Breadcrumb: Administration > Confiance > Radar Anti-Fraude
+  - [x] Implement real-time risk heuristics, suspicious IP flagging, and abnormal COD refusal tracking.
+- [x] **Page 28: Platform Support Desk & Agent Tickets** (/(admin)/tickets)
+  - [x] Breadcrumb: Administration > Confiance > Tickets Support
+  - [x] Implement ticket triage board, SLA timers, priority filters, and agent assignment.
 
 ### Section 6: Advertising & SaaS Subscriptions (SUPERADMIN_SEC06_ADS_SUBSCRIPTIONS_SAAS.md)
-- [ ] **Page 17: PandaAds Global Campaign Management & Placement Pricing** (/ads)
-  - [ ] Breadcrumb: Administration > Monétisation > PandaAds
-  - [ ] Implement ad auction rules, banner impression trackers, and CPC/CPM price managers.
-- [ ] **Page 18: SaaS Subscription Orders & Invoicing** (/subscription-orders)
-  - [ ] Breadcrumb: Administration > Monétisation > Commandes d'Abonnement
-  - [ ] Implement subscription billing order book, renewal statuses, and VAT invoice generators.
-- [ ] **Page 20: SaaS Subscription Plans, Features & Tier Limits Management** (/plans)
-  - [ ] Breadcrumb: Administration > Monétisation > Forfaits & Quotas
-  - [ ] Implement plan feature matrix editor (Starter, Pro, Enterprise) with product/quota limits.
+- [x] **Page 17: PandaAds Global Campaign Management & Placement Pricing** (/ads)
+  - [x] Breadcrumb: Administration > Monétisation > PandaAds
+  - [x] Implement ad auction rules, banner impression trackers, and CPC/CPM price managers.
+- [x] **Page 18: SaaS Subscription Orders & Invoicing** (/subscription-orders)
+  - [x] Breadcrumb: Administration > Monétisation > Commandes d'Abonnement
+  - [x] Implement subscription billing order book, renewal statuses, and VAT invoice generators.
+- [x] **Page 20: SaaS Subscription Plans, Features & Tier Limits Management** (/plans)
+  - [x] Breadcrumb: Administration > Monétisation > Forfaits & Quotas
+  - [x] Implement plan feature matrix editor (Starter, Pro, Enterprise) with product/quota limits.
 
 ### Section 7: Telemetry, AI Costs & Audit Trails (SUPERADMIN_SEC07_INFRASTRUCTURE_AUDIT_LOGS.md)
 - [x] **Page 21: AI Usage Costs, Quotas & Token Consumption** (/ai-costs)

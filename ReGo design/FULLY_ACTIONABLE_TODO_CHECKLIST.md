@@ -105,8 +105,9 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply ReGo modern overview (`AdminReGoOverview.tsx`) with platform GMV, active stores, and escrow balance.
   - [x] KYC pending validation queue with 1-click review drawer.
   - [x] Bank withdrawal queue with 20-digit RIB Modulo-97 verification.
-- [ ] **Pages 2-3: Platform Analytics, Sticky Notes**
-  - [ ] Apply executive telemetry cards, microservice health tickers, and draggable sticky board.
+- [x] **Pages 2-3: Platform Analytics, Sticky Notes**
+  - [x] Apply executive telemetry cards, 24 Tunisian governorates breakdown, and multi-tab analytics (`AdminReGoAnalytics.tsx`).
+  - [x] Apply collaborative operational sticky notes board, folder hierarchy, interactive checklists, and inspection drawer (`AdminReGoNotes.tsx`).
 
 ### Section 2: Merchants, Users & Buyers (`SUPERADMIN_SEC02_MERCHANTS_USERS_BUYERS.md`)
 - [x] **Pages 4-6, 31: Stores Overview, Users & Vendors, Buyers Directory, Vendor Shortcut**

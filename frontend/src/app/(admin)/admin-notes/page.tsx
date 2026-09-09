@@ -5,6 +5,8 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useRealtimeEvent } from '@/hooks/useRealtimeEvent';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoNotes } from '@/components/admin/rego/AdminReGoNotes';
 import {
   StickyNote,
   Bell,
@@ -909,6 +911,87 @@ export default function AdminNotesPage() {
   ];
 
   const currentFolderObj = folders.find((f) => f.id === activeFolder);
+
+  const { adminTheme } = useAdminTheme();
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoNotes
+        notes={notes}
+        folders={folders}
+        activeFolder={activeFolder}
+        setActiveFolder={setActiveFolder}
+        stats={stats}
+        loading={loading}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        showOverdue={showOverdue}
+        setShowOverdue={setShowOverdue}
+        showUpcoming={showUpcoming}
+        setShowUpcoming={setShowUpcoming}
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
+        openNewEditor={openNewEditor}
+        openEditEditor={openEditEditor}
+        togglePin={async (n) => { await togglePin(n.id); }}
+        toggleComplete={async (n) => { await toggleComplete(n.id); }}
+        archiveNote={async (n) => { await doLifecycle(n.id, 'archive'); }}
+        trashNote={async (n) => { await doLifecycle(n.id, 'trash'); }}
+        restoreNote={async (n) => { await doLifecycle(n.id, 'restore'); }}
+        permanentDeleteNote={async (n) => { await deleteNote(n.id); }}
+        batchArchive={async () => { await bulkAction('archive'); }}
+        batchTrash={async () => { await bulkAction('trash'); }}
+        batchDelete={async () => { await bulkAction('delete'); }}
+        exportNotes={exportNotes}
+        openDetail={(n) => {
+          setDetailId(n.id);
+          fetchDetail(n.id);
+        }}
+        showFolderModal={showFolderModal}
+        setShowFolderModal={setShowFolderModal}
+        openNewFolderModal={openNewFolderModal}
+        openEditFolderModal={openEditFolderModal}
+        deleteFolder={async (fid) => {
+          const target = folders.find((f) => f.id === fid);
+          if (target) await deleteFolder(target);
+        }}
+        detailId={detailId}
+        detailData={detailData}
+        activity={activity}
+        onCloseDetail={() => setDetailId(null)}
+        showEditor={showEditor}
+        setShowEditor={setShowEditor}
+        editorTitle={editorTitle}
+        setEditorTitle={setEditorTitle}
+        editorContent={editorContent}
+        setEditorContent={setEditorContent}
+        editorType={editorType}
+        setEditorType={setEditorType}
+        editorColor={editorColor}
+        setEditorColor={setEditorColor}
+        editorFolderId={editorFolderId}
+        setEditorFolderId={setEditorFolderId}
+        editorPriority={editorPriority}
+        setEditorPriority={setEditorPriority}
+        editorFormat={editorFormat}
+        setEditorFormat={setEditorFormat}
+        editorPreviewMode={editorPreviewMode}
+        setEditorPreviewMode={setEditorPreviewMode}
+        editorReminderAt={editorReminderAt}
+        setEditorReminderAt={setEditorReminderAt}
+        editorDueAt={editorDueAt}
+        setEditorDueAt={setEditorDueAt}
+        editorTags={editorTags}
+        setEditorTags={setEditorTags}
+        saveNote={saveNote}
+        saving={saving}
+        editingNote={editingNote}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

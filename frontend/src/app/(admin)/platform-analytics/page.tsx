@@ -44,6 +44,8 @@ import { GovernanceTab } from '@/components/admin/platform-analytics/GovernanceT
 import { MetricDefinitionsModal } from '@/components/admin/platform-analytics/MetricDefinitionsModal';
 import { AnalyticsDrilldownModal } from '@/components/admin/platform-analytics/AnalyticsDrilldownModal';
 import { AnalyticsHelpPanel } from '@/components/admin/platform-analytics/AnalyticsHelpPanel';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoAnalytics } from '@/components/admin/rego/AdminReGoAnalytics';
 
 export default function ComprehensivePlatformAnalyticsPage() {
   const { dir } = useLocale();
@@ -224,6 +226,42 @@ export default function ComprehensivePlatformAnalyticsPage() {
 
   const currentTabLoading = tabLoading[activeTab];
   const currentTabError = tabError[activeTab];
+
+  const { adminTheme } = useAdminTheme();
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoAnalytics
+        timeRange={timeRange}
+        onTimeRangeChange={handleTimeRangeChange}
+        currency={currency}
+        onCurrencyChange={handleCurrencyChange}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        overviewData={overviewData}
+        revenueData={revenueData}
+        vendorData={vendorData}
+        adsData={adsData}
+        systemData={systemData}
+        businessData={businessData}
+        pageViewsData={pageViewsData}
+        pageViewsLiveData={pageViewsLiveData}
+        tabLoading={tabLoading}
+        tabError={tabError}
+        onRefresh={() => fetchTabData(activeTab)}
+        onExport={handleExportCSV}
+        onOpenDrilldown={handleOpenDrilldown}
+        onOpenDefinitions={() => setIsDefinitionsOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+        isDefinitionsOpen={isDefinitionsOpen}
+        onCloseDefinitions={() => setIsDefinitionsOpen(false)}
+        isDrilldownOpen={isDrilldownOpen}
+        onCloseDrilldown={() => setIsDrilldownOpen(false)}
+        drilldownType={drilldownType}
+        isHelpOpen={isHelpOpen}
+        onCloseHelp={() => setIsHelpOpen(false)}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="p-4 sm:p-6 lg:p-8 w-full max-w-[1920px] mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-all duration-300">
