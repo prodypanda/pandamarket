@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { AdminUserSecurityActivityPanel } from '../../../components/admin/AdminUserSecurityActivityPanel';
 import { useLocale } from '../../../contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoUsers } from '@/components/admin/rego/AdminReGoUsers';
 
 interface VendorAccount {
   id: string;
@@ -182,6 +184,32 @@ export default function AdminVendorAccountsPage() {
     }
   };
 
+  const handleToggleActive = async (accountId: string, currentlyActive: boolean) => {
+    await runAction(accountId, currentlyActive ? 'suspend' : 'reactivate');
+  };
+
+  const handleSendPasswordReset = async (accountId: string, email: string) => {
+    const actionKey = `vendor-account-${accountId}-reset-password`;
+    setActiveAction(actionKey);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/users/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        showFeedback(`Lien de réinitialisation envoyé à ${email}`);
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Network error', true);
+    } finally {
+      setActiveAction(null);
+    }
+  };
+
   const metricCards = [
     { label: 'Vendor accounts', value: summary.total, icon: Users, tone: 'from-slate-950 to-slate-700 text-white' },
     { label: 'Active accounts', value: summary.active, icon: ShieldCheck, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
@@ -190,6 +218,38 @@ export default function AdminVendorAccountsPage() {
     { label: 'Total stores', value: summary.total_stores, icon: Store, tone: 'from-[#B91C1C] to-amber-500 text-white' },
     { label: 'Free slots available', value: summary.free_store_slots_available, icon: WalletCards, tone: 'from-amber-400 to-orange-500 text-white' },
   ];
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoUsers
+        accounts={accounts}
+        summary={summary}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        search={search}
+        onSearchChange={(nextSearch) => {
+          setSearch(nextSearch);
+          setPage(1);
+        }}
+        multiStoreOnly={multiStoreOnly}
+        onMultiStoreOnlyChange={(enabled) => {
+          setMultiStoreOnly(enabled);
+          setPage(1);
+        }}
+        onPageChange={setPage}
+        onRefresh={fetchAccounts}
+        onToggleActive={handleToggleActive}
+        onSendPasswordReset={handleSendPasswordReset}
+        activeAction={activeAction}
+        error={error}
+        success={success}
+      />
+    );
+  }
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>

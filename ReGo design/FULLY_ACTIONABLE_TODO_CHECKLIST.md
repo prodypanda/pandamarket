@@ -107,8 +107,10 @@ This checklist details every concrete engineering task required to implement the
   - [ ] Apply executive telemetry cards, microservice health tickers, and draggable sticky board.
 
 ### Section 2: Merchants, Users & Buyers (`SUPERADMIN_SEC02_MERCHANTS_USERS_BUYERS.md`)
-- [ ] **Pages 4-6, 31: Stores Overview, Users & Vendors, Buyers Directory, Vendor Shortcut**
-  - [ ] Apply multi-role user directory with permission matrix editor and suspension modals.
+- [x] **Pages 4-6, 31: Stores Overview, Users & Vendors, Buyers Directory, Vendor Shortcut**
+  - [x] Apply store directory with domain tracking, subscription plans, captured GMV, and suspension modal (`AdminReGoStores.tsx`).
+  - [x] Apply multi-role vendor account directory with store count telemetry, 2FA status, and password reset (`AdminReGoUsers.tsx`).
+  - [x] Apply buyer accounts directory with order volume, spent TND, and inspection drawer (`AdminReGoBuyers.tsx`).
 
 ### Section 3: Finance, Escrow, KYC & Payouts (`SUPERADMIN_SEC03_FINANCE_ESCROW_PAYOUTS.md`)
 - [x] **Pages 7-10: KYC Verifications, Mandats, RIB Disbursements, Refunds**

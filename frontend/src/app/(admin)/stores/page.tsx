@@ -4,6 +4,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoStores } from '@/components/admin/rego/AdminReGoStores';
 import {
   AlertTriangle,
   BadgeCheck,
@@ -281,6 +283,23 @@ function AdminStoresContent() {
     }
   };
 
+  const handleStatusUpdate = async (vendorId: string, nextStatus: string, reason?: string) => {
+    if (nextStatus === 'suspended') {
+      await runAction(`vendor-${vendorId}-suspend`, `/api/pd/admin/vendors/${vendorId}/suspend`, {
+        body: { reason: reason || 'Suspended by admin' },
+        successMessage: t('admin.vendorsPage.suspended'),
+      });
+    } else if (nextStatus === 'active') {
+      await runAction(`vendor-${vendorId}-reactivate`, `/api/pd/admin/vendors/${vendorId}/reactivate`, {
+        successMessage: t('admin.vendorsPage.reactivated'),
+      });
+    } else if (nextStatus === 'verified') {
+      await runAction(`vendor-${vendorId}-verify`, `/api/pd/admin/vendors/${vendorId}/verify`, {
+        successMessage: t('admin.vendorsPage.verified'),
+      });
+    }
+  };
+
   const clearFilters = () => {
     setSearch('');
     setSellerType('');
@@ -349,6 +368,37 @@ function AdminStoresContent() {
     { label: t('admin.vendorsPage.metrics.pendingType'), value: summary.pending_seller_type_requests, icon: AlertTriangle, tone: 'from-amber-500 to-red-600 text-white' },
     { label: t('admin.vendorsPage.metrics.pendingKyc'), value: summary.pending_kyc, icon: FileCheck, tone: 'from-[#B91C1C] to-amber-500 text-white' },
   ];
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoStores
+        vendors={vendors}
+        summary={summary}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        statusFilter={status || 'all'}
+        onStatusFilterChange={(nextStatus) => {
+          setStatus(nextStatus === 'all' ? '' : nextStatus);
+          setPage(1);
+        }}
+        search={search}
+        onSearchChange={(nextSearch) => {
+          setSearch(nextSearch);
+          setPage(1);
+        }}
+        onPageChange={setPage}
+        onRefresh={fetchVendors}
+        onStatusChange={handleStatusUpdate}
+        updatingStatus={Boolean(activeAction)}
+        error={error}
+        success={success}
+      />
+    );
+  }
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>

@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { AdminUserSecurityActivityPanel } from '../../../components/admin/AdminUserSecurityActivityPanel';
 import { useLocale } from '../../../contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoBuyers } from '@/components/admin/rego/AdminReGoBuyers';
 
 interface BuyerAccount {
   id: string;
@@ -82,6 +84,7 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
 }
 
 export default function AdminBuyersPage() {
+  const { adminTheme } = useAdminTheme();
   const { locale, dir } = useLocale();
   const isRtl = dir === 'rtl';
   const [buyers, setBuyers] = useState<BuyerAccount[]>([]);
@@ -192,6 +195,32 @@ export default function AdminBuyersPage() {
     }
   };
 
+  const toggleBuyerActive = async (buyerId: string, currentlyActive: boolean) => {
+    await runAction(buyerId, currentlyActive ? 'suspend' : 'reactivate');
+  };
+
+  const sendPasswordReset = async (buyerId: string, email: string) => {
+    const actionKey = `buyer-${buyerId}-reset-password`;
+    setActiveAction(actionKey);
+    try {
+      const res = await fetchWithCsrf('/api/pd/admin/users/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        showFeedback(`Lien de réinitialisation envoyé à ${email}`);
+      } else {
+        showFeedback(await getErrorMessage(res), true);
+      }
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Network error', true);
+    } finally {
+      setActiveAction(null);
+    }
+  };
+
   const updateEmailVerification = async (buyer: BuyerAccount, nextValue: boolean) => {
     const actionKey = `buyer-${buyer.id}-email-verification`;
     setActiveAction(actionKey);
@@ -254,6 +283,36 @@ export default function AdminBuyersPage() {
     { label: 'With orders', value: summary.with_orders, icon: ShoppingBag, tone: 'from-[#B91C1C] to-amber-500 text-white' },
     { label: 'Total orders', value: summary.total_orders, icon: WalletCards, tone: 'from-amber-400 to-orange-500 text-white' },
   ];
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoBuyers
+        buyers={buyers}
+        summary={summary}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        search={search}
+        onSearchChange={(nextSearch) => {
+          setSearch(nextSearch);
+          setPage(1);
+        }}
+        withOrdersOnly={hasOrders}
+        onWithOrdersOnlyChange={(enabled) => {
+          setHasOrders(enabled);
+          setPage(1);
+        }}
+        onPageChange={setPage}
+        onRefresh={fetchBuyers}
+        onToggleActive={toggleBuyerActive}
+        onSendPasswordReset={sendPasswordReset}
+        activeAction={activeAction}
+        error={error}
+        success={success}
+      />
+    );
+  }
 
   return (
     <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={dir}>
