@@ -190,19 +190,19 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Implement multi-file drag & drop uploader, image cropper, and CDN URL copy utility.
 
 ### Section 3: Orders, Fulfillment, COD & Courier Handshake (SELLER_SEC03_ORDERS_FULFILLMENT_NEGOTIATION.md)
-- [ ] **Page 40: Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck** (/hub/dashboard/orders)
-  - [ ] Breadcrumb: Accueil > Ventes > Commandes
-  - [ ] Implement order status tabs (En attente, Confirmée, Expédiée, Livrée, Retournée/Refusée).
-  - [ ] Implement Tunisian carrier dispatch generator (Aramex, Rapid-Poste, Runex, First Delivery).
-  - [ ] Implement urgent COD anti-refus score deck with buyer confirmation triggers.
-- [ ] **Page 41: Customer Direct Negotiation, Inquiry Chat & 1-Click COD Validation** (/hub/dashboard/messages)
-  - [ ] Breadcrumb: Accueil > Ventes > Messagerie clients
-  - [ ] Implement real-time buyer negotiation chat with live order summary panel.
-  - [ ] Implement 1-click COD order confirmation button directly in conversation view.
-- [ ] **Page 71: Courier / Driver Mobile Delivery Handshake Console** (/courier)
-  - [ ] Breadcrumb: Accueil > Ventes > Console Livreur Mobile
-  - [ ] Implement driver mobile interface with click-to-call, GPS coordinates, and cash collection ledger.
-  - [ ] Implement digital proof of delivery (POD signature / photo upload).
+- [x] **Page 40: Orders Fulfillment, Tunisian Courier Pipeline & Urgent COD Anti-Refus Deck** (/hub/dashboard/orders)
+  - [x] Breadcrumb: Accueil > Ventes > Commandes
+  - [x] Implement order status tabs (En attente, Confirmée, Expédiée, Livrée, Retournée/Refusée).
+  - [x] Implement Tunisian carrier dispatch generator (Aramex, Rapid-Poste, Runex, First Delivery).
+  - [x] Implement urgent COD anti-refus score deck with buyer confirmation triggers.
+- [x] **Page 41: Customer Direct Negotiation, Inquiry Chat & 1-Click COD Validation** (/hub/dashboard/messages)
+  - [x] Breadcrumb: Accueil > Ventes > Messagerie clients
+  - [x] Implement real-time buyer negotiation chat with live order summary panel.
+  - [x] Implement 1-click COD order confirmation button directly in conversation view.
+- [x] **Page 71: Courier / Driver Mobile Delivery Handshake Console** (/courier)
+  - [x] Breadcrumb: Accueil > Ventes > Console Livreur Mobile
+  - [x] Implement driver mobile interface with click-to-call, GPS coordinates, and cash collection ledger.
+  - [x] Implement digital proof of delivery (POD signature / photo upload).
 
 ### Section 4: Wallet, Payouts & Store Payments (SELLER_SEC04_WALLET_PAYOUTS_FINANCES.md)
 - [ ] **Page 42: Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher** (/hub/dashboard/wallet)

@@ -34,6 +34,8 @@ import {
 } from 'lucide-react';
 import { useRealtimeEvent } from '../../hooks/useRealtimeEvent';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoMessages } from '@/components/dashboard/rego/SellerReGoMessages';
 
 type ChatType = 'buyer_seller' | 'seller_admin' | 'buyer_admin' | 'seller_seller';
 type ChatStatus = 'open' | 'closed';
@@ -563,6 +565,35 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
     { label: '📍 Confirmer adresse', text: 'Bonjour, pourriez-vous s\'il vous plaît nous confirmer votre gouvernorat et adresse exacte de livraison ?' },
     { label: '🤝 Merci pour votre achat', text: 'Merci beaucoup pour votre confiance ! N\'hésitez pas si vous avez la moindre question.' },
   ];
+
+  const { dashboardStyle } = useDashboardStyle();
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoMessages
+        conversations={conversations}
+        activeConversation={activeConversation || null}
+        messages={active?.messages || []}
+        loadingList={loadingList}
+        loadingMessages={loadingConversation}
+        sendingMessage={sending}
+        onSelectConversation={(id) => {
+          setActiveId(id);
+          void loadConversation(id);
+        }}
+        onSendMessage={async (text) => {
+          await sendMessageWithText(text);
+        }}
+        onValidateCodOrder={async () => {
+          await handleValidateCod();
+        }}
+        onRefresh={async () => {
+          await loadConversations();
+          if (activeId) await loadConversation(activeId);
+        }}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-4">

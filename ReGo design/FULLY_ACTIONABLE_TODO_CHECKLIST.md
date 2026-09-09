@@ -64,10 +64,10 @@ This checklist details every concrete engineering task required to implement the
 ### Section 3: Orders, Fulfillment & Courier Handshake (`SELLER_SEC03_ORDERS_FULFILLMENT_NEGOTIATION.md`)
 - [x] **Page 40: Orders Fulfillment & COD Deck** (`/hub/dashboard/orders`)
   - [x] Apply ReGo modern view (`OrdersReGoCockpit.tsx`) with order status filters, COD Anti-Refus radar, and Tunisian carrier SLA dispatch.
-- [ ] **Page 41: Buyer Chat & 1-Click COD** (`/hub/dashboard/messages`)
-  - [ ] Apply three-pane conversation view with sticky order summary and 1-click COD confirmation button.
-- [ ] **Page 71: Courier Mobile Handshake Console** (`/courier`)
-  - [ ] Apply high-contrast mobile driver ledger with click-to-call and POD photo signature capture.
+- [x] **Page 41: Buyer Chat & 1-Click COD** (`/hub/dashboard/messages`)
+  - [x] Apply three-pane conversation view with sticky order summary and 1-click COD confirmation button (`SellerReGoMessages.tsx`).
+- [x] **Page 71: Courier Mobile Handshake Console** (`/courier`)
+  - [x] Apply high-contrast mobile driver ledger with click-to-call and POD photo signature capture (`CourierReGoConsole.tsx`).
 
 ### Section 4: Wallet, Payouts & Store Payments (`SELLER_SEC04_WALLET_PAYOUTS_FINANCES.md`)
 - [x] **Page 42: Wallet & RIB Payouts** (`/hub/dashboard/wallet`)
