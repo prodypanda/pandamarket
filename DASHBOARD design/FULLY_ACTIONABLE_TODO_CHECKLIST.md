@@ -140,8 +140,12 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply SaaS orders and invoices ledger with multi-action batch toolbar, arbitration modal, and inspection drawer (`AdminReGoSubscriptionOrders.tsx`).
 
 ### Section 7: Telemetry, AI Costs & Audit (`SUPERADMIN_SEC07_INFRASTRUCTURE_AUDIT_LOGS.md`)
-- [ ] **Pages 21-25: AI Token Telemetry, Admin/Seller/Buyer Audits, System Health Logs**
-  - [ ] Apply Gemini token quota gauges and immutable security event logs.
+- [x] **Pages 21-25: AI Token Telemetry, Admin/Seller/Buyer Audits, System Health Logs**
+  - [x] Apply Gemini LLM token quotas, platform cost meters in millimes, routing failover, and job drawer (`AdminReGoAiCosts.tsx`).
+  - [x] Apply Administrator security audit trail with IP/machine drilldown and signed CSV export (`AdminReGoAuditLog.tsx`, logType="admin").
+  - [x] Apply Merchant/Vendor sensitive operations audit trail with store context and inspection drawer (`AdminReGoAuditLog.tsx`, logType="seller").
+  - [x] Apply Buyer account actions, order events, and authentication audit trail (`AdminReGoAuditLog.tsx`, logType="buyer").
+  - [x] Apply Server infrastructure logs, 500 error telemetry, stacktrace terminal viewer, and manual log creator (`AdminReGoSystemLogs.tsx`).
 
 ### Section 8: Configuration, CMS & Communications (`SUPERADMIN_SEC08_CONFIG_CMS_COMMUNICATIONS.md`)
 - [ ] **Pages 26, 27, 29, 30: Platform Settings, SMTP Mail Dispatch, CMS Editor**

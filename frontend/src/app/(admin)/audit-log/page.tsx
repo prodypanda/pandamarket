@@ -1,6 +1,8 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoAuditLog } from '@/components/admin/rego/AdminReGoAuditLog';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
@@ -314,6 +316,56 @@ export default function AuditLogPage() {
     if (!value) return;
     await navigator.clipboard?.writeText(value);
   };
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoAuditLog
+        logType="admin"
+        entries={entries}
+        summary={summary}
+        loading={loading}
+        error={error}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        search={search}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        setSearch={setSearch}
+        actionFilter={actionFilter}
+        setActionFilter={setActionFilter}
+        resourceType={resourceType}
+        setResourceType={setResourceType}
+        actorRole={actorRole}
+        setActorRole={setActorRole}
+        method={method}
+        setMethod={setMethod}
+        statusCode={statusCode}
+        setStatusCode={setStatusCode}
+        fromDate={fromDate}
+        setFromDate={setFromDate}
+        toDate={toDate}
+        setToDate={setToDate}
+        selectedEntry={selectedEntry}
+        setSelectedEntry={setSelectedEntry}
+        isExporting={isExporting}
+        onExport={() => void handleExport()}
+        showPurgeModal={showPurgeModal}
+        setShowPurgeModal={setShowPurgeModal}
+        purgeDays={purgeDays}
+        setPurgeDays={setPurgeDays}
+        isPurging={isPurging}
+        onPurge={() => void handlePurge()}
+        onRefresh={() => void fetchAuditLog()}
+        onResetFilters={resetFilters}
+        onPageChange={(p) => setPage(p)}
+        actions={actions}
+        resources={resources}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

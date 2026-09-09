@@ -1,6 +1,8 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoSystemLogs } from '@/components/admin/rego/AdminReGoSystemLogs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
@@ -378,6 +380,60 @@ export default function SystemLogsPage() {
       setError(err instanceof Error ? err.message : 'Failed to delete log entry');
     }
   };
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoSystemLogs
+        entries={entries}
+        summary={summary}
+        loading={loading}
+        error={error}
+        page={page}
+        totalPages={totalPages}
+        search={search}
+        setSearch={setSearch}
+        level={level}
+        setLevel={setLevel}
+        eventType={eventType}
+        setEventType={setEventType}
+        source={source}
+        setSource={setSource}
+        requestId={requestId}
+        setRequestId={setRequestId}
+        hasStack={hasStack}
+        setHasStack={setHasStack}
+        fromDate={fromDate}
+        setFromDate={setFromDate}
+        toDate={toDate}
+        setToDate={setToDate}
+        showCreate={showCreate}
+        setShowCreate={setShowCreate}
+        showClear={showClear}
+        setShowClear={setShowClear}
+        creating={creating}
+        clearing={clearing}
+        createError={createError}
+        createSuccess={createSuccess}
+        clearError={clearError}
+        clearSuccess={clearSuccess}
+        clearMode={clearMode}
+        setClearMode={setClearMode}
+        clearConfirm={clearConfirm}
+        setClearConfirm={setClearConfirm}
+        olderThanDays={olderThanDays}
+        setOlderThanDays={setOlderThanDays}
+        createForm={createForm}
+        setCreateForm={setCreateForm}
+        onCreateLog={createLog}
+        onClearLogs={clearLogs}
+        onRefresh={() => void fetchLogs()}
+        onResetFilters={resetFilters}
+        onPageChange={(p) => setPage(p)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
