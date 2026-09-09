@@ -31,6 +31,8 @@ import {
   Layers,
 } from 'lucide-react';
 import { fetchWithCsrf } from '@/lib/api';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoMedia } from '@/components/admin/rego/AdminReGoMedia';
 
 interface MediaItem {
   key: string;
@@ -69,6 +71,7 @@ function formatDate(dateStr?: string) {
 }
 
 export default function PlatformMediaPage() {
+  const { adminTheme } = useAdminTheme();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [summary, setSummary] = useState<SummaryCounts>({ total: 0, categories: 0, branding: 0, banners: 0, general: 0 });
   const [loading, setLoading] = useState(true);
@@ -419,6 +422,41 @@ export default function PlatformMediaPage() {
       if (sortBy === 'name_desc') return b.filename.localeCompare(a.filename);
       return 0;
     });
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoMedia
+        items={filteredItems}
+        summary={summary}
+        loading={loading}
+        activeFolder={activeFolder}
+        onActiveFolderChange={setActiveFolder}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        onOpenUpload={() => setIsUploadOpen(true)}
+        onSingleOptimize={(item) => setOptimizingItem(item)}
+        onBulkOptimize={handleBulkOptimize}
+        onRegenerateVariants={handleRegenerateVariants}
+        onOpenRename={(item) => {
+          setRenamingItem(item);
+          setNewFilename(item.filename);
+        }}
+        onDelete={handleDelete}
+        onCopyUrl={handleCopyUrl}
+        copiedKey={copiedKey}
+        deletingKey={deletingKey}
+        bulkOptimizing={bulkOptimizing}
+        regeneratingVariants={regeneratingVariants}
+        error={error}
+        success={success}
+        onRefresh={loadMedia}
+      />
+    );
+  }
 
   return (
     <div

@@ -6,6 +6,8 @@ import { fetchWithCsrf } from '@/lib/api';
 import { getStorefrontUrl } from '@/lib/store-hosts';
 import { getResizedImageUrl } from '@/lib/image-url';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoProducts } from '@/components/admin/rego/AdminReGoProducts';
 import {
   Package,
   Search,
@@ -145,6 +147,7 @@ interface PaginationState {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
+  const { adminTheme } = useAdminTheme();
   const { t, locale, dir } = useLocale();
 
   // Data state
@@ -560,6 +563,55 @@ export default function AdminProductsPage() {
     t('admin.products.subtitle') && !t('admin.products.subtitle').startsWith('admin.')
       ? t('admin.products.subtitle')
       : 'Superadmin catalog inspection, multi-store filtering, and AI interest tagging.';
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoProducts
+        products={products}
+        categories={categories}
+        metrics={metrics}
+        pagination={pagination}
+        loading={loading}
+        error={error}
+        search={search}
+        onSearchChange={handleSearchChange}
+        status={status}
+        onStatusChange={handleStatusChange}
+        categoryId={categoryId}
+        onCategoryChange={handleCategoryChange}
+        stockStatus={stockStatus}
+        onStockChange={handleStockChange}
+        productType={productType}
+        onTypeChange={handleTypeChange}
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
+        onClearFilters={handleClearFilters}
+        onNextPage={handleNextPage}
+        onPrevPage={handlePrevPage}
+        onSelectProduct={openDrawer}
+        selectedProduct={selectedProduct}
+        onCloseDrawer={closeDrawer}
+        onRefresh={() => loadData()}
+        onCopyId={handleCopyId}
+        copiedId={copiedId}
+        vendorTags={vendorTags}
+        interestTags={interestTags}
+        targetTagType={targetTagType}
+        onTargetTagTypeChange={setTargetTagType}
+        newTagInput={newTagInput}
+        onNewTagInputChange={setNewTagInput}
+        onAddTag={handleAddTag}
+        onRemoveVendorTag={handleRemoveVendorTag}
+        onRemoveInterestTag={handleRemoveInterestTag}
+        onSaveTags={handleSaveTags}
+        savingTags={savingTags}
+        tagSaveSuccess={tagSaveSuccess}
+        tagSaveError={tagSaveError}
+        drawerTab={drawerTab}
+        onDrawerTabChange={setDrawerTab}
+      />
+    );
+  }
 
   return (
     <div

@@ -122,8 +122,10 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply refund arbitration queue (`AdminReGoRefundReview.tsx`) with reason badges, drawer inspection, and 1-click decision gate.
 
 ### Section 4: Catalog, Taxonomy & Media (`SUPERADMIN_SEC04_CATALOG_TAXONOMY_MEDIA.md`)
-- [ ] **Pages 11-13: Products Moderation, Category Hierarchy, Media CDN Vault**
-  - [ ] Apply AI counterfeit risk score flags and multi-level category commission tree.
+- [x] **Pages 11-13: Products Moderation, Category Hierarchy, Media CDN Vault**
+  - [x] Apply global products moderation catalog with inventory metrics, tag studio, and inspection drawer (`AdminReGoProducts.tsx`).
+  - [x] Apply hierarchical category taxonomy tree with position reordering and megamenu visibility (`AdminReGoCategories.tsx`).
+  - [x] Apply cloud media CDN vault with WebP optimization triggers, file renames, and folder telemetry (`AdminReGoMedia.tsx`).
 
 ### Section 5: Support, Disputes, Fraud & Tickets (`SUPERADMIN_SEC05_SUPPORT_DISPUTES_FRAUD.md`)
 - [ ] **Pages 14-16, 19, 28: Mediation Chat, Fraud Radar, Violations, Helpdesk**

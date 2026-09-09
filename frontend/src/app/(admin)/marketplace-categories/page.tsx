@@ -3,6 +3,8 @@
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
 import { MarketplaceAssetPicker } from '@/components/admin/MarketplaceAssetPicker';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoCategories } from '@/components/admin/rego/AdminReGoCategories';
 import {
   AlertTriangle,
   ArrowDown,
@@ -421,6 +423,7 @@ function RecursiveCategoryItem({
 }
 
 export default function MarketplaceCategoriesPage() {
+  const { adminTheme } = useAdminTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -772,6 +775,52 @@ export default function MarketplaceCategoriesPage() {
       setDeletingId(null);
     }
   };
+
+  const expandAll = () => setCollapsedParents({});
+  const collapseAll = () => {
+    const all: Record<string, boolean> = {};
+    categories.forEach((c) => {
+      all[c.id] = true;
+    });
+    setCollapsedParents(all);
+  };
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoCategories
+        categories={categories}
+        categoryTree={categoryTree}
+        loading={loading}
+        savingId={savingId}
+        deletingId={deletingId}
+        error={error}
+        success={success}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        collapsedParents={collapsedParents}
+        onToggleCollapse={toggleParentCollapse}
+        onExpandAll={expandAll}
+        onCollapseAll={collapseAll}
+        onUpdateCategory={updateCategory}
+        onMovePosition={movePosition}
+        onRequestDelete={requestDelete}
+        onEditCategory={(cat) => setEditingCategory(cat)}
+        onAddSubcategory={(pId) => {
+          setParentId(pId);
+          setIsFormExpanded(true);
+        }}
+        onOpenCreateModal={() => {
+          setParentId('');
+          setIsFormExpanded(true);
+        }}
+        onRefresh={fetchCategories}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen space-y-8 p-6 font-sans">
