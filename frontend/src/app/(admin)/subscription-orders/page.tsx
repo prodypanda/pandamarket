@@ -1253,750 +1253,8 @@ export default function SubscriptionOrdersPage() {
     }
   };
 
-  if (adminTheme === 'rego') {
-    return (
-      <AdminReGoSubscriptionOrders
-        orders={orders}
-        pagination={pagination}
-        stats={stats}
-        loading={loading}
-        error={error}
-        success={success}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        gatewayFilter={gatewayFilter}
-        setGatewayFilter={setGatewayFilter}
-        targetPlanFilter={targetPlanFilter}
-        setTargetPlanFilter={setTargetPlanFilter}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        page={page}
-        setPage={setPage}
-        selectedIds={selectedIds}
-        setSelectedIds={setSelectedIds}
-        onBulkAction={handleBulkAction}
-        onReviewManual={async (intentId, decision, reason) => {
-          const target = orders.find((o) => o.id === intentId) || reviewOrder;
-          if (reason) setRejectionReason(reason);
-          await handleReview(decision, target);
-        }}
-        onGenerateMagicLink={handleGenerateMagicLink}
-        onPauseResumeStore={handlePauseResumeStore}
-        onCancelOrder={handleCancelOrder}
-        onDeleteOrder={handleDeleteOrder}
-        onRunBackgroundCron={handleRunBackgroundCron}
-        onDownloadGlExport={handleDownloadGlExport}
-        onOpenDesyncs={() => {
-          fetchDesyncs();
-          setShowDesyncModal(true);
-        }}
-        onRefresh={async () => {
-          await fetchOrders();
-          await fetchStats();
-        }}
-        drawerOrder={drawerOrder}
-        setDrawerOrder={setDrawerOrder}
-        drawerLogs={drawerLogs}
-        loadingLogs={loadingLogs}
-        adminNoteInput={adminNoteInput}
-        setAdminNoteInput={setAdminNoteInput}
-        submittingNote={submittingNote}
-        onAddAdminNote={handleAddAdminNote}
-        prorationOrder={prorationOrder}
-        setProrationOrder={setProrationOrder}
-        prorationData={prorationData}
-        onOpenProration={(order) => {
-          setProrationOrder(order);
-          handleCalculateProration(order.store_id, order.target_plan);
-        }}
-        diagnosticsOrder={diagnosticsOrder}
-        setDiagnosticsOrder={setDiagnosticsOrder}
-        webhookLogs={webhookLogs}
-        loadingDiagnostics={loadingDiagnostics}
-        onOpenDiagnostics={openDiagnostics}
-      />
-    );
-  }
-
-  return (
-    <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
-      {/* Header & Main Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Crown className="w-8 h-8 text-[#B91C1C]" />
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-              {tr.title || 'Platform Subscription Orders'}
-            </h1>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {tr.subtitle || 'Manage and review vendor subscription orders across Mandat Minute, B2B Invoices, Flouci, PayPal & Konnect'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/fraud-radar"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-sm animate-pulse"
-          >
-            <Radar className="w-4 h-4" /> Fraud Radar Page
-          </Link>
-          <button
-            onClick={() => setShowGlModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm"
-          >
-            <FileSpreadsheet className="w-4 h-4" /> Export Comptable (GL)
-          </button>
-          <button
-            onClick={handleRunBackgroundCron}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-sm"
-          >
-            <Cpu className="w-4 h-4" /> Run Cron Guardrail
-          </button>
-          {desyncsList.length > 0 && (
-            <button
-              onClick={() => setShowDesyncModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 shadow-sm animate-pulse"
-            >
-              <LifeBuoy className="w-4 h-4" /> Zombie Self-Healer ({desyncsList.length})
-            </button>
-          )}
-          <button
-            onClick={fetchCardExpiryQueue}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
-          >
-            <CreditCard className="w-4 h-4 text-purple-600" /> Expiring Cards Queue
-          </button>
-          <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
-          >
-            <Download className="w-4 h-4" /> {tr.exportCsv || 'Export CSV'}
-          </button>
-          <button
-            onClick={exportJSON}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
-          >
-            <FileJson className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
-          </button>
-          <button
-            onClick={() => { fetchOrders(); fetchStats(); fetchCohortAnalytics(); fetchDesyncs(); }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
-          >
-            <RefreshCw className="w-4 h-4" /> {tr.refresh || 'Refresh'}
-          </button>
-        </div>
-      </div>
-
-      {/* Cohort Churn & Customer LTV Analytics Section */}
-      {cohortData && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-purple-600" /> Cohort Retention, Churn & Customer LTV Analytics
-            </h3>
-            <span className="text-xs text-slate-400 font-bold">Real-time Platform Metrics</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-            <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
-              <p className="text-purple-600 font-bold uppercase text-[10px]">Churn Rate %</p>
-              <p className="text-base font-black text-purple-900 dark:text-purple-200">{cohortData.metrics.churn_rate_pct}%</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-              <p className="text-blue-600 font-bold uppercase text-[10px]">ARPU (Avg Revenue/Vendor)</p>
-              <p className="text-base font-black text-blue-900 dark:text-blue-200">{cohortData.metrics.arpu_tnd} TND</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-              <p className="text-emerald-600 font-bold uppercase text-[10px]">Estimated LTV</p>
-              <p className="text-base font-black text-emerald-900 dark:text-emerald-200">{cohortData.metrics.estimated_ltv_tnd} TND</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-              <p className="text-amber-600 font-bold uppercase text-[10px]">Active Vendors</p>
-              <p className="text-base font-black text-amber-900 dark:text-amber-200">{cohortData.metrics.active_vendors} / {cohortData.metrics.total_vendors}</p>
-            </div>
-            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <p className="text-slate-500 font-bold uppercase text-[10px]">Total ARR</p>
-              <p className="text-base font-black text-slate-900 dark:text-white">{cohortData.metrics.total_arr_tnd} TND</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sticky Dynamic Top Summary Analytics Bar */}
-      <div className="sticky top-2 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-md transition-all">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filtered MRR / ARR</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">
-                {filteredMetrics.mrr} TND <span className="text-xs font-normal text-slate-400">/mo ({filteredMetrics.totalArr} TND ARR)</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active vs Past-Due Ratio</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">
-                {filteredMetrics.activeRatio}% <span className="text-xs font-normal text-slate-400">({filteredMetrics.activeCount} Active / {filteredMetrics.pastDueCount} Past Due)</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-50 dark:bg-red-950/40 rounded-xl text-red-600 dark:text-red-400">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Failed / Rejected Count</p>
-              <p className="text-lg font-black text-red-600 dark:text-red-400">
-                {filteredMetrics.failedCount} <span className="text-xs font-normal text-slate-400">orders</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400">
-              <Ban className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cancelled / Expired</p>
-              <p className="text-lg font-black text-slate-700 dark:text-slate-300">
-                {filteredMetrics.cancelledCount} <span className="text-xs font-normal text-slate-400">subscriptions</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Alerts */}
-      {success && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-semibold rounded-2xl">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-sm font-medium rounded-2xl flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {/* Saved Custom View Presets Bar */}
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs">
-        <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mr-1">
-          <Bookmark className="w-3.5 h-3.5 text-[#B91C1C]" /> Filter Presets:
-        </span>
-        <button onClick={() => applyPreset('high_value')} className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800 hover:bg-amber-100">
-          💰 High-Value (&gt; 400 TND)
-        </button>
-        <button onClick={() => applyPreset('pending_mandats')} className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 hover:bg-blue-100">
-          📑 Pending Mandat Proofs
-        </button>
-        <button onClick={() => applyPreset('pending_review')} className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 hover:bg-purple-100">
-          ⏳ Awaiting Admin Review
-        </button>
-        <button onClick={() => applyPreset('pro_upgrades')} className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 hover:bg-red-100">
-          👑 Pro/Enterprise Upgrades
-        </button>
-        <button onClick={() => applyPreset('reset')} className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto flex items-center gap-1">
-          <RotateCcw className="w-3 h-3" /> Reset Filters
-        </button>
-      </div>
-
-      {/* Bulk Action Bar & Revenue Impact Simulator Trigger */}
-      {selectedIds.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-bold">
-          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
-            <CheckSquare className="w-5 h-5 text-amber-600" />
-            <span>{(tr.selectedCount || '{count} selected').replace('{count}', String(selectedIds.length))}</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <button onClick={handleSimulateRevenue} className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5" /> Simulate Revenue Impact
-            </button>
-
-            <input
-              type="text"
-              value={bulkRejectionReason}
-              onChange={(e) => setBulkRejectionReason(e.target.value)}
-              placeholder={tr.bulkReason || 'Rejection reason...'}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none text-xs flex-1 md:flex-initial"
-            />
-
-            <select
-              value={bulkMigrationTargetPlan}
-              onChange={(e) => setBulkMigrationTargetPlan(e.target.value)}
-              className="px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none"
-            >
-              <option value="starter">Migrate to Starter</option>
-              <option value="regular">Migrate to Regular</option>
-              <option value="agency">Migrate to Agency</option>
-              <option value="pro">Migrate to Pro</option>
-              <option value="golden">Migrate to Golden</option>
-              <option value="platinum">Migrate to Platinum</option>
-            </select>
-
-            <button onClick={() => handleBulkAction('approve')} disabled={submitting} className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50">
-              Approve
-            </button>
-            <button onClick={() => handleBulkAction('reject')} disabled={submitting} className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
-              Reject
-            </button>
-            <button onClick={() => handleBulkAction('pause')} disabled={submitting} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50">
-              Pause
-            </button>
-            <button onClick={() => handleBulkAction('resume')} disabled={submitting} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
-              Resume
-            </button>
-            <button onClick={() => handleBulkAction('migrate')} disabled={submitting} className="px-3 py-1.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50">
-              Migrate Plan
-            </button>
-            <button onClick={() => handleBulkAction('retry')} disabled={submitting} className="px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50">
-              Retry Payment
-            </button>
-            <button onClick={() => handleBulkAction('cancel')} disabled={submitting} className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50">
-              Cancel
-            </button>
-            <button onClick={() => handleBulkAction('delete')} disabled={submitting} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50">
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Advanced Filters & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-              placeholder={tr.search || 'Search by store, email or ID...'}
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none focus:border-[#B91C1C] bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
-          >
-            <option value="all">{tr.statusFilter || 'All Statuses'}</option>
-            <option value="pending_review">⏳ {tr.statusPendingReview || 'Pending Review'}</option>
-            <option value="pending_proof">📑 {tr.statusPendingProof || 'Pending Proof'}</option>
-            <option value="captured">✅ {tr.statusCaptured || 'Captured / Active'}</option>
-            <option value="rejected">❌ {tr.statusRejected || 'Rejected'}</option>
-            <option value="cancelled">🚫 {tr.statusCancelled || 'Cancelled'}</option>
-            <option value="expired">⚠️ {tr.statusExpired || 'Expired'}</option>
-          </select>
-
-          <select
-            value={gatewayFilter}
-            onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
-            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
-          >
-            <option value="all">{tr.gatewayFilter || 'All Gateways'}</option>
-            <option value="manual_mandat">{tr.gatewayMandat || 'Mandat Minute / Wire'}</option>
-            <option value="cod">{tr.gatewayCod || 'B2B Invoice / COD'}</option>
-            <option value="flouci">Flouci</option>
-            <option value="paypal">PayPal</option>
-            <option value="konnect">Konnect</option>
-          </select>
-
-          <select
-            value={targetPlanFilter}
-            onChange={(e) => { setTargetPlanFilter(e.target.value); setPage(1); }}
-            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
-          >
-            <option value="all">All Target Plans</option>
-            <option value="starter">Starter</option>
-            <option value="regular">Regular</option>
-            <option value="agency">Agency</option>
-            <option value="pro">Pro</option>
-            <option value="golden">Golden</option>
-            <option value="platinum">Platinum</option>
-          </select>
-        </div>
-
-        {/* Date Range & Amount Range Inputs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">From Date</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">To Date</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Min Amount (TND)</label>
-            <input
-              type="number"
-              value={minAmount}
-              onChange={(e) => { setMinAmount(e.target.value); setPage(1); }}
-              placeholder="0"
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Max Amount (TND)</label>
-            <input
-              type="number"
-              value={maxAmount}
-              onChange={(e) => { setMaxAmount(e.target.value); setPage(1); }}
-              placeholder="10000"
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Orders Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-slate-400 font-medium">{tr.loading || 'Loading subscription orders...'}</div>
-        ) : orders.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <Crown className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
-            <p className="font-bold text-slate-700 dark:text-slate-300">{tr.empty || 'No subscription orders found'}</p>
-            <p className="text-xs text-slate-400">{tr.emptyHint || 'Try adjusting your search or filters.'}</p>
-          </div>
-        ) : (
-          <div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="px-4 py-4 w-10">
-                      <button onClick={toggleSelectAll} className="p-1 text-slate-400 hover:text-slate-700">
-                        {selectedIds.length === orders.length && orders.length > 0 ? (
-                          <CheckSquare className="w-4 h-4 text-[#B91C1C]" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('created_at')}>
-                      <div className="flex items-center gap-1">
-                        {tr.order || 'Order'} <ArrowUpDown className="w-3 h-3" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('store_name')}>
-                      <div className="flex items-center gap-1">
-                        {tr.storeAndSeller || 'Store & Health'} <ArrowUpDown className="w-3 h-3" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('target_plan')}>
-                      <div className="flex items-center gap-1">
-                        {tr.planChange || 'Plan Change'} <ArrowUpDown className="w-3 h-3" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('amount')}>
-                      <div className="flex items-center gap-1">
-                        {tr.amount || 'Amount'} <ArrowUpDown className="w-3 h-3" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-4">{tr.method || 'Gateway'}</th>
-                    <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
-                    <th className="px-4 py-4 cursor-pointer text-center" onClick={() => handleSort('status')}>
-                      <div className="flex items-center justify-center gap-1">
-                        {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-4 text-right">
-                      <div>Inline Actions</div>
-                      <div className="text-[10px] opacity-75 font-normal">& Power Tools</div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
-                  {orders.map((order) => {
-                    const isSelected = selectedIds.includes(order.id);
-                    const health = calculateHealthScore(order);
-                    return (
-                      <tr key={order.id} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${isSelected ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}`}>
-                        <td className="px-4 py-4">
-                          <button onClick={() => toggleSelectOrder(order.id)} className="p-1 text-slate-400 hover:text-slate-700">
-                            {isSelected ? <CheckSquare className="w-4 h-4 text-[#B91C1C]" /> : <Square className="w-4 h-4" />}
-                          </button>
-                        </td>
-                        <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold">
-                          <div className="flex items-center gap-1">
-                            <span className="cursor-pointer hover:underline" onClick={() => openDrawer(order)}>#{order.id.slice(-8).toUpperCase()}</span>
-                            <button onClick={() => copyToClipboard(order.id, 'Subscription ID')} className="p-1 text-slate-400 hover:text-slate-700" title="Copy Subscription ID">
-                              <Copy className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onClick={() => openDrawer(order)}>{order.store_name}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${health.badgeClass} flex items-center gap-1`} title={health.flags.join(', ') || 'Healthy Account'}>
-                                <HeartPulse className="w-3 h-3" /> {health.score}/100
-                              </span>
-                            </div>
-                            <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.garbage.team</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              {order.from_plan.toUpperCase()}
-                            </span>
-                            <span>→</span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${PLAN_BADGES[order.target_plan] || 'bg-slate-100 text-slate-800'}`}>
-                              {order.target_plan.toUpperCase()}
-                            </span>
-                            <button
-                              onClick={() => setQuotaOrder(order)}
-                              title={tr.quotaTitle || 'Compare Quotas'}
-                              className="p-1 text-slate-400 hover:text-slate-700"
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 font-black text-slate-900 dark:text-white text-sm">
-                          {Number(order.amount).toFixed(0)} TND
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="font-bold text-slate-700 dark:text-slate-300">
-                            {GATEWAY_NAMES[order.gateway] || order.gateway}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 space-x-1">
-                          {order.proof_url ? (
-                            <a
-                              href={resolveProofUrl(order.proof_url)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold hover:underline"
-                            >
-                              <FileText className="w-3.5 h-3.5" /> {tr.proof || 'Proof'} <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 italic">{tr.proofNone || 'None'}</span>
-                          )}
-                          <button
-                            onClick={() => {
-                              setInvoiceOrder(order);
-                              setEditTaxVatId(order.metadata?.vat_tax_id || '');
-                              setEditBillingAddress(order.metadata?.billing_address || '');
-                            }}
-                            title={tr.invoiceTitle || 'Print B2B Invoice'}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 ml-1"
-                          >
-                            <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
-                          </button>
-                        </td>
-
-                        {/* Simplified Status Column with Icon Pills & Hover Tooltips */}
-                        <td className="px-4 py-4 text-center">
-                          {order.status === 'captured' && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-sm cursor-help">
-                                <CheckCircle2 className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Active / Captured
-                              </div>
-                            </div>
-                          )}
-
-                          {order.status === 'pending_review' && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-sm animate-pulse cursor-help">
-                                <Clock className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Past-Due / In Review
-                              </div>
-                            </div>
-                          )}
-
-                          {order.status === 'pending_proof' && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 shadow-sm cursor-help">
-                                <FileText className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Pending Proof (Grace Period)
-                              </div>
-                            </div>
-                          )}
-
-                          {(order.status === 'rejected' || order.status === 'failed') && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800 shadow-sm cursor-help">
-                                <ShieldAlert className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Failed / Dunning (3+ Retries)
-                              </div>
-                            </div>
-                          )}
-
-                          {(order.status === 'cancelled' || order.status === 'expired') && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shadow-sm cursor-help">
-                                <Ban className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Cancelled / Expired
-                              </div>
-                            </div>
-                          )}
-
-                          {order.status === 'pending' && (
-                            <div className="group relative inline-flex items-center justify-center">
-                              <span className="p-2 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm cursor-help">
-                                <Clock className="w-4 h-4" />
-                              </span>
-                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
-                                Pending Initiation
-                              </div>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Inline Actions & Power Tools (Split into 2 Rows) */}
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex flex-col items-end gap-1.5">
-                            {/* Row 1: Primary Review & Inspection Actions */}
-                            <div className="flex items-center gap-1">
-                              {order.status === 'pending_review' || order.status === 'pending_proof' ? (
-                                <button
-                                  onClick={() => setReviewOrder(order)}
-                                  className="px-2.5 py-1 bg-[#B91C1C] text-white font-bold rounded-md text-[11px] hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
-                                >
-                                  <Eye className="w-3 h-3" /> {tr.review || 'Review'}
-                                </button>
-                              ) : null}
-
-                              <button
-                                onClick={() => openDrawer(order)}
-                                className="px-2 py-1 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-md text-[11px] hover:bg-slate-100 dark:hover:bg-slate-800"
-                              >
-                                {tr.details || 'Details'}
-                              </button>
-                            </div>
-
-                            {/* Row 2: Secondary Power Tools Icon Bar */}
-                            <div className="flex items-center gap-1 bg-slate-100/70 dark:bg-slate-800/70 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
-                              <button
-                                onClick={() => handleOpenDisputeWorkbench(order)}
-                                title="Native Dispute & Chargeback Workbench"
-                                className="p-1 text-red-600 dark:text-red-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <Gavel className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => handleGenerateMagicLink(order.id)}
-                                title="Generate Pre-Authenticated Billing Magic Link"
-                                className="p-1 text-purple-600 dark:text-purple-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <Key className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => { setAddonOrder(order); fetchStoreAddonsList(order.store_id); }}
-                                title="Line-Item Add-On Disaggregation Manager"
-                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <Layers className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => openDiagnostics(order)}
-                                title="Webhook & Sync Diagnostics"
-                                className="p-1 text-teal-600 dark:text-teal-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <Activity className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
-                                title="Prorated Manual Switch"
-                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <Calculator className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => setPauseModalOrder(order)}
-                                title="Pause / Resume"
-                                className="p-1 text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <PauseCircle className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => { setCreditModalOrder(order); fetchStoreAdjustments(order.store_id); }}
-                                title="One-Off Credits & Adjustments"
-                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
-                              >
-                                <DollarSign className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls */}
-            <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <div>
-                Showing Page <span className="font-bold text-slate-900 dark:text-white">{pagination.page}</span> of{' '}
-                <span className="font-bold text-slate-900 dark:text-white">{pagination.total_pages}</span> ({pagination.total} total orders)
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={pagination.page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-4 h-4" /> Previous
-                </button>
-                <button
-                  disabled={pagination.page >= pagination.total_pages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
-                >
-                  Next <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
+  const renderSharedModals = () => (
+    <>
       {/* General Ledger Export Modal */}
       {showGlModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-slate-900 dark:text-slate-100">
@@ -2755,7 +2013,7 @@ export default function SubscriptionOrdersPage() {
       )}
 
       {/* Rich Slide-Over Drawer for Order Details, Notes & Interactive Lifecycle Scrubber */}
-      {drawerOrder && (
+      {adminTheme !== 'rego' && drawerOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 w-full max-w-xl h-full shadow-2xl overflow-y-auto p-6 sm:p-8 space-y-6 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -3130,6 +2388,757 @@ export default function SubscriptionOrdersPage() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (adminTheme === 'rego') {
+    return (
+      <div dir={dir}>
+        <AdminReGoSubscriptionOrders
+        orders={orders}
+        pagination={pagination}
+        stats={stats}
+        loading={loading}
+        error={error}
+        success={success}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        gatewayFilter={gatewayFilter}
+        setGatewayFilter={setGatewayFilter}
+        targetPlanFilter={targetPlanFilter}
+        setTargetPlanFilter={setTargetPlanFilter}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        page={page}
+        setPage={setPage}
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
+        onBulkAction={handleBulkAction}
+        onReviewManual={async (intentId, decision, reason) => {
+          const target = orders.find((o) => o.id === intentId) || reviewOrder;
+          if (reason) setRejectionReason(reason);
+          await handleReview(decision, target);
+        }}
+        onGenerateMagicLink={handleGenerateMagicLink}
+        onPauseResumeStore={handlePauseResumeStore}
+        onCancelOrder={handleCancelOrder}
+        onDeleteOrder={handleDeleteOrder}
+        onRunBackgroundCron={handleRunBackgroundCron}
+        onDownloadGlExport={handleDownloadGlExport}
+        onOpenDesyncs={() => {
+          fetchDesyncs();
+          setShowDesyncModal(true);
+        }}
+        onRefresh={async () => {
+          await fetchOrders();
+          await fetchStats();
+        }}
+        drawerOrder={drawerOrder}
+        setDrawerOrder={setDrawerOrder}
+        drawerLogs={drawerLogs}
+        loadingLogs={loadingLogs}
+        adminNoteInput={adminNoteInput}
+        setAdminNoteInput={setAdminNoteInput}
+        submittingNote={submittingNote}
+        onAddAdminNote={handleAddAdminNote}
+        prorationOrder={prorationOrder}
+        setProrationOrder={setProrationOrder}
+        prorationData={prorationData}
+        onOpenProration={(order) => {
+          setProrationOrder(order);
+          handleCalculateProration(order.store_id, order.target_plan);
+        }}
+        diagnosticsOrder={diagnosticsOrder}
+        setDiagnosticsOrder={setDiagnosticsOrder}
+        webhookLogs={webhookLogs}
+        loadingDiagnostics={loadingDiagnostics}
+        onOpenDiagnostics={openDiagnostics}
+        />
+        {renderSharedModals()}
+      </div>
+    );
+  }
+
+  return (
+    <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Header & Main Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <Crown className="w-8 h-8 text-[#B91C1C]" />
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">
+              {tr.title || 'Platform Subscription Orders'}
+            </h1>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {tr.subtitle || 'Manage and review vendor subscription orders across Mandat Minute, B2B Invoices, Flouci, PayPal & Konnect'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/fraud-radar"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 shadow-sm animate-pulse"
+          >
+            <Radar className="w-4 h-4" /> Fraud Radar Page
+          </Link>
+          <button
+            onClick={() => setShowGlModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Export Comptable (GL)
+          </button>
+          <button
+            onClick={handleRunBackgroundCron}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-sm"
+          >
+            <Cpu className="w-4 h-4" /> Run Cron Guardrail
+          </button>
+          {desyncsList.length > 0 && (
+            <button
+              onClick={() => setShowDesyncModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 shadow-sm animate-pulse"
+            >
+              <LifeBuoy className="w-4 h-4" /> Zombie Self-Healer ({desyncsList.length})
+            </button>
+          )}
+          <button
+            onClick={fetchCardExpiryQueue}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+          >
+            <CreditCard className="w-4 h-4 text-purple-600" /> Expiring Cards Queue
+          </button>
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+          >
+            <Download className="w-4 h-4" /> {tr.exportCsv || 'Export CSV'}
+          </button>
+          <button
+            onClick={exportJSON}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+          >
+            <FileJson className="w-4 h-4" /> {tr.exportJson || 'Export JSON'}
+          </button>
+          <button
+            onClick={() => { fetchOrders(); fetchStats(); fetchCohortAnalytics(); fetchDesyncs(); }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4" /> {tr.refresh || 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* Cohort Churn & Customer LTV Analytics Section */}
+      {cohortData && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-purple-600" /> Cohort Retention, Churn & Customer LTV Analytics
+            </h3>
+            <span className="text-xs text-slate-400 font-bold">Real-time Platform Metrics</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+            <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
+              <p className="text-purple-600 font-bold uppercase text-[10px]">Churn Rate %</p>
+              <p className="text-base font-black text-purple-900 dark:text-purple-200">{cohortData.metrics.churn_rate_pct}%</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+              <p className="text-blue-600 font-bold uppercase text-[10px]">ARPU (Avg Revenue/Vendor)</p>
+              <p className="text-base font-black text-blue-900 dark:text-blue-200">{cohortData.metrics.arpu_tnd} TND</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+              <p className="text-emerald-600 font-bold uppercase text-[10px]">Estimated LTV</p>
+              <p className="text-base font-black text-emerald-900 dark:text-emerald-200">{cohortData.metrics.estimated_ltv_tnd} TND</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+              <p className="text-amber-600 font-bold uppercase text-[10px]">Active Vendors</p>
+              <p className="text-base font-black text-amber-900 dark:text-amber-200">{cohortData.metrics.active_vendors} / {cohortData.metrics.total_vendors}</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <p className="text-slate-500 font-bold uppercase text-[10px]">Total ARR</p>
+              <p className="text-base font-black text-slate-900 dark:text-white">{cohortData.metrics.total_arr_tnd} TND</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Dynamic Top Summary Analytics Bar */}
+      <div className="sticky top-2 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-md transition-all">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filtered MRR / ARR</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {filteredMetrics.mrr} TND <span className="text-xs font-normal text-slate-400">/mo ({filteredMetrics.totalArr} TND ARR)</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active vs Past-Due Ratio</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {filteredMetrics.activeRatio}% <span className="text-xs font-normal text-slate-400">({filteredMetrics.activeCount} Active / {filteredMetrics.pastDueCount} Past Due)</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 dark:bg-red-950/40 rounded-xl text-red-600 dark:text-red-400">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Failed / Rejected Count</p>
+              <p className="text-lg font-black text-red-600 dark:text-red-400">
+                {filteredMetrics.failedCount} <span className="text-xs font-normal text-slate-400">orders</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400">
+              <Ban className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cancelled / Expired</p>
+              <p className="text-lg font-black text-slate-700 dark:text-slate-300">
+                {filteredMetrics.cancelledCount} <span className="text-xs font-normal text-slate-400">subscriptions</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feedback Alerts */}
+      {success && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-semibold rounded-2xl">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-sm font-medium rounded-2xl flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Saved Custom View Presets Bar */}
+      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs">
+        <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mr-1">
+          <Bookmark className="w-3.5 h-3.5 text-[#B91C1C]" /> Filter Presets:
+        </span>
+        <button onClick={() => applyPreset('high_value')} className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800 hover:bg-amber-100">
+          💰 High-Value (&gt; 400 TND)
+        </button>
+        <button onClick={() => applyPreset('pending_mandats')} className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 hover:bg-blue-100">
+          📑 Pending Mandat Proofs
+        </button>
+        <button onClick={() => applyPreset('pending_review')} className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 hover:bg-purple-100">
+          ⏳ Awaiting Admin Review
+        </button>
+        <button onClick={() => applyPreset('pro_upgrades')} className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 font-bold border border-red-200 dark:border-red-800 hover:bg-red-100">
+          👑 Pro/Enterprise Upgrades
+        </button>
+        <button onClick={() => applyPreset('reset')} className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto flex items-center gap-1">
+          <RotateCcw className="w-3 h-3" /> Reset Filters
+        </button>
+      </div>
+
+      {/* Bulk Action Bar & Revenue Impact Simulator Trigger */}
+      {selectedIds.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-bold">
+          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+            <CheckSquare className="w-5 h-5 text-amber-600" />
+            <span>{(tr.selectedCount || '{count} selected').replace('{count}', String(selectedIds.length))}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button onClick={handleSimulateRevenue} className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5" /> Simulate Revenue Impact
+            </button>
+
+            <input
+              type="text"
+              value={bulkRejectionReason}
+              onChange={(e) => setBulkRejectionReason(e.target.value)}
+              placeholder={tr.bulkReason || 'Rejection reason...'}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none text-xs flex-1 md:flex-initial"
+            />
+
+            <select
+              value={bulkMigrationTargetPlan}
+              onChange={(e) => setBulkMigrationTargetPlan(e.target.value)}
+              className="px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none"
+            >
+              <option value="starter">Migrate to Starter</option>
+              <option value="regular">Migrate to Regular</option>
+              <option value="agency">Migrate to Agency</option>
+              <option value="pro">Migrate to Pro</option>
+              <option value="golden">Migrate to Golden</option>
+              <option value="platinum">Migrate to Platinum</option>
+            </select>
+
+            <button onClick={() => handleBulkAction('approve')} disabled={submitting} className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+              Approve
+            </button>
+            <button onClick={() => handleBulkAction('reject')} disabled={submitting} className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
+              Reject
+            </button>
+            <button onClick={() => handleBulkAction('pause')} disabled={submitting} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50">
+              Pause
+            </button>
+            <button onClick={() => handleBulkAction('resume')} disabled={submitting} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
+              Resume
+            </button>
+            <button onClick={() => handleBulkAction('migrate')} disabled={submitting} className="px-3 py-1.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50">
+              Migrate Plan
+            </button>
+            <button onClick={() => handleBulkAction('retry')} disabled={submitting} className="px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50">
+              Retry Payment
+            </button>
+            <button onClick={() => handleBulkAction('cancel')} disabled={submitting} className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50">
+              Cancel
+            </button>
+            <button onClick={() => handleBulkAction('delete')} disabled={submitting} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50">
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Filters & Search Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+              placeholder={tr.search || 'Search by store, email or ID...'}
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none focus:border-[#B91C1C] bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
+          >
+            <option value="all">{tr.statusFilter || 'All Statuses'}</option>
+            <option value="pending_review">⏳ {tr.statusPendingReview || 'Pending Review'}</option>
+            <option value="pending_proof">📑 {tr.statusPendingProof || 'Pending Proof'}</option>
+            <option value="captured">✅ {tr.statusCaptured || 'Captured / Active'}</option>
+            <option value="rejected">❌ {tr.statusRejected || 'Rejected'}</option>
+            <option value="cancelled">🚫 {tr.statusCancelled || 'Cancelled'}</option>
+            <option value="expired">⚠️ {tr.statusExpired || 'Expired'}</option>
+          </select>
+
+          <select
+            value={gatewayFilter}
+            onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
+          >
+            <option value="all">{tr.gatewayFilter || 'All Gateways'}</option>
+            <option value="manual_mandat">{tr.gatewayMandat || 'Mandat Minute / Wire'}</option>
+            <option value="cod">{tr.gatewayCod || 'B2B Invoice / COD'}</option>
+            <option value="flouci">Flouci</option>
+            <option value="paypal">PayPal</option>
+            <option value="konnect">Konnect</option>
+          </select>
+
+          <select
+            value={targetPlanFilter}
+            onChange={(e) => { setTargetPlanFilter(e.target.value); setPage(1); }}
+            className="border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 outline-none"
+          >
+            <option value="all">All Target Plans</option>
+            <option value="starter">Starter</option>
+            <option value="regular">Regular</option>
+            <option value="agency">Agency</option>
+            <option value="pro">Pro</option>
+            <option value="golden">Golden</option>
+            <option value="platinum">Platinum</option>
+          </select>
+        </div>
+
+        {/* Date Range & Amount Range Inputs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Min Amount (TND)</label>
+            <input
+              type="number"
+              value={minAmount}
+              onChange={(e) => { setMinAmount(e.target.value); setPage(1); }}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Max Amount (TND)</label>
+            <input
+              type="number"
+              value={maxAmount}
+              onChange={(e) => { setMaxAmount(e.target.value); setPage(1); }}
+              placeholder="10000"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Orders Table */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-400 font-medium">{tr.loading || 'Loading subscription orders...'}</div>
+        ) : orders.length === 0 ? (
+          <div className="p-12 text-center space-y-2">
+            <Crown className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
+            <p className="font-bold text-slate-700 dark:text-slate-300">{tr.empty || 'No subscription orders found'}</p>
+            <p className="text-xs text-slate-400">{tr.emptyHint || 'Try adjusting your search or filters.'}</p>
+          </div>
+        ) : (
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-4 w-10">
+                      <button onClick={toggleSelectAll} className="p-1 text-slate-400 hover:text-slate-700">
+                        {selectedIds.length === orders.length && orders.length > 0 ? (
+                          <CheckSquare className="w-4 h-4 text-[#B91C1C]" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('created_at')}>
+                      <div className="flex items-center gap-1">
+                        {tr.order || 'Order'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('store_name')}>
+                      <div className="flex items-center gap-1">
+                        {tr.storeAndSeller || 'Store & Health'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('target_plan')}>
+                      <div className="flex items-center gap-1">
+                        {tr.planChange || 'Plan Change'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 cursor-pointer" onClick={() => handleSort('amount')}>
+                      <div className="flex items-center gap-1">
+                        {tr.amount || 'Amount'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4">{tr.method || 'Gateway'}</th>
+                    <th className="px-4 py-4">{tr.receiptInvoice || 'Receipt / Invoice'}</th>
+                    <th className="px-4 py-4 cursor-pointer text-center" onClick={() => handleSort('status')}>
+                      <div className="flex items-center justify-center gap-1">
+                        {tr.status || 'Status'} <ArrowUpDown className="w-3 h-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-4 text-right">
+                      <div>Inline Actions</div>
+                      <div className="text-[10px] opacity-75 font-normal">& Power Tools</div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
+                  {orders.map((order) => {
+                    const isSelected = selectedIds.includes(order.id);
+                    const health = calculateHealthScore(order);
+                    return (
+                      <tr key={order.id} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${isSelected ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}`}>
+                        <td className="px-4 py-4">
+                          <button onClick={() => toggleSelectOrder(order.id)} className="p-1 text-slate-400 hover:text-slate-700">
+                            {isSelected ? <CheckSquare className="w-4 h-4 text-[#B91C1C]" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 font-mono text-[#B91C1C] font-bold">
+                          <div className="flex items-center gap-1">
+                            <span className="cursor-pointer hover:underline" onClick={() => openDrawer(order)}>#{order.id.slice(-8).toUpperCase()}</span>
+                            <button onClick={() => copyToClipboard(order.id, 'Subscription ID')} className="p-1 text-slate-400 hover:text-slate-700" title="Copy Subscription ID">
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:underline" onClick={() => openDrawer(order)}>{order.store_name}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${health.badgeClass} flex items-center gap-1`} title={health.flags.join(', ') || 'Healthy Account'}>
+                                <HeartPulse className="w-3 h-3" /> {health.score}/100
+                              </span>
+                            </div>
+                            <span className="text-slate-400 font-mono text-[11px]">{order.store_subdomain}.garbage.team</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px]">{order.seller_email}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              {order.from_plan.toUpperCase()}
+                            </span>
+                            <span>→</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${PLAN_BADGES[order.target_plan] || 'bg-slate-100 text-slate-800'}`}>
+                              {order.target_plan.toUpperCase()}
+                            </span>
+                            <button
+                              onClick={() => setQuotaOrder(order)}
+                              title={tr.quotaTitle || 'Compare Quotas'}
+                              className="p-1 text-slate-400 hover:text-slate-700"
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 font-black text-slate-900 dark:text-white text-sm">
+                          {Number(order.amount).toFixed(0)} TND
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {GATEWAY_NAMES[order.gateway] || order.gateway}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 space-x-1">
+                          {order.proof_url ? (
+                            <a
+                              href={resolveProofUrl(order.proof_url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold hover:underline"
+                            >
+                              <FileText className="w-3.5 h-3.5" /> {tr.proof || 'Proof'} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 italic">{tr.proofNone || 'None'}</span>
+                          )}
+                          <button
+                            onClick={() => {
+                              setInvoiceOrder(order);
+                              setEditTaxVatId(order.metadata?.vat_tax_id || '');
+                              setEditBillingAddress(order.metadata?.billing_address || '');
+                            }}
+                            title={tr.invoiceTitle || 'Print B2B Invoice'}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 ml-1"
+                          >
+                            <Printer className="w-3.5 h-3.5" /> {tr.invoice || 'Invoice'}
+                          </button>
+                        </td>
+
+                        {/* Simplified Status Column with Icon Pills & Hover Tooltips */}
+                        <td className="px-4 py-4 text-center">
+                          {order.status === 'captured' && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-sm cursor-help">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Active / Captured
+                              </div>
+                            </div>
+                          )}
+
+                          {order.status === 'pending_review' && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-sm animate-pulse cursor-help">
+                                <Clock className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Past-Due / In Review
+                              </div>
+                            </div>
+                          )}
+
+                          {order.status === 'pending_proof' && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 shadow-sm cursor-help">
+                                <FileText className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Pending Proof (Grace Period)
+                              </div>
+                            </div>
+                          )}
+
+                          {(order.status === 'rejected' || order.status === 'failed') && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800 shadow-sm cursor-help">
+                                <ShieldAlert className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Failed / Dunning (3+ Retries)
+                              </div>
+                            </div>
+                          )}
+
+                          {(order.status === 'cancelled' || order.status === 'expired') && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shadow-sm cursor-help">
+                                <Ban className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Cancelled / Expired
+                              </div>
+                            </div>
+                          )}
+
+                          {order.status === 'pending' && (
+                            <div className="group relative inline-flex items-center justify-center">
+                              <span className="p-2 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm cursor-help">
+                                <Clock className="w-4 h-4" />
+                              </span>
+                              <div className="absolute bottom-full mb-1.5 hidden group-hover:block z-40 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-lg">
+                                Pending Initiation
+                              </div>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Inline Actions & Power Tools (Split into 2 Rows) */}
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex flex-col items-end gap-1.5">
+                            {/* Row 1: Primary Review & Inspection Actions */}
+                            <div className="flex items-center gap-1">
+                              {order.status === 'pending_review' || order.status === 'pending_proof' ? (
+                                <button
+                                  onClick={() => setReviewOrder(order)}
+                                  className="px-2.5 py-1 bg-[#B91C1C] text-white font-bold rounded-md text-[11px] hover:bg-[#991B1B] shadow-sm inline-flex items-center gap-1"
+                                >
+                                  <Eye className="w-3 h-3" /> {tr.review || 'Review'}
+                                </button>
+                              ) : null}
+
+                              <button
+                                onClick={() => openDrawer(order)}
+                                className="px-2 py-1 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-md text-[11px] hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                {tr.details || 'Details'}
+                              </button>
+                            </div>
+
+                            {/* Row 2: Secondary Power Tools Icon Bar */}
+                            <div className="flex items-center gap-1 bg-slate-100/70 dark:bg-slate-800/70 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+                              <button
+                                onClick={() => handleOpenDisputeWorkbench(order)}
+                                title="Native Dispute & Chargeback Workbench"
+                                className="p-1 text-red-600 dark:text-red-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Gavel className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => handleGenerateMagicLink(order.id)}
+                                title="Generate Pre-Authenticated Billing Magic Link"
+                                className="p-1 text-purple-600 dark:text-purple-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => { setAddonOrder(order); fetchStoreAddonsList(order.store_id); }}
+                                title="Line-Item Add-On Disaggregation Manager"
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => openDiagnostics(order)}
+                                title="Webhook & Sync Diagnostics"
+                                className="p-1 text-teal-600 dark:text-teal-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Activity className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => { setProrationOrder(order); setProrationTargetPlan(order.target_plan); handleCalculateProration(order.store_id, order.target_plan); }}
+                                title="Prorated Manual Switch"
+                                className="p-1 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <Calculator className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => setPauseModalOrder(order)}
+                                title="Pause / Resume"
+                                className="p-1 text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <PauseCircle className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => { setCreditModalOrder(order); fetchStoreAdjustments(order.store_id); }}
+                                title="One-Off Credits & Adjustments"
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-white dark:hover:bg-slate-900 rounded transition-all"
+                              >
+                                <DollarSign className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div>
+                Showing Page <span className="font-bold text-slate-900 dark:text-white">{pagination.page}</span> of{' '}
+                <span className="font-bold text-slate-900 dark:text-white">{pagination.total_pages}</span> ({pagination.total} total orders)
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </button>
+                <button
+                  disabled={pagination.page >= pagination.total_pages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {renderSharedModals()}
     </div>
   );
 }

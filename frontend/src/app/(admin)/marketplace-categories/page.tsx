@@ -785,9 +785,389 @@ export default function MarketplaceCategoriesPage() {
     setCollapsedParents(all);
   };
 
+  const renderCategoryModals = () => (
+    <>
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl space-y-6">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C]">
+                  <Settings2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Edit Category — {editingCategory.name}</h3>
+                  <p className="text-xs font-semibold text-slate-400">Configure all category settings, multilingual descriptions, icon, and images.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setEditingCategory(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Language Selector Tabs */}
+            <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-1">
+              <span className="text-xs font-extrabold text-slate-600 pl-3">Multilingual Names & Descriptions</span>
+              <div className="flex items-center gap-1">
+                {(['fr', 'ar', 'en'] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setEditLang(lang)}
+                    className={`rounded-xl px-3 py-1 text-xs font-black uppercase transition-all ${
+                      editLang === lang ? 'bg-white text-[#B91C1C] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {lang === 'fr' ? '🇫🇷 FR' : lang === 'ar' ? '🇸🇦 AR' : '🇬🇧 EN'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form Fields Grid */}
+            <div className="space-y-4">
+              {/* Dynamic Multilingual Name Input */}
+              {editLang === 'fr' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Name (FR 🇫🇷)</label>
+                  <input
+                    type="text"
+                    value={editNameFr}
+                    onChange={(e) => setEditNameFr(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'ar' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Name (AR 🇸🇦)</label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={editNameAr}
+                    onChange={(e) => setEditNameAr(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'en' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Name (EN 🇬🇧)</label>
+                  <input
+                    type="text"
+                    value={editNameEn}
+                    onChange={(e) => setEditNameEn(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+
+              {/* Parent Category & Megamenu Visibility */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
+                  <SearchableParentCategorySelect
+                    value={editParentId}
+                    onChange={(id) => setEditParentId(id)}
+                    options={flattenedCategoryOptions}
+                    currentCategoryId={editingCategory.id}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditShowInMegamenu(!editShowInMegamenu)}
+                    className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
+                      editShowInMegamenu
+                        ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                        : 'border-slate-200 bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {editShowInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
+                      <span>{editShowInMegamenu ? 'Visible in Megamenu' : 'Hidden from Megamenu'}</span>
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${editShowInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
+                      {editShowInMegamenu ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dynamic Multilingual Description Textarea */}
+              {editLang === 'fr' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Description (FR 🇫🇷)</label>
+                  <textarea
+                    value={editDescFr}
+                    onChange={(e) => setEditDescFr(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'ar' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Description (AR 🇸🇦)</label>
+                  <textarea
+                    dir="rtl"
+                    value={editDescAr}
+                    onChange={(e) => setEditDescAr(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+              {editLang === 'en' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Description (EN 🇬🇧)</label>
+                  <textarea
+                    value={editDescEn}
+                    onChange={(e) => setEditDescEn(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              )}
+
+              {/* Short Description & Category Icon */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Short Description</label>
+                  <input
+                    type="text"
+                    value={editShortDesc}
+                    onChange={(e) => setEditShortDesc(e.target.value)}
+                    placeholder="Brief summary..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Icon</label>
+                  <select
+                    value={editIcon}
+                    onChange={(e) => setEditIcon(e.target.value)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  >
+                    {ICON_OPTIONS.map((opt) => (
+                      <option key={opt.name} value={opt.name}>
+                        {opt.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* SEO Title & Description */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Title</label>
+                  <input
+                    type="text"
+                    value={editSeoTitle}
+                    onChange={(e) => setEditSeoTitle(e.target.value)}
+                    placeholder="Meta title for Google search..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Description</label>
+                  <input
+                    type="text"
+                    value={editSeoDesc}
+                    onChange={(e) => setEditSeoDesc(e.target.value)}
+                    placeholder="Meta description for search engines..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Category Image & Hero Banner Preview Placeholders (STACKED VERTICALLY IN 1 COLUMN) */}
+              <div className="space-y-4">
+                {/* Category Picture (Icon/Card Image) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Icon/Card Image)</label>
+                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                      {editImageUrl ? (
+                        <img src={editImageUrl} alt={editingCategory.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-300">
+                          <ImageIcon className="h-7 w-7" />
+                          <span className="text-[9px] font-bold">No Image</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-black text-slate-800">
+                        {editImageUrl ? 'Picture Selected' : 'No Picture Selected'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editImageUrl || 'Choose image from gallery.'}</p>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setAssetPickerTarget('edit_image')}
+                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                        >
+                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                          {editImageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
+                        </button>
+                        {editImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditImageUrl('')}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hero Banner Picture */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero Banner Picture</label>
+                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
+                      {editBannerUrl ? (
+                        <img src={editBannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-slate-300">
+                          <ImageIcon className="h-7 w-7" />
+                          <span className="text-[9px] font-bold">No Banner</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-black text-slate-800">
+                        {editBannerUrl ? 'Banner Selected' : 'No Banner Selected'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editBannerUrl || 'Choose hero banner.'}</p>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setAssetPickerTarget('edit_banner')}
+                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
+                        >
+                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                          {editBannerUrl ? 'Change Banner' : 'Choose / Upload Asset'}
+                        </button>
+                        {editBannerUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditBannerUrl('')}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditModal}
+                disabled={savingId === editingCategory.id}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-black text-white hover:bg-red-800 shadow-md disabled:opacity-50"
+              >
+                {savingId === editingCategory.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>Save All Changes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Warning Modal */}
+      {deleteWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-red-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Delete Category</h3>
+                <p className="text-xs font-semibold text-slate-500">&quot;{deleteWarning.name}&quot;</p>
+              </div>
+            </div>
+
+            <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+              Are you sure you want to delete this category? Associated products will be re-assigned to Non Categorized.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setDeleteWarning(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deletingId === deleteWarning.id}
+                className="rounded-xl bg-red-600 px-5 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingId === deleteWarning.id ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Central Asset Picker Modal */}
+      <MarketplaceAssetPicker
+        open={Boolean(assetPickerTarget)}
+        title="Choose Category Asset"
+        type="image"
+        onClose={() => setAssetPickerTarget(null)}
+        onSelect={(url) => {
+          if (assetPickerTarget === 'new') {
+            setImageUrl(url);
+          } else if (assetPickerTarget === 'new_banner') {
+            setBannerUrl(url);
+          } else if (assetPickerTarget === 'edit_image') {
+            setEditImageUrl(url);
+          } else if (assetPickerTarget === 'edit_banner') {
+            setEditBannerUrl(url);
+          } else if (assetPickerTarget) {
+            const targetCat = categories.find((c) => c.id === assetPickerTarget);
+            if (targetCat) updateCategory(targetCat, { image_url: url });
+          }
+          setAssetPickerTarget(null);
+        }}
+      />
+    </>
+  );
+
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoCategories
+      <>
+        <AdminReGoCategories
         categories={categories}
         categoryTree={categoryTree}
         loading={loading}
@@ -818,7 +1198,9 @@ export default function MarketplaceCategoriesPage() {
           setIsFormExpanded(true);
         }}
         onRefresh={fetchCategories}
-      />
+        />
+        {renderCategoryModals()}
+      </>
     );
   }
 
@@ -1357,380 +1739,7 @@ export default function MarketplaceCategoriesPage() {
       </div>
 
       {/* FULL-FEATURED CATEGORY EDIT MODAL (STACKED PICTURE PREVIEWS) */}
-      {editingCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2.5rem] bg-white p-6 shadow-2xl space-y-6">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[#B91C1C]">
-                  <Settings2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">Edit Category — {editingCategory.name}</h3>
-                  <p className="text-xs font-semibold text-slate-400">Configure all category settings, multilingual descriptions, icon, and images.</p>
-                </div>
-              </div>
-              <button type="button" onClick={() => setEditingCategory(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Language Selector Tabs */}
-            <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-1">
-              <span className="text-xs font-extrabold text-slate-600 pl-3">Multilingual Names & Descriptions</span>
-              <div className="flex items-center gap-1">
-                {(['fr', 'ar', 'en'] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setEditLang(lang)}
-                    className={`rounded-xl px-3 py-1 text-xs font-black uppercase transition-all ${
-                      editLang === lang ? 'bg-white text-[#B91C1C] shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {lang === 'fr' ? '🇫🇷 FR' : lang === 'ar' ? '🇸🇦 AR' : '🇬🇧 EN'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Form Fields Grid */}
-            <div className="space-y-4">
-              {/* Dynamic Multilingual Name Input */}
-              {editLang === 'fr' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Name (FR 🇫🇷)</label>
-                  <input
-                    type="text"
-                    value={editNameFr}
-                    onChange={(e) => setEditNameFr(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-              {editLang === 'ar' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Name (AR 🇸🇦)</label>
-                  <input
-                    type="text"
-                    dir="rtl"
-                    value={editNameAr}
-                    onChange={(e) => setEditNameAr(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-              {editLang === 'en' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Name (EN 🇬🇧)</label>
-                  <input
-                    type="text"
-                    value={editNameEn}
-                    onChange={(e) => setEditNameEn(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-
-              {/* Parent Category & Megamenu Visibility */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Parent Department (Searchable)</label>
-                  <SearchableParentCategorySelect
-                    value={editParentId}
-                    onChange={(id) => setEditParentId(id)}
-                    options={flattenedCategoryOptions}
-                    currentCategoryId={editingCategory.id}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Megamenu Visibility</label>
-                  <button
-                    type="button"
-                    onClick={() => setEditShowInMegamenu(!editShowInMegamenu)}
-                    className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-extrabold transition-all ${
-                      editShowInMegamenu
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
-                        : 'border-slate-200 bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      {editShowInMegamenu ? <Eye className="h-4 w-4 text-indigo-600" /> : <EyeOff className="h-4 w-4 text-slate-400" />}
-                      <span>{editShowInMegamenu ? 'Visible in Megamenu' : 'Hidden from Megamenu'}</span>
-                    </span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${editShowInMegamenu ? 'bg-indigo-200 text-indigo-950' : 'bg-slate-200 text-slate-600'}`}>
-                      {editShowInMegamenu ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Dynamic Multilingual Description Textarea */}
-              {editLang === 'fr' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">French Description (FR 🇫🇷)</label>
-                  <textarea
-                    value={editDescFr}
-                    onChange={(e) => setEditDescFr(e.target.value)}
-                    rows={2}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-              {editLang === 'ar' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Arabic Description (AR 🇸🇦)</label>
-                  <textarea
-                    dir="rtl"
-                    value={editDescAr}
-                    onChange={(e) => setEditDescAr(e.target.value)}
-                    rows={2}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-              {editLang === 'en' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">English Description (EN 🇬🇧)</label>
-                  <textarea
-                    value={editDescEn}
-                    onChange={(e) => setEditDescEn(e.target.value)}
-                    rows={2}
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              )}
-
-              {/* Short Description & Category Icon */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Short Description</label>
-                  <input
-                    type="text"
-                    value={editShortDesc}
-                    onChange={(e) => setEditShortDesc(e.target.value)}
-                    placeholder="Brief summary..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Icon</label>
-                  <select
-                    value={editIcon}
-                    onChange={(e) => setEditIcon(e.target.value)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  >
-                    {ICON_OPTIONS.map((opt) => (
-                      <option key={opt.name} value={opt.name}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* SEO Title & Description */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Title</label>
-                  <input
-                    type="text"
-                    value={editSeoTitle}
-                    onChange={(e) => setEditSeoTitle(e.target.value)}
-                    placeholder="Meta title for Google search..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">SEO Description</label>
-                  <input
-                    type="text"
-                    value={editSeoDesc}
-                    onChange={(e) => setEditSeoDesc(e.target.value)}
-                    placeholder="Meta description for search engines..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none focus:border-[#B91C1C] focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* Category Image & Hero Banner Preview Placeholders (STACKED VERTICALLY IN 1 COLUMN) */}
-              <div className="space-y-4">
-                {/* Category Picture (Icon/Card Image) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Category Picture (Icon/Card Image)</label>
-                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                      {editImageUrl ? (
-                        <img src={editImageUrl} alt={editingCategory.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex flex-col items-center text-slate-300">
-                          <ImageIcon className="h-7 w-7" />
-                          <span className="text-[9px] font-bold">No Image</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs font-black text-slate-800">
-                        {editImageUrl ? 'Picture Selected' : 'No Picture Selected'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editImageUrl || 'Choose image from gallery.'}</p>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setAssetPickerTarget('edit_image')}
-                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
-                        >
-                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                          {editImageUrl ? 'Change Picture' : 'Choose / Upload Asset'}
-                        </button>
-                        {editImageUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setEditImageUrl('')}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hero Banner Picture */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero Banner Picture</label>
-                  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white flex items-center justify-center">
-                      {editBannerUrl ? (
-                        <img src={editBannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex flex-col items-center text-slate-300">
-                          <ImageIcon className="h-7 w-7" />
-                          <span className="text-[9px] font-bold">No Banner</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs font-black text-slate-800">
-                        {editBannerUrl ? 'Banner Selected' : 'No Banner Selected'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-semibold truncate max-w-xs">{editBannerUrl || 'Choose hero banner.'}</p>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setAssetPickerTarget('edit_banner')}
-                          className="inline-flex items-center rounded-lg bg-[#B91C1C] px-3.5 py-1.5 text-xs font-black text-white hover:bg-red-800"
-                        >
-                          <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
-                          {editBannerUrl ? 'Change Banner' : 'Choose / Upload Asset'}
-                        </button>
-                        {editBannerUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setEditBannerUrl('')}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-600"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setEditingCategory(null)}
-                className="rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEditModal}
-                disabled={savingId === editingCategory.id}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-6 py-2.5 text-xs font-black text-white hover:bg-red-800 shadow-md disabled:opacity-50"
-              >
-                {savingId === editingCategory.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span>Save All Changes</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Warning Modal */}
-      {deleteWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl border border-red-200 bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900">Delete Category</h3>
-                <p className="text-xs font-semibold text-slate-500">&quot;{deleteWarning.name}&quot;</p>
-              </div>
-            </div>
-
-            <p className="text-xs font-semibold text-slate-600 leading-relaxed">
-              Are you sure you want to delete this category? Associated products will be re-assigned to Non Categorized.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-3">
-              <button
-                type="button"
-                onClick={() => setDeleteWarning(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deletingId === deleteWarning.id}
-                className="rounded-xl bg-red-600 px-5 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {deletingId === deleteWarning.id ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Central Asset Picker Modal */}
-      <MarketplaceAssetPicker
-        open={Boolean(assetPickerTarget)}
-        title="Choose Category Asset"
-        type="image"
-        onClose={() => setAssetPickerTarget(null)}
-        onSelect={(url) => {
-          if (assetPickerTarget === 'new') {
-            setImageUrl(url);
-          } else if (assetPickerTarget === 'new_banner') {
-            setBannerUrl(url);
-          } else if (assetPickerTarget === 'edit_image') {
-            setEditImageUrl(url);
-          } else if (assetPickerTarget === 'edit_banner') {
-            setEditBannerUrl(url);
-          } else if (assetPickerTarget) {
-            const targetCat = categories.find((c) => c.id === assetPickerTarget);
-            if (targetCat) updateCategory(targetCat, { image_url: url });
-          }
-          setAssetPickerTarget(null);
-        }}
-      />
+      {renderCategoryModals()}
     </div>
   );
 }

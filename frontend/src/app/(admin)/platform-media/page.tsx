@@ -423,9 +423,318 @@ export default function PlatformMediaPage() {
       return 0;
     });
 
+  const renderMediaModals = () => (
+    <>
+      {/* RENAME PICTURE MODAL */}
+      {renamingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-[#ff6a00]" />
+                Rename Picture
+              </h3>
+              <button onClick={() => setRenamingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">New Filename</label>
+                <input
+                  type="text"
+                  value={newFilename}
+                  onChange={(e) => setNewFilename(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-900 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  placeholder="Enter new file name..."
+                />
+                <p className="text-[10px] text-slate-400 font-semibold">
+                  Original extension will be preserved automatically.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setRenamingItem(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRename}
+                disabled={savingRename || !newFilename.trim()}
+                className="flex items-center gap-2 rounded-xl bg-[#ff6a00] px-5 py-2.5 text-xs font-black text-white hover:bg-orange-600 shadow-md disabled:opacity-50"
+              >
+                {savingRename ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+                <span>Save New Name</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SINGLE PICTURE OPTIMIZATION MODAL */}
+      {optimizingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Optimize & Compress Picture</h3>
+                  <p className="text-[11px] font-bold text-slate-400 truncate max-w-xs">{optimizingItem.filename}</p>
+                </div>
+              </div>
+              <button onClick={() => setOptimizingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-3">
+              <img src={optimizingItem.url ? getResizedImageUrl(optimizingItem.url, 'medium') : ''} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
+              <div className="space-y-1 text-xs">
+                <span className="block font-black text-slate-900">{optimizingItem.filename}</span>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-slate-500">
+                  <span>Dimensions: <strong className="text-slate-800">{optimizingItem.dimensions || 'N/A'}</strong></span>
+                  <span>Size: <strong className="text-slate-800">{formatBytes(optimizingItem.size)}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-[#ff6a00]" />
+                    <span>Compression Quality: {optQuality}%</span>
+                  </label>
+                  <span className="text-[10px] font-extrabold text-slate-400">
+                    {optQuality >= 85 ? 'High Visual Fidelity' : optQuality >= 70 ? 'Recommended Balance' : 'Maximum Compression'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="30"
+                  max="95"
+                  step="5"
+                  value={optQuality}
+                  onChange={(e) => setOptQuality(parseInt(e.target.value, 10))}
+                  className="w-full accent-[#ff6a00] cursor-pointer"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Target Output Format</label>
+                  <select
+                    value={optFormat}
+                    onChange={(e) => setOptFormat(e.target.value as any)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  >
+                    <option value="webp">WebP (Best & Smallest)</option>
+                    <option value="jpeg">JPEG (High Compatibility)</option>
+                    <option value="png">PNG (Lossless)</option>
+                    <option value="original">Keep Original Format</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Max Resolution / Width</label>
+                  <select
+                    value={optMaxWidth}
+                    onChange={(e) => setOptMaxWidth(parseInt(e.target.value, 10))}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
+                  >
+                    <option value={1920}>1920px (Ultra HD / Hero)</option>
+                    <option value={1600}>1600px (Recommended)</option>
+                    <option value={1200}>1200px (Banner Cover)</option>
+                    <option value={800}>800px (Category Card)</option>
+                    <option value={400}>400px (Compact Thumbnail)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {optResult && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-black text-emerald-900">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>Compression Succeeded!</span>
+                </div>
+                <div className="flex items-center justify-between font-bold text-emerald-800 pt-1">
+                  <span>Before: {formatBytes(optResult.original_size)}</span>
+                  <span>After: {formatBytes(optResult.new_size)}</span>
+                  <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-950">
+                    -{optResult.saved_percentage}% Savings
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+              <button
+                onClick={() => setOptimizingItem(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSingleOptimize}
+                disabled={optimizing}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#ff6a00] to-amber-500 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:scale-105 disabled:opacity-50"
+              >
+                {optimizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Compressing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <span>Compress & Save</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD MODAL */}
+      {isUploadOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Upload className="h-5 w-5 text-[#ff6a00]" />
+                Upload Platform Asset
+              </h3>
+              <button onClick={() => setIsUploadOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Folder</label>
+                <select
+                  value={uploadFolder}
+                  onChange={(e) => setUploadFolder(e.target.value as any)}
+                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
+                >
+                  <option value="categories">🏷️ Categories (Category & Subcategory Pictures)</option>
+                  <option value="branding">🎨 Branding & Logos (Logos, Favicons, Default Covers)</option>
+                  <option value="banners">🖼️ Banners & Sliders (Hero Banners, Promos)</option>
+                  <option value="general">📦 General (Other Platform Media)</option>
+                </select>
+              </div>
+
+              <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-8 text-center transition-all hover:bg-orange-50/30 hover:border-orange-400">
+                <Upload className="h-10 w-10 text-slate-400 mb-2" />
+                <p className="text-xs font-bold text-slate-700">Choose an image file or drop it here</p>
+                <p className="text-[10px] text-slate-400 mt-1">Supports PNG, JPEG, WEBP, SVG</p>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  onChange={handleFileInputChange}
+                  disabled={uploading}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </div>
+
+              {uploading && (
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#ff6a00] pt-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{uploadProgress}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULLSIZE PREVIEW MODAL */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+          <div className="relative max-w-4xl w-full overflow-hidden rounded-3xl bg-white shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 truncate">
+                <span className="rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-black uppercase text-[#ff6a00]">
+                  {previewItem.folder}
+                </span>
+                <h3 className="text-sm font-black text-slate-900 truncate">{previewItem.filename}</h3>
+              </div>
+              <button onClick={() => setPreviewItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="relative flex max-h-[65vh] items-center justify-center overflow-hidden rounded-2xl bg-slate-900 p-2">
+              <img src={previewItem.url ? getResizedImageUrl(previewItem.url, 'medium') : ''} alt={previewItem.filename} className="max-h-[60vh] w-auto object-contain rounded-xl" />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
+              <div className="space-x-4">
+                <span>Dimensions: <strong className="text-slate-900 font-extrabold">{previewItem.dimensions || 'N/A'}</strong></span>
+                <span>Size: <strong className="text-slate-900 font-extrabold">{formatBytes(previewItem.size)}</strong></span>
+                <span>Created: <strong className="text-slate-900 font-extrabold">{formatDate(previewItem.created_at)}</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setRenamingItem(previewItem);
+                    setNewFilename(previewItem.filename);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  <span>Rename</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setOptimizingItem(previewItem);
+                    setOptResult(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-amber-300 transition-colors"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  <span>Optimize Picture</span>
+                </button>
+                <button
+                  onClick={() => handleCopyUrl(previewItem.url, previewItem.key)}
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-colors"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Copy Link</span>
+                </button>
+                <a
+                  href={previewItem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Open in New Tab</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoMedia
+      <>
+        <AdminReGoMedia
         items={filteredItems}
         summary={summary}
         loading={loading}
@@ -454,7 +763,9 @@ export default function PlatformMediaPage() {
         error={error}
         success={success}
         onRefresh={loadMedia}
-      />
+        />
+        {renderMediaModals()}
+      </>
     );
   }
 
@@ -849,309 +1160,7 @@ export default function PlatformMediaPage() {
         </div>
       )}
 
-      {/* RENAME PICTURE MODAL */}
-      {renamingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <Edit3 className="h-5 w-5 text-[#ff6a00]" />
-                Rename Picture
-              </h3>
-              <button onClick={() => setRenamingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">New Filename</label>
-                <input
-                  type="text"
-                  value={newFilename}
-                  onChange={(e) => setNewFilename(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-900 outline-none focus:border-[#ff6a00] focus:bg-white"
-                  placeholder="Enter new file name..."
-                />
-                <p className="text-[10px] text-slate-400 font-semibold">
-                  Original extension will be preserved automatically.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setRenamingItem(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveRename}
-                disabled={savingRename || !newFilename.trim()}
-                className="flex items-center gap-2 rounded-xl bg-[#ff6a00] px-5 py-2.5 text-xs font-black text-white hover:bg-orange-600 shadow-md disabled:opacity-50"
-              >
-                {savingRename ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
-                <span>Save New Name</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SINGLE PICTURE OPTIMIZATION MODAL */}
-      {optimizingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-md">
-                  <Zap className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Optimize & Compress Picture</h3>
-                  <p className="text-[11px] font-bold text-slate-400 truncate max-w-xs">{optimizingItem.filename}</p>
-                </div>
-              </div>
-              <button onClick={() => setOptimizingItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-3">
-              <img src={optimizingItem.url ? getResizedImageUrl(optimizingItem.url, 'medium') : ''} alt={optimizingItem.filename} className="h-16 w-16 rounded-xl object-cover border border-slate-200" />
-              <div className="space-y-1 text-xs">
-                <span className="block font-black text-slate-900">{optimizingItem.filename}</span>
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold text-slate-500">
-                  <span>Dimensions: <strong className="text-slate-800">{optimizingItem.dimensions || 'N/A'}</strong></span>
-                  <span>Size: <strong className="text-slate-800">{formatBytes(optimizingItem.size)}</strong></span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-1">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-[#ff6a00]" />
-                    <span>Compression Quality: {optQuality}%</span>
-                  </label>
-                  <span className="text-[10px] font-extrabold text-slate-400">
-                    {optQuality >= 85 ? 'High Visual Fidelity' : optQuality >= 70 ? 'Recommended Balance' : 'Maximum Compression'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="30"
-                  max="95"
-                  step="5"
-                  value={optQuality}
-                  onChange={(e) => setOptQuality(parseInt(e.target.value, 10))}
-                  className="w-full accent-[#ff6a00] cursor-pointer"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-700">Target Output Format</label>
-                  <select
-                    value={optFormat}
-                    onChange={(e) => setOptFormat(e.target.value as any)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
-                  >
-                    <option value="webp">WebP (Best & Smallest)</option>
-                    <option value="jpeg">JPEG (High Compatibility)</option>
-                    <option value="png">PNG (Lossless)</option>
-                    <option value="original">Keep Original Format</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-700">Max Resolution / Width</label>
-                  <select
-                    value={optMaxWidth}
-                    onChange={(e) => setOptMaxWidth(parseInt(e.target.value, 10))}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
-                  >
-                    <option value={1920}>1920px (Ultra HD / Hero)</option>
-                    <option value={1600}>1600px (Recommended)</option>
-                    <option value={1200}>1200px (Banner Cover)</option>
-                    <option value={800}>800px (Category Card)</option>
-                    <option value={400}>400px (Compact Thumbnail)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {optResult && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs space-y-1.5">
-                <div className="flex items-center gap-2 font-black text-emerald-900">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>Compression Succeeded!</span>
-                </div>
-                <div className="flex items-center justify-between font-bold text-emerald-800 pt-1">
-                  <span>Before: {formatBytes(optResult.original_size)}</span>
-                  <span>After: {formatBytes(optResult.new_size)}</span>
-                  <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-950">
-                    -{optResult.saved_percentage}% Savings
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
-              <button
-                onClick={() => setOptimizingItem(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleSingleOptimize}
-                disabled={optimizing}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#ff6a00] to-amber-500 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/25 transition-all hover:scale-105 disabled:opacity-50"
-              >
-                {optimizing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Compressing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    <span>Compress & Save</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* UPLOAD MODAL */}
-      {isUploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <Upload className="h-5 w-5 text-[#ff6a00]" />
-                Upload Platform Asset
-              </h3>
-              <button onClick={() => setIsUploadOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Folder</label>
-                <select
-                  value={uploadFolder}
-                  onChange={(e) => setUploadFolder(e.target.value as any)}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-800 outline-none focus:border-[#ff6a00] focus:bg-white"
-                >
-                  <option value="categories">🏷️ Categories (Category & Subcategory Pictures)</option>
-                  <option value="branding">🎨 Branding & Logos (Logos, Favicons, Default Covers)</option>
-                  <option value="banners">🖼️ Banners & Sliders (Hero Banners, Promos)</option>
-                  <option value="general">📦 General (Other Platform Media)</option>
-                </select>
-              </div>
-
-              <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-8 text-center transition-all hover:bg-orange-50/30 hover:border-orange-400">
-                <Upload className="h-10 w-10 text-slate-400 mb-2" />
-                <p className="text-xs font-bold text-slate-700">Choose an image file or drop it here</p>
-                <p className="text-[10px] text-slate-400 mt-1">Supports PNG, JPEG, WEBP, SVG</p>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                  onChange={handleFileInputChange}
-                  disabled={uploading}
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                />
-              </div>
-
-              {uploading && (
-                <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#ff6a00] pt-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{uploadProgress}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FULLSIZE PREVIEW MODAL */}
-      {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
-          <div className="relative max-w-4xl w-full overflow-hidden rounded-3xl bg-white shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 truncate">
-                <span className="rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-black uppercase text-[#ff6a00]">
-                  {previewItem.folder}
-                </span>
-                <h3 className="text-sm font-black text-slate-900 truncate">{previewItem.filename}</h3>
-              </div>
-              <button onClick={() => setPreviewItem(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="relative flex max-h-[65vh] items-center justify-center overflow-hidden rounded-2xl bg-slate-900 p-2">
-              <img src={previewItem.url ? getResizedImageUrl(previewItem.url, 'medium') : ''} alt={previewItem.filename} className="max-h-[60vh] w-auto object-contain rounded-xl" />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-600">
-              <div className="space-x-4">
-                <span>Dimensions: <strong className="text-slate-900 font-extrabold">{previewItem.dimensions || 'N/A'}</strong></span>
-                <span>Size: <strong className="text-slate-900 font-extrabold">{formatBytes(previewItem.size)}</strong></span>
-                <span>Created: <strong className="text-slate-900 font-extrabold">{formatDate(previewItem.created_at)}</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setRenamingItem(previewItem);
-                    setNewFilename(previewItem.filename);
-                  }}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span>Rename</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setOptimizingItem(previewItem);
-                    setOptResult(null);
-                  }}
-                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-amber-300 transition-colors"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  <span>Optimize Picture</span>
-                </button>
-                <button
-                  onClick={() => handleCopyUrl(previewItem.url, previewItem.key)}
-                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-colors"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>Copy Link</span>
-                </button>
-                <a
-                  href={previewItem.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Open in New Tab</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderMediaModals()}
     </div>
   );
 }

@@ -2950,20 +2950,29 @@ export default function SuperAdminSettingsPage() {
   const { adminTheme } = useAdminTheme();
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoSettings
-        settings={settings}
-        updateSetting={updateSetting}
-        loading={loading}
-        saving={saving}
-        saved={saved}
-        error={error}
-        onSave={handleSave}
-        onReset={resetActiveSection}
-        isDirty={hasUnsavedPlatformChanges}
-        onOpenPreviewLab={() => setIsPreviewLabOpen(true)}
-        showMaintenanceConfirm={showMaintenanceConfirm}
-        setShowMaintenanceConfirm={setShowMaintenanceConfirm}
-      />
+      <>
+        <AdminReGoSettings
+          settings={settings}
+          updateSetting={updateSetting}
+          loading={loading}
+          saving={saving}
+          saved={saved}
+          error={error}
+          onSave={handleSave}
+          onReset={resetActiveSection}
+          isDirty={hasUnsavedPlatformChanges}
+          onOpenPreviewLab={() => setIsPreviewLabOpen(true)}
+          showMaintenanceConfirm={showMaintenanceConfirm}
+          setShowMaintenanceConfirm={setShowMaintenanceConfirm}
+        />
+        <HubAppearancePreviewLab
+          settings={settings as any}
+          isOpen={isPreviewLabOpen}
+          onClose={() => setIsPreviewLabOpen(false)}
+          onPublishLive={handleSave}
+          isSaving={saving}
+        />
+      </>
     );
   }
 

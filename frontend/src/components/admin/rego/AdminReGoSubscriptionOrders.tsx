@@ -33,6 +33,7 @@ import {
   Send,
   ShieldAlert,
   Zap,
+  Calculator,
   Plus,
   Key,
   Flame,
@@ -707,6 +708,16 @@ export function AdminReGoSubscriptionOrders({
               >
                 <Key className="w-3.5 h-3.5" />
                 Copier Magic Link
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenProration(drawerOrder)}
+                className="py-2 px-3 rounded-[var(--rego-r,8px)] border border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition flex items-center gap-1.5"
+                title="Calculer le prorata et migrer de formule"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                Prorata / Switch
               </button>
 
               <button
