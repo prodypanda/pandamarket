@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
+import { SellerReGoPaymentConfig } from '@/components/dashboard/rego/SellerReGoPaymentConfig';
 import {
   CreditCard,
   Save,
@@ -38,6 +40,7 @@ async function getErrorMessage(res: Response, fallback = 'Request failed') {
 
 export default function PaymentConfigPage() {
   const { t, dir } = useLocale();
+  const { dashboardStyle } = useDashboardStyle();
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -140,6 +143,47 @@ export default function PaymentConfigPage() {
       setSaving(false);
     }
   };
+
+  const handleDirectSave = async (payload: Record<string, string>) => {
+    setError('');
+    setSuccess('');
+    setSaving(true);
+    try {
+      const res = await fetchWithCsrf('/api/pd/stores/me/payment-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setSuccess(t('dashboardPages.paymentConfig.savedSuccessfully') || 'Paramètres de passerelles enregistrés et chiffrés avec succès.');
+      } else {
+        setError(await getErrorMessage(res, t('dashboardPages.paymentConfig.errorSaving') || "Erreur lors de l'enregistrement"));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('dashboardPages.paymentConfig.errorNetwork') || 'Erreur réseau');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoPaymentConfig
+        store={store}
+        loading={loading}
+        saving={saving}
+        error={error}
+        success={success}
+        onSave={handleDirectSave}
+        onDismissAlert={() => {
+          setError('');
+          setSuccess('');
+        }}
+        dir={dir}
+      />
+    );
+  }
 
   if (loading) {
     return (

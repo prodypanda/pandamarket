@@ -72,10 +72,10 @@ This checklist details every concrete engineering task required to implement the
 ### Section 4: Wallet, Payouts & Store Payments (`SELLER_SEC04_WALLET_PAYOUTS_FINANCES.md`)
 - [x] **Page 42: Wallet & RIB Payouts** (`/hub/dashboard/wallet`)
   - [x] Apply ReGo modern view (`WalletReGoCockpit.tsx`) with wallet balance telemetry, ledger stream, and 20-digit Tunisian RIB Modulo 97 validation form.
-- [ ] **Page 43: Financial Reports** (`/hub/dashboard/financial`)
-  - [ ] Apply downloadable tax statement cards and TVA breakdown table.
-- [ ] **Page 58: Store Payment Gateways** (`/hub/dashboard/payment-config`)
-  - [ ] Apply toggle cards for COD, Flouci, Konnect, and PayPal credentials.
+- [x] **Page 43: Financial Reports** (`/hub/dashboard/financial`)
+  - [x] Apply downloadable tax statement cards and TVA breakdown table (`SellerReGoFinancial.tsx`).
+- [x] **Page 58: Store Payment Gateways** (`/hub/dashboard/payment-config`)
+  - [x] Apply toggle cards for COD, Flouci, Konnect, and PayPal credentials (`SellerReGoPaymentConfig.tsx`).
 
 ### Section 5: Online Storefront Builder (`SELLER_SEC05_ONLINE_STOREFRONT_BUILDER.md`)
 - [ ] **Pages 44-52: Storefront Hub, Themes, CSS Customizer, Banners, Menus, Pages, SEO, Carriers**

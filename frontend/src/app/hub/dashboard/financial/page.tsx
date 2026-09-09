@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
 import { WalletBentoCockpit } from '@/components/dashboard/WalletBentoCockpit';
+import { SellerReGoFinancial } from '@/components/dashboard/rego/SellerReGoFinancial';
 
 type PayoutMode = 'on_demand' | 'automatic';
 type FinancialTab = 'overview' | 'wallet' | 'payments' | 'accounting';
@@ -458,6 +459,33 @@ export default function FinancialPage() {
     { label: t('dashboardPages.financial.kpi30dRevenue'), value: formatMoney(orderSummary?.revenue_30d, currency), icon: ArrowDownLeft },
     { label: t('dashboardPages.financial.kpiWithdrawnTotal'), value: formatMoney(wallet?.total_withdrawn, currency), icon: ArrowUpRight },
   ];
+
+  if (dashboardStyle === 'rego') {
+    return (
+      <SellerReGoFinancial
+        wallet={wallet}
+        orders={orders}
+        transactions={transactions}
+        orderSummary={orderSummary}
+        accountingProfile={accountingForm}
+        onUpdateAccounting={updateAccounting}
+        onSaveAccounting={handleAccountingSave}
+        onRefresh={refreshAll}
+        onExportOrders={exportOrders}
+        onExportTransactions={exportTransactions}
+        loading={loading}
+        refreshing={refreshing}
+        savingAccounting={savingAccounting}
+        error={error}
+        success={success}
+        onDismissAlert={() => {
+          setError('');
+          setSuccess('');
+        }}
+        dir={dir}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="space-y-6 sm:space-y-8">

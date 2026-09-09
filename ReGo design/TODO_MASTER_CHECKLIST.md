@@ -205,16 +205,16 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [x] Implement digital proof of delivery (POD signature / photo upload).
 
 ### Section 4: Wallet, Payouts & Store Payments (SELLER_SEC04_WALLET_PAYOUTS_FINANCES.md)
-- [ ] **Page 42: Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher** (/hub/dashboard/wallet)
-  - [ ] Breadcrumb: Accueil > Finance > Portefeuille & Virements
-  - [ ] Implement available balance, escrow pending balance, and payout history.
-  - [ ] Implement withdrawal request modal with real-time 20-digit Tunisian RIB Modulo 97 checksum.
-- [ ] **Page 43: Financial Reports, Invoicing & Tax Declarations** (/hub/dashboard/financial)
-  - [ ] Breadcrumb: Accueil > Finance > Rapports Financiers & Déclarations
-  - [ ] Implement downloadable accounting summaries, monthly fee statements, and TVA breakdown.
-- [ ] **Page 58: Merchant Store Payment Methods Setup (Flouci, Konnect, PayPal, COD)** (/hub/dashboard/payment-config)
-  - [ ] Breadcrumb: Accueil > Finance > Passerelles de Paiement
-  - [ ] Implement payment method toggle cards (COD, Flouci merchant credentials, Konnect API keys).
+- [x] **Page 42: Seller Wallet, Balances & Tunisian 20-digit RIB Modulo 97 Payout Launcher** (/hub/dashboard/wallet)
+  - [x] Breadcrumb: Accueil > Finance > Portefeuille & Virements
+  - [x] Implement available balance, escrow pending balance, and payout history.
+  - [x] Implement withdrawal request modal with real-time 20-digit Tunisian RIB Modulo 97 checksum.
+- [x] **Page 43: Financial Reports, Invoicing & Tax Declarations** (/hub/dashboard/financial)
+  - [x] Breadcrumb: Accueil > Finance > Rapports Financiers & Déclarations
+  - [x] Implement downloadable accounting summaries, monthly fee statements, and TVA breakdown.
+- [x] **Page 58: Merchant Store Payment Methods Setup (Flouci, Konnect, PayPal, COD)** (/hub/dashboard/payment-config)
+  - [x] Breadcrumb: Accueil > Finance > Passerelles de Paiement
+  - [x] Implement payment method toggle cards (COD, Flouci merchant credentials, Konnect API keys).
 
 ### Section 5: Online Storefront, Themes & Page Builder (SELLER_SEC05_ONLINE_STOREFRONT_BUILDER.md)
 - [ ] **Page 44: Online Storefront Hub & Domain Health Monitor** (/hub/dashboard/online-store)
