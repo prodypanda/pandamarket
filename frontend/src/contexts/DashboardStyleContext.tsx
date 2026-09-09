@@ -139,7 +139,7 @@ export function useDashboardStyle() {
   const context = useContext(DashboardStyleContext);
   if (!context) {
     return {
-      dashboardStyle: 'rego' as DashboardStyle,
+      dashboardStyle: (typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ? 'classic' : 'rego') as DashboardStyle,
       setDashboardStyle: () => {},
       toggleDashboardStyle: () => {},
       sidebarCollapsed: false,

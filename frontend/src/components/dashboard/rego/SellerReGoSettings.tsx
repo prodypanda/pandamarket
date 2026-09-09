@@ -96,6 +96,9 @@ export interface SellerReGoSettingsProps {
   accent: AccentColor;
   onAccentChange: (a: AccentColor) => void;
   dir?: 'ltr' | 'rtl';
+  tabs?: { id: string; label: string; icon: any }[];
+  activeMainTab?: string;
+  onMainTabChange?: (tab: string) => void;
 }
 
 export function SellerReGoSettings({
@@ -137,6 +140,9 @@ export function SellerReGoSettings({
   accent,
   onAccentChange,
   dir: _dir = 'ltr',
+  tabs,
+  activeMainTab,
+  onMainTabChange,
 }: SellerReGoSettingsProps) {
   const { t: _t } = useLocale();
   const [activeTab, setActiveTab] = useState<'identity' | 'contact' | 'policies' | 'appearance'>('identity');
@@ -225,55 +231,82 @@ export function SellerReGoSettings({
         </div>
       }
       filterToolbar={
-        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setActiveTab('identity')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'identity'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Building className="w-4 h-4" />
-            <span>Identité & Marque</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('contact')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'contact'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <MapPin className="w-4 h-4" />
-            <span>Coordonnées & Adresse</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('policies')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'policies'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Horaires & Retours</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('appearance')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'appearance'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Palette className="w-4 h-4" />
-            <span>Apparence & Style</span>
-          </button>
+        <div className="space-y-3 w-full">
+          {tabs && tabs.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                const isSelected = (activeMainTab || 'store') === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onMainTabChange?.(t.id)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--rego-accent,#ad0505)] text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/60 dark:bg-slate-900/40 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2">Section :</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('identity')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'identity'
+                  ? 'bg-white dark:bg-slate-800 text-[var(--rego-accent,#ad0505)] shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Building className="w-3.5 h-3.5" />
+              <span>Identité & Marque</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('contact')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'contact'
+                  ? 'bg-white dark:bg-slate-800 text-[var(--rego-accent,#ad0505)] shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Coordonnées & Adresse</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('policies')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'policies'
+                  ? 'bg-white dark:bg-slate-800 text-[var(--rego-accent,#ad0505)] shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Horaires & Retours</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('appearance')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'appearance'
+                  ? 'bg-white dark:bg-slate-800 text-[var(--rego-accent,#ad0505)] shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <span>Apparence & Style</span>
+            </button>
+          </div>
         </div>
       }
       mainContent={
@@ -290,7 +323,7 @@ export function SellerReGoSettings({
                   <div className="space-y-4 pt-2 text-xs">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Nom Commercial de la Boutique <span className="text-rose-500">*</span>
+                        Nom de la boutique <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -303,7 +336,7 @@ export function SellerReGoSettings({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Sous-domaine réservé PandaMarket
+                        Sous-domaine public
                       </label>
                       <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden">
                         <input

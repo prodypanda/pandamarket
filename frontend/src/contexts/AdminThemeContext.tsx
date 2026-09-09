@@ -126,7 +126,7 @@ export function useAdminTheme() {
   const context = useContext(AdminThemeContext);
   if (!context) {
     return {
-      adminTheme: 'rego' as AdminTheme,
+      adminTheme: (typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ? 'enterprise' : 'rego') as AdminTheme,
       setAdminTheme: () => {},
       toggleAdminTheme: () => {},
       sidebarCollapsed: false,

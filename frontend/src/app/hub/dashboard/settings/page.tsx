@@ -826,12 +826,21 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState(null, '', url.toString());
+    } catch {}
+  }, []);
+
   const tabs: { id: Tab; label: string; icon: typeof Settings }[] = [
-    { id: 'store', label: t('dashboardPages.settings.storeTab'), icon: Settings },
-    { id: 'security', label: t('dashboardPages.settings.securityTab'), icon: ShieldCheck },
+    { id: 'store', label: t('dashboardPages.settings.storeTab') || 'Boutique', icon: Settings },
+    { id: 'security', label: t('dashboardPages.settings.securityTab') || 'Sécurité', icon: ShieldCheck },
     { id: 'theme', label: 'Thème', icon: Palette },
-    { id: 'domain', label: t('dashboardPages.settings.domainTab'), icon: Globe },
-    { id: 'shipping', label: t('dashboardPages.settings.shippingTab'), icon: Truck },
+    { id: 'domain', label: t('dashboardPages.settings.domainTab') || 'Domaine', icon: Globe },
+    { id: 'shipping', label: t('dashboardPages.settings.shippingTab') || 'Expédition', icon: Truck },
     { id: 'analytics', label: 'Analytics & Pixels', icon: BarChart3 },
     { id: 'emails', label: 'Emails', icon: Mail },
   ];
@@ -871,7 +880,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (dashboardStyle === 'rego') {
+  if (dashboardStyle === 'rego' && activeTab === 'store') {
     return (
       <SellerReGoSettings
         storeName={storeName}
@@ -912,6 +921,9 @@ export default function SettingsPage() {
         accent={accent}
         onAccentChange={setAccent}
         dir={dir}
+        tabs={tabs}
+        activeMainTab={activeTab}
+        onMainTabChange={(t) => handleTabChange(t as Tab)}
       />
     );
   }
@@ -949,7 +961,7 @@ export default function SettingsPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition flex-1 ${
               activeTab === tab.id
                 ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs'
