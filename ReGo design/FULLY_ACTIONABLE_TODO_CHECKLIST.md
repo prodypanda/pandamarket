@@ -148,8 +148,11 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply Server infrastructure logs, 500 error telemetry, stacktrace terminal viewer, and manual log creator (`AdminReGoSystemLogs.tsx`).
 
 ### Section 8: Configuration, CMS & Communications (`SUPERADMIN_SEC08_CONFIG_CMS_COMMUNICATIONS.md`)
-- [ ] **Pages 26, 27, 29, 30: Platform Settings, SMTP Mail Dispatch, CMS Editor**
-  - [ ] Apply dual-pane markdown editor with live Google SERP preview.
+- [x] **Pages 26, 27, 29, 30: Platform Settings, SMTP Mail Dispatch, CMS Editor**
+  - [x] Apply unified Platform Settings ReGo interface with identity, commerce, TVA, security & telemetry controls (`AdminReGoSettings.tsx`).
+  - [x] Apply SMTP Mail Server configuration with live delivery test and TLS telemetry (`AdminReGoSmtp.tsx`).
+  - [x] Apply CMS Articles & Legal Policies directory with status tags, slug preview, and search filters (`AdminReGoCms.tsx`).
+  - [x] Apply CMS Article Editor integration with full visual block editor and markdown/SEO preview (`cms/[id]/page.tsx`).
 
 ---
 

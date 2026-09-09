@@ -1,6 +1,8 @@
 'use client';
 
 import { fetchWithCsrf } from '@/lib/api';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoSmtp } from '@/components/admin/rego/AdminReGoSmtp';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Mail,
@@ -226,6 +228,34 @@ export default function AdminSmtpConfigPage() {
       setTestStatus('error');
       setTestMessage('Network error — could not reach the server');
     }
+  }
+
+  const { adminTheme } = useAdminTheme();
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoSmtp
+        form={form}
+        existingPassSet={existingPassSet}
+        loading={loading}
+        saving={saving}
+        saved={saved}
+        showPassword={showPassword}
+        testStatus={testStatus}
+        testMessage={testMessage}
+        testEmail={testEmail}
+        selectedPreset={selectedPreset}
+        brevoApiKeySet={brevoApiKeySet}
+        error={error}
+        updateField={updateField}
+        applyPreset={applyPreset}
+        saveConfig={() => void handleSave()}
+        runTest={() => void handleTest()}
+        setShowPassword={setShowPassword}
+        setTestEmail={setTestEmail}
+        providerPresets={PROVIDER_PRESETS}
+      />
+    );
   }
 
   if (loading) {

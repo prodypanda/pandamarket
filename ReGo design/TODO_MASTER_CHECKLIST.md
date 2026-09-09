@@ -130,35 +130,35 @@ This checklist outlines the complete, step-by-step roadmap for implementing the 
   - [ ] Implement plan feature matrix editor (Starter, Pro, Enterprise) with product/quota limits.
 
 ### Section 7: Telemetry, AI Costs & Audit Trails (SUPERADMIN_SEC07_INFRASTRUCTURE_AUDIT_LOGS.md)
-- [ ] **Page 21: AI Usage Costs, Quotas & Token Consumption** (/ai-costs)
-  - [ ] Breadcrumb: Administration > Infrastructure > Coûts IA
-  - [ ] Implement model telemetry (Gemini 1.5 Flash, Pro) with token counts, cache hits, and budget limits.
-- [ ] **Page 22: Administrator Security Audit Trail** (/audit-log)
-  - [ ] Breadcrumb: Administration > Infrastructure > Audit Administrateur
-  - [ ] Implement immutable audit logs for administrative privilege actions and credential changes.
-- [ ] **Page 23: Merchant & Vendor Administrative Audit Trail** (/seller-audit-log)
-  - [ ] Breadcrumb: Administration > Infrastructure > Audit Vendeurs
-  - [ ] Implement merchant store modifications and payout request audit trails.
-- [ ] **Page 24: Buyer Account Actions & Order Audit Trail** (/buyer-audit-log)
-  - [ ] Breadcrumb: Administration > Infrastructure > Audit Acheteurs
-  - [ ] Implement buyer order status changes, address updates, and dispute filing history.
-- [ ] **Page 25: Server Infrastructure, API Errors & Performance Logs** (/system-logs)
-  - [ ] Breadcrumb: Administration > Infrastructure > Logs Serveur
-  - [ ] Implement real-time health monitors, Redis cache metrics, and error stack trace tailing.
+- [x] **Page 21: AI Usage Costs, Quotas & Token Consumption** (/ai-costs)
+  - [x] Breadcrumb: Administration > Infrastructure > Coûts IA
+  - [x] Implement model telemetry (Gemini 1.5 Flash, Pro) with token counts, cache hits, and budget limits.
+- [x] **Page 22: Administrator Security Audit Trail** (/audit-log)
+  - [x] Breadcrumb: Administration > Infrastructure > Audit Administrateur
+  - [x] Implement immutable audit logs for administrative privilege actions and credential changes.
+- [x] **Page 23: Merchant & Vendor Administrative Audit Trail** (/seller-audit-log)
+  - [x] Breadcrumb: Administration > Infrastructure > Audit Vendeurs
+  - [x] Implement merchant store modifications and payout request audit trails.
+- [x] **Page 24: Buyer Account Actions & Order Audit Trail** (/buyer-audit-log)
+  - [x] Breadcrumb: Administration > Infrastructure > Audit Acheteurs
+  - [x] Implement buyer order status changes, address updates, and dispute filing history.
+- [x] **Page 25: Server Infrastructure, API Errors & Performance Logs** (/system-logs)
+  - [x] Breadcrumb: Administration > Infrastructure > Logs Serveur
+  - [x] Implement real-time health monitors, Redis cache metrics, and error stack trace tailing.
 
 ### Section 8: Configuration, CMS & Communications (SUPERADMIN_SEC08_CONFIG_CMS_COMMUNICATIONS.md)
-- [ ] **Page 26: Global Platform Configuration & Marketplace Settings** (/settings)
-  - [ ] Breadcrumb: Administration > Gouvernance > Configuration Générale
-  - [ ] Implement general marketplace settings, default TVA rates (7%, 13%, 19%), and maintenance switch.
-- [ ] **Page 27: SMTP Transactional Mail Server & Test Dispatch** (/(admin)/sms-config)
-  - [ ] Breadcrumb: Administration > Gouvernance > Serveur Mail SMTP
-  - [ ] Implement SMTP credential configuration and real-time email dispatch tester.
-- [ ] **Page 29: CMS Articles, Legal Policies & Blog Posts Directory** (/(admin)/blog)
-  - [ ] Breadcrumb: Administration > Gouvernance > Articles CMS & Politiques
-  - [ ] Implement CMS content directory with category tags, publication status, and SEO ratings.
-- [ ] **Page 30: CMS Article Editor, Markdown Preview & SEO Publishing** (/(admin)/blog/edit)
-  - [ ] Breadcrumb: Administration > Gouvernance > Éditeur d'Article
-  - [ ] Implement dual-pane markdown editor, image embedder, and OpenGraph social preview.
+- [x] **Page 26: Global Platform Configuration & Marketplace Settings** (/settings)
+  - [x] Breadcrumb: Administration > Gouvernance > Configuration Générale
+  - [x] Implement general marketplace settings, default TVA rates (7%, 13%, 19%), and maintenance switch.
+- [x] **Page 27: SMTP Transactional Mail Server & Test Dispatch** (/(admin)/sms-config)
+  - [x] Breadcrumb: Administration > Gouvernance > Serveur Mail SMTP
+  - [x] Implement SMTP credential configuration and real-time email dispatch tester.
+- [x] **Page 29: CMS Articles, Legal Policies & Blog Posts Directory** (/(admin)/blog)
+  - [x] Breadcrumb: Administration > Gouvernance > Articles CMS & Politiques
+  - [x] Implement CMS content directory with category tags, publication status, and SEO ratings.
+- [x] **Page 30: CMS Article Editor, Markdown Preview & SEO Publishing** (/(admin)/blog/edit)
+  - [x] Breadcrumb: Administration > Gouvernance > Éditeur d'Article
+  - [x] Implement dual-pane markdown editor, image embedder, and OpenGraph social preview.
 
 ---
 

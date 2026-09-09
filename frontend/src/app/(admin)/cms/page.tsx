@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 // Audit P1-9: mutating calls must go through the CSRF helper like everywhere else.
 import { fetchWithCsrf } from '@/lib/api';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoCms } from '@/components/admin/rego/AdminReGoCms';
 
 interface PlatformPage {
   id: string;
@@ -16,10 +18,12 @@ interface PlatformPage {
 }
 
 export default function CmsPagesPage() {
+  const { adminTheme } = useAdminTheme();
   const [pages, setPages] = useState<PlatformPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadPages = useCallback(() => {
+    setIsLoading(true);
     fetch('/api/pd/marketplace/cms')
       .then((res) => res.json())
       .then((data) => {
@@ -31,6 +35,10 @@ export default function CmsPagesPage() {
         setIsLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadPages();
+  }, [loadPages]);
 
   const createNewPage = async () => {
     try {
@@ -54,6 +62,24 @@ export default function CmsPagesPage() {
     }
   };
 
+  const handleCreatePageModal = async (title: string, slug: string, isPublished: boolean) => {
+    try {
+      const res = await fetchWithCsrf('/api/pd/marketplace/cms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, slug, is_published: isPublished }),
+      });
+      const json = await res.json();
+      if (json.data?.id) {
+        window.location.href = `/cms/${json.data.id}`;
+      } else {
+        alert('Failed to create page');
+      }
+    } catch {
+      alert('Error creating page');
+    }
+  };
+
   const deletePage = async (id: string) => {
     if (!confirm('Are you sure you want to delete this page?')) return;
     try {
@@ -63,6 +89,18 @@ export default function CmsPagesPage() {
       alert('Error deleting page');
     }
   };
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoCms
+        pages={pages}
+        isLoading={isLoading}
+        onCreatePage={handleCreatePageModal}
+        onDeletePage={deletePage}
+        onRefresh={loadPages}
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-10">

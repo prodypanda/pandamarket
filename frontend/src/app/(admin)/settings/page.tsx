@@ -12,6 +12,8 @@ import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoSettings } from '@/components/admin/rego/AdminReGoSettings';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles, ExternalLink, Trash2, Plus, ArrowLeft, ArrowRight, Package } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
@@ -2943,6 +2945,26 @@ export default function SuperAdminSettingsPage() {
     });
     setSaved(false);
     setError('');
+  }
+
+  const { adminTheme } = useAdminTheme();
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoSettings
+        settings={settings}
+        updateSetting={updateSetting}
+        loading={loading}
+        saving={saving}
+        saved={saved}
+        error={error}
+        onSave={handleSave}
+        onReset={resetActiveSection}
+        isDirty={hasUnsavedPlatformChanges}
+        onOpenPreviewLab={() => setIsPreviewLabOpen(true)}
+        showMaintenanceConfirm={showMaintenanceConfirm}
+        setShowMaintenanceConfirm={setShowMaintenanceConfirm}
+      />
+    );
   }
 
   return (
