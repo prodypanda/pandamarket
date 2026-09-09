@@ -28,6 +28,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoAds } from '@/components/admin/rego/AdminReGoAds';
 import { AdsPlatformChart } from '../../../components/admin/AdsPlatformChart';
 
 type Summary = { campaigns: number; pending_review: number; active: number; total_spend: string };
@@ -67,6 +69,7 @@ type AdsConfig = {
 const money = (v?: string | number) => `${Number(v || 0).toFixed(3)} TND`;
 
 export default function AdminAdsPage() {
+  const { adminTheme } = useAdminTheme();
   const [activeTab, setActiveTab] = useState<'overview' | 'moderation' | 'advertisers' | 'transactions' | 'placements' | 'coupons' | 'fraud' | 'configuration'>('overview');
 
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -381,6 +384,75 @@ export default function AdminAdsPage() {
     { id: 'fraud', label: 'Fraud & Safety', icon: ShieldAlert },
     { id: 'configuration', label: 'Configuration', icon: Settings },
   ];
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoAds
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        summary={summary}
+        campaigns={campaigns}
+        accounts={accounts}
+        daily={daily}
+        reviews={reviews}
+        transactions={transactions}
+        placements={placements}
+        coupons={coupons}
+        blockedIPs={blockedIPs}
+        adsConfig={adsConfig}
+        adminFrom={adminFrom}
+        adminTo={adminTo}
+        adminGranularity={adminGranularity}
+        setAdminFrom={setAdminFrom}
+        setAdminTo={setAdminTo}
+        setAdminGranularity={setAdminGranularity}
+        setPresetRange={setPresetRange}
+        modSearch={modSearch}
+        setModSearch={setModSearch}
+        modStatusFilter={modStatusFilter}
+        setModStatusFilter={setModStatusFilter}
+        selectedModCampaigns={selectedModCampaigns}
+        setSelectedModCampaigns={setSelectedModCampaigns}
+        selectedCampaign={selectedCampaign}
+        setSelectedCampaign={setSelectedCampaign}
+        rejectReason={rejectReason}
+        setRejectReason={setRejectReason}
+        loading={loading}
+        error={error}
+        successMsg={successMsg}
+        onReview={review}
+        onBulkReview={bulkReview}
+        onSuspendCampaign={suspendCampaign}
+        onCreditAccount={credit}
+        onAdjustAccount={adjust}
+        onSetAccountStatus={setStatus}
+        onCreateCoupon={createCoupon}
+        onToggleCoupon={async (coupon) => {
+          await fetchWithCsrf(`/api/pd/admin/ads/coupons/${coupon.id}/toggle`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: !coupon.enabled }),
+          });
+          await load();
+        }}
+        onRefundTransaction={refund}
+        onUpdateConfig={updateConfig}
+        onUpdatePlacement={updatePlacement}
+        onBlockIP={blockIP}
+        onUnblockIP={async (ipHash) => {
+          await fetchWithCsrf(`/api/pd/admin/ads/fraud/unblock-ip`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip_hash: ipHash }),
+          });
+          await load();
+        }}
+        onRefresh={load}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-8 max-w-7xl mx-auto">

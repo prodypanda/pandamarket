@@ -134,8 +134,10 @@ This checklist details every concrete engineering task required to implement the
   - [x] Apply regulatory violations & infringement management with KPI telemetry, case drawer, and moderation enforcement (`AdminReGoReports.tsx`).
 
 ### Section 6: Ads & Subscriptions (`SUPERADMIN_SEC06_ADS_SUBSCRIPTIONS_SAAS.md`)
-- [ ] **Pages 17, 18, 20: PandaAds Global, SaaS Orders, Plans & Feature Limits**
-  - [ ] Apply ad auction pricing rules and multi-plan tier limit editor.
+- [x] **Pages 17, 18, 20: PandaAds Global, SaaS Orders, Plans & Feature Limits**
+  - [x] Apply ad auction pricing rules, creative moderation, transaction audits, and placements (`AdminReGoAds.tsx`).
+  - [x] Apply subscription plans studio with ARR potential, feature toggles, quota meters, and migration safeguards (`AdminReGoPlans.tsx`).
+  - [x] Apply SaaS orders and invoices ledger with multi-action batch toolbar, arbitration modal, and inspection drawer (`AdminReGoSubscriptionOrders.tsx`).
 
 ### Section 7: Telemetry, AI Costs & Audit (`SUPERADMIN_SEC07_INFRASTRUCTURE_AUDIT_LOGS.md`)
 - [ ] **Pages 21-25: AI Token Telemetry, Admin/Seller/Buyer Audits, System Health Logs**

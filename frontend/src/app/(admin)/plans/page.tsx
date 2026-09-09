@@ -2,6 +2,8 @@
 
 import { fetchWithCsrf } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoPlans } from '@/components/admin/rego/AdminReGoPlans';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -181,6 +183,7 @@ async function getErrorMessage(res: Response, fallback: string) {
 }
 
 export default function AdminPlansPage() {
+  const { adminTheme } = useAdminTheme();
   const [plans, setPlans] = useState<PlanLimits[]>([]);
   const [originalPlans, setOriginalPlans] = useState<Record<string, PlanLimits>>({});
   const [newPlan, setNewPlan] = useState<PlanLimits>({ ...emptyPlan });
@@ -377,6 +380,38 @@ export default function AdminPlansPage() {
       setSaving(null);
     }
   };
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoPlans
+        plans={plans}
+        originalPlans={originalPlans}
+        newPlan={newPlan}
+        setNewPlan={setNewPlan}
+        showCreateForm={showCreateForm}
+        setShowCreateForm={setShowCreateForm}
+        deleteTarget={deleteTarget}
+        setDeleteTarget={setDeleteTarget}
+        replacementPlanId={replacementPlanId}
+        setReplacementPlanId={setReplacementPlanId}
+        loading={loading}
+        saving={saving}
+        message={message}
+        error={error}
+        dirtyPlanIds={dirtyPlanIds}
+        totals={totals}
+        onUpdatePlan={updatePlan}
+        onResetPlan={resetPlan}
+        onResetAll={resetAll}
+        onSavePlan={savePlan}
+        onSaveAll={saveAll}
+        onCreatePlan={createPlan}
+        onDuplicatePlan={duplicatePlan}
+        onDeletePlan={deletePlan}
+        onReload={loadPlans}
+      />
+    );
+  }
 
   if (loading) {
     return (

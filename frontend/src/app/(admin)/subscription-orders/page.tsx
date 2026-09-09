@@ -3,6 +3,8 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAdminTheme } from '@/contexts/AdminThemeContext';
+import { AdminReGoSubscriptionOrders } from '@/components/admin/rego/AdminReGoSubscriptionOrders';
 import Link from 'next/link';
 import {
   Crown,
@@ -272,6 +274,7 @@ function calculateHealthScore(order: SubscriptionOrder) {
 
 export default function SubscriptionOrdersPage() {
   const { t, dir } = useLocale();
+  const { adminTheme } = useAdminTheme();
   const tr = (t?.('admin.subscriptionOrders') as any) || {};
 
   const [orders, setOrders] = useState<SubscriptionOrder[]>([]);
@@ -1230,6 +1233,90 @@ export default function SubscriptionOrdersPage() {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handlePauseResumeStore = async (storeId: string, action: 'pause' | 'resume') => {
+    try {
+      const res = await fetchWithCsrf(`/api/pd/admin/subscription-orders/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ store_id: storeId }),
+      });
+      if (res.ok) {
+        setSuccess(`Abonnement ${action === 'pause' ? 'mis en pause' : 'réactivé'} avec succès !`);
+        await fetchOrders();
+      } else {
+        setError(`Erreur lors de l'opération ${action}`);
+      }
+    } catch {
+      setError('Erreur réseau');
+    }
+  };
+
+  if (adminTheme === 'rego') {
+    return (
+      <AdminReGoSubscriptionOrders
+        orders={orders}
+        pagination={pagination}
+        stats={stats}
+        loading={loading}
+        error={error}
+        success={success}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        gatewayFilter={gatewayFilter}
+        setGatewayFilter={setGatewayFilter}
+        targetPlanFilter={targetPlanFilter}
+        setTargetPlanFilter={setTargetPlanFilter}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        page={page}
+        setPage={setPage}
+        selectedIds={selectedIds}
+        setSelectedIds={setSelectedIds}
+        onBulkAction={handleBulkAction}
+        onReviewManual={async (intentId, decision, reason) => {
+          const target = orders.find((o) => o.id === intentId) || reviewOrder;
+          if (reason) setRejectionReason(reason);
+          await handleReview(decision, target);
+        }}
+        onGenerateMagicLink={handleGenerateMagicLink}
+        onPauseResumeStore={handlePauseResumeStore}
+        onCancelOrder={handleCancelOrder}
+        onDeleteOrder={handleDeleteOrder}
+        onRunBackgroundCron={handleRunBackgroundCron}
+        onDownloadGlExport={handleDownloadGlExport}
+        onOpenDesyncs={() => {
+          fetchDesyncs();
+          setShowDesyncModal(true);
+        }}
+        onRefresh={async () => {
+          await fetchOrders();
+          await fetchStats();
+        }}
+        drawerOrder={drawerOrder}
+        setDrawerOrder={setDrawerOrder}
+        drawerLogs={drawerLogs}
+        loadingLogs={loadingLogs}
+        adminNoteInput={adminNoteInput}
+        setAdminNoteInput={setAdminNoteInput}
+        submittingNote={submittingNote}
+        onAddAdminNote={handleAddAdminNote}
+        prorationOrder={prorationOrder}
+        setProrationOrder={setProrationOrder}
+        prorationData={prorationData}
+        onOpenProration={(order) => {
+          setProrationOrder(order);
+          handleCalculateProration(order.store_id, order.target_plan);
+        }}
+        diagnosticsOrder={diagnosticsOrder}
+        setDiagnosticsOrder={setDiagnosticsOrder}
+        webhookLogs={webhookLogs}
+        loadingDiagnostics={loadingDiagnostics}
+        onOpenDiagnostics={openDiagnostics}
+      />
+    );
+  }
 
   return (
     <div dir={dir} className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
