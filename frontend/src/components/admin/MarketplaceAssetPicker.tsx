@@ -2,6 +2,7 @@
 
 import { getResizedImageUrl } from '@/lib/image-url';
 import { fetchWithCsrf } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { FileText, Loader2, Search, Upload, X, Zap, CheckCircle2, Folder, Trash2 } from 'lucide-react';
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -53,6 +54,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
   const [optimizingId, setOptimizingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [deleteAssetTarget, setDeleteAssetTarget] = useState<FileAsset | null>(null);
 
   // Auto-infer folder from picker title when modal opens
   useEffect(() => {
@@ -238,10 +240,14 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
     }
   };
 
-  const handleDeleteAsset = async (asset: FileAsset, e: React.MouseEvent) => {
+  const requestDeleteAsset = (asset: FileAsset, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete picture "${asset.filename}" completely?`)) return;
+    setDeleteAssetTarget(asset);
+  };
 
+  const confirmDeleteAsset = async () => {
+    if (!deleteAssetTarget) return;
+    const asset = deleteAssetTarget;
     const rawKey = asset.key || asset.url.replace(/^\//, '');
     setDeletingId(asset.id);
     setError('');
@@ -263,6 +269,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
       setError(err instanceof Error ? err.message : 'Deletion failed');
     } finally {
       setDeletingId(null);
+      setDeleteAssetTarget(null);
     }
   };
 
@@ -425,7 +432,7 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
                         )}
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteAsset(asset, e)}
+                          onClick={(e) => requestDeleteAsset(asset, e)}
                           disabled={isDeletingThis}
                           className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
                           title="Delete Picture Asset"
@@ -449,6 +456,16 @@ export function MarketplaceAssetPicker({ open, title = 'Media library', type = '
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteAssetTarget)}
+        onClose={() => setDeleteAssetTarget(null)}
+        onConfirm={() => void confirmDeleteAsset()}
+        title="Delete picture"
+        description={`Are you sure you want to delete picture "${deleteAssetTarget?.filename || ''}" completely?`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   RollupsRecomputeResultDTO,
   CacheInvalidateResultDTO,
 } from '@/types/analytics';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export function GovernanceTab() {
   const [retentionStatus, setRetentionStatus] = useState<AnalyticsRetentionStatusDTO | null>(null);
@@ -34,6 +35,8 @@ export function GovernanceTab() {
 
   const [invalidating, setInvalidating] = useState(false);
   const [invalidateResult, setInvalidateResult] = useState<CacheInvalidateResultDTO | null>(null);
+
+  const [pruneConfirmOpen, setPruneConfirmOpen] = useState(false);
 
   const fetchGovernanceData = async () => {
     setLoading(true);
@@ -57,17 +60,15 @@ export function GovernanceTab() {
   }, []);
 
   const handleRetentionCleanup = async () => {
-    if (!confirm(`Are you sure you want to prune raw analytics events older than ${cleanupDays} days?`)) {
-      return;
-    }
     setCleaning(true);
     setCleanupResult(null);
+    setError(null);
     try {
       const res = await runRetentionCleanup(cleanupDays);
       setCleanupResult(res);
       await fetchGovernanceData();
     } catch (err: unknown) {
-      alert(`Cleanup failed: ${(err as Error).message}`);
+      setError(`Cleanup failed: ${(err as Error).message}`);
     } finally {
       setCleaning(false);
     }
@@ -76,11 +77,12 @@ export function GovernanceTab() {
   const handleRecomputeRollups = async () => {
     setRecomputing(true);
     setRecomputeResult(null);
+    setError(null);
     try {
       const res = await recomputeRollups({ period: recomputePeriod });
       setRecomputeResult(res);
     } catch (err: unknown) {
-      alert(`Recompute failed: ${(err as Error).message}`);
+      setError(`Recompute failed: ${(err as Error).message}`);
     } finally {
       setRecomputing(false);
     }
@@ -89,11 +91,12 @@ export function GovernanceTab() {
   const handleInvalidateCache = async () => {
     setInvalidating(true);
     setInvalidateResult(null);
+    setError(null);
     try {
       const res = await invalidateCache('all');
       setInvalidateResult(res);
     } catch (err: unknown) {
-      alert(`Cache invalidation failed: ${(err as Error).message}`);
+      setError(`Cache invalidation failed: ${(err as Error).message}`);
     } finally {
       setInvalidating(false);
     }
@@ -184,7 +187,7 @@ export function GovernanceTab() {
                 className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold w-28 outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <button
-                onClick={handleRetentionCleanup}
+                onClick={() => setPruneConfirmOpen(true)}
                 disabled={cleaning}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-2"
               >
@@ -329,6 +332,19 @@ export function GovernanceTab() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={pruneConfirmOpen}
+        onClose={() => setPruneConfirmOpen(false)}
+        onConfirm={() => {
+          setPruneConfirmOpen(false);
+          return handleRetentionCleanup();
+        }}
+        title="Prune Raw Analytics Events"
+        description={`Are you sure you want to prune raw analytics events older than ${cleanupDays} days?`}
+        confirmLabel="Prune Raw Events"
+        variant="danger"
+      />
     </div>
   );
 }

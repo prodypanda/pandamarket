@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { fetchWithCsrf } from '@/lib/api';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoCms } from '@/components/admin/rego/AdminReGoCms';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface PlatformPage {
   id: string;
@@ -21,6 +23,11 @@ export default function CmsPagesPage() {
   const { adminTheme } = useAdminTheme();
   const [pages, setPages] = useState<PlatformPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const loadPages = useCallback(() => {
     setIsLoading(true);
@@ -41,11 +48,12 @@ export default function CmsPagesPage() {
   }, [loadPages]);
 
   const createNewPage = async () => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setCreating(true);
     try {
-      const title = prompt('Enter a title for the new page (e.g. Terms of Service)');
-      if (!title) return;
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      
+
       const res = await fetchWithCsrf('/api/pd/marketplace/cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,12 +61,17 @@ export default function CmsPagesPage() {
       });
       const json = await res.json();
       if (json.data?.id) {
+        setCreateOpen(false);
         window.location.href = `/cms/${json.data.id}`;
       } else {
-        alert('Failed to create page');
+        setCreateOpen(false);
+        setActionError('Failed to create page');
       }
     } catch (e) {
-      alert('Error creating page');
+      setCreateOpen(false);
+      setActionError('Error creating page');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -73,32 +86,57 @@ export default function CmsPagesPage() {
       if (json.data?.id) {
         window.location.href = `/cms/${json.data.id}`;
       } else {
-        alert('Failed to create page');
+        setActionError('Failed to create page');
       }
     } catch {
-      alert('Error creating page');
+      setActionError('Error creating page');
     }
   };
 
-  const deletePage = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
+  const requestDeletePage = async (id: string) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeletePage = async () => {
+    if (!deleteTargetId) return;
     try {
-      await fetchWithCsrf(`/api/pd/marketplace/cms/${id}`, { method: 'DELETE' });
-      setPages(pages.filter(p => p.id !== id));
+      await fetchWithCsrf(`/api/pd/marketplace/cms/${deleteTargetId}`, { method: 'DELETE' });
+      setPages(pages.filter(p => p.id !== deleteTargetId));
     } catch (e) {
-      alert('Error deleting page');
+      setActionError('Error deleting page');
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoCms
-        pages={pages}
-        isLoading={isLoading}
-        onCreatePage={handleCreatePageModal}
-        onDeletePage={deletePage}
-        onRefresh={loadPages}
-      />
+      <>
+        {actionError && (
+          <div className="mx-auto w-full max-w-6xl px-4 pt-6 md:px-8">
+            <div className="rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs font-semibold text-rose-700 dark:text-rose-300" role="alert">
+              {actionError}
+            </div>
+          </div>
+        )}
+        <AdminReGoCms
+          pages={pages}
+          isLoading={isLoading}
+          onCreatePage={handleCreatePageModal}
+          onDeletePage={requestDeletePage}
+          onRefresh={loadPages}
+        />
+        <ConfirmDialog
+          isOpen={Boolean(deleteTargetId)}
+          onClose={() => setDeleteTargetId(null)}
+          onConfirm={() => void confirmDeletePage()}
+          title="Delete Page"
+          description="Are you sure you want to delete this page?"
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+          variant="danger"
+        />
+      </>
     );
   }
 
@@ -110,12 +148,21 @@ export default function CmsPagesPage() {
           <p className="mt-1 text-sm text-slate-500">Manage pages for the Marketplace Hub (About, FAQ, Terms, etc.)</p>
         </div>
         <button
-          onClick={createNewPage}
+          onClick={() => {
+            setNewTitle('');
+            setCreateOpen(true);
+          }}
           className="rounded-xl bg-[#B91C1C] px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-[#991818]"
         >
           + Create Page
         </button>
       </div>
+
+      {actionError && (
+        <div className="mb-6 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs font-semibold text-rose-700 dark:text-rose-300" role="alert">
+          {actionError}
+        </div>
+      )}
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm text-slate-600">
@@ -146,7 +193,7 @@ export default function CmsPagesPage() {
                     <Link href={`/cms/${page.id}`} className="text-blue-600 hover:text-blue-800 font-semibold text-sm">
                       Edit
                     </Link>
-                    <button onClick={() => deletePage(page.id)} className="text-red-500 hover:text-red-700 font-semibold text-sm">
+                    <button onClick={() => requestDeletePage(page.id)} className="text-red-500 hover:text-red-700 font-semibold text-sm">
                       Delete
                     </button>
                   </td>
@@ -156,6 +203,48 @@ export default function CmsPagesPage() {
           </tbody>
         </table>
       </div>
+
+      <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Create a new page" maxWidth="md">
+        <div className="space-y-3">
+          <label htmlFor="new-page-title" className="block text-xs font-bold text-slate-700 dark:text-slate-300">Title</label>
+          <input
+            id="new-page-title"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="e.g. Terms of Service"
+            data-autofocus
+            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(false)}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void createNewPage()}
+            disabled={!newTitle.trim() || creating}
+            className="rounded-xl bg-[#B91C1C] px-5 py-2 text-xs font-bold text-white transition-all hover:bg-[#991818] disabled:opacity-50"
+          >
+            {creating ? 'Creating...' : 'Create'}
+          </button>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => void confirmDeletePage()}
+        title="Delete Page"
+        description="Are you sure you want to delete this page?"
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { fetchWithCsrf } from '@/lib/api';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoSystemLogs } from '@/components/admin/rego/AdminReGoSystemLogs';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
@@ -179,6 +180,7 @@ export default function SystemLogsPage() {
   const [clearConfirm, setClearConfirm] = useState('');
   const [olderThanDays, setOlderThanDays] = useState('30');
   const [createForm, setCreateForm] = useState<CreateLogForm>(defaultCreateForm);
+  const [deleteEntryTargetId, setDeleteEntryTargetId] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -366,8 +368,13 @@ export default function SystemLogsPage() {
     }
   };
 
-  const deleteEntry = async (id: string) => {
-    if (!window.confirm('Delete this log entry? This cannot be undone.')) return;
+  const requestDeleteEntry = (id: string) => {
+    setDeleteEntryTargetId(id);
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!deleteEntryTargetId) return;
+    const id = deleteEntryTargetId;
     setError('');
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/system-logs/${encodeURIComponent(id)}`, {
@@ -378,6 +385,8 @@ export default function SystemLogsPage() {
       await fetchLogs();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete log entry');
+    } finally {
+      setDeleteEntryTargetId(null);
     }
   };
 
@@ -701,7 +710,7 @@ export default function SystemLogsPage() {
                     </dl>
                     <button
                       type="button"
-                      onClick={() => void deleteEntry(entry.id)}
+                      onClick={() => requestDeleteEntry(entry.id)}
                       className="mt-4 inline-flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:bg-red-100"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -730,6 +739,16 @@ export default function SystemLogsPage() {
         <span className="text-center text-sm font-bold text-gray-500">Page {page} / {totalPages}</span>
         <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-black text-gray-600 transition hover:bg-gray-50 disabled:opacity-40">Next<ChevronRight className="h-4 w-4" /></button>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteEntryTargetId)}
+        onClose={() => setDeleteEntryTargetId(null)}
+        onConfirm={() => void confirmDeleteEntry()}
+        title="Delete this log entry?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

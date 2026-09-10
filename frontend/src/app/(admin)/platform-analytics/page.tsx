@@ -99,6 +99,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [drilldownType, setDrilldownType] = useState<DrilldownType>('orders');
+  const [exportFeedback, setExportFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   // Typed tab data states
   const [overviewData, setOverviewData] = useState<PlatformOverviewAnalytics | null>(null);
@@ -196,6 +197,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
   }, [activeTab]);
 
   const handleExportCSV = async () => {
+    setExportFeedback(null);
     try {
       const blob = await exportPlatformAnalytics({ type: activeTab, timeRange, currency });
       const url = window.URL.createObjectURL(blob);
@@ -206,7 +208,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate export file.';
-      alert(message);
+      setExportFeedback({ kind: 'error', message });
     }
   };
 
@@ -230,7 +232,17 @@ export default function ComprehensivePlatformAnalyticsPage() {
   const { adminTheme } = useAdminTheme();
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoAnalytics
+      <>
+        {exportFeedback && (
+          <div className={`mb-4 rounded-xl border p-3 text-xs font-semibold ${
+            exportFeedback.kind === 'success'
+              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+              : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+          }`} role={exportFeedback.kind === 'error' ? 'alert' : 'status'}>
+            {exportFeedback.message}
+          </div>
+        )}
+        <AdminReGoAnalytics
         timeRange={timeRange}
         onTimeRangeChange={handleTimeRangeChange}
         currency={currency}
@@ -260,11 +272,22 @@ export default function ComprehensivePlatformAnalyticsPage() {
         isHelpOpen={isHelpOpen}
         onCloseHelp={() => setIsHelpOpen(false)}
       />
+      </>
     );
   }
 
   return (
     <div dir={dir} className="p-4 sm:p-6 lg:p-8 w-full max-w-[1920px] mx-auto space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-all duration-300">
+      {exportFeedback && (
+        <div className={`rounded-xl border p-3 text-xs font-semibold ${
+          exportFeedback.kind === 'success'
+            ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+            : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+        }`} role={exportFeedback.kind === 'error' ? 'alert' : 'status'}>
+          {exportFeedback.message}
+        </div>
+      )}
+
       {/* Top Header & Filter Bar */}
       <PlatformAnalyticsHeader
         timeRange={timeRange}

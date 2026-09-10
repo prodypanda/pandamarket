@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoSubscriptionOrders } from '@/components/admin/rego/AdminReGoSubscriptionOrders';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import Link from 'next/link';
 import {
   Crown,
@@ -377,6 +378,18 @@ export default function SubscriptionOrdersPage() {
   const [creditAmount, setCreditAmount] = useState<string>('50');
   const [creditReasonText, setCreditReasonText] = useState<string>('');
   const [storeAdjustments, setStoreAdjustments] = useState<AdjustmentRecord[]>([]);
+
+  // Confirm dialog state (replaces native confirm)
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingBulk, setPendingBulk] = useState<{
+    action: 'approve' | 'reject' | 'cancel' | 'delete' | 'pause' | 'resume' | 'migrate' | 'retry';
+    ids: string[];
+    storeIds: string[];
+    reason?: string;
+    targetPlan?: string;
+    message: string;
+  } | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -1081,14 +1094,19 @@ export default function SubscriptionOrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (intentId: string) => {
+  const requestCancelOrder = async (intentId: string) => {
     const targetOrder = orders.find((o) => o.id === intentId);
     if (targetOrder) {
       setRetentionOrder(targetOrder);
       return;
     }
 
-    if (!confirm(tr.confirmCancel || 'Voulez-vous vraiment annuler cette commande d\'abonnement ?')) return;
+    setPendingCancelId(intentId);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!pendingCancelId) return;
+    const intentId = pendingCancelId;
     setSubmitting(true);
     setError('');
     try {
@@ -1111,11 +1129,17 @@ export default function SubscriptionOrdersPage() {
       setError('Erreur réseau');
     } finally {
       setSubmitting(false);
+      setPendingCancelId(null);
     }
   };
 
-  const handleDeleteOrder = async (intentId: string) => {
-    if (!confirm(tr.confirmDelete || 'Voulez-vous vraiment supprimer définitivement cette commande ? Irréversible.')) return;
+  const requestDeleteOrder = async (intentId: string) => {
+    setPendingDeleteId(intentId);
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (!pendingDeleteId) return;
+    const intentId = pendingDeleteId;
     setSubmitting(true);
     setError('');
     try {
@@ -1136,10 +1160,11 @@ export default function SubscriptionOrdersPage() {
       setError('Erreur réseau');
     } finally {
       setSubmitting(false);
+      setPendingDeleteId(null);
     }
   };
 
-  const handleBulkAction = async (action: 'approve' | 'reject' | 'cancel' | 'delete' | 'pause' | 'resume' | 'migrate' | 'retry') => {
+  const requestBulkAction = async (action: 'approve' | 'reject' | 'cancel' | 'delete' | 'pause' | 'resume' | 'migrate' | 'retry') => {
     if (selectedIds.length === 0) return;
     if (action === 'reject' && !bulkRejectionReason.trim()) {
       setError(tr.bulkReason || 'Motif commun requis pour le refus groupé.');
@@ -1158,8 +1183,19 @@ export default function SubscriptionOrdersPage() {
       action === 'retry' ? `Relancer la vérification de paiement pour ${selectedIds.length} commandes ?` :
       tr.confirmBulkDelete?.replace('{count}', String(selectedIds.length));
 
-    if (!confirm(confirmMsg || `Procéder à l'action groupée (${action}) sur ${selectedIds.length} commande(s) ?`)) return;
+    setPendingBulk({
+      action,
+      ids: selectedIds,
+      storeIds: selectedStoreIds,
+      reason: bulkRejectionReason.trim() || undefined,
+      targetPlan: action === 'migrate' ? bulkMigrationTargetPlan : undefined,
+      message: confirmMsg || `Procéder à l'action groupée (${action}) sur ${selectedIds.length} commande(s) ?`,
+    });
+  };
 
+  const confirmBulkAction = async () => {
+    if (!pendingBulk) return;
+    const { action, ids, storeIds, reason, targetPlan } = pendingBulk;
     setSubmitting(true);
     setError('');
     try {
@@ -1171,11 +1207,11 @@ export default function SubscriptionOrdersPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          intent_ids: selectedIds,
-          store_ids: selectedStoreIds,
+          intent_ids: ids,
+          store_ids: storeIds,
           action,
-          reason: bulkRejectionReason.trim() || undefined,
-          target_plan: action === 'migrate' ? bulkMigrationTargetPlan : undefined,
+          reason,
+          target_plan: targetPlan,
         }),
       });
       if (res.ok) {
@@ -1193,6 +1229,7 @@ export default function SubscriptionOrdersPage() {
       setError('Erreur réseau');
     } finally {
       setSubmitting(false);
+      setPendingBulk(null);
     }
   };
 
@@ -1487,7 +1524,7 @@ export default function SubscriptionOrdersPage() {
               <button onClick={() => setShowSimulatorModal(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
                 Cancel Dry-Run
               </button>
-              <button onClick={() => { setShowSimulatorModal(false); handleBulkAction('migrate'); }} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700">
+              <button onClick={() => { setShowSimulatorModal(false); requestBulkAction('migrate'); }} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700">
                 Commit Migration to Database
               </button>
             </div>
@@ -1596,7 +1633,7 @@ export default function SubscriptionOrdersPage() {
               <button onClick={() => setRetentionOrder(null)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs">
                 Back
               </button>
-              <button onClick={() => { setRetentionOrder(null); handleCancelOrder(retentionOrder.id); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl text-xs hover:bg-red-700">
+              <button onClick={() => { setRetentionOrder(null); requestCancelOrder(retentionOrder.id); }} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl text-xs hover:bg-red-700">
                 Proceed to Full Cancel
               </button>
             </div>
@@ -2158,7 +2195,7 @@ export default function SubscriptionOrdersPage() {
               </button>
               {((drawerOrder.status as string) === 'pending' || (drawerOrder.status as string) === 'pending_review' || (drawerOrder.status as string) === 'pending_proof') && (
                 <button
-                  onClick={() => handleCancelOrder(drawerOrder.id)}
+                  onClick={() => requestCancelOrder(drawerOrder.id)}
                   className="flex-1 py-2.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-bold rounded-xl text-xs hover:bg-red-100"
                 >
                   Cancel Order
@@ -2388,6 +2425,38 @@ export default function SubscriptionOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm dialogs (native confirm replacements) */}
+      <ConfirmDialog
+        isOpen={Boolean(pendingCancelId)}
+        onClose={() => setPendingCancelId(null)}
+        onConfirm={() => void confirmCancelOrder()}
+        title={tr.cancel || 'Annuler la commande'}
+        description={tr.confirmCancel || 'Voulez-vous vraiment annuler cette commande d\'abonnement ?'}
+        confirmLabel={tr.cancel || 'Annuler la commande'}
+        variant="danger"
+        dir={dir}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteId)}
+        onClose={() => setPendingDeleteId(null)}
+        onConfirm={() => void confirmDeleteOrder()}
+        title={tr.delete || 'Supprimer définitivement'}
+        description={tr.confirmDelete || 'Voulez-vous vraiment supprimer définitivement cette commande ? Irréversible.'}
+        confirmLabel={tr.delete || 'Supprimer définitivement'}
+        variant="danger"
+        dir={dir}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(pendingBulk)}
+        onClose={() => setPendingBulk(null)}
+        onConfirm={() => void confirmBulkAction()}
+        title={tr.bulkActions || 'Actions groupées'}
+        description={pendingBulk?.message || ''}
+        confirmLabel="Confirmer"
+        variant={pendingBulk?.action === 'delete' ? 'danger' : 'primary'}
+        dir={dir}
+      />
     </>
   );
 
@@ -2413,7 +2482,7 @@ export default function SubscriptionOrdersPage() {
         setPage={setPage}
         selectedIds={selectedIds}
         setSelectedIds={setSelectedIds}
-        onBulkAction={handleBulkAction}
+        onBulkAction={requestBulkAction}
         onReviewManual={async (intentId, decision, reason) => {
           const target = orders.find((o) => o.id === intentId) || reviewOrder;
           if (reason) setRejectionReason(reason);
@@ -2421,8 +2490,8 @@ export default function SubscriptionOrdersPage() {
         }}
         onGenerateMagicLink={handleGenerateMagicLink}
         onPauseResumeStore={handlePauseResumeStore}
-        onCancelOrder={handleCancelOrder}
-        onDeleteOrder={handleDeleteOrder}
+        onCancelOrder={requestCancelOrder}
+        onDeleteOrder={requestDeleteOrder}
         onRunBackgroundCron={handleRunBackgroundCron}
         onDownloadGlExport={handleDownloadGlExport}
         onOpenDesyncs={() => {
@@ -2685,28 +2754,28 @@ export default function SubscriptionOrdersPage() {
               <option value="platinum">Migrate to Platinum</option>
             </select>
 
-            <button onClick={() => handleBulkAction('approve')} disabled={submitting} className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('approve')} disabled={submitting} className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50">
               Approve
             </button>
-            <button onClick={() => handleBulkAction('reject')} disabled={submitting} className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('reject')} disabled={submitting} className="px-3 py-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
               Reject
             </button>
-            <button onClick={() => handleBulkAction('pause')} disabled={submitting} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('pause')} disabled={submitting} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50">
               Pause
             </button>
-            <button onClick={() => handleBulkAction('resume')} disabled={submitting} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('resume')} disabled={submitting} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
               Resume
             </button>
-            <button onClick={() => handleBulkAction('migrate')} disabled={submitting} className="px-3 py-1.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('migrate')} disabled={submitting} className="px-3 py-1.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50">
               Migrate Plan
             </button>
-            <button onClick={() => handleBulkAction('retry')} disabled={submitting} className="px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('retry')} disabled={submitting} className="px-3 py-1.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50">
               Retry Payment
             </button>
-            <button onClick={() => handleBulkAction('cancel')} disabled={submitting} className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50">
+            <button onClick={() => requestBulkAction('cancel')} disabled={submitting} className="px-3 py-1.5 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50">
               Cancel
             </button>
-            <button onClick={() => handleBulkAction('delete')} disabled={submitting} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50">
+            <button onClick={() => requestBulkAction('delete')} disabled={submitting} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-black disabled:opacity-50">
               Delete
             </button>
           </div>

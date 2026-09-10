@@ -7,6 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoNotes } from '@/components/admin/rego/AdminReGoNotes';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   StickyNote,
   Bell,
@@ -401,6 +402,13 @@ export default function AdminNotesPage() {
   const [detailData, setDetailData] = useState<AdminNoteDetail | null>(null);
   const [activity, setActivity] = useState<NoteActivity[]>([]);
 
+  // Confirm dialog state (replaces native confirm/alert)
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<AdminNoteFolder | null>(null);
+  const [deleteNoteTargetId, setDeleteNoteTargetId] = useState<string | null>(null);
+  const [emptyTrashOpen, setEmptyTrashOpen] = useState(false);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   // Folder Modal state
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<AdminNoteFolder | null>(null);
@@ -663,12 +671,14 @@ export default function AdminNotesPage() {
     }
   };
 
-  const deleteFolder = async (folder: AdminNoteFolder, e?: React.MouseEvent) => {
+  const requestDeleteFolder = (folder: AdminNoteFolder, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const promptText =
-      (t('admin.notes.confirmDeleteFolder') as string) ||
-      "Delete folder '{name}'? Notes inside will be moved to Unorganized.";
-    if (!confirm(promptText.replace('{name}', folder.name))) return;
+    setDeleteFolderTarget(folder);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!deleteFolderTarget) return;
+    const folder = deleteFolderTarget;
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/notes/folders/${folder.id}`, {
         method: 'DELETE',
@@ -685,6 +695,7 @@ export default function AdminNotesPage() {
     } catch {
       /* ignore */
     }
+    setDeleteFolderTarget(null);
   };
 
   // Drag and Drop: Move note to folder
@@ -752,7 +763,7 @@ export default function AdminNotesPage() {
           credentials: 'include',
         });
         if (!res.ok) {
-          alert((await res.json().catch(() => ({}))).error?.message || 'Delete failed');
+          setActionError((await res.json().catch(() => ({}))).error?.message || 'Delete failed');
           return;
         }
       } else {
@@ -771,13 +782,25 @@ export default function AdminNotesPage() {
     }
   };
 
-  const deleteNote = async (id: string) => {
-    if (!confirm(t('admin.notes.confirmDeleteForever') as string)) return;
-    await doLifecycle(id, 'delete');
+  const requestDeleteNote = (id: string) => {
+    setDeleteNoteTargetId(id);
   };
 
-  const emptyTrash = async () => {
-    if (!confirm(t('admin.notes.confirmEmptyTrash') as string)) return;
+  const confirmDeleteNote = async () => {
+    if (!deleteNoteTargetId) return;
+    const id = deleteNoteTargetId;
+    try {
+      await doLifecycle(id, 'delete');
+    } finally {
+      setDeleteNoteTargetId(null);
+    }
+  };
+
+  const requestEmptyTrash = () => {
+    setEmptyTrashOpen(true);
+  };
+
+  const confirmEmptyTrash = async () => {
     try {
       const res = await fetchWithCsrf('/api/pd/admin/notes/trash/empty', {
         method: 'DELETE',
@@ -790,6 +813,7 @@ export default function AdminNotesPage() {
     } catch {
       /* ignore */
     }
+    setEmptyTrashOpen(false);
   };
 
   const togglePin = async (id: string) => {
@@ -825,12 +849,10 @@ export default function AdminNotesPage() {
   };
 
   // Bulk operations
-  const bulkAction = async (
+  const executeBulkAction = async (
     action: 'archive' | 'trash' | 'restore' | 'delete' | 'complete' | 'incomplete',
+    ids: string[],
   ) => {
-    const ids = Array.from(selectedIds);
-    if (!ids.length) return;
-    if (action === 'delete' && !confirm(t('admin.notes.confirmDeleteForever') as string)) return;
     try {
       const endpoint =
         action === 'complete' || action === 'incomplete'
@@ -851,6 +873,28 @@ export default function AdminNotesPage() {
       fetchStats();
     } catch {
       /* ignore */
+    }
+  };
+
+  const bulkAction = async (
+    action: 'archive' | 'trash' | 'restore' | 'delete' | 'complete' | 'incomplete',
+  ) => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (action === 'delete') {
+      setBulkDeleteIds(ids);
+      return;
+    }
+    await executeBulkAction(action, ids);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteIds) return;
+    const ids = bulkDeleteIds;
+    try {
+      await executeBulkAction('delete', ids);
+    } finally {
+      setBulkDeleteIds(null);
     }
   };
 
@@ -912,10 +956,82 @@ export default function AdminNotesPage() {
 
   const currentFolderObj = folders.find((f) => f.id === activeFolder);
 
+  const renderConfirmDialogs = () => (
+    <>
+      <ConfirmDialog
+        isOpen={Boolean(deleteFolderTarget)}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirm={() => void confirmDeleteFolder()}
+        title={(t('admin.notes.deleteFolder') as string) || 'Delete folder'}
+        description={
+          ((t('admin.notes.confirmDeleteFolder') as string) ||
+            "Delete folder '{name}'? Notes inside will be moved to Unorganized.").replace(
+            '{name}',
+            deleteFolderTarget?.name || '',
+          )
+        }
+        confirmLabel={(t('admin.notes.delete') as string) || 'Supprimer'}
+        cancelLabel={(t('admin.notes.editor.cancel') as string) || 'Annuler'}
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={Boolean(deleteNoteTargetId)}
+        onClose={() => setDeleteNoteTargetId(null)}
+        onConfirm={() => void confirmDeleteNote()}
+        title={(t('admin.notes.deleteForever') as string) || 'Delete forever'}
+        description={
+          (t('admin.notes.confirmDeleteForever') as string) ||
+          'Delete permanently? This action cannot be undone.'
+        }
+        confirmLabel={(t('admin.notes.deleteForever') as string) || 'Supprimer définitivement'}
+        cancelLabel={(t('admin.notes.editor.cancel') as string) || 'Annuler'}
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={emptyTrashOpen}
+        onClose={() => setEmptyTrashOpen(false)}
+        onConfirm={() => void confirmEmptyTrash()}
+        title={(t('admin.notes.emptyTrash') as string) || 'Empty trash'}
+        description={
+          (t('admin.notes.confirmEmptyTrash') as string) ||
+          'Empty trash? All trashed items will be permanently lost.'
+        }
+        confirmLabel={(t('admin.notes.emptyTrash') as string) || 'Vider la corbeille'}
+        cancelLabel={(t('admin.notes.editor.cancel') as string) || 'Annuler'}
+        variant="danger"
+      />
+      <ConfirmDialog
+        isOpen={Boolean(bulkDeleteIds)}
+        onClose={() => setBulkDeleteIds(null)}
+        onConfirm={() => void confirmBulkDelete()}
+        title={(t('admin.notes.bulkDelete') as string) || 'Delete'}
+        description={
+          (t('admin.notes.confirmDeleteForever') as string) ||
+          'Delete permanently? This action cannot be undone.'
+        }
+        confirmLabel={(t('admin.notes.deleteForever') as string) || 'Supprimer définitivement'}
+        cancelLabel={(t('admin.notes.editor.cancel') as string) || 'Annuler'}
+        variant="danger"
+      />
+    </>
+  );
+
+  const renderActionError = () =>
+    actionError && (
+      <div
+        className="rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs font-semibold text-rose-700 dark:text-rose-300"
+        role="alert"
+      >
+        {actionError}
+      </div>
+    );
+
   const { adminTheme } = useAdminTheme();
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoNotes
+      <>
+        {renderActionError()}
+        <AdminReGoNotes
         notes={notes}
         folders={folders}
         activeFolder={activeFolder}
@@ -941,7 +1057,7 @@ export default function AdminNotesPage() {
         archiveNote={async (n) => { await doLifecycle(n.id, 'archive'); }}
         trashNote={async (n) => { await doLifecycle(n.id, 'trash'); }}
         restoreNote={async (n) => { await doLifecycle(n.id, 'restore'); }}
-        permanentDeleteNote={async (n) => { await deleteNote(n.id); }}
+        permanentDeleteNote={async (n) => { requestDeleteNote(n.id); }}
         batchArchive={async () => { await bulkAction('archive'); }}
         batchTrash={async () => { await bulkAction('trash'); }}
         batchDelete={async () => { await bulkAction('delete'); }}
@@ -956,7 +1072,7 @@ export default function AdminNotesPage() {
         openEditFolderModal={openEditFolderModal}
         deleteFolder={async (fid) => {
           const target = folders.find((f) => f.id === fid);
-          if (target) await deleteFolder(target);
+          if (target) requestDeleteFolder(target);
         }}
         detailId={detailId}
         detailData={detailData}
@@ -990,11 +1106,14 @@ export default function AdminNotesPage() {
         saving={saving}
         editingNote={editingNote}
       />
+        {renderConfirmDialogs()}
+      </>
     );
   }
 
   return (
     <div className="space-y-6">
+      {renderActionError()}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1222,7 +1341,7 @@ export default function AdminNotesPage() {
                           <Pencil className="h-3 w-3" />
                         </button>
                         <button
-                          onClick={(e) => deleteFolder(folder, e)}
+                          onClick={(e) => requestDeleteFolder(folder, e)}
                           className="rounded p-1 text-slate-400 hover:bg-white/80 hover:text-red-600 dark:hover:bg-slate-700"
                           title={t('admin.notes.deleteFolder') as string}
                         >
@@ -1373,7 +1492,7 @@ export default function AdminNotesPage() {
               </button>
               {statusFilter === 'trashed' && (
                 <button
-                  onClick={emptyTrash}
+                  onClick={requestEmptyTrash}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-red-700"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> {t('admin.notes.emptyTrash') as string}
@@ -1521,7 +1640,7 @@ export default function AdminNotesPage() {
                           setDetailId(note.id);
                           fetchDetail(note.id);
                         }}
-                        onDelete={() => deleteNote(note.id)}
+                        onDelete={() => requestDeleteNote(note.id)}
                         onArchive={() => doLifecycle(note.id, 'archive')}
                         onTrash={() => doLifecycle(note.id, 'trash')}
                         onRestore={() => doLifecycle(note.id, 'restore')}
@@ -1581,7 +1700,7 @@ export default function AdminNotesPage() {
                           setDetailId(note.id);
                           fetchDetail(note.id);
                         }}
-                        onDelete={() => deleteNote(note.id)}
+                        onDelete={() => requestDeleteNote(note.id)}
                         onArchive={() => doLifecycle(note.id, 'archive')}
                         onTrash={() => doLifecycle(note.id, 'trash')}
                         onRestore={() => doLifecycle(note.id, 'restore')}
@@ -1660,6 +1779,8 @@ export default function AdminNotesPage() {
           }}
         />
       )}
+
+      {renderConfirmDialogs()}
     </div>
   );
 }

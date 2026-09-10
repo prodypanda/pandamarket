@@ -41,6 +41,7 @@ import {
   ReportFrequency,
 } from '@/types/analytics';
 import { formatMoney } from '@/lib/analytics-formatters';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface IntelligenceTabProps {
   currency?: string;
@@ -69,6 +70,12 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
   const [recipients, setRecipients] = useState('');
   const [frequency, setFrequency] = useState<ReportFrequency>('weekly');
   const [format, setFormat] = useState<'csv' | 'html'>('csv');
+
+  // Inline feedback banner (replaces native alert dialogs)
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+
+  // Delete-schedule confirmation target
+  const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<{ id: string; name?: string } | null>(null);
 
   const loadIntelligenceData = async () => {
     setLoading(true);
@@ -140,6 +147,7 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
   const handleCreateSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheduleName || !recipients) return;
+    setFeedback(null);
     try {
       await createReportSchedule({
         name: scheduleName,
@@ -152,31 +160,47 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
       setRecipients('');
       await loadIntelligenceData();
     } catch (err: unknown) {
-      alert(`Failed to create schedule: ${(err as Error).message}`);
+      setFeedback({ kind: 'error', message: `Failed to create schedule: ${(err as Error).message}` });
     }
   };
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this report schedule?')) return;
+    setFeedback(null);
     try {
       await deleteReportSchedule(id);
       await loadIntelligenceData();
     } catch (err: unknown) {
-      alert(`Failed to delete schedule: ${(err as Error).message}`);
+      setFeedback({ kind: 'error', message: `Failed to delete schedule: ${(err as Error).message}` });
+    } finally {
+      setDeleteScheduleTarget(null);
     }
   };
 
   const handleRunScheduleNow = async (id: string) => {
+    setFeedback(null);
     try {
       const res = await triggerReportScheduleNow(id);
-      alert(`Report generated and dispatched! ${(res as { delivery_note?: string }).delivery_note || 'Check recipient inboxes.'}`);
+      setFeedback({
+        kind: 'success',
+        message: `Report generated and dispatched! ${(res as { delivery_note?: string }).delivery_note || 'Check recipient inboxes.'}`,
+      });
     } catch (err: unknown) {
-      alert(`Failed to run report schedule: ${(err as Error).message}`);
+      setFeedback({ kind: 'error', message: `Failed to run report schedule: ${(err as Error).message}` });
     }
   };
 
   return (
     <div className="space-y-8">
+      {feedback && (
+        <div className={`rounded-xl border p-3 text-xs font-semibold ${
+          feedback.kind === 'success'
+            ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+            : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+        }`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
+          {feedback.message}
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="flex items-center justify-between">
         <div>
@@ -452,7 +476,7 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteSchedule(s.id)}
+                      onClick={() => setDeleteScheduleTarget({ id: s.id, name: s.name })}
                       className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 hover:bg-rose-100"
                       title="Delete Schedule"
                     >
@@ -492,6 +516,19 @@ export function IntelligenceTab({ currency = 'TND' }: IntelligenceTabProps) {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteScheduleTarget}
+        onClose={() => setDeleteScheduleTarget(null)}
+        onConfirm={() => {
+          if (!deleteScheduleTarget) return;
+          return handleDeleteSchedule(deleteScheduleTarget.id);
+        }}
+        title="Delete Report Schedule"
+        description={`Are you sure you want to delete this report schedule${deleteScheduleTarget?.name ? ` "${deleteScheduleTarget.name}"` : ''}?`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

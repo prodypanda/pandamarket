@@ -5,6 +5,7 @@ import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoFraudRadar } from '@/components/admin/rego/AdminReGoFraudRadar';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   Radar,
   ShieldAlert,
@@ -56,6 +57,9 @@ export default function DedicatedFraudRadarPage() {
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [freezeTarget, setFreezeTarget] = useState<{ storeId: string; storeName: string } | null>(
+    null,
+  );
 
   const fetchRadar = useCallback(async () => {
     setLoading(true);
@@ -79,8 +83,13 @@ export default function DedicatedFraudRadarPage() {
     fetchRadar();
   }, [fetchRadar]);
 
-  const handleFreezeStore = async (storeId: string, storeName: string) => {
-    if (!confirm(`Geler immédiatement l'abonnement et les accès de la boutique ${storeName} ?`)) return;
+  const requestFreezeStore = async (storeId: string, storeName: string) => {
+    setFreezeTarget({ storeId, storeName });
+  };
+
+  const confirmFreezeStore = async () => {
+    if (!freezeTarget) return;
+    const { storeId, storeName } = freezeTarget;
     try {
       const res = await fetchWithCsrf('/api/pd/admin/subscription-orders/pause', {
         method: 'POST',
@@ -94,6 +103,8 @@ export default function DedicatedFraudRadarPage() {
       }
     } catch {
       setError('Erreur de gel boutique');
+    } finally {
+      setFreezeTarget(null);
     }
   };
 
@@ -170,20 +181,34 @@ export default function DedicatedFraudRadarPage() {
 
   if (adminTheme === 'rego') {
     return (
-      <AdminReGoFraudRadar
-        radarList={radarList}
-        loading={loading}
-        error={error}
-        success={success}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        riskFilter={riskFilter}
-        onRiskFilterChange={setRiskFilter}
-        onFreezeStore={handleFreezeStore}
-        onGenerateMagicLink={handleGenerateMagicLink}
-        onMarkManualVerified={handleMarkManualVerified}
-        onRefresh={fetchRadar}
-      />
+      <>
+        <AdminReGoFraudRadar
+          radarList={radarList}
+          loading={loading}
+          error={error}
+          success={success}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          riskFilter={riskFilter}
+          onRiskFilterChange={setRiskFilter}
+          onFreezeStore={requestFreezeStore}
+          onGenerateMagicLink={handleGenerateMagicLink}
+          onMarkManualVerified={handleMarkManualVerified}
+          onRefresh={fetchRadar}
+        />
+        <ConfirmDialog
+          isOpen={Boolean(freezeTarget)}
+          onClose={() => setFreezeTarget(null)}
+          onConfirm={() => void confirmFreezeStore()}
+          title="Geler la boutique"
+          description={`Geler immédiatement l'abonnement et les accès de la boutique ${
+            freezeTarget?.storeName || ''
+          } ?`}
+          confirmLabel="Geler"
+          variant="danger"
+          dir={dir}
+        />
+      </>
     );
   }
 
@@ -342,7 +367,7 @@ export default function DedicatedFraudRadarPage() {
                   <Key className="w-3.5 h-3.5" /> Magic Link
                 </button>
                 <button
-                  onClick={() => handleFreezeStore(item.store_id, item.store_name)}
+                  onClick={() => requestFreezeStore(item.store_id, item.store_name)}
                   className="flex-1 py-2 bg-red-600 text-white font-bold rounded-xl text-xs hover:bg-red-700 flex items-center justify-center gap-1"
                 >
                   <Ban className="w-3.5 h-3.5" /> Geler Accès
@@ -352,6 +377,19 @@ export default function DedicatedFraudRadarPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(freezeTarget)}
+        onClose={() => setFreezeTarget(null)}
+        onConfirm={() => void confirmFreezeStore()}
+        title="Geler la boutique"
+        description={`Geler immédiatement l'abonnement et les accès de la boutique ${
+          freezeTarget?.storeName || ''
+        } ?`}
+        confirmLabel="Geler"
+        variant="danger"
+        dir={dir}
+      />
     </div>
   );
 }

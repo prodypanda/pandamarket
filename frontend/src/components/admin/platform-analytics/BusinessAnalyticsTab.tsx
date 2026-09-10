@@ -38,6 +38,7 @@ interface BusinessAnalyticsTabProps {
 export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyticsTabProps) {
   const [pageViewsTelemetry, setPageViewsTelemetry] = useState<any>(null);
   const [notifiedQueries, setNotifiedQueries] = useState<Set<string>>(new Set());
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -108,11 +109,24 @@ export function BusinessAnalyticsTab({ data, currency = 'TND' }: BusinessAnalyti
 
   const handleNotifyVendors = (queryTerm: string) => {
     setNotifiedQueries((prev) => new Set([...prev, queryTerm]));
-    alert(`Vendor sourcing alert dispatched for "${queryTerm}"! Sellers in matching categories will be notified to expand inventory.`);
+    setFeedback({
+      kind: 'success',
+      message: `Vendor sourcing alert dispatched for "${queryTerm}"! Sellers in matching categories will be notified to expand inventory.`,
+    });
   };
 
   return (
     <div className="space-y-8">
+      {feedback && (
+        <div className={`rounded-xl border p-3 text-xs font-semibold ${
+          feedback.kind === 'success'
+            ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+            : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+        }`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
+          {feedback.message}
+        </div>
+      )}
+
       {/* 1. Orders & Marketplace GMV */}
       <div className="space-y-3">
         <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">

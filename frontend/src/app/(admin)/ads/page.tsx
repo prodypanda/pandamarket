@@ -27,10 +27,12 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoAds } from '@/components/admin/rego/AdminReGoAds';
 import { AdsPlatformChart } from '../../../components/admin/AdsPlatformChart';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 type Summary = { campaigns: number; pending_review: number; active: number; total_spend: string };
 type Campaign = {
@@ -95,6 +97,23 @@ export default function AdminAdsPage() {
 
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Modal-driven action state (replaces native prompt/confirm/alert)
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [suspendTarget, setSuspendTarget] = useState<string | null>(null);
+  const [suspendReason, setSuspendReason] = useState('Suspended by Super Admin');
+  const [creditTarget, setCreditTarget] = useState<Account | null>(null);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditReason, setCreditReason] = useState('');
+  const [adjustTarget, setAdjustTarget] = useState<Account | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const [statusTarget, setStatusTarget] = useState<Account | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Transaction | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [inspectTx, setInspectTx] = useState<Transaction | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -182,70 +201,121 @@ export default function AdminAdsPage() {
 
   const bulkReview = async (decision: 'approved' | 'rejected') => {
     if (!selectedModCampaigns.length) return;
-    const reason = decision === 'rejected' ? window.prompt('Reason for bulk rejecting selected campaigns:') : undefined;
-    if (decision === 'rejected' && !reason) return;
+    if (decision === 'rejected') {
+      setBulkRejectReason('');
+      setBulkRejectOpen(true);
+      return;
+    }
+    await executeBulkReview('approved', undefined);
+  };
+
+  const executeBulkReview = async (decision: 'approved' | 'rejected', reason?: string) => {
+    if (!selectedModCampaigns.length) return;
+    const count = selectedModCampaigns.length;
 
     setError(''); setSuccessMsg('');
     try {
       await Promise.all(selectedModCampaigns.map((id) => review(id, decision, reason || undefined)));
       setSelectedModCampaigns([]);
-      setSuccessMsg(`Bulk ${decision} completed for ${selectedModCampaigns.length} campaigns.`);
+      setSuccessMsg(`Bulk ${decision} completed for ${count} campaigns.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bulk review failed');
     }
   };
 
+  const confirmBulkReject = async () => {
+    if (!bulkRejectReason.trim()) return;
+    setBulkRejectOpen(false);
+    await executeBulkReview('rejected', bulkRejectReason.trim());
+  };
+
   const suspendCampaign = async (id: string) => {
-    const reason = window.prompt('Reason for suspending this campaign:') || 'Suspended by Super Admin';
-    if (!reason) return;
-    const r = await fetchWithCsrf(`/api/pd/admin/ads/campaigns/${id}/suspend`, {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason }),
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      setError(d.error?.message || 'Suspend failed');
-      return;
+    setSuspendReason('Suspended by Super Admin');
+    setSuspendTarget(id);
+  };
+
+  const confirmSuspend = async () => {
+    if (!suspendTarget) return;
+    const id = suspendTarget;
+    const reason = suspendReason.trim() || 'Suspended by Super Admin';
+    setActionBusy(true);
+    try {
+      const r = await fetchWithCsrf(`/api/pd/admin/ads/campaigns/${id}/suspend`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setError(d.error?.message || 'Suspend failed');
+        return;
+      }
+      setSelectedCampaign(null);
+      await load();
+    } finally {
+      setActionBusy(false);
+      setSuspendTarget(null);
     }
-    setSelectedCampaign(null);
-    await load();
   };
 
   const credit = async (account: Account) => {
-    const raw = window.prompt(`Promotional credit for ${account.store_name}:`);
-    const amount = Number(raw);
-    const reason = window.prompt('Credit reason:');
+    setCreditAmount('');
+    setCreditReason('');
+    setCreditTarget(account);
+  };
+
+  const confirmCredit = async () => {
+    if (!creditTarget) return;
+    const amount = Number(creditAmount);
+    const reason = creditReason.trim();
     if (!Number.isFinite(amount) || amount <= 0 || !reason) return;
-    const r = await fetchWithCsrf('/api/pd/admin/ads/credits', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ store_id: account.store_id, amount, reason, idempotency_key: `promo-${account.id}-${Date.now()}` }),
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      setError(d.error?.message || 'Credit failed');
-      return;
+    setActionBusy(true);
+    try {
+      const r = await fetchWithCsrf('/api/pd/admin/ads/credits', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: creditTarget.store_id, amount, reason, idempotency_key: `promo-${creditTarget.id}-${Date.now()}` }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setError(d.error?.message || 'Credit failed');
+        return;
+      }
+      setCreditTarget(null);
+      await load();
+    } finally {
+      setActionBusy(false);
     }
-    await load();
   };
 
   const adjust = async (account: Account) => {
-    const raw = window.prompt(`Adjustment amount for ${account.store_name} (e.g. 50 or -20):`);
-    const amount = Number(raw);
-    const reason = window.prompt('Adjustment reason:');
+    setAdjustAmount('');
+    setAdjustReason('');
+    setAdjustTarget(account);
+  };
+
+  const confirmAdjust = async () => {
+    if (!adjustTarget) return;
+    const amount = Number(adjustAmount);
+    const reason = adjustReason.trim();
     if (!Number.isFinite(amount) || amount === 0 || !reason) return;
-    const r = await fetchWithCsrf('/api/pd/admin/ads/accounts/adjust', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ store_id: account.store_id, amount, reason, idempotency_key: `adj-${account.id}-${Date.now()}` }),
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      setError(d.error?.message || 'Adjustment failed');
-      return;
+    setActionBusy(true);
+    try {
+      const r = await fetchWithCsrf('/api/pd/admin/ads/accounts/adjust', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_id: adjustTarget.store_id, amount, reason, idempotency_key: `adj-${adjustTarget.id}-${Date.now()}` }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setError(d.error?.message || 'Adjustment failed');
+        return;
+      }
+      setAdjustTarget(null);
+      await load();
+    } finally {
+      setActionBusy(false);
     }
-    await load();
   };
 
   const createCoupon = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -272,35 +342,59 @@ export default function AdminAdsPage() {
   };
 
   const setStatus = async (account: Account) => {
+    setStatusTarget(account);
+  };
+
+  const confirmSetStatus = async () => {
+    if (!statusTarget) return;
+    const account = statusTarget;
     const status = account.status === 'active' ? 'suspended' : 'active';
-    if (!window.confirm(`${status === 'suspended' ? 'Suspend' : 'Reactivate'} ${account.store_name}'s Ads account?`)) return;
-    const r = await fetchWithCsrf(`/api/pd/admin/ads/accounts/${account.store_id}/status`, {
-      method: 'PATCH', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      setError(d.error?.message || 'Status update failed');
-      return;
+    setActionBusy(true);
+    try {
+      const r = await fetchWithCsrf(`/api/pd/admin/ads/accounts/${account.store_id}/status`, {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setError(d.error?.message || 'Status update failed');
+        return;
+      }
+      await load();
+    } finally {
+      setActionBusy(false);
+      setStatusTarget(null);
     }
-    await load();
   };
 
   const refund = async (tx: Transaction) => {
-    const reason = window.prompt(`Refund reason for ${tx.store_name} (${tx.id}):`);
+    setRefundReason('');
+    setRefundTarget(tx);
+  };
+
+  const confirmRefund = async () => {
+    if (!refundTarget) return;
+    const tx = refundTarget;
+    const reason = refundReason.trim();
     if (!reason) return;
-    const r = await fetchWithCsrf(`/api/pd/admin/ads/transactions/${tx.id}/refund`, {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason }),
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      setError(d.error?.message || 'Refund failed');
-      return;
+    setActionBusy(true);
+    try {
+      const r = await fetchWithCsrf(`/api/pd/admin/ads/transactions/${tx.id}/refund`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      if (!r.ok) {
+        const d = await r.json();
+        setError(d.error?.message || 'Refund failed');
+        return;
+      }
+      setRefundTarget(null);
+      await load();
+    } finally {
+      setActionBusy(false);
     }
-    await load();
   };
 
   const updateConfig = async (patch: Partial<AdsConfig>) => {
@@ -385,8 +479,137 @@ export default function AdminAdsPage() {
     { id: 'configuration', label: 'Configuration', icon: Settings },
   ];
 
+  const inputClasses = 'w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500/40';
+
+  // Shared action modals (used by both the classic and ReGo skins)
+  const renderActionModals = () => (
+    <>
+      {/* Bulk reject reason */}
+      <Modal isOpen={bulkRejectOpen} onClose={() => setBulkRejectOpen(false)} title="Reason for bulk rejecting selected campaigns" subtitle={`${selectedModCampaigns.length} campaign(s) selected`} maxWidth="md">
+        <div className="space-y-3">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Rejection reason communicated to sellers</label>
+          <textarea
+            rows={3}
+            value={bulkRejectReason}
+            onChange={(e) => setBulkRejectReason(e.target.value)}
+            placeholder="e.g. Creatives do not comply with marketplace advertising rules"
+            className={inputClasses}
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setBulkRejectOpen(false)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+          <button type="button" onClick={() => void confirmBulkReject()} disabled={!bulkRejectReason.trim()} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50 transition">Reject Selected</button>
+        </div>
+      </Modal>
+
+      {/* Suspend campaign reason */}
+      <Modal isOpen={Boolean(suspendTarget)} onClose={() => setSuspendTarget(null)} title="Reason for suspending this campaign" maxWidth="md">
+        <div className="space-y-3">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Suspension reason</label>
+          <textarea
+            rows={3}
+            value={suspendReason}
+            onChange={(e) => setSuspendReason(e.target.value)}
+            className={inputClasses}
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setSuspendTarget(null)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+          <button type="button" onClick={() => void confirmSuspend()} disabled={actionBusy} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50 transition">Suspend Campaign</button>
+        </div>
+      </Modal>
+
+      {/* Promotional credit */}
+      <Modal isOpen={Boolean(creditTarget)} onClose={() => setCreditTarget(null)} title={`Promotional credit — ${creditTarget?.store_name || ''}`} maxWidth="md">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Amount (TND)</label>
+            <input type="number" step="0.001" min="0" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} placeholder="e.g. 50" className={inputClasses} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Credit reason</label>
+            <input type="text" value={creditReason} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Marketing partnership bonus" className={inputClasses} />
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setCreditTarget(null)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+          <button type="button" onClick={() => void confirmCredit()} disabled={!(Number(creditAmount) > 0) || !creditReason.trim() || actionBusy} className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50 transition">Grant Credit</button>
+        </div>
+      </Modal>
+
+      {/* Account adjustment */}
+      <Modal isOpen={Boolean(adjustTarget)} onClose={() => setAdjustTarget(null)} title={`Balance adjustment — ${adjustTarget?.store_name || ''}`} maxWidth="md">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Adjustment amount (TND, e.g. 50 or -20)</label>
+            <input type="number" step="0.001" value={adjustAmount} onChange={(e) => setAdjustAmount(e.target.value)} placeholder="e.g. 50 or -20" className={inputClasses} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Adjustment reason</label>
+            <input type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Correction of duplicate charge" className={inputClasses} />
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setAdjustTarget(null)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+          <button type="button" onClick={() => void confirmAdjust()} disabled={Number(adjustAmount) === 0 || !Number.isFinite(Number(adjustAmount)) || !adjustReason.trim() || actionBusy} className="rounded-xl bg-slate-900 dark:bg-white dark:text-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition">Apply Adjustment</button>
+        </div>
+      </Modal>
+
+      {/* Account status confirm */}
+      <ConfirmDialog
+        isOpen={Boolean(statusTarget)}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={() => void confirmSetStatus()}
+        title={`${statusTarget?.status === 'active' ? 'Suspend' : 'Reactivate'} ${statusTarget?.store_name || ''}'s Ads account?`}
+        description={`This will ${statusTarget?.status === 'active' ? 'suspend' : 'reactivate'} the ads account of ${statusTarget?.store_name || ''}.`}
+        confirmLabel={statusTarget?.status === 'active' ? 'Suspend' : 'Reactivate'}
+        variant={statusTarget?.status === 'active' ? 'danger' : 'primary'}
+        loading={actionBusy}
+      />
+
+      {/* Refund reason */}
+      <Modal isOpen={Boolean(refundTarget)} onClose={() => setRefundTarget(null)} title={`Refund — ${refundTarget?.store_name || ''}`} subtitle={refundTarget ? `Transaction ${refundTarget.id}` : ''} maxWidth="md">
+        <div className="space-y-3">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Refund reason</label>
+          <textarea
+            rows={3}
+            value={refundReason}
+            onChange={(e) => setRefundReason(e.target.value)}
+            placeholder="e.g. Campaign cancelled before delivery"
+            className={inputClasses}
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setRefundTarget(null)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+          <button type="button" onClick={() => void confirmRefund()} disabled={!refundReason.trim() || actionBusy} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50 transition">Confirm Refund</button>
+        </div>
+      </Modal>
+
+      {/* Transaction inspect */}
+      <Modal isOpen={Boolean(inspectTx)} onClose={() => setInspectTx(null)} title="Transaction Details" maxWidth="md">
+        {inspectTx && (
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">ID</span><span className="font-mono text-slate-900 dark:text-white">{inspectTx.id}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Store</span><span className="font-bold text-slate-900 dark:text-white">{inspectTx.store_name}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Campaign / Item</span><span className="text-slate-900 dark:text-white">{inspectTx.campaign_name || '—'}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Type</span><span className="capitalize text-slate-900 dark:text-white">{inspectTx.type.replaceAll('_', ' ')}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Amount</span><span className="font-black text-slate-900 dark:text-white">{money(inspectTx.amount)}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Balance after</span><span className="font-bold text-slate-900 dark:text-white">{money(inspectTx.balance_after)}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Date</span><span className="text-slate-900 dark:text-white">{new Date(inspectTx.created_at).toLocaleString()}</span></div>
+            <div className="flex justify-between gap-3"><span className="font-bold text-slate-500">Refunded</span><span className="text-slate-900 dark:text-white">{inspectTx.refunded ? 'Yes' : 'No'}</span></div>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800"><span className="font-bold text-slate-500">Description</span><p className="mt-1 text-slate-900 dark:text-white">{inspectTx.description || 'N/A'}</p></div>
+          </div>
+        )}
+        <div className="mt-5 flex justify-end">
+          <button type="button" onClick={() => setInspectTx(null)} className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Close</button>
+        </div>
+      </Modal>
+    </>
+  );
+
   if (adminTheme === 'rego') {
     return (
+      <Fragment>
       <AdminReGoAds
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -451,8 +674,10 @@ export default function AdminAdsPage() {
         }}
         onRefresh={load}
       />
-    );
-  }
+      {renderActionModals()}
+    </Fragment>
+  );
+}
 
   return (
     <div className="space-y-6 p-4 sm:p-8 max-w-7xl mx-auto">
@@ -774,7 +999,7 @@ export default function AdminAdsPage() {
                             </button>
                           )}
                           {t.refunded && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-500">Refunded</span>}
-                          <button type="button" onClick={() => alert(`Transaction Details:\nID: ${t.id}\nStore: ${t.store_name}\nDescription: ${t.description || 'N/A'}`)} className="rounded-lg border bg-white px-3 py-1 text-xs font-black text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+                          <button type="button" onClick={() => setInspectTx(t)} className="rounded-lg border bg-white px-3 py-1 text-xs font-black text-slate-700 hover:bg-slate-50 transition cursor-pointer">
                             Inspect
                           </button>
                         </td>
@@ -1004,6 +1229,8 @@ export default function AdminAdsPage() {
           </div>
         </div>
       )}
+
+      {renderActionModals()}
     </div>
   );
 }

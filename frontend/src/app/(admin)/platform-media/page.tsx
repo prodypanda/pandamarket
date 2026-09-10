@@ -33,6 +33,7 @@ import {
 import { fetchWithCsrf } from '@/lib/api';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
 import { AdminReGoMedia } from '@/components/admin/rego/AdminReGoMedia';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface MediaItem {
   key: string;
@@ -114,6 +115,11 @@ export default function PlatformMediaPage() {
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Confirm Dialog State
+  const [bulkCompressTarget, setBulkCompressTarget] = useState<{ folder: string; name: string } | null>(null);
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
+  const [deleteTargetKey, setDeleteTargetKey] = useState<string | null>(null);
 
   async function loadMedia() {
     setLoading(true);
@@ -316,9 +322,13 @@ export default function PlatformMediaPage() {
     }
   }
 
-  async function handleBulkOptimize() {
+  function requestBulkOptimize() {
     const folderName = activeFolder === 'all' ? 'Entire Library' : activeFolder;
-    if (!confirm(`Are you sure you want to bulk compress all pictures in ${folderName}?`)) return;
+    setBulkCompressTarget({ folder: activeFolder, name: folderName });
+  }
+
+  async function handleBulkOptimize() {
+    if (!bulkCompressTarget) return;
 
     setBulkOptimizing(true);
     setError('');
@@ -330,7 +340,7 @@ export default function PlatformMediaPage() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          folder: activeFolder,
+          folder: bulkCompressTarget.folder,
           quality: 80,
           maxWidth: 1600,
         }),
@@ -345,12 +355,15 @@ export default function PlatformMediaPage() {
       setError(err.message || 'Bulk optimization error');
     } finally {
       setBulkOptimizing(false);
+      setBulkCompressTarget(null);
     }
   }
 
-  async function handleRegenerateVariants() {
-    if (!confirm('This will regenerate thumbnail, small, medium, and large variants for ALL original images in the platform. This may take several minutes. Continue?')) return;
+  function requestRegenerateVariants() {
+    setRegenerateConfirmOpen(true);
+  }
 
+  async function handleRegenerateVariants() {
     setRegeneratingVariants(true);
     setError('');
     setSuccess('');
@@ -372,11 +385,17 @@ export default function PlatformMediaPage() {
       setError(err.message || 'Variant regeneration error');
     } finally {
       setRegeneratingVariants(false);
+      setRegenerateConfirmOpen(false);
     }
   }
 
-  async function handleDelete(key: string) {
-    if (!confirm('Are you sure you want to delete this media asset?')) return;
+  async function requestDelete(key: string) {
+    setDeleteTargetKey(key);
+  }
+
+  async function confirmDelete() {
+    const key = deleteTargetKey;
+    if (!key) return;
 
     setDeletingKey(key);
     try {
@@ -398,6 +417,7 @@ export default function PlatformMediaPage() {
       setError('An error occurred during file deletion');
     } finally {
       setDeletingKey(null);
+      setDeleteTargetKey(null);
     }
   }
 
@@ -728,6 +748,42 @@ export default function PlatformMediaPage() {
           </div>
         </div>
       )}
+
+      {/* BULK COMPRESS CONFIRM DIALOG */}
+      <ConfirmDialog
+        isOpen={Boolean(bulkCompressTarget)}
+        onClose={() => setBulkCompressTarget(null)}
+        onConfirm={() => void handleBulkOptimize()}
+        title="Bulk Compress Folder"
+        description={`Are you sure you want to bulk compress all pictures in ${bulkCompressTarget?.name ?? ''}?`}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
+      {/* REGENERATE VARIANTS CONFIRM DIALOG */}
+      <ConfirmDialog
+        isOpen={regenerateConfirmOpen}
+        onClose={() => setRegenerateConfirmOpen(false)}
+        onConfirm={() => void handleRegenerateVariants()}
+        title="Regenerate All Variants"
+        description="This will regenerate thumbnail, small, medium, and large variants for ALL original images in the platform. This may take several minutes. Continue?"
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
+      {/* DELETE CONFIRM DIALOG */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetKey)}
+        onClose={() => setDeleteTargetKey(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Delete Media Asset"
+        description="Are you sure you want to delete this media asset?"
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </>
   );
 
@@ -748,13 +804,13 @@ export default function PlatformMediaPage() {
         onSortByChange={setSortBy}
         onOpenUpload={() => setIsUploadOpen(true)}
         onSingleOptimize={(item) => setOptimizingItem(item)}
-        onBulkOptimize={handleBulkOptimize}
-        onRegenerateVariants={handleRegenerateVariants}
+        onBulkOptimize={requestBulkOptimize}
+        onRegenerateVariants={requestRegenerateVariants}
         onOpenRename={(item) => {
           setRenamingItem(item);
           setNewFilename(item.filename);
         }}
-        onDelete={handleDelete}
+        onDelete={requestDelete}
         onCopyUrl={handleCopyUrl}
         copiedKey={copiedKey}
         deletingKey={deletingKey}
@@ -817,7 +873,7 @@ export default function PlatformMediaPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={handleBulkOptimize}
+            onClick={requestBulkOptimize}
             disabled={bulkOptimizing || filteredItems.length === 0}
             className="flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs font-black text-[#ff6a00] shadow-xs hover:bg-orange-100 disabled:opacity-50"
             title="Bulk compress images in active folder"
@@ -826,7 +882,7 @@ export default function PlatformMediaPage() {
             {bulkOptimizing ? 'Compressing Folder...' : '⚡ Bulk Compress Folder'}
           </button>
           <button
-            onClick={handleRegenerateVariants}
+            onClick={requestRegenerateVariants}
             disabled={regeneratingVariants}
             className="flex items-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-xs font-black text-violet-700 shadow-xs hover:bg-violet-100 disabled:opacity-50"
             title="Regenerate thumbnail, small, medium, and large variants for all original images"
@@ -1041,7 +1097,7 @@ export default function PlatformMediaPage() {
                     {copiedKey === item.key ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </button>
                   <button
-                    onClick={() => handleDelete(item.key)}
+                    onClick={() => requestDelete(item.key)}
                     disabled={deletingKey === item.key}
                     className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-red-600 shadow-md hover:bg-red-600 hover:text-white"
                     title="Delete File"
@@ -1145,7 +1201,7 @@ export default function PlatformMediaPage() {
                         <Maximize2 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.key)}
+                        onClick={() => requestDelete(item.key)}
                         className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                         title="Delete"
                       >
