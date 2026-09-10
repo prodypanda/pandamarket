@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -181,6 +181,22 @@ export default function ComprehensivePlatformAnalyticsPage() {
     fetchTabData(activeTab);
   }, [activeTab, timeRange, currency, fetchTabData]);
 
+  // KPI strip data lifecycle: the (always-visible) header KPI strip renders
+  // overview metrics regardless of the active tab, so the overview dataset is
+  // also fetched on mount and whenever timeRange/currency changes —
+  // independently of activeTab and non-blocking for the active tab's own
+  // fetch. The ref skips fetches already performed for the current filter
+  // pair (the active-tab effect covers the overview tab itself).
+  const overviewFetchedFiltersRef = useRef<string | null>(null);
+  useEffect(() => {
+    const filterKey = `${timeRange}:${currency}`;
+    if (overviewFetchedFiltersRef.current === filterKey) return;
+    overviewFetchedFiltersRef.current = filterKey;
+    if (activeTab !== 'overview') {
+      fetchTabData('overview');
+    }
+  }, [activeTab, timeRange, currency, fetchTabData]);
+
   // Live polling for Page Views tab — refreshes every 10 seconds
   useEffect(() => {
     if (activeTab !== 'page_views') return;
@@ -249,6 +265,7 @@ export default function ComprehensivePlatformAnalyticsPage() {
         onCurrencyChange={handleCurrencyChange}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        activeRange={activeRange}
         overviewData={overviewData}
         revenueData={revenueData}
         vendorData={vendorData}

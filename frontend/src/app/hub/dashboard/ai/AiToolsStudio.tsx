@@ -128,6 +128,16 @@ const statusLabelKeys: Record<AiJobStatus, string> = {
   failed: 'dashboardPages.ai.statuses.failed',
 };
 
+function jobTypeLabel(t: (key: string) => string, type: string | null | undefined) {
+  const key = type ? typeLabelKeys[type as AiJobType] : undefined;
+  return key ? t(key) : type || '—';
+}
+
+function jobStatusLabel(t: (key: string) => string, status: string | null | undefined) {
+  const key = status ? statusLabelKeys[status as AiJobStatus] : undefined;
+  return key ? t(key) : status || '—';
+}
+
 function getErrorMessage(payload: unknown, fallback: string) {
   if (payload && typeof payload === 'object' && 'error' in payload) {
     const error = (payload as { error?: { message?: string } }).error;
@@ -1042,11 +1052,11 @@ export default function AiToolsStudio() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
                         <JobTypeIcon type={job.type} />
-                        {t(typeLabelKeys[job.type]) || job.type}
+                        {jobTypeLabel(t, job.type)}
                       </span>
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass(job.status)}`}>
                         <StatusIcon status={job.status} />
-                        {t(statusLabelKeys[job.status]) || job.status}
+                        {jobStatusLabel(t, job.status)}
                       </span>
                     </div>
                     <p className="mt-3 truncate text-sm font-black text-slate-900 dark:text-white">{jobTarget(job)}</p>

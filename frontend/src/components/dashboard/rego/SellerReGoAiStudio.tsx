@@ -205,6 +205,16 @@ const providerLabelKeys: Record<AiProvider, string> = {
   custom: 'dashboardPages.ai.providerCustom',
 };
 
+function jobTypeLabel(t: (key: string) => string, type: string | null | undefined) {
+  const key = type ? typeLabelKeys[type as AiJobType] : undefined;
+  return key ? t(key) : type?.replace(/_/g, ' ') || '—';
+}
+
+function jobStatusLabel(t: (key: string) => string, status: string | null | undefined) {
+  const key = status ? statusLabelKeys[status as AiJobStatus] : undefined;
+  return key ? t(key) : status || '—';
+}
+
 export function SellerReGoAiStudio({
   credits,
   jobs,
@@ -821,12 +831,12 @@ export function SellerReGoAiStudio({
                           <tr key={job.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
                             <td className="py-3 px-3">
                               <span className="font-bold capitalize text-slate-900 dark:text-white">
-                                {t(typeLabelKeys[job.type]) || job.type.replace('_', ' ')}
+                                {jobTypeLabel(t, job.type)}
                               </span>
                             </td>
                             <td className="py-3 px-3">
                               <ReGoStatusChip
-                                label={t(statusLabelKeys[job.status]) || job.status}
+                                label={jobStatusLabel(t, job.status)}
                                 status={
                                   job.status === 'completed'
                                     ? 'ok'
@@ -1058,12 +1068,12 @@ export function SellerReGoAiStudio({
               <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1.5">
                 <div className="flex justify-between">
                   <span className="font-bold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.allTypes')}:</span>
-                  <span className="font-bold text-slate-900 dark:text-white capitalize">{t(typeLabelKeys[selectedJob.type]) || selectedJob.type}</span>
+                  <span className="font-bold text-slate-900 dark:text-white capitalize">{jobTypeLabel(t, selectedJob.type)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-bold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.allStatuses')}:</span>
                   <ReGoStatusChip
-                    label={t(statusLabelKeys[selectedJob.status]) || selectedJob.status}
+                    label={jobStatusLabel(t, selectedJob.status)}
                     status={selectedJob.status === 'completed' ? 'ok' : selectedJob.status === 'failed' ? 'err' : 'warn'}
                   />
                 </div>

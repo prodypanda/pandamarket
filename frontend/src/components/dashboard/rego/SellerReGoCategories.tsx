@@ -112,6 +112,7 @@ export function SellerReGoCategories({
   const [formDescription, setFormDescription] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formIcon, setFormIcon] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formShowMegamenu, setFormShowMegamenu] = useState(true);
   const [formIsActive, setFormIsActive] = useState(true);
 
@@ -639,6 +640,70 @@ export function SellerReGoCategories({
                     </option>
                   ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
+                Image du Rayon (Miniature Vitrine)
+              </label>
+              <div className="flex items-start gap-3">
+                <div className="w-16 h-16 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] overflow-hidden flex items-center justify-center shrink-0">
+                  {formImageUrl ? (
+                    <img
+                      src={getResizedImageUrl(formImageUrl, 'small')}
+                      alt="Aperçu"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Tags className="w-5 h-5 text-[var(--rego-ink-3,#949494)]" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  {onUploadImage && (
+                    <label className="flex items-center justify-center gap-1.5 rounded-[var(--rego-r,8px)] border border-dashed border-[var(--rego-border,#dedede)] px-3 py-2 text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:border-[var(--rego-accent,#ad0505)] hover:text-[var(--rego-fg,#111111)] cursor-pointer transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingImage ? 'Envoi en cours...' : 'Téléverser une image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingImage}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            setUploadingImage(true);
+                            const url = await onUploadImage(file);
+                            setFormImageUrl(url);
+                          } finally {
+                            setUploadingImage(false);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                  <input
+                    type="text"
+                    value={formImageUrl}
+                    onChange={(e) => setFormImageUrl(e.target.value)}
+                    placeholder="https://... (ou téléversez ci-dessus)"
+                    className="w-full rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] px-3 py-2 text-xs font-medium text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                  />
+                  {formImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFormImageUrl('')}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                    >
+                      Retirer l&apos;image
+                    </button>
+                  )}
+                  <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">
+                    Affichée en miniature à la place de l&apos;icône sur votre vitrine.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   LineChart,
   BarChart3,
@@ -8,7 +8,6 @@ import {
   CreditCard,
   ShoppingCart,
   Users,
-  Percent,
   Download,
   RotateCcw,
   BookOpen,
@@ -19,6 +18,12 @@ import {
   Calendar,
   Sparkles,
   DollarSign,
+  HelpCircle,
+  Layers,
+  Lock,
+  Store,
+  RefreshCw,
+  Divide,
 } from 'lucide-react';
 import { DashboardPageWrapper } from '@/components/dashboard/DashboardPageWrapper';
 import {
@@ -33,6 +38,7 @@ import {
   AnalyticsTimeRange,
   AnalyticsCurrency,
   AnalyticsTabID,
+  NormalizedAnalyticsRange,
   PlatformOverviewAnalytics,
   PlatformRevenueAnalytics,
   PlatformVendorAnalytics,
@@ -55,7 +61,8 @@ import { GovernanceTab } from '@/components/admin/platform-analytics/GovernanceT
 import { MetricDefinitionsModal } from '@/components/admin/platform-analytics/MetricDefinitionsModal';
 import { AnalyticsDrilldownModal } from '@/components/admin/platform-analytics/AnalyticsDrilldownModal';
 import { AnalyticsHelpPanel } from '@/components/admin/platform-analytics/AnalyticsHelpPanel';
-import { ALL_24_GOVERNORATES, GovernorateData } from '@/components/admin/platform-analytics/TunisiaChoroplethMap';
+import { SavedViewsDropdown } from '@/components/admin/platform-analytics/SavedViewsDropdown';
+import { ALL_24_GOVERNORATES, GovernorateData, DiasporaCountryData } from '@/components/admin/platform-analytics/TunisiaChoroplethMap';
 
 export interface AdminReGoAnalyticsProps {
   timeRange: AnalyticsTimeRange;
@@ -64,6 +71,7 @@ export interface AdminReGoAnalyticsProps {
   onCurrencyChange: (currency: AnalyticsCurrency) => void;
   activeTab: AnalyticsTabID;
   onTabChange: (tab: AnalyticsTabID) => void;
+  activeRange: NormalizedAnalyticsRange | null | undefined;
   overviewData: PlatformOverviewAnalytics | null;
   revenueData: PlatformRevenueAnalytics | null;
   vendorData: PlatformVendorAnalytics | null;
@@ -95,6 +103,7 @@ export function AdminReGoAnalytics({
   onCurrencyChange,
   activeTab,
   onTabChange,
+  activeRange,
   overviewData,
   revenueData,
   vendorData,
@@ -122,7 +131,19 @@ export function AdminReGoAnalytics({
   const [govSearch, setGovSearch] = useState('');
   // Live regional telemetry fetched from the API (no fabricated seed numbers)
   const [liveGovernorates, setLiveGovernorates] = useState<GovernorateData[] | null>(null);
+  const [liveDiaspora, setLiveDiaspora] = useState<DiasporaCountryData[] | null>(null);
   const [govDataLoading, setGovDataLoading] = useState(false);
+
+  // Single geo fetch for this page: the dataset below feeds BOTH the ReGo
+  // governorate table and the embedded choropleth map (passed via props so the
+  // map never issues a second /geo/heatmap request). Zeroed registry while
+  // loading — no fabricated seed metrics.
+  const mapGovernorates = useMemo<GovernorateData[]>(
+    () =>
+      liveGovernorates ??
+      ALL_24_GOVERNORATES.map((g) => ({ ...g, orders_count: 0, gmv_tnd: 0, active_visitors: 0 })),
+    [liveGovernorates]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -151,6 +172,9 @@ export function AdminReGoAnalytics({
             };
           });
           setLiveGovernorates(merged);
+          if (res.diaspora && res.diaspora.length > 0) {
+            setLiveDiaspora(res.diaspora as DiasporaCountryData[]);
+          }
         } else if (isMounted) {
           // No remote data: show governorates without fabricated metrics
           setLiveGovernorates(ALL_24_GOVERNORATES.map((g) => ({ ...g, orders_count: 0, gmv_tnd: 0, active_visitors: 0 })));
@@ -169,12 +193,12 @@ export function AdminReGoAnalytics({
     };
   }, [currency]);
 
-  const tabs: Array<{ id: AnalyticsTabID; label: string; icon: any }> = [
+  const tabs: Array<{ id: AnalyticsTabID; label: string; icon: any; badge?: string }> = [
     { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
     { id: 'financials', label: 'Ventes & Finances', icon: CreditCard },
     { id: 'vendors', label: 'Vendeurs & Boutiques', icon: Users },
     { id: 'ads', label: 'Campagnes & Ads', icon: TrendingUp },
-    { id: 'page_views', label: 'Trafic & Audience', icon: Eye },
+    { id: 'page_views', label: 'Trafic & Audience', icon: Eye, badge: 'LIVE' },
     { id: 'business', label: 'Activité Business', icon: ShoppingCart },
     { id: 'intelligence', label: 'IA & Prédictions', icon: Sparkles },
     { id: 'governance', label: 'Gouvernance & Risques', icon: Building2 },
@@ -193,9 +217,23 @@ export function AdminReGoAnalytics({
   const totalGmv = Number(overviewData?.financials?.total_gmv ?? 0);
   const platformNet = overviewData?.financials?.net_revenue != null ? Number(overviewData.financials.net_revenue) : null;
   const totalOrders = Number(overviewData?.financials?.total_orders ?? 0);
-  const averageOrderValue = totalOrders > 0 ? totalGmv / totalOrders : 0;
+  const averageOrderValue = totalOrders > 0 ? totalGmv / totalOrders : null;
   const totalUsers = Number(overviewData?.users?.total_users ?? 0);
-  const conversionRate = totalOrders > 0 && totalUsers > 0 ? (totalOrders / totalUsers) * 100 : null;
+  // Orders per registered user (NOT a session-based conversion rate)
+  const ordersPerUser = totalUsers > 0 ? totalOrders / totalUsers : null;
+  const gmvGrowthPct = overviewData?.financials?.gmv_growth_pct ?? null;
+  const netRevenueGrowthPct = overviewData?.financials?.net_revenue_growth_pct ?? null;
+  const fundsInEscrow = overviewData?.financials?.funds_in_escrow ?? null;
+  const activeStores = overviewData?.stores?.active_stores ?? null;
+  const totalStores = overviewData?.stores?.total_stores ?? null;
+
+  const growthDeltaProps = (pct: number | null) =>
+    pct === null
+      ? {}
+      : {
+          delta: pct,
+          deltaType: (pct > 0 ? 'increase' : pct < 0 ? 'decrease' : 'neutral') as 'increase' | 'decrease' | 'neutral',
+        };
 
   // Filter governorates list
   const governorates = liveGovernorates || [];
@@ -209,9 +247,30 @@ export function AdminReGoAnalytics({
     );
   });
 
-  const activeAlert = overviewData?.threshold_alerts?.[0];
+  const thresholdAlerts = overviewData?.threshold_alerts ?? [];
   const isLoading = tabLoading[activeTab];
   const currentError = tabError[activeTab];
+
+  // Full spinner only when the active tab has no data yet; background
+  // refetches keep stale content visible (dimmed) instead.
+  const activeTabDataLoaded =
+    activeTab === 'overview'
+      ? overviewData !== null
+      : activeTab === 'financials'
+      ? revenueData !== null
+      : activeTab === 'vendors'
+      ? vendorData !== null
+      : activeTab === 'ads'
+      ? adsData !== null
+      : activeTab === 'page_views'
+      ? pageViewsData !== null
+      : activeTab === 'business'
+      ? businessData !== null
+      : activeTab === 'system'
+      ? systemData !== null
+      : true; // intelligence & governance fetch their own data internally
+  const showTabSpinner = isLoading && !activeTabDataLoaded;
+  const isBackgroundRefetching = isLoading && activeTabDataLoaded;
 
   return (
     <DashboardPageWrapper
@@ -235,11 +294,33 @@ export function AdminReGoAnalytics({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={onOpenHelp}
+            title="Ouvrir le Guide d'Onboarding"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-950 transition-colors"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Guide</span>
+          </button>
+          <button
+            type="button"
             onClick={onOpenDefinitions}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>Définitions</span>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onOpenDrilldown(
+                activeTab === 'vendors' ? 'vendors' : activeTab === 'business' ? 'events' : 'orders'
+              )
+            }
+            title="Ouvrir l'Audit des Enregistrements"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-white hover:opacity-90 shadow-xs transition-all"
+          >
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Audit Records</span>
           </button>
           <button
             type="button"
@@ -263,31 +344,58 @@ export function AdminReGoAnalytics({
         </button>
       }
       alertBanner={
-        activeAlert ? (
-          <div className="p-4 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-medium flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>
-                <strong className="font-bold">{activeAlert.title}:</strong> {activeAlert.message}
-              </span>
-            </div>
-            <ReGoStatusChip status="warn" label="Alerte Seuil" />
+        thresholdAlerts.length > 0 ? (
+          <div className="space-y-2">
+            {thresholdAlerts.map((alert) => {
+              const alertStyles =
+                alert.level === 'critical'
+                  ? 'border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
+                  : alert.level === 'info'
+                  ? 'border-sky-200 dark:border-sky-800/60 bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200'
+                  : 'border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200';
+              const alertIconColor =
+                alert.level === 'critical'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : alert.level === 'info'
+                  ? 'text-sky-600 dark:text-sky-400'
+                  : 'text-amber-600 dark:text-amber-400';
+              const chipStatus =
+                alert.level === 'critical' ? 'err' : alert.level === 'info' ? 'info' : 'warn';
+              const chipLabel = alert.level === 'critical' ? 'Critique' : alert.level === 'info' ? 'Info' : 'Avertissement';
+              return (
+                <div
+                  key={alert.id}
+                  className={`p-4 rounded-[var(--rego-r,8px)] border ${alertStyles} text-xs font-medium flex items-center justify-between gap-3 shadow-xs`}
+                  role="alert"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AlertTriangle className={`w-4 h-4 shrink-0 ${alertIconColor}`} />
+                    <span className="truncate">
+                      <strong className="font-bold uppercase tracking-wider">{alert.title}:</strong> {alert.message}
+                    </span>
+                  </div>
+                  <ReGoStatusChip status={chipStatus} label={chipLabel} size="xs" />
+                </div>
+              );
+            })}
           </div>
         ) : undefined
       }
       kpiStrip={
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           <ReGoKpiHero
             label="Volume d'Affaires (GMV)"
-            value={<ReGoAmtBox amount={totalGmv} size="md" />}
+            value={<ReGoAmtBox amount={totalGmv} size="md" currency={currency} />}
             hint="Période sélectionnée"
             icon={TrendingUp}
+            {...growthDeltaProps(gmvGrowthPct)}
           />
           <ReGoKpiHero
             label="Commissions Perçues"
-            value={platformNet !== null ? <ReGoAmtBox amount={platformNet} size="md" /> : '—'}
+            value={platformNet !== null ? <ReGoAmtBox amount={platformNet} size="md" currency={currency} /> : '—'}
             hint="Revenu net plateforme"
             icon={CreditCard}
+            {...growthDeltaProps(netRevenueGrowthPct)}
           />
           <ReGoKpiHero
             label="Commandes Traitées"
@@ -297,15 +405,15 @@ export function AdminReGoAnalytics({
           />
           <ReGoKpiHero
             label="Panier Moyen (AOV)"
-            value={<ReGoAmtBox amount={averageOrderValue} size="md" />}
+            value={averageOrderValue !== null ? <ReGoAmtBox amount={averageOrderValue} size="md" currency={currency} /> : '—'}
             hint="Valeur par commande"
             icon={DollarSign}
           />
           <ReGoKpiHero
-            label="Taux de Conversion"
-            value={conversionRate !== null ? `${conversionRate.toFixed(2)}%` : '—'}
-            hint="Commandes / Utilisateurs"
-            icon={Percent}
+            label="Commandes / Utilisateur"
+            value={ordersPerUser !== null ? ordersPerUser.toFixed(2) : '—'}
+            hint="Commandes par utilisateur inscrit"
+            icon={Divide}
           />
           <ReGoKpiHero
             label="Utilisateurs Inscrits"
@@ -313,6 +421,22 @@ export function AdminReGoAnalytics({
             hint="Comptes plateforme actifs"
             icon={Users}
           />
+          {fundsInEscrow !== null && (
+            <ReGoKpiHero
+              label="Solde Escrow"
+              value={<ReGoAmtBox amount={fundsInEscrow} size="md" currency={currency} />}
+              hint="Fonds réservés aux paiements"
+              icon={Lock}
+            />
+          )}
+          {activeStores !== null && (
+            <ReGoKpiHero
+              label="Boutiques Actives"
+              value={`${activeStores.toLocaleString('fr-TN')} / ${totalStores != null ? totalStores.toLocaleString('fr-TN') : '—'}`}
+              hint="Boutiques actives / totales"
+              icon={Store}
+            />
+          )}
         </div>
       }
       filterToolbar={
@@ -339,35 +463,82 @@ export function AdminReGoAnalytics({
               ))}
             </div>
 
-            {/* Currency selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">Devise:</span>
-              {(['TND', 'USD', 'EUR'] as AnalyticsCurrency[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => onCurrencyChange(c)}
-                  className={`px-2.5 py-1 text-xs font-black rounded-[var(--rego-r,8px)] transition-all ${
-                    currency === c
-                      ? 'bg-[var(--rego-accent,#ad0505)] text-white'
-                      : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:bg-slate-50'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            {/* Currency selector + Saved Views preset dropdown */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">Devise:</span>
+                {(['TND', 'USD', 'EUR'] as AnalyticsCurrency[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => onCurrencyChange(c)}
+                    className={`px-2.5 py-1 text-xs font-black rounded-[var(--rego-r,8px)] transition-all ${
+                      currency === c
+                        ? 'bg-[var(--rego-accent,#ad0505)] text-white'
+                        : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:bg-slate-50'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <SavedViewsDropdown
+                currentFilters={{ timeRange, currency }}
+                onApplySavedView={(filters) => {
+                  if (filters.timeRange) onTimeRangeChange(filters.timeRange);
+                  if (filters.currency) onCurrencyChange(filters.currency);
+                }}
+              />
             </div>
           </div>
 
+          {/* Normalized Time Range Metadata Bar (ReGo-styled AnalyticsRangeStatus) */}
+          {activeRange && (
+            <div className="px-3 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-xs font-bold text-[var(--rego-ink-2,#737373)] flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[var(--rego-accent,#ad0505)]" aria-hidden="true" />
+                {activeRange.isAllTime ? (
+                  <span>Showing all-time platform data</span>
+                ) : (
+                  <span>
+                    Showing data from{' '}
+                    <strong className="text-[var(--rego-fg,#111111)]">
+                      {activeRange.startDate ? new Date(activeRange.startDate).toLocaleDateString() : 'Beginning'}
+                    </strong>{' '}
+                    to{' '}
+                    <strong className="text-[var(--rego-fg,#111111)]">
+                      {new Date(activeRange.endDate).toLocaleDateString()}
+                    </strong>
+                  </span>
+                )}
+              </div>
+              {activeRange.comparison_available && activeRange.previousStartDate && activeRange.previousEndDate && (
+                <span className="text-[11px] text-[var(--rego-ink-3,#949494)]">
+                  Compared with previous period ({new Date(activeRange.previousStartDate).toLocaleDateString()} to{' '}
+                  {new Date(activeRange.previousEndDate).toLocaleDateString()})
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Module Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--rego-border,#dedede)] pt-3">
+          <div
+            role="tablist"
+            aria-label="Modules d'Analytique"
+            className="flex flex-wrap items-center gap-1.5 border-t border-[var(--rego-border,#dedede)] pt-3"
+          >
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
+              const tabIsLoading = tabLoading[tab.id];
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`panel-${tab.id}`}
+                  id={`tab-${tab.id}`}
                   onClick={() => onTabChange(tab.id)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] transition-all ${
                     isActive
@@ -377,6 +548,15 @@ export function AdminReGoAnalytics({
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black uppercase rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {tab.badge}
+                    </span>
+                  )}
+                  {tabIsLoading && (
+                    <RefreshCw className="w-3 h-3 animate-spin text-[var(--rego-accent,#ad0505)]" aria-hidden="true" />
+                  )}
                 </button>
               );
             })}
@@ -384,15 +564,20 @@ export function AdminReGoAnalytics({
         </div>
       }
       mainContent={
-        <div className="space-y-6">
-          {/* Currency Notice */}
+        <div
+          role="tabpanel"
+          id={`panel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+          className="space-y-6"
+        >
+          {/* Currency Notice — truthful (mirrors classic: conversion service unavailable, native TND figures) */}
           {currency !== 'TND' && (
-            <div className="p-3 rounded-[var(--rego-r,8px)] border border-indigo-200 bg-indigo-50 text-indigo-900 text-xs flex items-center justify-between">
+            <div className="p-3 rounded-[var(--rego-r,8px)] border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
               <span>
-                Devise d&apos;affichage sélectionnée: <strong>{currency}</strong> (Données transactées converties selon le taux officiel BCT).
+                Requested Display Currency: <strong>{currency}</strong> (Live USD/EUR conversion service unavailable — displaying native TND figures)
               </span>
-              <span className="text-[10px] font-bold uppercase bg-indigo-200/60 px-2 py-0.5 rounded text-indigo-800">
-                Devise Pivot BCT
+              <span className="text-[10px] font-black uppercase bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-0.5 rounded text-indigo-800 dark:text-indigo-300">
+                Native TND
               </span>
             </div>
           )}
@@ -411,20 +596,30 @@ export function AdminReGoAnalytics({
             </div>
           )}
 
-          {isLoading ? (
+          {showTabSpinner ? (
             <div className="flex flex-col items-center justify-center p-16 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] space-y-3">
               <RotateCcw className="w-6 h-6 animate-spin text-[var(--rego-accent,#ad0505)]" />
               <p className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">
                 Chargement de la télémétrie {activeTab}...
               </p>
             </div>
-          ) : activeTab === 'overview' ? (
-            <div className="space-y-6">
-              {/* Embedded Standard Overview Tab */}
+          ) : (
+            <div
+              className={`space-y-6 transition-opacity duration-200 ${
+                isBackgroundRefetching ? 'opacity-60 pointer-events-none' : 'opacity-100'
+              }`}
+              aria-busy={isBackgroundRefetching}
+            >
+              {activeTab === 'overview' ? (
+              <div className="space-y-6">
+              {/* Embedded Standard Overview Tab — fed with the ReGo-fetched geo
+                  dataset (single /geo/heatmap request for the whole page) */}
               <OverviewAnalyticsTab
                 data={overviewData}
                 currency={currency}
                 onNavigateToTab={onTabChange}
+                governorates={mapGovernorates}
+                diaspora={liveDiaspora ?? undefined}
               />
 
               {/* ReGo Regional Breakdown Table (24 Tunisian Governorates) */}
@@ -493,7 +688,7 @@ export function AdminReGoAnalytics({
                               {gov.orders_count > 0 ? gov.orders_count.toLocaleString('fr-TN') : '—'}
                             </td>
                             <td className="px-4 py-3 text-end font-black">
-                              {gov.gmv_tnd > 0 ? <ReGoAmtBox amount={gov.gmv_tnd} size="sm" /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
+                              {gov.gmv_tnd > 0 ? <ReGoAmtBox amount={gov.gmv_tnd} size="sm" currency={currency} /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
                             </td>
                             <td className="px-4 py-3 text-end text-[var(--rego-ink-2,#737373)] font-medium">
                               {gov.active_visitors > 0 ? gov.active_visitors.toLocaleString('fr-TN') : '—'}
@@ -540,6 +735,8 @@ export function AdminReGoAnalytics({
           ) : activeTab === 'system' ? (
             <SystemAnalyticsTab data={systemData} />
           ) : null}
+            </div>
+          )}
         </div>
       }
       drawer={
@@ -574,7 +771,7 @@ export function AdminReGoAnalytics({
                   <div className="p-3 flex justify-between items-center">
                     <span className="text-slate-600 dark:text-slate-400 font-medium">Chiffre d&apos;Affaires Réalisé</span>
                     <span className="font-black text-[var(--rego-accent,#ad0505)]">
-                      {selectedGov.gmv_tnd > 0 ? <ReGoAmtBox amount={selectedGov.gmv_tnd} size="sm" /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
+                      {selectedGov.gmv_tnd > 0 ? <ReGoAmtBox amount={selectedGov.gmv_tnd} size="sm" currency={currency} /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
@@ -584,6 +781,7 @@ export function AdminReGoAnalytics({
                         <ReGoAmtBox
                           amount={selectedGov.gmv_tnd / selectedGov.orders_count}
                           size="sm"
+                          currency={currency}
                         />
                       ) : (
                         <span className="text-[var(--rego-ink-3,#949494)]">—</span>
@@ -606,7 +804,7 @@ export function AdminReGoAnalytics({
                   }}
                   className="w-full py-2 text-xs font-bold rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-white hover:opacity-90 transition-all text-center"
                 >
-                  Voir les Commandes de la Région
+                  Voir toutes les Commandes
                 </button>
               </div>
             </div>

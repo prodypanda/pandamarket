@@ -431,7 +431,8 @@ export function TunisiaChoroplethMap({
   useEffect(() => {
     if (initialGovs) {
       setLiveGovs(initialGovs);
-      setSelectedGov(initialGovs[2] || initialGovs[0] || null);
+      // Preserve the currently inspected governorate when the caller refetches
+      setSelectedGov((prev) => initialGovs.find((g) => g.code === prev?.code) || initialGovs[2] || initialGovs[0] || null);
       return;
     }
 
@@ -455,9 +456,11 @@ export function TunisiaChoroplethMap({
             });
             return {
               ...base,
-              orders_count: remote?.orders_count ?? remote?.orders ?? base.orders_count,
-              gmv_tnd: remote?.revenue_tnd ?? remote?.gmv_tnd ?? base.gmv_tnd,
-              active_visitors: remote?.buyers_count ?? remote?.active_visitors ?? base.active_visitors,
+              // No fabricated seed numbers: governorates absent from the live
+              // payload render as zero activity.
+              orders_count: remote?.orders_count ?? remote?.orders ?? 0,
+              gmv_tnd: remote?.revenue_tnd ?? remote?.gmv_tnd ?? 0,
+              active_visitors: remote?.buyers_count ?? remote?.active_visitors ?? 0,
             };
           });
           setLiveGovs(merged);

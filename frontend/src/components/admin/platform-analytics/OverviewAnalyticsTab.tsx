@@ -19,17 +19,24 @@ import {
 import { AnalyticsTabID, PlatformOverviewAnalytics } from '@/types/analytics';
 import { MetricCard } from './MetricCard';
 import { AnalyticsEmptyState } from './AnalyticsEmptyState';
-import { TunisiaChoroplethMap } from './TunisiaChoroplethMap';
+import { TunisiaChoroplethMap, GovernorateData, DiasporaCountryData } from './TunisiaChoroplethMap';
 
 interface OverviewAnalyticsTabProps {
 
   data: PlatformOverviewAnalytics | null;
   currency?: string;
   onNavigateToTab?: (tabId: AnalyticsTabID) => void;
+  /**
+   * Pre-fetched geo telemetry. When supplied, the embedded choropleth map
+   * reuses it instead of issuing its own /geo/heatmap request (single-fetch
+   * contract for host pages that already load this dataset).
+   */
+  governorates?: GovernorateData[];
+  diaspora?: DiasporaCountryData[];
 }
 
 
-export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }: OverviewAnalyticsTabProps) {
+export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab, governorates, diaspora }: OverviewAnalyticsTabProps) {
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   if (!data) {
@@ -304,7 +311,7 @@ export function OverviewAnalyticsTab({ data, currency = 'TND', onNavigateToTab }
       </div>
 
       {/* SECTION 3: Tunisia 24 Governorates & Diaspora Regional Telemetry */}
-      <TunisiaChoroplethMap currency={currency} />
+      <TunisiaChoroplethMap currency={currency} governorates={governorates} diaspora={diaspora} />
     </div>
   );
 }

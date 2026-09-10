@@ -150,16 +150,15 @@ export function ReGoKpiHero({
 export function ReGoAmtBox({
   amount,
   size = 'md',
+  currency = 'TND',
   className = '',
 }: {
   amount: number | string;
   size?: 'sm' | 'md' | 'lg';
+  currency?: string;
   className?: string;
 }) {
   const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount || 0;
-  const dinars = Math.floor(num);
-  const millimes = Math.round((num - dinars) * 1000);
-  const millimesStr = String(millimes).padStart(3, '0');
 
   const textClasses = {
     sm: 'text-xs',
@@ -167,12 +166,30 @@ export function ReGoAmtBox({
     lg: 'text-xl font-black',
   };
 
+  // Non-TND display currencies use standard 2-decimal formatting (no millimes split)
+  if (currency !== 'TND') {
+    return (
+      <span className={`inline-flex items-baseline font-mono font-bold tabular-nums text-[var(--rego-fg,#111111)] ${className}`}>
+        <span className={textClasses[size]}>
+          {num.toLocaleString('fr-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+        <span className="ms-1 text-[0.65em] font-extrabold uppercase text-[var(--rego-ink-3,#949494)] tracking-wider">
+          {currency}
+        </span>
+      </span>
+    );
+  }
+
+  const dinars = Math.floor(num);
+  const millimes = Math.round((num - dinars) * 1000);
+  const millimesStr = String(millimes).padStart(3, '0');
+
   return (
     <span className={`inline-flex items-baseline font-mono font-bold tabular-nums text-[var(--rego-fg,#111111)] ${className}`}>
       <span className={textClasses[size]}>{dinars.toLocaleString('fr-TN')}</span>
       <span className="text-[0.75em] text-[var(--rego-ink-2,#737373)] font-medium">.{millimesStr}</span>
       <span className="ms-1 text-[0.65em] font-extrabold uppercase text-[var(--rego-ink-3,#949494)] tracking-wider">
-        TND
+        {currency}
       </span>
     </span>
   );
