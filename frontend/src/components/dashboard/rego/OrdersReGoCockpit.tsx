@@ -165,6 +165,15 @@ export function OrdersReGoCockpit({
     return orders.filter((o) => o.status === 'fulfilled' || o.status === 'delivered').length;
   }, [orders]);
 
+  // Carrier options present in the current order book
+  const carrierOptions = useMemo(() => {
+    const carriers = new Set<string>();
+    orders.forEach((o) => {
+      if (o.carrier) carriers.add(o.carrier);
+    });
+    return Array.from(carriers).sort();
+  }, [orders]);
+
   // Filtered orders
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -177,6 +186,8 @@ export function OrdersReGoCockpit({
       }
 
       if (selectedStatus !== 'all' && order.status !== selectedStatus) return false;
+
+      if (selectedCarrier !== 'all' && (order.carrier || '') !== selectedCarrier) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -193,7 +204,7 @@ export function OrdersReGoCockpit({
 
       return true;
     });
-  }, [orders, activeTab, selectedStatus, searchQuery]);
+  }, [orders, activeTab, selectedStatus, selectedCarrier, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -202,9 +213,7 @@ export function OrdersReGoCockpit({
         <ReGoKpiHero
           label="Volume d'Affaires Réalisé"
           value={<ReGoAmtBox amount={totalRevenue} size="md" />}
-          delta="+16.4%"
-          deltaType="increase"
-          deltaLabel="ce mois"
+          hint={`${filteredOrders.length} commandes affichées`}
           icon={DollarSign}
         />
         <ReGoKpiHero
@@ -243,8 +252,13 @@ export function OrdersReGoCockpit({
                 </span>
               </h4>
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                La confirmation préalable par téléphone ou SMS OTP réduit le taux de retour (RTO) tunisien de 42% à moins de 8%.
+                La confirmation préalable par téléphone ou SMS OTP réduit fortement le taux de retour (RTO).
               </p>
+              {codFeedback && (
+                <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200 mt-1.5 bg-amber-100/70 dark:bg-amber-900/50 rounded-lg px-2.5 py-1 inline-block">
+                  {codFeedback}
+                </p>
+              )}
             </div>
           </div>
           <button
@@ -299,21 +313,54 @@ export function OrdersReGoCockpit({
             </button>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              title="Filtrer par statut"
+            >
+              <option value="all">Tous statuts</option>
+              <option value="pending">En attente</option>
+              <option value="processing">En traitement</option>
+              <option value="fulfilled">Expédiée</option>
+              <option value="delivered">Livrée</option>
+              <option value="cancelled">Annulée</option>
+              <option value="refunded">Remboursée</option>
+            </select>
+
+            {carrierOptions.length > 0 && (
+              <select
+                value={selectedCarrier}
+                onChange={(e) => setSelectedCarrier(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                title="Filtrer par transporteur"
+              >
+                <option value="all">Tous transporteurs</option>
+                {carrierOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {CARRIERS_CONFIG[c]?.name || c}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Réf, client, téléphone..."
-                className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ad0505]"
+                className="w-full ps-9 pe-8 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ad0505]"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-400"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -344,7 +391,7 @@ export function OrdersReGoCockpit({
                   Radar Anti-Refus COD
                 </h3>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-extrabold">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-extrabold">
                 {urgentCodOrders.length} prioritaires
               </span>
             </div>
@@ -353,7 +400,7 @@ export function OrdersReGoCockpit({
               <div className="py-8 text-center text-slate-400 text-xs">
                 <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2 opacity-80" />
                 <p className="font-semibold">Toutes les commandes COD sont vérifiées !</p>
-                <p className="text-[11px] mt-0.5">Aucune commande à risque en attente d'appel.</p>
+                <p className="text-[11px] mt-0.5">Aucune commande à risque en attente d&apos;appel.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
@@ -373,7 +420,7 @@ export function OrdersReGoCockpit({
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {customerName}
                           </p>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                             <span className="font-mono text-slate-700 dark:text-slate-300">
                               #{order.id.slice(-6).toUpperCase()}
                             </span>
@@ -419,6 +466,41 @@ export function OrdersReGoCockpit({
                           <span>Confirmer</span>
                         </button>
                       </div>
+
+                      {/* OTP Code Verification (when available) */}
+                      {onVerifyCodOtp && (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const code = (otpInput[order.id] || '').trim();
+                            if (code) void onVerifyCodOtp(order.id, code);
+                          }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={otpInput[order.id] || ''}
+                            onChange={(e) =>
+                              setOtpInput((prev) => ({
+                                ...prev,
+                                [order.id]: e.target.value.replace(/\D/g, ''),
+                              }))
+                            }
+                            placeholder="Code OTP reçu..."
+                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-mono text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ad0505]"
+                          />
+                          <button
+                            type="submit"
+                            disabled={updatingCodStatus || !(otpInput[order.id] || '').trim()}
+                            className="inline-flex items-center gap-1 py-1.5 px-2.5 rounded-lg bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>Vérifier</span>
+                          </button>
+                        </form>
+                      )}
                     </div>
                   );
                 })}
@@ -430,14 +512,19 @@ export function OrdersReGoCockpit({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-slate-600" />
+                <Package className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   Flux Opérationnel des Commandes ({filteredOrders.length})
                 </h3>
               </div>
-              <span className="text-[11px] text-slate-400">
-                Cliquez pour inspecter la commande
-              </span>
+              {meta && typeof meta.total === 'number' && (
+                <span className="text-[11px] font-bold text-slate-400">
+                  {meta.total} au total
+                  {typeof meta.page === 'number' && typeof meta.total_pages === 'number' && meta.total_pages > 1
+                    ? ` · page ${meta.page}/${meta.total_pages}`
+                    : ''}
+                </span>
+              )}
             </div>
 
             {filteredOrders.length === 0 ? (
@@ -493,7 +580,7 @@ export function OrdersReGoCockpit({
                               label={order.status}
                             />
                             {isCod && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold">
                                 COD
                               </span>
                             )}

@@ -72,17 +72,12 @@ export function SellerReGoPaymentConfig({
   const [activeTab, setActiveTab] = useState<'all' | 'national' | 'international' | 'webhooks'>('all');
 
   // Gateway form state
-  const [flouciActive, setFlouciActive] = useState<boolean>(true);
-  const [flouciEnv, setFlouciEnv] = useState<'sandbox' | 'live'>('live');
   const [flouciAppToken, setFlouciAppToken] = useState('');
   const [flouciAppSecret, setFlouciAppSecret] = useState('');
 
-  const [konnectActive, setKonnectActive] = useState<boolean>(true);
-  const [konnectEnv, setKonnectEnv] = useState<'sandbox' | 'live'>('live');
   const [konnectApiKey, setKonnectApiKey] = useState('');
   const [konnectReceiverWallet, setKonnectReceiverWallet] = useState('');
 
-  const [paypalActive, setPaypalActive] = useState<boolean>(false);
   const [paypalEnv, setPaypalEnv] = useState<'sandbox' | 'live'>('sandbox');
   const [paypalClientId, setPaypalClientId] = useState('');
   const [paypalClientSecret, setPaypalClientSecret] = useState('');
@@ -200,15 +195,18 @@ export function SellerReGoPaymentConfig({
     }
   };
 
-  // Count active gateways
+  // Count gateways with credentials filled in the form (plus the COD local switch)
   const activeGatewaysCount = useMemo(() => {
     let count = 0;
     if (codActive) count++;
-    if (flouciActive) count++;
-    if (konnectActive) count++;
-    if (paypalActive) count++;
+    if (flouciAppToken.trim() || flouciAppSecret.trim()) count++;
+    if (konnectApiKey.trim() || konnectReceiverWallet.trim()) count++;
+    if (paypalClientId.trim() || paypalClientSecret.trim()) count++;
     return count;
-  }, [codActive, flouciActive, konnectActive, paypalActive]);
+  }, [codActive, flouciAppToken, flouciAppSecret, konnectApiKey, konnectReceiverWallet, paypalClientId, paypalClientSecret]);
+
+  // Webhook callback URLs derived from the current origin (no hardcoded domain)
+  const webhookBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
     <DashboardPageWrapper
@@ -305,36 +303,24 @@ export function SellerReGoPaymentConfig({
       kpiStrip={
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           <ReGoKpiHero
-            label="Passerelles Connectées"
+            label="Passerelles Renseignées"
             value={`${activeGatewaysCount} / 4`}
-            hint="Modes de règlement actifs au checkout"
-            delta={activeGatewaysCount}
-            deltaLabel="actives"
-            deltaType="increase"
+            hint="Modes de règlement configurés dans ce formulaire"
           />
           <ReGoKpiHero
             label="Devise de Référence"
             value="TND (DT)"
             hint="Dinar Tunisien avec fractionnement millimes"
-            delta={100}
-            deltaLabel="national"
-            deltaType="neutral"
           />
           <ReGoKpiHero
             label="Sécurité des Clés API"
-            value="AES-256"
-            hint="Chiffrement asymétrique au repos"
-            delta={100}
-            deltaLabel="sécurisé"
-            deltaType="increase"
+            value="AES-256-GCM"
+            hint="Chiffrement au repos côté plateforme"
           />
           <ReGoKpiHero
             label="Mode par Défaut"
             value="COD Anti-Refus"
             hint="Validation OTP SMS & appel préalable"
-            delta={0}
-            deltaLabel="frais 0 TND"
-            deltaType="neutral"
           />
         </div>
       }
@@ -422,7 +408,7 @@ export function SellerReGoPaymentConfig({
                       className="w-full px-3 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono font-bold text-[var(--rego-fg,#111111)] outline-none"
                     />
                     <span className="text-[10px] text-[var(--rego-ink-2,#737373)]">
-                      Laissez à 0.000 TND pour ne pas facturer de supplément à l'acheteur.
+                      Laissez à 0.000 TND pour ne pas facturer de supplément à l&apos;acheteur.
                     </span>
                   </div>
 
@@ -446,7 +432,7 @@ export function SellerReGoPaymentConfig({
 
                 <div className="space-y-1">
                   <label className="block font-bold text-[var(--rego-fg,#111111)]">
-                    Instructions au Passage de Commande (Visible par l'Acheteur)
+                    Instructions au Passage de Commande (Visible par l&apos;Acheteur)
                   </label>
                   <textarea
                     rows={2}
@@ -473,30 +459,12 @@ export function SellerReGoPaymentConfig({
                     </div>
                     <div>
                       <p className="font-bold text-[var(--rego-fg,#111111)]">
-                        Activer l'encaissement via Flouci Tunisie
+                        Renseigner les clés marchandes Flouci
                       </p>
                       <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
                         Reversement direct sur votre compte Flouci marchand.
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={flouciEnv}
-                      onChange={(e) => setFlouciEnv(e.target.value as any)}
-                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-[11px] text-[var(--rego-fg,#111111)]"
-                    >
-                      <option value="live">Environnement Réel (Live)</option>
-                      <option value="sandbox">Environnement Test (Sandbox)</option>
-                    </select>
-
-                    <input
-                      type="checkbox"
-                      checked={flouciActive}
-                      onChange={(e) => setFlouciActive(e.target.checked)}
-                      className="w-4 h-4 accent-[var(--rego-accent,#ad0505)] cursor-pointer"
-                    />
                   </div>
                 </div>
 
@@ -511,12 +479,12 @@ export function SellerReGoPaymentConfig({
                         value={flouciAppToken}
                         onChange={(e) => setFlouciAppToken(e.target.value)}
                         placeholder="Collez votre App Public Token..."
-                        className="w-full px-3 py-2 pr-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
+                        className="w-full px-3 py-2 pe-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowFlouciToken(!showFlouciToken)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
                       >
                         {showFlouciToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -533,12 +501,12 @@ export function SellerReGoPaymentConfig({
                         value={flouciAppSecret}
                         onChange={(e) => setFlouciAppSecret(e.target.value)}
                         placeholder="Collez votre App Secret Key..."
-                        className="w-full px-3 py-2 pr-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
+                        className="w-full px-3 py-2 pe-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowFlouciSecret(!showFlouciSecret)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
                       >
                         {showFlouciSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -549,7 +517,7 @@ export function SellerReGoPaymentConfig({
                 <div className="flex justify-end pt-1">
                   <button
                     type="button"
-                    onClick={() => handleRunTest('Flouci Tunisie')}
+                    onClick={() => handleRunTest('flouci')}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-[11px] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] shadow-xs"
                   >
                     <Activity className="w-3.5 h-3.5 text-indigo-600" />
@@ -569,37 +537,19 @@ export function SellerReGoPaymentConfig({
               <div className="space-y-4 text-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-[var(--rego-bg,#ffffff)] border border-[var(--rego-border,#dedede)] text-emerald-600">
+                    <div className="p-2 rounded-md bg-[var(--rego-bg,#ffffff)] border border-[var(--rego-border,#dedede)] text-emerald-600 dark:text-emerald-400">
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-[var(--rego-fg,#111111)]">
-                        Activer la passerelle Konnect Network
-                      </p>
-                      <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
-                        Idéal pour accepter toutes les cartes bancaires tunisiennes en ligne.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={konnectEnv}
-                      onChange={(e) => setKonnectEnv(e.target.value as any)}
-                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-[11px] text-[var(--rego-fg,#111111)]"
-                    >
-                      <option value="live">Live (Production)</option>
-                      <option value="sandbox">Sandbox (Test)</option>
-                    </select>
-
-                    <input
-                      type="checkbox"
-                      checked={konnectActive}
-                      onChange={(e) => setKonnectActive(e.target.checked)}
-                      className="w-4 h-4 accent-[var(--rego-accent,#ad0505)] cursor-pointer"
-                    />
-                  </div>
-                </div>
+                       <p className="font-bold text-[var(--rego-fg,#111111)]">
+                         Renseigner les clés marchandes Konnect
+                       </p>
+                       <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
+                         Idéal pour accepter toutes les cartes bancaires tunisiennes en ligne.
+                       </p>
+                     </div>
+                   </div>
+                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -612,12 +562,12 @@ export function SellerReGoPaymentConfig({
                         value={konnectApiKey}
                         onChange={(e) => setKonnectApiKey(e.target.value)}
                         placeholder="Collez votre clé API Konnect..."
-                        className="w-full px-3 py-2 pr-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
+                        className="w-full px-3 py-2 pe-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowKonnectKey(!showKonnectKey)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
                       >
                         {showKonnectKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -641,10 +591,10 @@ export function SellerReGoPaymentConfig({
                 <div className="flex justify-end pt-1">
                   <button
                     type="button"
-                    onClick={() => handleRunTest('Konnect Network')}
+                    onClick={() => handleRunTest('konnect')}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-[11px] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] shadow-xs"
                   >
-                    <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                    <Activity className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Tester la connexion Konnect</span>
                   </button>
                 </div>
@@ -683,20 +633,13 @@ export function SellerReGoPaymentConfig({
                       <option value="sandbox">Sandbox (Test)</option>
                       <option value="live">Live (Production)</option>
                     </select>
-
-                    <input
-                      type="checkbox"
-                      checked={paypalActive}
-                      onChange={(e) => setPaypalActive(e.target.checked)}
-                      className="w-4 h-4 accent-[var(--rego-accent,#ad0505)] cursor-pointer"
-                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block font-bold text-[var(--rego-fg,#111111)]">
-                      PayPal Client ID
+                      PayPal {paypalEnv === 'sandbox' ? 'Sandbox ' : ''}Client ID
                     </label>
                     <input
                       type="text"
@@ -717,12 +660,12 @@ export function SellerReGoPaymentConfig({
                         value={paypalClientSecret}
                         onChange={(e) => setPaypalClientSecret(e.target.value)}
                         placeholder="Collez votre Client Secret..."
-                        className="w-full px-3 py-2 pr-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
+                        className="w-full px-3 py-2 pe-9 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-mono text-[var(--rego-fg,#111111)] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPaypalSecret(!showPaypalSecret)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]"
                       >
                         {showPaypalSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
@@ -740,7 +683,7 @@ export function SellerReGoPaymentConfig({
                       onChange={(e) => setPaypalCurrency(e.target.value as any)}
                       className="w-full px-3 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-xs text-[var(--rego-fg,#111111)] outline-none"
                     >
-                      <option value="EUR">Euros (EUR €) — Recommandé pour l'Europe</option>
+                      <option value="EUR">Euros (EUR €) — Recommandé pour l&apos;Europe</option>
                       <option value="USD">Dollars Américains (USD $)</option>
                       <option value="TND">TND converti dynamiquement</option>
                     </select>
@@ -749,11 +692,11 @@ export function SellerReGoPaymentConfig({
                   <div className="flex items-end justify-end">
                     <button
                       type="button"
-                      onClick={() => handleRunTest('PayPal International')}
+                      onClick={() => handleRunTest('paypal')}
                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] font-bold text-[11px] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] shadow-xs"
                     >
                       <Activity className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Tester l'API PayPal</span>
+                      <span>Tester l&apos;API PayPal</span>
                     </button>
                   </div>
                 </div>
@@ -777,17 +720,17 @@ export function SellerReGoPaymentConfig({
               {[
                 {
                   gateway: 'Flouci Webhook Notification',
-                  url: 'https://pandamarket.tn/api/pd/webhooks/flouci',
+                  url: `${webhookBaseUrl}/api/pd/webhooks/flouci`,
                   id: 'flouci-hook',
                 },
                 {
                   gateway: 'Konnect Payment Callback (Success / Fail)',
-                  url: 'https://pandamarket.tn/api/pd/webhooks/konnect',
+                  url: `${webhookBaseUrl}/api/pd/webhooks/konnect`,
                   id: 'konnect-hook',
                 },
                 {
                   gateway: 'PayPal IPN / Webhooks Event URL',
-                  url: 'https://pandamarket.tn/api/pd/webhooks/paypal',
+                  url: `${webhookBaseUrl}/api/pd/webhooks/paypal`,
                   id: 'paypal-hook',
                 },
               ].map((item) => (
@@ -830,31 +773,28 @@ export function SellerReGoPaymentConfig({
                   Négociation TLS et handshake avec les serveurs de la passerelle...
                 </p>
                 <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
-                  Contrôle des autorisations d'encaissement et de signature HMAC.
+                  Contrôle des autorisations d&apos;encaissement et de signature HMAC.
                 </p>
               </div>
             ) : testResult ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-[var(--rego-r,8px)] bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+                <div
+                  className={`p-4 rounded-[var(--rego-r,8px)] flex items-start gap-3 border ${
+                    testResult.ok
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  {testResult.ok ? (
+                    <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  )}
                   <div>
-                    <strong className="block font-bold">Connectivité Établie — {testResult.gateway}</strong>
+                    <strong className="block font-bold">
+                      {testResult.ok ? 'Connectivité Établie' : 'Échec du Test'} — {testResult.gateway}
+                    </strong>
                     <span className="text-[11px]">{testResult.message}</span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] space-y-1 text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Temps de réponse :</span>
-                    <span className="font-mono font-bold text-[var(--rego-fg,#111111)]">142 ms</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Certificat TLS :</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Valide (SHA-256)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Prêt pour encaissement :</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Oui</span>
                   </div>
                 </div>
 

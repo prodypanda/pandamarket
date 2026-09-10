@@ -227,7 +227,7 @@ export function AdminReGoAuditLog({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPurgeModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 hover:bg-rose-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Purger</span>
@@ -254,9 +254,9 @@ export function AdminReGoAuditLog({
       }
       alertBanner={
         summary.failed > 0 ? (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 text-xs font-semibold">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>
                 Attention : {summary.failed} action{summary.failed > 1 ? 's' : ''} ont échoué ou ont été rejetées lors des dernières 24h.
               </span>
@@ -315,7 +315,7 @@ export function AdminReGoAuditLog({
           {/* Top Row: Search + Action Filter + Actor Role */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+              <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
               <input
                 type="text"
                 value={searchInput}
@@ -324,7 +324,7 @@ export function AdminReGoAuditLog({
                   if (e.key === 'Enter') setSearch(searchInput);
                 }}
                 placeholder="Rechercher par action, cible, email ou IP..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                className="w-full ps-9 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
               />
             </div>
 
@@ -375,7 +375,7 @@ export function AdminReGoAuditLog({
           {/* Bottom Row: HTTP Method pills + Date filters */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-              <span className="text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)] mr-1">
+              <span className="text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)] me-1">
                 Méthode :
               </span>
               {methodOptions.map((m) => (
@@ -415,7 +415,7 @@ export function AdminReGoAuditLog({
       mainContent={
         <ReGoCard noPadding>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[var(--rego-ink-2,#737373)] uppercase font-bold text-[10px] tracking-wider">
                   <th className="px-4 py-3">Horodatage (UTC+1)</th>
@@ -432,13 +432,13 @@ export function AdminReGoAuditLog({
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-xs text-[var(--rego-ink-3,#949494)]">
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--rego-accent,#ad0505)]" />
-                      Chargement du journal d'audit...
+                      Chargement du journal d&apos;audit...
                     </td>
                   </tr>
                 ) : entries.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-xs text-[var(--rego-ink-3,#949494)]">
-                      Aucun événement d'audit ne correspond aux filtres appliqués.
+                      Aucun événement d&apos;audit ne correspond aux filtres appliqués.
                     </td>
                   </tr>
                 ) : (
@@ -701,7 +701,7 @@ export function AdminReGoAuditLog({
               ))}
             </div>
             <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
-              Tous les enregistrements d'audit antérieurs à <strong>{purgeDays} jours</strong> seront purgés de la base de données.
+              Tous les enregistrements d&apos;audit antérieurs à <strong>{purgeDays} jours</strong> seront purgés de la base de données.
             </p>
           </div>
         </ReGoModal>

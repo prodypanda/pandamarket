@@ -179,7 +179,7 @@ export function AdminReGoSettings({
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 hover:bg-rose-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Annuler Brouillon</span>
@@ -200,11 +200,11 @@ export function AdminReGoSettings({
       }
       alertBanner={
         settings.maintenance_enabled ? (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 text-xs font-semibold">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>
-                Attention : Le mode maintenance est actuellement activé. L'accès public à la place de marché et aux vitrines marchandes est suspendu.
+                Attention : Le mode maintenance est actuellement activé. L&apos;accès public à la place de marché et aux vitrines marchandes est suspendu.
               </span>
             </div>
             <button
@@ -215,13 +215,13 @@ export function AdminReGoSettings({
             </button>
           </div>
         ) : isDirty ? (
-          <div className="flex items-center gap-2 p-3 rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50 text-amber-900 text-xs font-semibold">
+          <div className="flex items-center gap-2 p-3 rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-semibold">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>Modifications non enregistrées en cours. Pensez à valider pour appliquer à la marketplace.</span>
           </div>
         ) : saved ? (
-          <div className="flex items-center gap-2 p-3 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 text-emerald-900 text-xs font-semibold">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-2 p-3 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 text-xs font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>Paramètres de la plateforme enregistrés avec succès !</span>
           </div>
         ) : null
@@ -530,7 +530,7 @@ export function AdminReGoSettings({
                         className="rounded border-[var(--rego-border,#dedede)] text-[var(--rego-accent,#ad0505)]"
                       />
                       <span className="font-semibold text-[var(--rego-fg,#111111)]">
-                        Afficher le bouton d'ajout rapide au panier
+                        Afficher le bouton d&apos;ajout rapide au panier
                       </span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -679,10 +679,10 @@ export function AdminReGoSettings({
                 icon={AlertTriangle}
               >
                 <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50/50 flex items-center justify-between">
+                  <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40/50 dark:bg-rose-950/20 flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-rose-900">Activer le Mode Maintenance</p>
-                      <p className="text-[11px] text-rose-700">Bloque l'accès aux clients et vendeurs</p>
+                      <p className="font-bold text-rose-900 dark:text-rose-300">Activer le Mode Maintenance</p>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300">Bloque l&apos;accès aux clients et vendeurs</p>
                     </div>
                     <button
                       type="button"
@@ -698,7 +698,7 @@ export function AdminReGoSettings({
                   </div>
                   <div>
                     <label className="font-bold text-[var(--rego-fg,#111111)] block mb-1">
-                      Titre de l'Écran de Maintenance
+                      Titre de l&apos;Écran de Maintenance
                     </label>
                     <input
                       type="text"
@@ -812,14 +812,14 @@ export function AdminReGoSettings({
           width="max-w-lg"
         >
           <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+            <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
                 <span className="truncate">{settings.marketplace_public_url || 'https://pandamarket.tn'}</span>
               </div>
               <h4 className="text-base text-blue-800 hover:underline cursor-pointer font-medium">
                 {settings.marketplace_name} — {settings.marketplace_tagline}
               </h4>
-              <p className="text-slate-600 text-xs leading-relaxed">
+              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">
                 Découvrez PandaMarket, la première place de marché moderne en Tunisie. Vendez et achetez en toute sécurité avec livraison partout en Tunisie.
               </p>
             </div>
@@ -856,7 +856,7 @@ export function AdminReGoSettings({
           }
         >
           <p className="text-xs text-[var(--rego-ink-2,#737373)] leading-relaxed">
-            Seuls les comptes administrateurs pourront naviguer sur la plateforme. Tous les acheteurs et vendeurs verront l'écran d'attente de maintenance.
+            Seuls les comptes administrateurs pourront naviguer sur la plateforme. Tous les acheteurs et vendeurs verront l&apos;écran d&apos;attente de maintenance.
           </p>
         </ReGoModal>
       }

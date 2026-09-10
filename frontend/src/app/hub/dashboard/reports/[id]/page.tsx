@@ -155,6 +155,8 @@ export default function VendorReportDetailPage() {
   const config = report ? statusConfig[report.status] : null;
   const StatusIcon = config?.icon || AlertTriangle;
 
+  const { dashboardStyle } = useDashboardStyle();
+
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
@@ -162,8 +164,6 @@ export default function VendorReportDetailPage() {
       </div>
     );
   }
-
-  const { dashboardStyle } = useDashboardStyle();
 
   if (dashboardStyle === 'rego') {
     return (
@@ -245,7 +245,7 @@ export default function VendorReportDetailPage() {
             ))}
           </div>
 
-          <form onSubmit={submitMessage} className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-6">
+          <form onSubmit={submitMessage} className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-6">
             {feedback && <div className="mb-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-2xs">{feedback}</div>}
             <textarea
               value={body}

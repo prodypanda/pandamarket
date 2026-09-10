@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LineChart,
   BarChart3,
@@ -12,17 +12,13 @@ import {
   Download,
   RotateCcw,
   BookOpen,
-  Filter,
   Eye,
-  ChevronRight,
   AlertTriangle,
   MapPin,
   Building2,
   Calendar,
   Sparkles,
-  ArrowUpRight,
   DollarSign,
-  PieChart,
 } from 'lucide-react';
 import { DashboardPageWrapper } from '@/components/dashboard/DashboardPageWrapper';
 import {
@@ -46,6 +42,7 @@ import {
   PlatformPageViewsAnalytics,
   DrilldownType,
 } from '@/types/analytics';
+import { fetchGeoHeatmapData } from '@/lib/admin-platform-analytics';
 import { OverviewAnalyticsTab } from '@/components/admin/platform-analytics/OverviewAnalyticsTab';
 import { FinancialsAnalyticsTab } from '@/components/admin/platform-analytics/FinancialsAnalyticsTab';
 import { VendorsAnalyticsTab } from '@/components/admin/platform-analytics/VendorsAnalyticsTab';
@@ -123,6 +120,54 @@ export function AdminReGoAnalytics({
 }: AdminReGoAnalyticsProps) {
   const [selectedGov, setSelectedGov] = useState<GovernorateData | null>(null);
   const [govSearch, setGovSearch] = useState('');
+  // Live regional telemetry fetched from the API (no fabricated seed numbers)
+  const [liveGovernorates, setLiveGovernorates] = useState<GovernorateData[] | null>(null);
+  const [govDataLoading, setGovDataLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadGeo = async () => {
+      setGovDataLoading(true);
+      try {
+        const res = await fetchGeoHeatmapData({ currency: currency as any });
+        if (isMounted && res && res.governorates && res.governorates.length > 0) {
+          const merged = ALL_24_GOVERNORATES.map((base) => {
+            const remote = res.governorates.find((g: any) => {
+              const code = String(g.code || g.governorate_code || '').toUpperCase();
+              const iso = String(g.iso_code || '').toUpperCase();
+              const name = String(g.name || g.governorate_name || '').toLowerCase();
+              return (
+                code === base.code ||
+                iso === (base.iso_code || '') ||
+                name === base.name.toLowerCase() ||
+                name === base.name_ar
+              );
+            });
+            return {
+              ...base,
+              orders_count: remote?.orders_count ?? remote?.orders ?? 0,
+              gmv_tnd: remote?.revenue_tnd ?? remote?.gmv_tnd ?? 0,
+              active_visitors: remote?.buyers_count ?? remote?.active_visitors ?? 0,
+            };
+          });
+          setLiveGovernorates(merged);
+        } else if (isMounted) {
+          // No remote data: show governorates without fabricated metrics
+          setLiveGovernorates(ALL_24_GOVERNORATES.map((g) => ({ ...g, orders_count: 0, gmv_tnd: 0, active_visitors: 0 })));
+        }
+      } catch {
+        if (isMounted) {
+          setLiveGovernorates(ALL_24_GOVERNORATES.map((g) => ({ ...g, orders_count: 0, gmv_tnd: 0, active_visitors: 0 })));
+        }
+      } finally {
+        if (isMounted) setGovDataLoading(false);
+      }
+    };
+    void loadGeo();
+    return () => {
+      isMounted = false;
+    };
+  }, [currency]);
 
   const tabs: Array<{ id: AnalyticsTabID; label: string; icon: any }> = [
     { id: 'overview', label: 'Vue d\'ensemble', icon: BarChart3 },
@@ -144,18 +189,17 @@ export function AdminReGoAnalytics({
     { id: 'all', label: 'Tout' },
   ];
 
-  // Derive KPIs strictly from real overviewData
+  // Derive KPIs strictly from real overviewData — never fabricate fallbacks
   const totalGmv = Number(overviewData?.financials?.total_gmv ?? 0);
-  const platformNet = Number(overviewData?.financials?.net_revenue ?? totalGmv * 0.08);
+  const platformNet = overviewData?.financials?.net_revenue != null ? Number(overviewData.financials.net_revenue) : null;
   const totalOrders = Number(overviewData?.financials?.total_orders ?? 0);
   const averageOrderValue = totalOrders > 0 ? totalGmv / totalOrders : 0;
-  const conversionRate = totalOrders > 0 && (overviewData?.users?.total_users ?? 0) > 0
-    ? (totalOrders / (overviewData?.users?.total_users || 1)) * 100
-    : 2.85;
-  const codShare = 82.4;
+  const totalUsers = Number(overviewData?.users?.total_users ?? 0);
+  const conversionRate = totalOrders > 0 && totalUsers > 0 ? (totalOrders / totalUsers) * 100 : null;
 
   // Filter governorates list
-  const filteredGovernorates = ALL_24_GOVERNORATES.filter((gov) => {
+  const governorates = liveGovernorates || [];
+  const filteredGovernorates = governorates.filter((gov) => {
     if (!govSearch) return true;
     const q = govSearch.toLowerCase();
     return (
@@ -194,7 +238,7 @@ export function AdminReGoAnalytics({
             onClick={onOpenDefinitions}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
           >
-            <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+            <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>Définitions</span>
           </button>
           <button
@@ -203,7 +247,7 @@ export function AdminReGoAnalytics({
             disabled={isLoading}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-50 transition-colors"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[var(--rego-accent,#ad0505)]' : 'text-slate-500'}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[var(--rego-accent,#ad0505)]' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>Actualiser</span>
           </button>
         </div>
@@ -220,7 +264,7 @@ export function AdminReGoAnalytics({
       }
       alertBanner={
         activeAlert ? (
-          <div className="p-4 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 text-amber-900 text-xs font-medium flex items-center justify-between shadow-xs">
+          <div className="p-4 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs font-medium flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
@@ -236,56 +280,38 @@ export function AdminReGoAnalytics({
           <ReGoKpiHero
             label="Volume d'Affaires (GMV)"
             value={<ReGoAmtBox amount={totalGmv} size="md" />}
-            delta="+14.2%"
-            deltaType="increase"
-            deltaLabel="vs N-1"
             hint="Période sélectionnée"
             icon={TrendingUp}
           />
           <ReGoKpiHero
             label="Commissions Perçues"
-            value={<ReGoAmtBox amount={platformNet} size="md" />}
-            delta="~8.0%"
-            deltaType="increase"
-            deltaLabel="Taux effectif"
+            value={platformNet !== null ? <ReGoAmtBox amount={platformNet} size="md" /> : '—'}
             hint="Revenu net plateforme"
             icon={CreditCard}
           />
           <ReGoKpiHero
             label="Commandes Traitées"
             value={totalOrders.toLocaleString('fr-TN')}
-            delta={totalOrders}
-            deltaType={totalOrders > 0 ? 'increase' : 'neutral'}
-            deltaLabel="validées"
             hint="Volume d'achats national"
             icon={ShoppingCart}
           />
           <ReGoKpiHero
             label="Panier Moyen (AOV)"
             value={<ReGoAmtBox amount={averageOrderValue} size="md" />}
-            delta="Moyenne"
-            deltaType="neutral"
-            deltaLabel="panier"
             hint="Valeur par commande"
             icon={DollarSign}
           />
           <ReGoKpiHero
             label="Taux de Conversion"
-            value={`${conversionRate > 0 ? conversionRate.toFixed(2) : '2.85'}%`}
-            delta="+0.4%"
-            deltaType="increase"
-            deltaLabel="vs N-1"
-            hint="Acheteurs / Visiteurs"
+            value={conversionRate !== null ? `${conversionRate.toFixed(2)}%` : '—'}
+            hint="Commandes / Utilisateurs"
             icon={Percent}
           />
           <ReGoKpiHero
-            label="Part Paiement COD"
-            value={`${codShare.toFixed(1)}%`}
-            delta="COD"
-            deltaType="neutral"
-            deltaLabel="livraison"
-            hint="vs Cartes & Wallets"
-            icon={PieChart}
+            label="Utilisateurs Inscrits"
+            value={totalUsers.toLocaleString('fr-TN')}
+            hint="Comptes plateforme actifs"
+            icon={Users}
           />
         </div>
       }
@@ -363,7 +389,7 @@ export function AdminReGoAnalytics({
           {currency !== 'TND' && (
             <div className="p-3 rounded-[var(--rego-r,8px)] border border-indigo-200 bg-indigo-50 text-indigo-900 text-xs flex items-center justify-between">
               <span>
-                Devise d'affichage sélectionnée: <strong>{currency}</strong> (Données transactées converties selon le taux officiel BCT).
+                Devise d&apos;affichage sélectionnée: <strong>{currency}</strong> (Données transactées converties selon le taux officiel BCT).
               </span>
               <span className="text-[10px] font-bold uppercase bg-indigo-200/60 px-2 py-0.5 rounded text-indigo-800">
                 Devise Pivot BCT
@@ -373,7 +399,7 @@ export function AdminReGoAnalytics({
 
           {/* Error Notification */}
           {currentError && (
-            <div className="p-4 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-bold flex items-center justify-between">
+            <div className="p-4 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-bold flex items-center justify-between">
               <span>{currentError}</span>
               <button
                 type="button"
@@ -404,7 +430,14 @@ export function AdminReGoAnalytics({
               {/* ReGo Regional Breakdown Table (24 Tunisian Governorates) */}
               <ReGoCard
                 title="Répartition Nationale par Gouvernorat (24 Gouvernorats Tunisiens)"
-                subtitle="Performance logistique, distribution du chiffre d'affaires et parts COD selon les 24 gouvernorats officiels."
+                subtitle="Performance logistique et distribution du chiffre d'affaires selon les 24 gouvernorats officiels."
+                badge={
+                  govDataLoading ? (
+                    <ReGoStatusChip status="warn" label="Chargement" size="xs" />
+                  ) : liveGovernorates === null ? (
+                    <ReGoStatusChip status="neutral" label="Indisponible" size="xs" />
+                  ) : undefined
+                }
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
@@ -414,7 +447,7 @@ export function AdminReGoAnalytics({
                         placeholder="Filtrer par gouvernorat..."
                         value={govSearch}
                         onChange={(e) => setGovSearch(e.target.value)}
-                        className="w-full pl-3 pr-8 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
+                        className="w-full ps-3 pe-8 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
                       />
                     </div>
                     <span className="text-xs font-medium text-[var(--rego-ink-2,#737373)]">
@@ -422,16 +455,23 @@ export function AdminReGoAnalytics({
                     </span>
                   </div>
 
+                  {govDataLoading ? (
+                    <div className="space-y-2">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-10 rounded-[var(--rego-r,8px)] bg-[var(--rego-surface,#f5f5f5)] animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
                   <div className="overflow-x-auto rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)]">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-ink-2,#737373)] uppercase text-[10px] font-bold border-b border-[var(--rego-border,#dedede)]">
                         <tr>
                           <th className="px-4 py-2.5">Gouvernorat</th>
                           <th className="px-4 py-2.5">Zone</th>
-                          <th className="px-4 py-2.5 text-right">Commandes</th>
-                          <th className="px-4 py-2.5 text-right">Volume GMV ({currency})</th>
-                          <th className="px-4 py-2.5 text-right">Visiteurs Actifs</th>
-                          <th className="px-4 py-2.5 text-right">Action</th>
+                          <th className="px-4 py-2.5 text-end">Commandes</th>
+                          <th className="px-4 py-2.5 text-end">Volume GMV ({currency})</th>
+                          <th className="px-4 py-2.5 text-end">Acheteurs Actifs</th>
+                          <th className="px-4 py-2.5 text-end">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--rego-border,#dedede)] text-[var(--rego-fg,#111111)]">
@@ -439,33 +479,33 @@ export function AdminReGoAnalytics({
                           <tr
                             key={gov.code}
                             onClick={() => setSelectedGov(gov)}
-                            className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                            className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
                           >
                             <td className="px-4 py-3 font-bold flex items-center gap-2">
                               <MapPin className="w-3.5 h-3.5 text-[var(--rego-accent,#ad0505)]" />
                               <span>{gov.name}</span>
-                              <span className="text-[10px] font-normal text-slate-400 font-arabic">({gov.name_ar})</span>
+                              <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500 font-arabic">({gov.name_ar})</span>
                             </td>
                             <td className="px-4 py-3 text-[11px] text-[var(--rego-ink-2,#737373)] capitalize">
                               {gov.zone.replace(/_/g, ' ')}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold">
-                              {gov.orders_count.toLocaleString('fr-TN')}
+                            <td className="px-4 py-3 text-end font-semibold">
+                              {gov.orders_count > 0 ? gov.orders_count.toLocaleString('fr-TN') : '—'}
                             </td>
-                            <td className="px-4 py-3 text-right font-black">
-                              <ReGoAmtBox amount={gov.gmv_tnd} size="sm" />
+                            <td className="px-4 py-3 text-end font-black">
+                              {gov.gmv_tnd > 0 ? <ReGoAmtBox amount={gov.gmv_tnd} size="sm" /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
                             </td>
-                            <td className="px-4 py-3 text-right text-[var(--rego-ink-2,#737373)] font-medium">
-                              {gov.active_visitors.toLocaleString('fr-TN')}
+                            <td className="px-4 py-3 text-end text-[var(--rego-ink-2,#737373)] font-medium">
+                              {gov.active_visitors > 0 ? gov.active_visitors.toLocaleString('fr-TN') : '—'}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-end">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedGov(gov);
                                 }}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-slate-100 transition-colors"
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
                               >
                                 Inspecter
                               </button>
@@ -475,6 +515,7 @@ export function AdminReGoAnalytics({
                       </tbody>
                     </table>
                   </div>
+                  )}
                 </div>
               </ReGoCard>
             </div>
@@ -525,29 +566,33 @@ export function AdminReGoAnalytics({
                 <h4 className="text-xs font-bold uppercase text-[var(--rego-ink-2,#737373)]">
                   Indicateurs Opérationnels Régionaux
                 </h4>
-                <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] divide-y divide-[var(--rego-border,#dedede)] bg-white text-xs">
+                <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] divide-y divide-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs">
                   <div className="p-3 flex justify-between items-center">
-                    <span className="text-slate-600 font-medium">Commandes Totales</span>
-                    <span className="font-bold">{selectedGov.orders_count.toLocaleString('fr-TN')}</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Commandes Totales</span>
+                    <span className="font-bold">{selectedGov.orders_count > 0 ? selectedGov.orders_count.toLocaleString('fr-TN') : '—'}</span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
-                    <span className="text-slate-600 font-medium">Chiffre d'Affaires Réalisé</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Chiffre d&apos;Affaires Réalisé</span>
                     <span className="font-black text-[var(--rego-accent,#ad0505)]">
-                      <ReGoAmtBox amount={selectedGov.gmv_tnd} size="sm" />
+                      {selectedGov.gmv_tnd > 0 ? <ReGoAmtBox amount={selectedGov.gmv_tnd} size="sm" /> : <span className="text-[var(--rego-ink-3,#949494)]">—</span>}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
-                    <span className="text-slate-600 font-medium">Panier Moyen Estimé</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Panier Moyen</span>
                     <span className="font-bold">
-                      <ReGoAmtBox
-                        amount={selectedGov.orders_count > 0 ? selectedGov.gmv_tnd / selectedGov.orders_count : 0}
-                        size="sm"
-                      />
+                      {selectedGov.orders_count > 0 ? (
+                        <ReGoAmtBox
+                          amount={selectedGov.gmv_tnd / selectedGov.orders_count}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="text-[var(--rego-ink-3,#949494)]">—</span>
+                      )}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between items-center">
-                    <span className="text-slate-600 font-medium">Audience Active Estimée</span>
-                    <span className="font-bold">{selectedGov.active_visitors.toLocaleString('fr-TN')} visiteurs</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Acheteurs Actifs</span>
+                    <span className="font-bold">{selectedGov.active_visitors > 0 ? `${selectedGov.active_visitors.toLocaleString('fr-TN')} acheteurs` : '—'}</span>
                   </div>
                 </div>
               </div>

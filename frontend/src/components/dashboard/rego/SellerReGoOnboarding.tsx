@@ -343,7 +343,7 @@ export function SellerReGoOnboarding({
           className="inline-flex items-center gap-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-accent,#ad0505)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--rego-accent-deep,#8f0404)] shadow-xs transition-all cursor-pointer"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Lancer l'Assistant Interactif</span>
+          <span>Lancer l&apos;Assistant Interactif</span>
         </button>
       }
       alertBanner={
@@ -380,7 +380,7 @@ export function SellerReGoOnboarding({
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0" />
               <p className="text-xs text-amber-900 dark:text-amber-300 font-medium">
-                <strong>Vérification d'identité requise :</strong> Transmettez votre CIN ou Registre de Commerce (RC) ainsi que votre RIB tunisien sur 20 chiffres pour activer les virements automatiques de vos ventes.
+                <strong>Vérification d&apos;identité requise :</strong> Transmettez votre CIN ou Registre de Commerce (RC) ainsi que votre RIB tunisien sur 20 chiffres pour activer les virements automatiques de vos ventes.
               </p>
             </div>
             <Link
@@ -417,11 +417,11 @@ export function SellerReGoOnboarding({
             label="Statut Vérification KYC"
             value={
               verification?.status === 'approved' ? (
-                <span className="text-emerald-600 text-lg font-black">Approuvé</span>
+                <span className="text-emerald-600 dark:text-emerald-400 text-lg font-black">Approuvé</span>
               ) : verification?.status === 'pending' ? (
                 <span className="text-amber-600 text-lg font-black">En Examen</span>
               ) : (
-                <span className="text-rose-600 text-lg font-black">Non Soumis</span>
+                <span className="text-rose-600 dark:text-rose-400 text-lg font-black">Non Soumis</span>
               )
             }
             hint="Réglementation BCT & RIB 20 chiffres"
@@ -431,9 +431,9 @@ export function SellerReGoOnboarding({
             label="Visibilité Boutique"
             value={
               isOnline ? (
-                <span className="text-emerald-600 text-lg font-black">En Ligne</span>
+                <span className="text-emerald-600 dark:text-emerald-400 text-lg font-black">En Ligne</span>
               ) : (
-                <span className="text-slate-600 text-lg font-black">Maintenance</span>
+                <span className="text-slate-600 dark:text-slate-400 text-lg font-black">Maintenance</span>
               )
             }
             hint={`${store?.subdomain || 'boutique'}.${platformDomain}`}
@@ -606,7 +606,7 @@ export function SellerReGoOnboarding({
                 Portail KYC & Payouts
               </h4>
               <p className="text-xs text-[var(--rego-ink-2,#737373)]">
-                Consultez l'avancement de votre examen légal et gérez vos virements bancaires BCT.
+                Consultez l&apos;avancement de votre examen légal et gérez vos virements bancaires BCT.
               </p>
               <Link
                 href="/hub/dashboard/kyc"
@@ -695,7 +695,7 @@ export function SellerReGoOnboarding({
                         <button
                           type="button"
                           onClick={() => setLogoUrl('')}
-                          className="text-[11px] font-bold text-rose-600 hover:underline"
+                          className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
                         >
                           Supprimer
                         </button>
@@ -740,7 +740,7 @@ export function SellerReGoOnboarding({
                         <button
                           type="button"
                           onClick={() => setLogoDarkUrl('')}
-                          className="text-[11px] font-bold text-rose-600 hover:underline"
+                          className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
                         >
                           Supprimer
                         </button>
@@ -873,7 +873,7 @@ export function SellerReGoOnboarding({
                       <button
                         type="button"
                         onClick={() => setProductThumbnail('')}
-                        className="text-[11px] font-bold text-rose-600 hover:underline"
+                        className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
                       >
                         Supprimer la photo
                       </button>
@@ -1119,14 +1119,14 @@ export function SellerReGoOnboarding({
                   <div className="rounded-[var(--rego-r,8px)] border border-dashed border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/50 p-3 text-center flex flex-col items-center justify-center min-h-[110px]">
                     {rcFileUrl ? (
                       <div className="space-y-1">
-                        <FileText className="w-6 h-6 text-emerald-600 mx-auto" />
-                        <span className="block text-[11px] font-bold text-emerald-700 truncate max-w-[120px]">
+                        <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                        <span className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate max-w-[120px]">
                           RC téléversé
                         </span>
                         <button
                           type="button"
                           onClick={() => setRcFileUrl('')}
-                          className="text-[10px] font-bold text-rose-600 hover:underline"
+                          className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
                         >
                           Remplacer
                         </button>
@@ -1162,19 +1162,19 @@ export function SellerReGoOnboarding({
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[var(--rego-fg,#111111)]">
-                    Carte d'Identité (CIN)
+                    Carte d&apos;Identité (CIN)
                   </label>
                   <div className="rounded-[var(--rego-r,8px)] border border-dashed border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/50 p-3 text-center flex flex-col items-center justify-center min-h-[110px]">
                     {cinFileUrl ? (
                       <div className="space-y-1">
-                        <FileText className="w-6 h-6 text-emerald-600 mx-auto" />
-                        <span className="block text-[11px] font-bold text-emerald-700 truncate max-w-[120px]">
+                        <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                        <span className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate max-w-[120px]">
                           CIN téléversée
                         </span>
                         <button
                           type="button"
                           onClick={() => setCinFileUrl('')}
-                          className="text-[10px] font-bold text-rose-600 hover:underline"
+                          className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
                         >
                           Remplacer
                         </button>

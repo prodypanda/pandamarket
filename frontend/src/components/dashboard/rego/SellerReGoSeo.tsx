@@ -121,14 +121,14 @@ export function SellerReGoSeo({
             <div
               className={`flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border text-xs font-semibold ${
                 feedback.isError
-                  ? 'border-rose-200 bg-rose-50 text-rose-800'
-                  : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  ? 'border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-800'
+                  : 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800'
               }`}
             >
               {feedback.isError ? (
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
               ) : (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               )}
               <span>{feedback.message}</span>
             </div>
@@ -174,7 +174,7 @@ export function SellerReGoSeo({
                       <span>Formulaire des Balises Méta</span>
                     </h3>
                     <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-                      Renseignez les balises HTML lues par les robots d'indexation de Google et les crawlers de réseaux sociaux.
+                      Renseignez les balises HTML lues par les robots d&apos;indexation de Google et les crawlers de réseaux sociaux.
                     </p>
                   </div>
 
@@ -248,7 +248,7 @@ export function SellerReGoSeo({
                       className="w-full px-3 py-2 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
                     />
                     <p className="text-[11px] text-[var(--rego-ink-3,#949494)] mt-1">
-                      Séparez vos mots-clés par des virgules pour faciliter l'indexation sémantique.
+                      Séparez vos mots-clés par des virgules pour faciliter l&apos;indexation sémantique.
                     </p>
                   </div>
 
@@ -258,17 +258,17 @@ export function SellerReGoSeo({
                       Image de Partage Social (OpenGraph Image)
                     </label>
                     <div className="relative">
-                      <ImageIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                      <ImageIcon className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                       <input
                         type="url"
                         value={seo.og_image_url || ''}
                         onChange={(e) => onChange('og_image_url', e.target.value)}
                         placeholder="https://cdn.pandamarket.tn/stores/banner.jpg"
-                        className="w-full pl-9 pr-3 py-2 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all font-mono"
+                        className="w-full ps-9 pe-3 py-2 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all font-mono"
                       />
                     </div>
                     <p className="text-[11px] text-[var(--rego-ink-3,#949494)] mt-1">
-                      Résolution recommandée : 1200 x 630 px. Cette bannière apparaîtra lors d'un partage WhatsApp / Facebook.
+                      Résolution recommandée : 1200 x 630 px. Cette bannière apparaîtra lors d&apos;un partage WhatsApp / Facebook.
                     </p>
                   </div>
 
@@ -329,16 +329,16 @@ export function SellerReGoSeo({
                   </div>
 
                   {previewDevice === 'google' ? (
-                    <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white space-y-2 shadow-2xs">
+                    <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-2 shadow-2xs">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-700">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-700 dark:text-slate-300">
                           PM
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold text-slate-800 truncate">
+                          <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate">
                             {seo.meta_title || 'PandaMarket Boutique'}
                           </p>
-                          <p className="text-[10px] text-emerald-700 truncate font-mono">
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-300 truncate font-mono">
                             {canonicalUrl}
                           </p>
                         </div>
@@ -348,13 +348,13 @@ export function SellerReGoSeo({
                         {seo.meta_title || 'Boutique Officielle | PandaMarket Tunisie'}
                       </h3>
 
-                      <p className="text-xs text-slate-600 leading-relaxed">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                         {seo.meta_description ||
                           'Découvrez nos collections artisanales et produits locaux avec paiement à la livraison et expédition rapide dans tous les gouvernorats de Tunisie.'}
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white overflow-hidden shadow-2xs">
+                    <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
                       <div className="aspect-[1.91/1] w-full bg-[var(--rego-surface,#f5f5f5)] flex items-center justify-center border-b border-[var(--rego-border,#dedede)] relative">
                         {seo.og_image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -373,20 +373,20 @@ export function SellerReGoSeo({
                               Bannière 1200 x 630 px
                             </span>
                             <p className="text-[10px] text-[var(--rego-ink-3,#949494)] mt-0.5">
-                              Ajoutez une URL d'image pour personnaliser l'aperçu
+                              Ajoutez une URL d&apos;image pour personnaliser l&apos;aperçu
                             </p>
                           </div>
                         )}
                       </div>
 
-                      <div className="p-3.5 space-y-1 bg-slate-50/70">
+                      <div className="p-3.5 space-y-1 bg-slate-50/70 dark:bg-slate-900/70">
                         <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">
                           {displayHost}
                         </span>
-                        <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
                           {seo.meta_title || 'Boutique Officielle sur PandaMarket'}
                         </h4>
-                        <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
                           {seo.meta_description ||
                             'Accédez à notre catalogue exclusif en ligne. Livraison sécurisée dans les 24 gouvernorats tunisiens.'}
                         </p>
@@ -397,7 +397,7 @@ export function SellerReGoSeo({
                   {/* Sitemap & Robots.txt Indicator */}
                   <div className="p-3 rounded-[var(--rego-r,8px)] bg-[var(--rego-surface,#f5f5f5)] border border-[var(--rego-border,#dedede)] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-emerald-600" />
+                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <div>
                         <div className="text-xs font-bold text-[var(--rego-fg,#111111)]">
                           Sitemap XML & Robots.txt Actifs
@@ -441,28 +441,28 @@ export function SellerReGoSeo({
               <div className="p-3 rounded-md bg-[var(--rego-surface,#f5f5f5)] border border-[var(--rego-border,#dedede)] space-y-2">
                 <h4 className="font-bold text-[var(--rego-fg,#111111)]">Mots-clés géolocalisés Tunisie</h4>
                 <p className="text-[var(--rego-ink-2,#737373)] leading-relaxed">
-                  Incluez systématiquement les termes « Tunisie », « Livraison 24 Gouvernorats » ou le nom de votre ville artisanale (Nabeul, Sfax, Djerba) pour capter les recherches locales à forte intention d'achat.
+                  Incluez systématiquement les termes « Tunisie », « Livraison 24 Gouvernorats » ou le nom de votre ville artisanale (Nabeul, Sfax, Djerba) pour capter les recherches locales à forte intention d&apos;achat.
                 </p>
               </div>
 
               <div className="space-y-2">
                 <h4 className="font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)] text-[10px]">
-                  Règles d'or du Méta Titre
+                  Règles d&apos;or du Méta Titre
                 </h4>
                 <ul className="space-y-1.5 text-[var(--rego-fg,#111111)] list-disc pl-4">
                   <li>Placez vos mots-clés stratégiques au début du titre.</li>
                   <li>Terminez par le nom de votre marque ou boutique.</li>
-                  <li>Ne dépassez jamais 70 caractères pour éviter d'être tronqué sur mobile.</li>
+                  <li>Ne dépassez jamais 70 caractères pour éviter d&apos;être tronqué sur mobile.</li>
                 </ul>
               </div>
 
-              <div className="p-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 space-y-1">
+              <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 dark:text-emerald-300 space-y-1">
                 <div className="font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Indexation Google Automatique</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  PandaMarket génère et met à jour automatiquement votre flux <code>sitemap.xml</code> et communique directement avec l'index Google lors de la publication de vos produits.
+                  PandaMarket génère et met à jour automatiquement votre flux <code>sitemap.xml</code> et communique directement avec l&apos;index Google lors de la publication de vos produits.
                 </p>
               </div>
             </div>

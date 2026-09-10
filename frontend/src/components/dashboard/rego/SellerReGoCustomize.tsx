@@ -312,7 +312,7 @@ export function SellerReGoCustomize({
                                 customColors: undefined,
                               });
                             }}
-                            className={`p-2.5 rounded-[var(--rego-r,8px)] border text-left transition-all flex items-center justify-between ${
+                            className={`p-2.5 rounded-[var(--rego-r,8px)] border text-start transition-all flex items-center justify-between ${
                               isSelected
                                 ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-surface,#f5f5f5)] ring-1 ring-[var(--rego-accent,#ad0505)]'
                                 : 'border-[var(--rego-border,#dedede)] hover:bg-[var(--rego-surface,#f5f5f5)]'
@@ -370,7 +370,7 @@ export function SellerReGoCustomize({
 
                       <div className="space-y-1">
                         <span className="text-[11px] text-[var(--rego-ink-2,#737373)] font-medium">
-                          Couleur d'Accent
+                          Couleur d&apos;Accent
                         </span>
                         <div className="flex items-center gap-2">
                           <input
@@ -452,7 +452,7 @@ export function SellerReGoCustomize({
                             key={v}
                             type="button"
                             onClick={() => handleUpdate({ layoutVariation: v })}
-                            className={`p-3 rounded-[var(--rego-r,8px)] border text-left font-bold text-xs transition-all ${
+                            className={`p-3 rounded-[var(--rego-r,8px)] border text-start font-bold text-xs transition-all ${
                               isSelected
                                 ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-accent,#ad0505)]'
                                 : 'border-[var(--rego-border,#dedede)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)]'
@@ -507,7 +507,7 @@ export function SellerReGoCustomize({
                         key={h}
                         type="button"
                         onClick={() => handleUpdate({ heroStyle: h })}
-                        className={`w-full p-3 rounded-[var(--rego-r,8px)] border text-left flex items-center justify-between transition-all ${
+                        className={`w-full p-3 rounded-[var(--rego-r,8px)] border text-start flex items-center justify-between transition-all ${
                           isSelected
                             ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-surface,#f5f5f5)]'
                             : 'border-[var(--rego-border,#dedede)] hover:bg-[var(--rego-surface,#f5f5f5)]'
@@ -600,7 +600,7 @@ export function SellerReGoCustomize({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 text-[10px] opacity-70">
+                  <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[10px] opacity-70">
                     <Search className="w-2.5 h-2.5" />
                     <span>Rechercher...</span>
                   </div>
@@ -628,7 +628,7 @@ export function SellerReGoCustomize({
                     Nouvelle Collection 2026
                   </span>
                   <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight">
-                    L'Excellence & Le Savoir-Faire Artisanal Tunisien
+                    L&apos;Excellence & Le Savoir-Faire Artisanal Tunisien
                   </h2>
                   <p className="text-[11px] opacity-80 leading-relaxed">
                     Découvrez nos créations exclusives préparées avec passion et livrées directement à votre porte.
@@ -662,9 +662,9 @@ export function SellerReGoCustomize({
                   ].map((p, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-lg border border-black/10 bg-white dark:bg-black/20 space-y-2"
+                      className="p-3 rounded-lg border border-black/10 bg-white dark:bg-slate-900 dark:bg-black/20 space-y-2"
                     >
-                      <div className="aspect-square rounded bg-black/5 flex items-center justify-center text-[10px] opacity-50 font-mono">
+                      <div className="aspect-square rounded bg-black/5 dark:bg-white/10 flex items-center justify-center text-[10px] opacity-50 font-mono">
                         Produit Image
                       </div>
                       <div>
@@ -676,7 +676,7 @@ export function SellerReGoCustomize({
                           >
                             {p.price.toFixed(3)} TND
                           </span>
-                          <span className="px-1.5 py-0.5 rounded bg-black/5 text-[9px] font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[9px] font-bold">
                             COD
                           </span>
                         </div>
@@ -725,7 +725,7 @@ export function SellerReGoCustomize({
               <iframe
                 src={storefrontUrl}
                 title="Vitrine Plein Écran"
-                className="w-full h-full border-0 bg-white"
+                className="w-full h-full border-0 bg-white dark:bg-slate-900"
               />
             </div>
           </div>

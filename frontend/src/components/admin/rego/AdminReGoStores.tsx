@@ -165,13 +165,13 @@ export function AdminReGoStores({
       </div>
 
       {error && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
           {success}
         </div>
       )}
@@ -222,7 +222,7 @@ export function AdminReGoStores({
                   onClick={() => onStatusFilterChange(tab.id)}
                   className={`px-2.5 py-1 rounded-[calc(var(--rego-r,8px)-2px)] transition-all cursor-pointer ${
                     statusFilter === tab.id
-                      ? 'bg-white text-[var(--rego-fg,#111111)] shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] shadow-2xs'
                       : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
                   }`}
                 >
@@ -233,13 +233,13 @@ export function AdminReGoStores({
 
             {/* Search */}
             <div className="relative w-56">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+              <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
               <input
                 type="text"
                 placeholder="Rechercher boutique, email..."
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full pl-8 pr-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
+                className="w-full ps-8 pe-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
               />
             </div>
           </div>
@@ -262,7 +262,7 @@ export function AdminReGoStores({
         ) : (
           <div className="space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[var(--rego-fg,#111111)]">
+              <table className="w-full text-start text-xs text-[var(--rego-fg,#111111)]">
                 <thead className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)]">
                   <tr>
                     <th className="px-3 py-2.5">Boutique & Domaine</th>
@@ -271,7 +271,7 @@ export function AdminReGoStores({
                     <th className="px-3 py-2.5">Chiffre d&apos;Affaires</th>
                     <th className="px-3 py-2.5">Abonnement</th>
                     <th className="px-3 py-2.5">Statut</th>
-                    <th className="px-3 py-2.5 text-right">Actions</th>
+                    <th className="px-3 py-2.5 text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -289,7 +289,7 @@ export function AdminReGoStores({
                               {vendor.name}
                             </span>
                             {vendor.is_verified && (
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             )}
                           </div>
                           <div className="text-[11px] font-mono text-[var(--rego-ink-2,#737373)]">
@@ -327,7 +327,7 @@ export function AdminReGoStores({
                             size="xs"
                           />
                         </td>
-                        <td className="px-3 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-end">
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
@@ -343,7 +343,7 @@ export function AdminReGoStores({
                                 type="button"
                                 disabled={updatingStatus}
                                 onClick={() => void onStatusChange(vendor.id, 'verified')}
-                                className="px-2 py-1 rounded-[var(--rego-r,8px)] text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                className="px-2 py-1 rounded-[var(--rego-r,8px)] text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-colors"
                               >
                                 Réactiver
                               </button>
@@ -355,7 +355,7 @@ export function AdminReGoStores({
                                   setSuspendingId(vendor.id);
                                   setSuspendReason('');
                                 }}
-                                className="px-2 py-1 rounded-[var(--rego-r,8px)] text-[10px] font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors"
+                                className="px-2 py-1 rounded-[var(--rego-r,8px)] text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors"
                               >
                                 Suspendre
                               </button>
@@ -375,7 +375,7 @@ export function AdminReGoStores({
                 type="button"
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Précédent</span>
@@ -389,7 +389,7 @@ export function AdminReGoStores({
                 type="button"
                 onClick={() => onPageChange(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <span>Suivant</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -402,7 +402,7 @@ export function AdminReGoStores({
       {/* Suspend Confirmation Modal */}
       {suspendingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white p-5 shadow-2xl space-y-3">
+          <div className="w-full max-w-md rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-3">
             <h3 className="font-bold text-sm text-[var(--rego-fg,#111111)]">
               Confirmer la suspension de la boutique
             </h3>
@@ -414,13 +414,13 @@ export function AdminReGoStores({
               placeholder="Motif de la suspension (infraction, non-conformité...)"
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
-              className="w-full p-2.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-300 bg-white text-slate-900 focus:outline-hidden"
+              className="w-full p-2.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden"
             />
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setSuspendingId(null)}
-                className="px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
               >
                 Annuler
               </button>
@@ -482,7 +482,7 @@ export function AdminReGoStores({
 
             <div className="space-y-2 text-xs">
               <h4 className="font-bold text-[var(--rego-fg,#111111)]">Propriétaire Marchand</h4>
-              <div className="space-y-1.5 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)]">
+              <div className="space-y-1.5 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)]">
                 <p><strong className="text-[var(--rego-fg,#111111)]">Nom :</strong> {[selectedVendor.owner_first_name, selectedVendor.owner_last_name].filter(Boolean).join(' ') || '—'}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">Email :</strong> {selectedVendor.owner_email || '—'}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">Téléphone :</strong> {selectedVendor.owner_phone || 'Non renseigné'}</p>

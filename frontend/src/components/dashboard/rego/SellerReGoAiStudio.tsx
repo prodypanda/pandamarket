@@ -7,8 +7,6 @@ import {
   Zap,
   Image as ImageIcon,
   FileText,
-  Languages,
-  MessageSquare,
   Check,
   Copy,
   AlertCircle,
@@ -19,6 +17,7 @@ import {
   Key,
   ShieldCheck,
   Eye,
+  History as HistoryIcon,
 } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
@@ -179,12 +178,39 @@ export interface SellerReGoAiStudioProps {
   dir?: 'ltr' | 'rtl';
 }
 
+const typeLabelKeys: Record<AiJobType, string> = {
+  image_compression: 'dashboardPages.ai.typeImageCompression',
+  seo_generation: 'dashboardPages.ai.typeSeoGeneration',
+  page_copy: 'dashboardPages.ai.typePageCopy',
+  product_description: 'dashboardPages.ai.typeProductDescription',
+};
+
+const statusLabelKeys: Record<AiJobStatus, string> = {
+  queued: 'dashboardPages.ai.statusQueued',
+  processing: 'dashboardPages.ai.statusProcessing',
+  completed: 'dashboardPages.ai.statusCompleted',
+  failed: 'dashboardPages.ai.statusFailed',
+};
+
+const languageLabelKeys: Record<Language, string> = {
+  fr: 'dashboardPages.ai.langFr',
+  ar: 'dashboardPages.ai.langAr',
+  en: 'dashboardPages.ai.langEn',
+};
+
+const providerLabelKeys: Record<AiProvider, string> = {
+  gemini: 'dashboardPages.ai.providerGemini',
+  openai: 'dashboardPages.ai.providerOpenai',
+  claude: 'dashboardPages.ai.providerClaude',
+  custom: 'dashboardPages.ai.providerCustom',
+};
+
 export function SellerReGoAiStudio({
   credits,
   jobs,
   products,
   meta,
-  loading: _loading,
+  loading,
   refreshing,
   error,
   success,
@@ -201,26 +227,26 @@ export function SellerReGoAiStudio({
   onSeoProductIdChange,
   onSeoLanguageChange,
   onSeoGenerate,
-  copyLanguage: _copyLanguage,
-  pageTitle: _pageTitle,
-  currentSeoTitle: _currentSeoTitle,
-  currentSeoDescription: _currentSeoDescription,
-  sectionOutline: _sectionOutline,
-  copyGenerating: _copyGenerating,
-  copySuggestions: _copySuggestions,
-  onCopyLanguageChange: _onCopyLanguageChange,
-  onPageTitleChange: _onPageTitleChange,
-  onCurrentSeoTitleChange: _onCurrentSeoTitleChange,
-  onCurrentSeoDescriptionChange: _onCurrentSeoDescriptionChange,
-  onSectionOutlineChange: _onSectionOutlineChange,
-  onPageCopy: _onPageCopy,
-  historyType: _historyType,
-  historyStatus: _historyStatus,
+  copyLanguage,
+  pageTitle,
+  currentSeoTitle,
+  currentSeoDescription,
+  sectionOutline,
+  copyGenerating,
+  copySuggestions,
+  onCopyLanguageChange,
+  onPageTitleChange,
+  onCurrentSeoTitleChange,
+  onCurrentSeoDescriptionChange,
+  onSectionOutlineChange,
+  onPageCopy,
+  historyType,
+  historyStatus,
   historyPage,
-  onHistoryTypeChange: _onHistoryTypeChange,
-  onHistoryStatusChange: _onHistoryStatusChange,
+  onHistoryTypeChange,
+  onHistoryStatusChange,
   onHistoryPageChange,
-  pricing: _pricing,
+  pricing,
   tokenPacks,
   buyingPackId,
   onBuyTokenPack,
@@ -230,39 +256,14 @@ export function SellerReGoAiStudio({
   onProviderFormChange,
   onSaveProvider,
   onDeleteProvider,
-  dir: _dir = 'ltr',
+  dir = 'ltr',
 }: SellerReGoAiStudioProps) {
-  const { t: _t, locale: _locale } = useLocale();
-  const [activeTab, setActiveTab] = useState<'desc' | 'seo' | 'trans' | 'review' | 'compress' | 'history' | 'settings'>('desc');
+  const { t, locale } = useLocale();
+  const [activeTab, setActiveTab] = useState<'copy' | 'seo' | 'compress' | 'history' | 'settings'>('copy');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<AiJob | null>(null);
 
-  // Tool 1: Description
-  const [descName, setDescName] = useState('');
-  const [descKeywords, setDescKeywords] = useState('');
-  const [descTone, setDescTone] = useState<'elegant' | 'artisan' | 'modern' | 'promo'>('artisan');
-  const [descFormat, setDescFormat] = useState<'short' | 'detailed' | 'bullets'>('detailed');
-  const [generatedDesc, setGeneratedDesc] = useState('');
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-
-  // Tool 2: SEO Title variations
-  const [seoKeyword, setSeoKeyword] = useState('');
-  const [seoGeneratedTitles, setSeoGeneratedTitles] = useState<string[]>([]);
-  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
-
-  // Tool 3: Translator
-  const [transInput, setTransInput] = useState('');
-  const [transDirection, setTransDirection] = useState<'fr_ar' | 'ar_fr'>('fr_ar');
-  const [transResult, setTransResult] = useState('');
-  const [isTranslating, setIsTranslating] = useState(false);
-
-  // Tool 4: Review Responder
-  const [reviewBuyerName, setReviewBuyerName] = useState('');
-  const [reviewRating, setReviewRating] = useState<number>(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewTone, setReviewTone] = useState<'grateful' | 'professional' | 'conciliatory'>('grateful');
-  const [generatedReply, setGeneratedReply] = useState('');
-  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
+  const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const copyToClipboard = async (text: string, key: string) => {
     try {
@@ -276,101 +277,45 @@ export function SellerReGoAiStudio({
 
   const isUnlimited = credits?.ai_tokens === -1;
   const remainingTokens = isUnlimited
-    ? 'Illimité'
-    : Math.max(0, (credits?.ai_tokens ?? 0) - (credits?.tokens_used ?? 0)).toLocaleString('fr-TN');
-  const tokensUsed = (credits?.tokens_used ?? 0).toLocaleString('fr-TN');
+    ? '∞'
+    : Math.max(0, (credits?.ai_tokens ?? 0) - (credits?.tokens_used ?? 0)).toLocaleString(dateLocale);
+  const tokensUsed = (credits?.tokens_used ?? 0).toLocaleString(dateLocale);
   const completedJobsCount = jobs.filter((j) => j.status === 'completed').length;
   const activeJobsCount = jobs.filter((j) => j.status === 'queued' || j.status === 'processing').length;
+  const priceFor = (type: AiJobType, fallback: number) => pricing.find((item) => item.job_type === type)?.tokens_required ?? fallback;
 
-  const handleGenerateDescription = () => {
-    if (!descName.trim()) return;
-    setIsGeneratingDesc(true);
-    setTimeout(() => {
-      let text = '';
-      const tonePrefix =
-        descTone === 'elegant'
-          ? 'Sublimez votre quotidien avec ce modèle raffiné : '
-          : descTone === 'artisan'
-          ? 'Fabriqué avec passion et authenticité selon les traditions artisanales tunisiennes : '
-          : descTone === 'modern'
-          ? 'Le design fonctionnel et contemporain par excellence : '
-          : 'Offre exclusive ! Profitez d\'une qualité inégalée pour ce modèle : ';
+  const activeProviderLabel = providerState?.config?.provider
+    ? t(providerLabelKeys[providerState.config.provider])
+    : t('dashboardPages.ai.providerGemini');
 
-      if (descFormat === 'short') {
-        text = `${tonePrefix}${descName}. Conçu avec un savoir-faire méticuleux (${descKeywords || 'matériaux nobles'}), il allie résistance, élégance et confort pour satisfaire les clients les plus exigeants. Expédié rapidement partout en Tunisie avec PandaMarket.`;
-      } else if (descFormat === 'bullets') {
-        text = `Points forts de ${descName} :\n• Qualité certifiée : ${descKeywords || 'Sélection rigoureuse des composants'}\n• Design et fabrication soignée pour une durabilité maximale\n• Idéal pour un usage quotidien ou pour offrir en cadeau\n• Service après-vente et livraison fiable dans les 24 gouvernorats tunisiens`;
-      } else {
-        text = `${tonePrefix}${descName}.\n\nDescription détaillée :\nCe produit d\'exception se distingue par sa finition soignée et son souci du détail. Conçu avec des matières de premier choix (${descKeywords || 'sélection premium'}), il offre une robustesse à toute épreuve tout en conservant une esthétique moderne et séduisante.\n\nCaractéristiques principales :\n- Matériaux : ${descKeywords || 'Finition haute qualité'}\n- Origine : Confection soignée / Ateliers partenaires certifiés PandaMarket\n- Entretien : Facile et résistant à l\'usure\n- Garantie de conformité et inspection avant expédition.`;
-      }
-      setGeneratedDesc(text);
-      setIsGeneratingDesc(false);
-    }, 700);
-  };
+  const tabButtonClass = (isActive: boolean) =>
+    `flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+      isActive
+        ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+    }`;
 
-  const handleGenerateTitles = () => {
-    if (!seoKeyword.trim()) return;
-    setIsGeneratingTitles(true);
-    setTimeout(() => {
-      const kw = seoKeyword.trim();
-      const variations = [
-        `${kw} en Tunisie - Prix Choc & Qualité Garantie | Boutique Officielle`,
-        `Acheter ${kw} - Fabrication Authentique & Livraison 24 Gouvernorats`,
-        `${kw} Haut de Gamme : Élégance, Robustesse et Confort Quotidien`,
-        `Top Tendance : ${kw} au Meilleur Prix en Dinars Tunisiens (TND)`,
-        `${kw} Premium - Édition Limitée avec Expédition Rapide PandaMarket`,
-      ];
-      setSeoGeneratedTitles(variations);
-      setIsGeneratingTitles(false);
-    }, 600);
-  };
-
-  const handleTranslate = () => {
-    if (!transInput.trim()) return;
-    setIsTranslating(true);
-    setTimeout(() => {
-      let res = '';
-      if (transDirection === 'fr_ar') {
-        res = `منتج ممتاز عالي الجودة متوفر الآن بسعر تفاضلي. توصيل سريع وموثوق لكافة ولايات تونس مع خدمة الدفع عند الاستلام عبر باندا ماركت. (${transInput})`;
-      } else {
-        res = `Produit d'excellente qualité disponible avec livraison rapide sur toute la Tunisie et paiement sécurisé à la livraison via PandaMarket. (${transInput})`;
-      }
-      setTransResult(res);
-      setIsTranslating(false);
-    }, 600);
-  };
-
-  const handleGenerateReviewReply = () => {
-    setIsGeneratingReply(true);
-    setTimeout(() => {
-      const name = reviewBuyerName.trim() || 'Cher client';
-      let reply = '';
-      if (reviewTone === 'grateful') {
-        reply = `Bonjour ${name},\n\nUn immense merci pour votre confiance et votre magnifique avis 5 étoiles ! Toute notre équipe est enchantée de savoir que votre commande vous apporte entière satisfaction. Nous restons à votre entière disposition pour vos prochains achats sur PandaMarket. À très bientôt !`;
-      } else if (reviewTone === 'conciliatory') {
-        reply = `Bonjour ${name},\n\nNous vous remercions pour votre retour d\'expérience. Votre satisfaction est notre priorité absolue et nous sommes sincèrement désolés que tout n\'ait pas été parfait. Notre service client prend contact avec vous sans délai pour vous apporter une solution immédiate et adaptée.`;
-      } else {
-        reply = `Bonjour ${name},\n\nNous vous remercions d\'avoir pris le temps de partager votre avis sur notre boutique. Vos retours nous permettent d\'améliorer constamment la qualité de nos créations et de notre service de livraison en Tunisie. Excellente journée à vous !`;
-      }
-      setGeneratedReply(reply);
-      setIsGeneratingReply(false);
-    }, 600);
-  };
+  const formatJobDate = (value: string) =>
+    new Date(value).toLocaleString(dateLocale, {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
   return (
     <DashboardPageWrapper
       breadcrumbs={[
-        { label: 'Accueil', href: '/hub/dashboard' },
-        { label: 'Outils & Support', href: '/hub/dashboard' },
-        { label: 'Studio IA', href: '/hub/dashboard/ai' },
+        { label: t('nav.home'), href: '/hub/dashboard' },
+        { label: t('dashboardPages.ai.title'), href: '/hub/dashboard/ai' },
       ]}
-      headerTitle="Studio d'Intelligence Artificielle Marchande"
-      headerSubtitle="Accélérez la rédaction de vos fiches produits, optimisez vos titres pour la recherche et générez des arguments de vente percutants."
+      headerTitle={t('dashboardPages.ai.title')}
+      headerSubtitle={t('dashboardPages.ai.subtitle')}
       headerIcon={Sparkles}
       statusBadge={
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-          <Zap className="w-3.5 h-3.5 text-indigo-500 fill-current animate-pulse" />
-          <span>Propulsé par Gemini AI</span>
+          <Zap className="w-3.5 h-3.5 text-indigo-500 fill-current" />
+          <span>{activeProviderLabel}</span>
         </div>
       }
       primaryAction={
@@ -381,7 +326,7 @@ export function SellerReGoAiStudio({
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>{refreshing ? 'Actualisation...' : 'Actualiser le Studio'}</span>
+          <span>{refreshing ? t('dashboardPages.ai.generating') : t('dashboardPages.ai.refresh')}</span>
         </button>
       }
       secondaryAction={
@@ -391,7 +336,7 @@ export function SellerReGoAiStudio({
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 transition-all shadow-2xs"
         >
           <Coins className="w-3.5 h-3.5 text-amber-500" />
-          <span>Acheter des Jetons</span>
+          <span>{t('dashboardPages.ai.buyTokensTitle')}</span>
         </button>
       }
       alertBanner={
@@ -408,242 +353,212 @@ export function SellerReGoAiStudio({
         ) : undefined
       }
       kpiStrip={
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <ReGoKpiHero
-            label="Jetons IA Disponibles"
-            value={remainingTokens}
-            hint={isUnlimited ? 'Quota illimité Formule Pro' : 'Jetons utilisables ce mois'}
-            icon={Sparkles}
-            accent={true}
-          />
-          <ReGoKpiHero
-            label="Jetons Consommés"
-            value={tokensUsed}
-            hint="Consommation cumulée"
-            icon={Coins}
-          />
-          <ReGoKpiHero
-            label="Tâches Complétées"
-            value={String(completedJobsCount)}
-            hint="Générations réussies"
-            icon={CheckCircle2}
-          />
-          <ReGoKpiHero
-            label="Tâches en Cours"
-            value={String(activeJobsCount)}
-            hint="En file de traitement"
-            icon={Clock}
-          />
-        </div>
+        loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-28 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-slate-50 dark:bg-slate-900 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <ReGoKpiHero
+              label={t('dashboardPages.ai.balanceLabel')}
+              value={remainingTokens}
+              hint={isUnlimited ? t('dashboardPages.ai.unlimitedPlan') : t('dashboardPages.ai.tokensUnit')}
+              icon={Sparkles}
+              accent={true}
+            />
+            <ReGoKpiHero
+              label={t('dashboardPages.ai.tokensUsed')}
+              value={tokensUsed}
+              icon={Coins}
+            />
+            <ReGoKpiHero
+              label={t('dashboardPages.ai.statsCompleted')}
+              value={String(completedJobsCount)}
+              icon={CheckCircle2}
+            />
+            <ReGoKpiHero
+              label={t('dashboardPages.ai.statsActive')}
+              value={String(activeJobsCount)}
+              icon={Clock}
+            />
+          </div>
+        )
       }
       filterToolbar={
         <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setActiveTab('desc')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'desc'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('copy')} className={tabButtonClass(activeTab === 'copy')}>
             <FileText className="w-4 h-4" />
-            <span>Fiche Produit Express</span>
+            <span>{t('dashboardPages.ai.pageCopyTitle')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('seo')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'seo'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('seo')} className={tabButtonClass(activeTab === 'seo')}>
             <Sparkles className="w-4 h-4" />
-            <span>Optimiseur SEO & Titres</span>
+            <span>{t('dashboardPages.ai.seoTitle')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('trans')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'trans'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Languages className="w-4 h-4" />
-            <span>Traducteur Commercial</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('review')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'review'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Réponse Avis Clients</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('compress')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'compress'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('compress')} className={tabButtonClass(activeTab === 'compress')}>
             <ImageIcon className="w-4 h-4" />
-            <span>Compression Images</span>
+            <span>{t('dashboardPages.ai.compressTitle')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'history'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Historique ({jobs.length})</span>
+          <button type="button" onClick={() => setActiveTab('history')} className={tabButtonClass(activeTab === 'history')}>
+            <HistoryIcon className="w-4 h-4" />
+            <span>{t('dashboardPages.ai.historyTitle')} ({jobs.length})</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'settings'
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
+          <button type="button" onClick={() => setActiveTab('settings')} className={tabButtonClass(activeTab === 'settings')}>
             <Settings className="w-4 h-4" />
-            <span>Packs & Clé API</span>
+            <span>{t('dashboardPages.ai.providerTitle')}</span>
           </button>
         </div>
       }
       mainContent={
         <div className="space-y-6">
-          {/* TAB 1: EXPRESS PRODUCT DESCRIPTION GENERATOR */}
-          {activeTab === 'desc' && (
+          {/* TAB 1: PAGE COPY HELPER (real /api/pd/ai/page-copy-helper) */}
+          {activeTab === 'copy' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-6 space-y-4">
                 <ReGoCard
-                  title="Générateur de Fiche Produit Express"
-                  subtitle="Renseignez les caractéristiques brutes pour obtenir un texte commercial persuasif"
+                  title={t('dashboardPages.ai.pageCopyTitle')}
+                  subtitle={t('dashboardPages.ai.subtitle')}
                   icon={FileText}
+                  badge={
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {priceFor('page_copy', 2)} {t('dashboardPages.ai.tokensPerProposal')}
+                    </span>
+                  }
                 >
                   <div className="space-y-4 pt-2">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Nom du produit ou modèle <span className="text-rose-500">*</span>
+                        {t('dashboardPages.ai.pageTitlePlaceholder')} <span className="text-rose-500 dark:text-rose-400">*</span>
                       </label>
                       <input
                         type="text"
-                        value={descName}
-                        onChange={(e) => setDescName(e.target.value)}
-                        placeholder="e.g. Sac cabas en cuir véritable marron fait main"
+                        value={pageTitle}
+                        onChange={(e) => onPageTitleChange(e.target.value)}
                         className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Mots-clés, matières & arguments clés
+                        {t('dashboardPages.ai.currentSeoTitlePlaceholder')}
                       </label>
                       <input
                         type="text"
-                        value={descKeywords}
-                        onChange={(e) => setDescKeywords(e.target.value)}
-                        placeholder="e.g. Cuir de chèvre, tannage végétal de Kairouan, fermoir laiton antique"
+                        value={currentSeoTitle}
+                        onChange={(e) => onCurrentSeoTitleChange(e.target.value)}
                         className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Ton rédactionnel
-                        </label>
-                        <select
-                          value={descTone}
-                          onChange={(e) => setDescTone(e.target.value as any)}
-                          className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                          <option value="artisan">Authentique & Artisanal</option>
-                          <option value="elegant">Élégant & Haut de gamme</option>
-                          <option value="modern">Moderne & Décontracté</option>
-                          <option value="promo">Vendeur & Promotionnel</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Format de sortie
-                        </label>
-                        <select
-                          value={descFormat}
-                          onChange={(e) => setDescFormat(e.target.value as any)}
-                          className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                          <option value="detailed">Détaillée avec sections</option>
-                          <option value="short">Synthétique (1 paragraphe)</option>
-                          <option value="bullets">Liste à puces (Bullet-points)</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.currentSeoDescriptionPlaceholder')}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={currentSeoDescription}
+                        onChange={(e) => onCurrentSeoDescriptionChange(e.target.value)}
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                      />
                     </div>
 
-                    <button
-                      type="button"
-                      disabled={!descName.trim() || isGeneratingDesc}
-                      onClick={handleGenerateDescription}
-                      className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/20"
-                    >
-                      {isGeneratingDesc ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Génération de la description par l'IA...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
-                          <span>Générer la description produit en 1-clic</span>
-                        </>
-                      )}
-                    </button>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.sectionsPlaceholder')}
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={sectionOutline}
+                        onChange={(e) => onSectionOutlineChange(e.target.value)}
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <select
+                        value={copyLanguage}
+                        onChange={(e) => onCopyLanguageChange(e.target.value as Language)}
+                        className="px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      >
+                        {Object.entries(languageLabelKeys).map(([value, key]) => (
+                          <option key={value} value={value}>{t(key)}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!pageTitle.trim() || copyGenerating}
+                        onClick={onPageCopy}
+                        className="flex-1 py-2.5 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md"
+                      >
+                        {copyGenerating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>{t('dashboardPages.ai.generating')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>{t('dashboardPages.ai.generateProposal')}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </ReGoCard>
               </div>
 
               <div className="lg:col-span-6 space-y-4">
                 <ReGoCard
-                  title="Résultat de la Rédaction"
-                  subtitle="Texte prêt à copier ou insérer directement dans votre catalogue"
+                  title={t('dashboardPages.ai.lastProposalTitle')}
+                  subtitle={t('dashboardPages.ai.feedbackCopyGenerated')}
                   badge={
-                    generatedDesc ? (
+                    copySuggestions ? (
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(generatedDesc, 'desc')}
+                        onClick={() =>
+                          copyToClipboard(
+                            `${copySuggestions.seo_title}\n${copySuggestions.seo_description}\n${copySuggestions.hero_title}\n${copySuggestions.cta}`,
+                            'copy_all',
+                          )
+                        }
                         className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800"
                       >
-                        {copiedKey === 'desc' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'desc' ? 'Copié !' : 'Copier le texte'}</span>
+                        {copiedKey === 'copy_all' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedKey === 'copy_all' ? 'Copié !' : t('dashboardPages.ai.copy')}</span>
                       </button>
                     ) : undefined
                   }
                 >
                   <div className="pt-2">
-                    {generatedDesc ? (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line select-all">
-                        {generatedDesc}
+                    {copySuggestions ? (
+                      <div className="space-y-2.5">
+                        {Object.entries(copySuggestions).map(([key, value]) => (
+                          <div
+                            key={key}
+                            onClick={() => copyToClipboard(String(value), `copy_${key}`)}
+                            className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {t(`dashboardPages.ai.copyFields.${key}`)}
+                              </span>
+                              {copiedKey === `copy_${key}` ? (
+                                <Check className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-slate-400" />
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
+                              {String(value)}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="py-14 text-center text-slate-400 dark:text-slate-600">
-                        <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
-                        <p className="text-xs font-semibold">Aucune description générée pour l'instant.</p>
-                        <p className="text-[11px] text-slate-400 mt-1">Renseignez le nom du produit à gauche puis cliquez sur générer.</p>
+                        <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-xs font-semibold">{t('dashboardPages.ai.errorPageTitleRequired')}</p>
                       </div>
                     )}
                   </div>
@@ -652,124 +567,106 @@ export function SellerReGoAiStudio({
             </div>
           )}
 
-          {/* TAB 2: SEO TITLES & METADATA */}
+          {/* TAB 2: SEO GENERATION (real /api/pd/ai/seo-generate) */}
           {activeTab === 'seo' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-5 space-y-4">
                 <ReGoCard
-                  title="Optimiseur de Titre & Mots-Clés SEO"
-                  subtitle="Générez 5 variantes de titres percutants calibrées pour Google et la marketplace"
+                  title={t('dashboardPages.ai.seoTitle')}
+                  subtitle={t('dashboardPages.ai.feedbackSeoStarted')}
                   icon={Sparkles}
+                  badge={
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {priceFor('seo_generation', 2)} {t('dashboardPages.ai.tokensPerProduct')}
+                    </span>
+                  }
                 >
                   <div className="space-y-4 pt-2">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Mot-clé ou intitulé d'article <span className="text-rose-500">*</span>
+                        {t('dashboardPages.ai.selectProduct')} <span className="text-rose-500 dark:text-rose-400">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={seoKeyword}
-                        onChange={(e) => setSeoKeyword(e.target.value)}
-                        placeholder="e.g. Robe traditionnelle brodée, Huile d'olive bio"
-                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
+                      <select
+                        value={seoProductId}
+                        onChange={(e) => onSeoProductIdChange(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      >
+                        <option value="">{t('dashboardPages.ai.selectProduct')}</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    <select
+                      value={seoLanguage}
+                      onChange={(e) => onSeoLanguageChange(e.target.value as Language)}
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                    >
+                      {Object.entries(languageLabelKeys).map(([value, key]) => (
+                        <option key={value} value={value}>{t(key)}</option>
+                      ))}
+                    </select>
 
                     <button
                       type="button"
-                      disabled={!seoKeyword.trim() || isGeneratingTitles}
-                      onClick={handleGenerateTitles}
+                      disabled={!seoProductId || generatingSeo}
+                      onClick={onSeoGenerate}
                       className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md"
                     >
-                      {isGeneratingTitles ? (
+                      {generatingSeo ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Calcul des meilleures variantes...</span>
+                          <span>{t('dashboardPages.ai.generating')}</span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4" />
-                          <span>Générer 5 Variantes de Titres SEO</span>
+                          <span>{t('dashboardPages.ai.generateSeo')}</span>
                         </>
                       )}
                     </button>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2">
-                        Ou optimiser un produit existant :
-                      </p>
-                      <div className="space-y-2">
-                        <select
-                          value={seoProductId}
-                          onChange={(e) => onSeoProductIdChange(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                        >
-                          <option value="">Sélectionner un produit du catalogue...</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.title}
-                            </option>
-                          ))}
-                        </select>
-
-                        <div className="flex gap-2">
-                          <select
-                            value={seoLanguage}
-                            onChange={(e) => onSeoLanguageChange(e.target.value as Language)}
-                            className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                          >
-                            <option value="fr">Français</option>
-                            <option value="ar">Arabe</option>
-                            <option value="en">Anglais</option>
-                          </select>
-                          <button
-                            type="button"
-                            disabled={!seoProductId || generatingSeo}
-                            onClick={onSeoGenerate}
-                            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-1"
-                          >
-                            {generatingSeo ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                            <span>Lancer SEO Catalogue</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </ReGoCard>
               </div>
 
               <div className="lg:col-span-7 space-y-4">
                 <ReGoCard
-                  title="Variantes SEO Suggérées"
-                  subtitle="Cliquez sur une variante pour la copier instantanément"
+                  title={t('dashboardPages.ai.lastProposalTitle')}
+                  subtitle={t('dashboardPages.ai.feedbackSeoStarted')}
                 >
-                  <div className="space-y-2.5 pt-2">
-                    {seoGeneratedTitles.length > 0 ? (
-                      seoGeneratedTitles.map((title, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => copyToClipboard(title, `seo_${idx}`)}
-                          className="p-3 bg-slate-50 dark:bg-slate-900/60 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 text-[10px] font-black flex items-center justify-center flex-shrink-0">
-                              {idx + 1}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                              {title}
-                            </span>
+                  <div className="pt-2 space-y-2.5">
+                    {seoProductId ? (
+                      (() => {
+                        const selected = products.find((p) => p.id === seoProductId);
+                        if (!selected) return null;
+                        return (
+                          <div className="space-y-3">
+                            <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                                {t('dashboardPages.ai.copyFields.seo_title')}
+                              </span>
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                {selected.seo_title || '—'}
+                              </p>
+                            </div>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                                {t('dashboardPages.ai.copyFields.seo_description')}
+                              </span>
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                {selected.seo_description || '—'}
+                              </p>
+                            </div>
                           </div>
-                          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                            {copiedKey === `seo_${idx}` ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                            <span>{copiedKey === `seo_${idx}` ? 'Copié !' : 'Copier'}</span>
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })()
                     ) : (
                       <div className="py-14 text-center text-slate-400 dark:text-slate-600">
-                        <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
-                        <p className="text-xs font-semibold">Aucune variante générée.</p>
-                        <p className="text-[11px] text-slate-400 mt-1">Saisissez un mot-clé pour lancer les propositions de titres.</p>
+                        <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-xs font-semibold">{t('dashboardPages.ai.selectProduct')}</p>
                       </div>
                     )}
                   </div>
@@ -778,267 +675,31 @@ export function SellerReGoAiStudio({
             </div>
           )}
 
-          {/* TAB 3: BILINGUAL TRANSLATOR */}
-          {activeTab === 'trans' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-6 space-y-4">
-                <ReGoCard
-                  title="Traducteur Commercial Bilingue"
-                  subtitle="Traduction adaptée au commerce électronique tunisien (Français ↔ Arabe)"
-                  icon={Languages}
-                >
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Sens de traduction :</span>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setTransDirection('fr_ar')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            transDirection === 'fr_ar'
-                              ? 'bg-indigo-600 text-white shadow-sm'
-                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                          }`}
-                        >
-                          Français → Arabe
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTransDirection('ar_fr')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            transDirection === 'ar_fr'
-                              ? 'bg-indigo-600 text-white shadow-sm'
-                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                          }`}
-                        >
-                          Arabe → Français
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Texte source à traduire
-                      </label>
-                      <textarea
-                        rows={5}
-                        value={transInput}
-                        onChange={(e) => setTransInput(e.target.value)}
-                        placeholder={
-                          transDirection === 'fr_ar'
-                            ? 'Collez ici la description, le titre ou les caractéristiques en français...'
-                            : 'أدخل هنا النص أو الوصف التجاري باللغة العربية...'
-                        }
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={!transInput.trim() || isTranslating}
-                      onClick={handleTranslate}
-                      className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md"
-                    >
-                      {isTranslating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Traduction commerciale en cours...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Languages className="w-4 h-4" />
-                          <span>Traduire fidèlement en 1-clic</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </ReGoCard>
-              </div>
-
-              <div className="lg:col-span-6 space-y-4">
-                <ReGoCard
-                  title="Résultat de la Traduction"
-                  subtitle="Texte traduit adapté au marché et prêt à l'emploi"
-                  badge={
-                    transResult ? (
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(transResult, 'trans')}
-                        className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800"
-                      >
-                        {copiedKey === 'trans' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'trans' ? 'Copié !' : 'Copier'}</span>
-                      </button>
-                    ) : undefined
-                  }
-                >
-                  <div className="pt-2">
-                    {transResult ? (
-                      <div
-                        dir={transDirection === 'fr_ar' ? 'rtl' : 'ltr'}
-                        className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line select-all"
-                      >
-                        {transResult}
-                      </div>
-                    ) : (
-                      <div className="py-14 text-center text-slate-400 dark:text-slate-600">
-                        <Languages className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
-                        <p className="text-xs font-semibold">Aucune traduction effectuée.</p>
-                        <p className="text-[11px] text-slate-400 mt-1">Collez votre texte source à gauche et appuyez sur traduire.</p>
-                      </div>
-                    )}
-                  </div>
-                </ReGoCard>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: REVIEW RESPONDER */}
-          {activeTab === 'review' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-6 space-y-4">
-                <ReGoCard
-                  title="Rédacteur de Réponses aux Avis Clients"
-                  subtitle="Générez des réponses courtoises, professionnelles et personnalisées à vos acheteurs"
-                  icon={MessageSquare}
-                >
-                  <div className="space-y-4 pt-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Prénom du client
-                        </label>
-                        <input
-                          type="text"
-                          value={reviewBuyerName}
-                          onChange={(e) => setReviewBuyerName(e.target.value)}
-                          placeholder="e.g. Youssef, Mariem"
-                          className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Note attribuée
-                        </label>
-                        <select
-                          value={reviewRating}
-                          onChange={(e) => setReviewRating(Number(e.target.value))}
-                          className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                          <option value={5}>★★★★★ (5 étoiles - Excellent)</option>
-                          <option value={4}>★★★★☆ (4 étoiles - Très bien)</option>
-                          <option value={3}>★★★☆☆ (3 étoiles - Moyen)</option>
-                          <option value={2}>★★☆☆☆ (2 étoiles - Insatisfait)</option>
-                          <option value={1}>★☆☆☆☆ (1 étoile - Réclamation)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Ton de la réponse
-                      </label>
-                      <select
-                        value={reviewTone}
-                        onChange={(e) => setReviewTone(e.target.value as any)}
-                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                      >
-                        <option value="grateful">Chaleureux & Reconnaissant (Avis Positifs)</option>
-                        <option value="professional">Professionnel & Rassurant</option>
-                        <option value="conciliatory">Conciliant & Orienté Solution (Réclamations)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Commentaire laissé par le client (optionnel)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        placeholder="e.g. Produit conforme et livraison rapide à Sfax !"
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={isGeneratingReply}
-                      onClick={handleGenerateReviewReply}
-                      className="w-full py-3 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md"
-                    >
-                      {isGeneratingReply ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Rédaction de la réponse...</span>
-                        </>
-                      ) : (
-                        <>
-                          <MessageSquare className="w-4 h-4" />
-                          <span>Générer la Réponse Recommandée</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </ReGoCard>
-              </div>
-
-              <div className="lg:col-span-6 space-y-4">
-                <ReGoCard
-                  title="Réponse Suggérée"
-                  subtitle="Prête à publier pour remercier ou fidéliser votre acheteur"
-                  badge={
-                    generatedReply ? (
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(generatedReply, 'reply')}
-                        className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800"
-                      >
-                        {copiedKey === 'reply' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'reply' ? 'Copié !' : 'Copier'}</span>
-                      </button>
-                    ) : undefined
-                  }
-                >
-                  <div className="pt-2">
-                    {generatedReply ? (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line select-all">
-                        {generatedReply}
-                      </div>
-                    ) : (
-                      <div className="py-14 text-center text-slate-400 dark:text-slate-600">
-                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
-                        <p className="text-xs font-semibold">Aucune réponse générée.</p>
-                        <p className="text-[11px] text-slate-400 mt-1">Configurez le profil de l'avis à gauche pour générer votre réponse.</p>
-                      </div>
-                    )}
-                  </div>
-                </ReGoCard>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: COMPRESSION TOOL */}
+          {/* TAB 3: COMPRESSION TOOL (real /api/pd/ai/compress) */}
           {activeTab === 'compress' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-6 space-y-4">
                 <ReGoCard
-                  title="Compression & Optimisation d'Images"
-                  subtitle="Réduisez le poids de vos visuels sans perte de netteté pour un chargement instantané"
+                  title={t('dashboardPages.ai.compressTitle')}
+                  subtitle={t('dashboardPages.ai.feedbackCompressStarted')}
                   icon={ImageIcon}
+                  badge={
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {priceFor('image_compression', 1)} {t('dashboardPages.ai.tokensPerImage')}
+                    </span>
+                  }
                 >
                   <div className="space-y-4 pt-2">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Associer à un produit (optionnel)
+                        {t('dashboardPages.ai.externalOrNoProduct')}
                       </label>
                       <select
                         value={compressProductId}
                         onChange={(e) => onCompressProductIdChange(e.target.value)}
                         className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
                       >
-                        <option value="">Sélectionner un produit...</option>
+                        <option value="">{t('dashboardPages.ai.externalOrNoProduct')}</option>
                         {products.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.title}
@@ -1049,14 +710,13 @@ export function SellerReGoAiStudio({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        URL de l'image à compresser <span className="text-rose-500">*</span>
+                        {t('dashboardPages.ai.imageUrlPlaceholder')} <span className="text-rose-500 dark:text-rose-400">*</span>
                       </label>
                       <input
-                        type="url"
+                        type="text"
                         value={compressUrl}
                         onChange={(e) => onCompressUrlChange(e.target.value)}
-                        placeholder="https://.../mon-image.jpg"
-                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
 
@@ -1069,12 +729,12 @@ export function SellerReGoAiStudio({
                       {compressing ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Optimisation de l'image en cours...</span>
+                          <span>{t('dashboardPages.ai.compressing')}</span>
                         </>
                       ) : (
                         <>
                           <ImageIcon className="w-4 h-4" />
-                          <span>Compresser l'Image (Gain ~70% de poids)</span>
+                          <span>{t('dashboardPages.ai.compress')}</span>
                         </>
                       )}
                     </button>
@@ -1084,8 +744,8 @@ export function SellerReGoAiStudio({
 
               <div className="lg:col-span-6 space-y-4">
                 <ReGoCard
-                  title="Aperçu du Visuel"
-                  subtitle="Contrôle visuel avant et après compression"
+                  title={t('dashboardPages.ai.jobTargetImage')}
+                  subtitle={t('dashboardPages.ai.viewCompressedImage')}
                 >
                   <div className="pt-2">
                     {compressUrl ? (
@@ -1103,7 +763,7 @@ export function SellerReGoAiStudio({
                     ) : (
                       <div className="aspect-video w-full rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
                         <ImageIcon className="w-8 h-8 mb-2 opacity-40" />
-                        <span className="text-xs font-semibold">Aucune image sélectionnée</span>
+                        <span className="text-xs font-semibold">{t('dashboardPages.ai.imageUrlPlaceholder')}</span>
                       </div>
                     )}
                   </div>
@@ -1112,22 +772,46 @@ export function SellerReGoAiStudio({
             </div>
           )}
 
-          {/* TAB 6: HISTORY TABLE */}
+          {/* TAB 4: HISTORY TABLE (real /api/pd/ai/history with filters) */}
           {activeTab === 'history' && (
             <ReGoCard
-              title="Historique des Tâches & Générations IA"
-              subtitle="Consultez tous les jobs d'intelligence artificielle exécutés sur votre boutique"
-              icon={Clock}
+              title={t('dashboardPages.ai.historyTitle')}
+              subtitle={`${meta?.total || jobs.length} ${t('dashboardPages.ai.jobsRecorded')}`}
+              icon={HistoryIcon}
+              actions={
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={historyType}
+                    onChange={(e) => onHistoryTypeChange(e.target.value as 'all' | AiJobType)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none"
+                  >
+                    <option value="all">{t('dashboardPages.ai.allTypes')}</option>
+                    {Object.entries(typeLabelKeys).map(([value, key]) => (
+                      <option key={value} value={value}>{t(key)}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={historyStatus}
+                    onChange={(e) => onHistoryStatusChange(e.target.value as 'all' | AiJobStatus)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none"
+                  >
+                    <option value="all">{t('dashboardPages.ai.allStatuses')}</option>
+                    {Object.entries(statusLabelKeys).map(([value, key]) => (
+                      <option key={value} value={value}>{t(key)}</option>
+                    ))}
+                  </select>
+                </div>
+              }
             >
               <div className="space-y-4 pt-2">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-2.5 px-3">Type de Tâche</th>
-                        <th className="py-2.5 px-3">Statut</th>
-                        <th className="py-2.5 px-3">Jetons Décomptés</th>
-                        <th className="py-2.5 px-3">Date de Création</th>
+                        <th className="py-2.5 px-3">{t('dashboardPages.ai.allTypes')}</th>
+                        <th className="py-2.5 px-3">{t('dashboardPages.ai.allStatuses')}</th>
+                        <th className="py-2.5 px-3">{t('dashboardPages.ai.tokensUnit')}</th>
+                        <th className="py-2.5 px-3">{t('dashboardPages.ai.page')}</th>
                         <th className="py-2.5 px-3 text-right">Détails</th>
                       </tr>
                     </thead>
@@ -1137,12 +821,12 @@ export function SellerReGoAiStudio({
                           <tr key={job.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
                             <td className="py-3 px-3">
                               <span className="font-bold capitalize text-slate-900 dark:text-white">
-                                {job.type.replace('_', ' ')}
+                                {t(typeLabelKeys[job.type]) || job.type.replace('_', ' ')}
                               </span>
                             </td>
                             <td className="py-3 px-3">
                               <ReGoStatusChip
-                                label={job.status}
+                                label={t(statusLabelKeys[job.status]) || job.status}
                                 status={
                                   job.status === 'completed'
                                     ? 'ok'
@@ -1154,22 +838,17 @@ export function SellerReGoAiStudio({
                             </td>
                             <td className="py-3 px-3">
                               <span className="font-bold text-amber-600 dark:text-amber-400">
-                                {job.tokens_consumed} tokens
+                                {job.tokens_consumed} {t('dashboardPages.ai.tokensUnit')}
                               </span>
                             </td>
-                            <td className="py-3 px-3 text-slate-500">
-                              {new Date(job.created_at).toLocaleString('fr-TN', {
-                                day: '2-digit',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                            <td className="py-3 px-3 text-slate-500 dark:text-slate-400">
+                              {formatJobDate(job.created_at)}
                             </td>
                             <td className="py-3 px-3 text-right">
                               <button
                                 type="button"
                                 onClick={() => setSelectedJob(job)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -1179,7 +858,7 @@ export function SellerReGoAiStudio({
                       ) : (
                         <tr>
                           <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
-                            Aucune tâche d'IA enregistrée pour le moment.
+                            {t('dashboardPages.ai.noJobs')}
                           </td>
                         </tr>
                       )}
@@ -1188,8 +867,8 @@ export function SellerReGoAiStudio({
                 </div>
 
                 {meta && meta.total_pages > 1 && (
-                  <div className="flex items-center justify-between pt-2 text-xs font-bold text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                    <span>Page {historyPage} sur {meta.total_pages}</span>
+                  <div className="flex items-center justify-between pt-2 text-xs font-bold text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
+                    <span>{t('dashboardPages.ai.page')} {historyPage} / {meta.total_pages}</span>
                     <div className="flex gap-1">
                       <button
                         type="button"
@@ -1197,7 +876,7 @@ export function SellerReGoAiStudio({
                         onClick={() => onHistoryPageChange(historyPage - 1)}
                         className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40"
                       >
-                        Précédent
+                        {t('dashboardPages.ai.previous')}
                       </button>
                       <button
                         type="button"
@@ -1205,7 +884,7 @@ export function SellerReGoAiStudio({
                         onClick={() => onHistoryPageChange(historyPage + 1)}
                         className="px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40"
                       >
-                        Suivant
+                        {t('dashboardPages.ai.next')}
                       </button>
                     </div>
                   </div>
@@ -1214,25 +893,36 @@ export function SellerReGoAiStudio({
             </ReGoCard>
           )}
 
-          {/* TAB 7: TOKEN PACKS & BYOK API KEY SETTINGS */}
+          {/* TAB 5: TOKEN PACKS & BYOK API KEY SETTINGS */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <ReGoCard
-                title="Recharge de Packs de Jetons IA"
-                subtitle="Achetez des packs de jetons supplémentaires pour continuer à générer sans interruption"
+                title={t('dashboardPages.ai.buyTokensTitle')}
+                subtitle={t('dashboardPages.ai.buyTokensSubtitle')}
                 icon={Coins}
+                badge={
+                  isUnlimited ? (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                      {t('dashboardPages.ai.unlimitedPlan')}
+                    </span>
+                  ) : undefined
+                }
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                  {tokenPacks.length > 0 ? (
+                  {isUnlimited ? (
+                    <div className="col-span-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {t('dashboardPages.ai.unlimitedIncluded')}
+                    </div>
+                  ) : tokenPacks.length > 0 ? (
                     tokenPacks.map((pack) => (
                       <div
                         key={pack.id}
                         className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col justify-between gap-4"
                       >
                         <div>
-                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{pack.label}</span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{pack.label}</span>
                           <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                            {pack.tokens.toLocaleString('fr-TN')} <span className="text-xs font-bold text-slate-400">tokens</span>
+                            {pack.tokens.toLocaleString(dateLocale)} <span className="text-xs font-bold text-slate-400">{t('dashboardPages.ai.tokensUnit')}</span>
                           </div>
                           <div className="mt-2 text-sm font-black text-indigo-600 dark:text-indigo-400">
                             {pack.price_tnd.toFixed(3)} TND
@@ -1246,88 +936,111 @@ export function SellerReGoAiStudio({
                           className="w-full py-2.5 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                         >
                           {buyingPackId === pack.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
-                          <span>Acheter ce Pack</span>
+                          <span>{t('dashboardPages.ai.buy')}</span>
                         </button>
                       </div>
                     ))
                   ) : (
                     <div className="col-span-3 py-6 text-center text-slate-400 text-xs">
-                      Aucun pack de jetons disponible actuellement.
+                      {t('dashboardPages.ai.noPacks')}
                     </div>
                   )}
                 </div>
               </ReGoCard>
 
               <ReGoCard
-                title="Fournisseur d'IA Personnalisé (Bring Your Own Key)"
-                subtitle="Connectez votre propre clé Gemini API pour des générations illimitées à vos propres coûts d'infrastructure"
+                title={t('dashboardPages.ai.providerTitle')}
+                subtitle={t('dashboardPages.ai.providerSubtitle')}
                 icon={Key}
+                badge={
+                  providerState?.config?.api_key_set ? (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                      {t('dashboardPages.ai.keyConfigured')}
+                    </span>
+                  ) : undefined
+                }
               >
-                <div className="space-y-4 pt-2 max-w-xl">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Fournisseur d'IA
-                    </label>
-                    <select
-                      value={providerForm.provider}
-                      onChange={(e) => onProviderFormChange((prev) => ({ ...prev, provider: e.target.value as AiProvider }))}
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                    >
-                      <option value="gemini">Google Gemini (Recommandé)</option>
-                      <option value="openai">OpenAI (GPT-4o / Mini)</option>
-                      <option value="claude">Anthropic Claude 3.5</option>
-                      <option value="custom">Endpoint Compatible Personnalisé</option>
-                    </select>
+                {providerState && !providerState.allowed ? (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs font-bold text-amber-800 dark:text-amber-400">
+                    {t('dashboardPages.ai.providerNotAllowed')}
                   </div>
+                ) : (
+                  <div className="space-y-4 pt-2 max-w-xl">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.providerTitle')}
+                      </label>
+                      <select
+                        value={providerForm.provider}
+                        onChange={(e) => onProviderFormChange((prev) => ({ ...prev, provider: e.target.value as AiProvider }))}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      >
+                        {Object.entries(providerLabelKeys).map(([value, key]) => (
+                          <option key={value} value={value}>{t(key)}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Modèle
-                    </label>
-                    <input
-                      type="text"
-                      value={providerForm.model}
-                      onChange={(e) => onProviderFormChange((prev) => ({ ...prev, model: e.target.value }))}
-                      placeholder="gemini-1.5-flash"
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.modelPlaceholder')}
+                      </label>
+                      <input
+                        type="text"
+                        value={providerForm.model}
+                        onChange={(e) => onProviderFormChange((prev) => ({ ...prev, model: e.target.value }))}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Clé d'API Secrète (API Key)
-                    </label>
-                    <input
-                      type="password"
-                      value={providerForm.api_key}
-                      onChange={(e) => onProviderFormChange((prev) => ({ ...prev, api_key: e.target.value }))}
-                      placeholder={providerState?.config?.api_key_set ? '•••••••• (Clé déjà enregistrée)' : 'Entrez votre clé API privée'}
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.baseUrlPlaceholder')}
+                      </label>
+                      <input
+                        type="text"
+                        value={providerForm.base_url}
+                        onChange={(e) => onProviderFormChange((prev) => ({ ...prev, base_url: e.target.value }))}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      />
+                    </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      disabled={savingProvider}
-                      onClick={onSaveProvider}
-                      className="py-2.5 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
-                    >
-                      {savingProvider ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                      <span>Enregistrer la Configuration</span>
-                    </button>
-                    {providerState?.config && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('dashboardPages.ai.apiKeyPlaceholder')}
+                      </label>
+                      <input
+                        type="password"
+                        value={providerForm.api_key}
+                        onChange={(e) => onProviderFormChange((prev) => ({ ...prev, api_key: e.target.value }))}
+                        placeholder={providerState?.config?.api_key_set ? t('dashboardPages.ai.newKeyPlaceholder') : t('dashboardPages.ai.apiKeyPlaceholder')}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
                       <button
                         type="button"
                         disabled={savingProvider}
-                        onClick={onDeleteProvider}
-                        className="py-2.5 px-4 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 transition-all"
+                        onClick={onSaveProvider}
+                        className="py-2.5 px-4 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
                       >
-                        Supprimer la Clé
+                        {savingProvider ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                        <span>{t('dashboardPages.ai.save')}</span>
                       </button>
-                    )}
+                      {providerState?.config && (
+                        <button
+                          type="button"
+                          disabled={savingProvider}
+                          onClick={onDeleteProvider}
+                          className="py-2.5 px-4 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 transition-all disabled:opacity-50"
+                        >
+                          {t('common.delete')}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </ReGoCard>
             </div>
           )}
@@ -1337,29 +1050,32 @@ export function SellerReGoAiStudio({
         <ReGoDrawer
           isOpen={!!selectedJob}
           onClose={() => setSelectedJob(null)}
-          title="Détail de la Tâche d'IA"
+          title={t('dashboardPages.ai.historyTitle')}
           subtitle={selectedJob ? `Réf: ${selectedJob.id}` : ''}
         >
           {selectedJob && (
             <div className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-300">
               <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Type :</span>
-                  <span className="font-bold text-slate-900 dark:text-white capitalize">{selectedJob.type}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.allTypes')}:</span>
+                  <span className="font-bold text-slate-900 dark:text-white capitalize">{t(typeLabelKeys[selectedJob.type]) || selectedJob.type}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Statut :</span>
-                  <ReGoStatusChip label={selectedJob.status} status={selectedJob.status === 'completed' ? 'ok' : 'err'} />
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.allStatuses')}:</span>
+                  <ReGoStatusChip
+                    label={t(statusLabelKeys[selectedJob.status]) || selectedJob.status}
+                    status={selectedJob.status === 'completed' ? 'ok' : selectedJob.status === 'failed' ? 'err' : 'warn'}
+                  />
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Jetons :</span>
-                  <span className="font-bold text-amber-600">{selectedJob.tokens_consumed} tokens</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.tokensUnit')}:</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">{selectedJob.tokens_consumed} {t('dashboardPages.ai.tokensUnit')}</span>
                 </div>
               </div>
 
               {selectedJob.output && (
                 <div>
-                  <span className="font-bold text-slate-900 dark:text-white block mb-1">Contenu généré :</span>
+                  <span className="font-bold text-slate-900 dark:text-white block mb-1">{t('dashboardPages.ai.lastProposalTitle')}:</span>
                   <pre className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(selectedJob.output, null, 2)}
                   </pre>
@@ -1368,7 +1084,7 @@ export function SellerReGoAiStudio({
 
               {selectedJob.error_message && (
                 <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl text-rose-700 dark:text-rose-400">
-                  <span className="font-bold block mb-1">Erreur :</span>
+                  <span className="font-bold block mb-1">{t('dashboardPages.ai.statusFailed')}:</span>
                   {selectedJob.error_message}
                 </div>
               )}

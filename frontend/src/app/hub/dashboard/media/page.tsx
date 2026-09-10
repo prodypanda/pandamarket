@@ -534,7 +534,7 @@ export default function SellerMediaPage() {
       </div>
 
       {/* Note on Automatic Product Picture Duplication */}
-      <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-3 text-xs text-slate-600 dark:text-slate-400 shadow-2xs">
+      <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3 text-xs text-slate-600 dark:text-slate-400 shadow-2xs">
         <Info className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
         <span>{t('dashboardPages.media.autoDuplicatedNote')}</span>
       </div>
@@ -818,7 +818,7 @@ export default function SellerMediaPage() {
         <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-850 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-900 text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200/60 dark:border-slate-800">
                 <tr>
                   <th className="p-3.5 font-medium">Aperçu</th>
                   <th className="p-3.5 font-medium">{t('dashboardPages.media.name')}</th>

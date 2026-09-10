@@ -375,13 +375,13 @@ export function SellerReGoCategories({
       filterToolbar={
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Rechercher une catégorie par nom ou slug..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+              className="w-full ps-8 pe-3 py-1.5 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
             />
           </div>
 
@@ -509,7 +509,7 @@ export function SellerReGoCategories({
                         {cat.product_count || 0} produit(s)
                       </span>
                       {cat.show_in_megamenu && (
-                        <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
+                        <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-bold">
                           Mégamenu
                         </span>
                       )}
@@ -536,7 +536,7 @@ export function SellerReGoCategories({
                       <button
                         type="button"
                         onClick={() => setDeletingCategory(cat)}
-                        className="p-1 rounded text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -608,7 +608,7 @@ export function SellerReGoCategories({
                 Slug URL vitrine
               </label>
               <div className="flex rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] overflow-hidden font-mono text-xs">
-                <span className="px-3 py-2 bg-[var(--rego-border,#dedede)]/40 text-[var(--rego-ink-2,#737373)] border-r border-[var(--rego-border,#dedede)]">
+                <span className="px-3 py-2 bg-[var(--rego-border,#dedede)]/40 text-[var(--rego-ink-2,#737373)] border-e border-[var(--rego-border,#dedede)]">
                   /collection/
                 </span>
                 <input
@@ -668,7 +668,7 @@ export function SellerReGoCategories({
                     Afficher dans le mégamenu de navigation
                   </span>
                   <span className="text-[11px] text-[var(--rego-ink-2,#737373)]">
-                    Permet aux acheteurs d'accéder au rayon directement depuis le menu principal.
+                    Permet aux acheteurs d&apos;accéder au rayon directement depuis le menu principal.
                   </span>
                 </div>
               </label>
@@ -818,12 +818,12 @@ function TreeCategoryRow({
               /{node.slug}
             </span>
             {node.product_count > 0 && (
-              <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                 {node.product_count} articles
               </span>
             )}
             {!node.is_active && (
-              <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                 Masqué
               </span>
             )}
@@ -867,7 +867,7 @@ function TreeCategoryRow({
           <button
             type="button"
             onClick={() => onRequestDelete(node)}
-            className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+            className="p-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded"
             title="Supprimer"
           >
             <Trash2 className="w-3.5 h-3.5" />

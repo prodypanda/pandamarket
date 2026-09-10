@@ -226,26 +226,25 @@ export function AdminReGoSystemLogs({
       headerSubtitle="Console d'inspection technique des flux de logs de production, exceptions applicatives, erreurs 500 et alertes de performance."
       headerIcon={Server}
       statusBadge={
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold text-[var(--rego-ink-2,#737373)]">Node: Healthy</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold text-[var(--rego-ink-2,#737373)]">PostgreSQL: OK</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold text-[var(--rego-ink-2,#737373)]">Redis: Actif</span>
-          </div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border">
+          {(summary.fatal + summary.errors + summary.unresolved_500s) === 0 ? (
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+              Aucune erreur critique détectée
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300">
+              <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+              {summary.fatal + summary.errors + summary.unresolved_500s} anomalie(s) dans les logs
+            </span>
+          )}
         </div>
       }
       secondaryAction={
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowClear(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 hover:bg-rose-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Purger</span>
@@ -271,9 +270,9 @@ export function AdminReGoSystemLogs({
       }
       alertBanner={
         summary.unresolved_500s > 0 || summary.fatal > 0 ? (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-900 text-xs font-semibold">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 text-xs font-semibold">
             <div className="flex items-center gap-2">
-              <ServerCrash className="w-4 h-4 text-rose-600 shrink-0" />
+              <ServerCrash className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>
                 Attention critique : {summary.unresolved_500s} erreur{summary.unresolved_500s > 1 ? 's' : ''} 500 et {summary.fatal} incident{summary.fatal > 1 ? 's' : ''} fatal{summary.fatal > 1 ? 's' : ''} nécessitent une intervention immédiate.
               </span>
@@ -301,9 +300,6 @@ export function AdminReGoSystemLogs({
             label="Erreurs & Crashs"
             value={(summary.errors + summary.fatal).toLocaleString('fr-TN')}
             hint={`${summary.fatal} fatal, ${summary.errors} errors`}
-            delta={summary.errors + summary.fatal}
-            deltaType={(summary.errors + summary.fatal) > 0 ? 'decrease' : 'neutral'}
-            deltaLabel="anomalies"
             icon={ServerCrash}
             accent={(summary.errors + summary.fatal) > 0}
           />
@@ -331,13 +327,13 @@ export function AdminReGoSystemLogs({
         <div className="space-y-3 border-b border-[var(--rego-border,#dedede)]/70 pb-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+              <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Filtrer dans la trace de pile (Stacktrace) ou message..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                className="w-full ps-9 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
               />
             </div>
 
@@ -370,7 +366,7 @@ export function AdminReGoSystemLogs({
 
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-              <span className="text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)] mr-1">
+              <span className="text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)] me-1">
                 Niveau :
               </span>
               {levelOptions.map((opt) => (
@@ -410,13 +406,13 @@ export function AdminReGoSystemLogs({
       mainContent={
         <ReGoCard noPadding>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[var(--rego-ink-2,#737373)] uppercase font-bold text-[10px] tracking-wider">
                   <th className="px-4 py-3">Niveau</th>
                   <th className="px-4 py-3">Horodatage (UTC+1)</th>
                   <th className="px-4 py-3">Service Source</th>
-                  <th className="px-4 py-3">Message d'Erreur & Route</th>
+                  <th className="px-4 py-3">Message d&apos;Erreur & Route</th>
                   <th className="px-4 py-3 text-center">Code HTTP</th>
                   <th className="px-4 py-3 text-center">Trace</th>
                   <th className="px-4 py-3 text-center">Action</th>
@@ -557,7 +553,7 @@ export function AdminReGoSystemLogs({
                     {selectedLog.message}
                   </h4>
                   {selectedLog.error_name && (
-                    <p className="font-mono text-xs font-bold text-rose-700 mt-1">
+                     <p className="font-mono text-xs font-bold text-rose-700 dark:text-rose-300 mt-1">
                       {selectedLog.error_name} {selectedLog.error_code ? `(${selectedLog.error_code})` : ''}
                     </p>
                   )}
@@ -655,12 +651,12 @@ export function AdminReGoSystemLogs({
           >
             <form onSubmit={onCreateLog} className="space-y-3 text-xs">
               {createError && (
-                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-800">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-800">
                   {createError}
                 </div>
               )}
               {createSuccess && (
-                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 text-emerald-800">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
                   {createSuccess}
                 </div>
               )}
@@ -740,12 +736,12 @@ export function AdminReGoSystemLogs({
           >
             <form onSubmit={onClearLogs} className="space-y-3 text-xs">
               {clearError && (
-                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-800">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-800">
                   {clearError}
                 </div>
               )}
               {clearSuccess && (
-                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 text-emerald-800">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
                   {clearSuccess}
                 </div>
               )}
@@ -791,7 +787,7 @@ export function AdminReGoSystemLogs({
 
               <div>
                 <label className="font-bold text-[var(--rego-fg,#111111)] block mb-1">
-                  Tapez <span className="font-mono text-rose-600">CLEAR LOGS</span> pour confirmer :
+                  Tapez <span className="font-mono text-rose-600 dark:text-rose-400">CLEAR LOGS</span> pour confirmer :
                 </label>
                 <input
                   type="text"

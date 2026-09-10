@@ -194,7 +194,7 @@ export function AdminReGoOverview({
       </div>
 
       {actionError && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-semibold">
           {actionError}
         </div>
       )}
@@ -270,7 +270,7 @@ export function AdminReGoOverview({
                           <span className="font-bold text-xs text-[var(--rego-fg,#111111)]">
                             {item.store_name}
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[var(--rego-ink-2,#737373)] font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[var(--rego-ink-2,#737373)] font-medium">
                             {item.owner_email}
                           </span>
                         </div>
@@ -288,10 +288,10 @@ export function AdminReGoOverview({
                           <span>•</span>
                           <div className="flex items-center gap-1 text-[10px]">
                             {item.cin_document_url && (
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">CIN</span>
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold">CIN</span>
                             )}
                             {item.rc_document_url && (
-                              <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">RNE/RC</span>
+                              <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold">RNE/RC</span>
                             )}
                           </div>
                         </div>
@@ -301,14 +301,14 @@ export function AdminReGoOverview({
                         <button
                           type="button"
                           onClick={() => setSelectedKyc(item)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Détails</span>
                         </button>
 
                         {isApproved ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 px-2.5 py-1.5 rounded bg-emerald-50">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 rounded bg-emerald-50 dark:bg-emerald-950/40">
                             <Check className="w-3.5 h-3.5" /> Approuvé
                           </span>
                         ) : (
@@ -379,7 +379,7 @@ export function AdminReGoOverview({
                         })}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <ReGoAmtBox amount={Math.abs(w.amount)} size="sm" />
                       <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Solde rest: {toNumber(w.balance_after).toFixed(3)} TND</p>
                     </div>
@@ -452,7 +452,7 @@ export function AdminReGoOverview({
                   <Phone className="w-3.5 h-3.5 text-[var(--rego-accent,#ad0505)]" />
                   <span>{selectedKyc.phone_number}</span>
                   {selectedKyc.phone_verified && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold">Vérifié</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold">Vérifié</span>
                   )}
                 </div>
               )}
@@ -461,7 +461,7 @@ export function AdminReGoOverview({
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Pièces Justificatives Fournies</h4>
               <div className="space-y-2">
-                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white">
+                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[var(--rego-ink-2,#737373)]" />
                     <div>
@@ -474,7 +474,7 @@ export function AdminReGoOverview({
                       href={selectedKyc.cin_document_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-100 transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
                       <span>Ouvrir</span>
@@ -482,7 +482,7 @@ export function AdminReGoOverview({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white">
+                <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[var(--rego-ink-2,#737373)]" />
                     <div>
@@ -495,7 +495,7 @@ export function AdminReGoOverview({
                       href={selectedKyc.rc_document_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-100 transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
                       <span>Ouvrir</span>

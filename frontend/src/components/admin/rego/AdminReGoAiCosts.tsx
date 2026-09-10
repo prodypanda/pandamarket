@@ -59,6 +59,7 @@ import {
 import { fetchWithCsrf } from '@/lib/api';
 import { useLocale } from '@/contexts/LocaleContext';
 import { DashboardPageWrapper } from '@/components/dashboard/DashboardPageWrapper';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   ReGoCard,
   ReGoSplitCard,
@@ -407,6 +408,7 @@ export function AdminReGoAiCosts() {
   });
   const [savingProvider, setSavingProvider] = useState(false);
   const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null);
+  const [deleteProviderTarget, setDeleteProviderTarget] = useState<{ id: string; label: string } | null>(null);
   const [savingPricing, setSavingPricing] = useState(false);
 
   // Routing
@@ -685,9 +687,13 @@ export function AdminReGoAiCosts() {
     }
   };
 
-  const handleDeleteProvider = async (id: string, label: string) => {
-    if (!window.confirm(`Voulez-vous vraiment supprimer le fournisseur IA "${label}" ?`)) return;
+  const handleDeleteProvider = (id: string, label: string) => {
+    setDeleteProviderTarget({ id, label });
+  };
 
+  const confirmDeleteProvider = async () => {
+    if (!deleteProviderTarget) return;
+    const { id, label } = deleteProviderTarget;
     setDeletingProviderId(id);
     try {
       const res = await fetchWithCsrf(`/api/pd/admin/ai-providers/${id}`, {
@@ -699,6 +705,7 @@ export function AdminReGoAiCosts() {
 
       await fetchAllData();
       showFeedback(`Fournisseur "${label}" supprimé.`);
+      setDeleteProviderTarget(null);
     } catch (err: any) {
       showFeedback(err?.message || 'Erreur lors de la suppression', 'error');
     } finally {
@@ -889,8 +896,8 @@ export function AdminReGoAiCosts() {
             <div
               className={`px-3 py-1.5 rounded-[var(--rego-r,8px)] text-xs font-bold animate-fade-in flex items-center gap-1.5 ${
                 feedbackType === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200'
               }`}
             >
               {feedbackType === 'success' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
@@ -955,7 +962,7 @@ export function AdminReGoAiCosts() {
               <span className="text-[11px] font-bold text-[var(--rego-ink-2,#737373)] uppercase tracking-wider block">
                 Jetons Déduits du Solde
               </span>
-              <p className="text-xl font-mono font-black text-emerald-700">
+              <p className="text-xl font-mono font-black text-emerald-700 dark:text-emerald-300">
                 {stats.credits.tokens_used.toLocaleString('fr-TN')} <span className="text-xs font-normal text-[var(--rego-ink-2,#737373)]">tok</span>
               </p>
               <span className="text-[10px] text-[var(--rego-ink-3,#949494)] block">
@@ -971,7 +978,7 @@ export function AdminReGoAiCosts() {
                 {stats.estimated_cost_tnd.toFixed(3)} <span className="text-xs font-normal text-[var(--rego-ink-2,#737373)]">TND</span>
               </p>
               <span className="text-[10px] text-[var(--rego-ink-3,#949494)] block">
-                Équivalent devises d'après barème
+                Équivalent devises d&apos;après barème
               </span>
             </div>
           </div>
@@ -1044,7 +1051,7 @@ export function AdminReGoAiCosts() {
                     </div>
                     <div className="flex justify-between items-center text-[10px] text-[var(--rego-ink-3,#949494)] font-mono pt-2 border-t border-[var(--rego-border,#dedede)] mt-2">
                       <span>Il y a 30 jours</span>
-                      <span>Aujourd'hui</span>
+                      <span>Aujourd&apos;hui</span>
                     </div>
                   </ReGoCard>
                 </div>
@@ -1126,7 +1133,7 @@ export function AdminReGoAiCosts() {
                                 </span>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-end">
                               <span className="font-mono font-bold text-xs text-[var(--rego-accent,#ad0505)]">
                                 {c.tokens_used.toLocaleString('fr-TN')}
                               </span>
@@ -1146,7 +1153,7 @@ export function AdminReGoAiCosts() {
                     subtitle="20 dernières requêtes exécutées"
                     icon={Activity}
                   >
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-80 overflow-y-auto pe-1">
                       {(!stats.recent_activity || stats.recent_activity.length === 0) ? (
                         <p className="text-xs text-[var(--rego-ink-3,#949494)] py-6 text-center">
                           Aucune activité récente.
@@ -1214,12 +1221,12 @@ export function AdminReGoAiCosts() {
                   <span className="font-bold text-[var(--rego-fg,#111111)]">{historySummary.total}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-emerald-700 block">Complétés</span>
-                  <span className="font-bold text-emerald-700">{historySummary.completed_count}</span>
+                  <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 block">Complétés</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{historySummary.completed_count}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-rose-700 block">Échoués</span>
-                  <span className="font-bold text-rose-700">{historySummary.failed_count}</span>
+                  <span className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-300 block">Échoués</span>
+                  <span className="font-bold text-rose-700 dark:text-rose-300">{historySummary.failed_count}</span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[var(--rego-accent,#ad0505)] block">Tokens Déduits</span>
@@ -1232,14 +1239,14 @@ export function AdminReGoAiCosts() {
               {/* Filters Bar */}
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <div className="relative flex-1 min-w-[200px]">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                  <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                   <input
                     type="text"
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && fetchHistory()}
                     placeholder="Rechercher boutique, ID job, e-mail..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                    className="w-full ps-8 pe-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
                   />
                 </div>
 
@@ -1287,15 +1294,15 @@ export function AdminReGoAiCosts() {
 
               {/* Table */}
               <div className="overflow-x-auto rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)]">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-start text-xs">
                   <thead className="bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-ink-2,#737373)] uppercase text-[10px] font-bold tracking-wider border-b border-[var(--rego-border,#dedede)]">
                     <tr>
                       <th className="px-4 py-2.5">Job ID</th>
                       <th className="px-4 py-2.5">Boutique & Demandeur</th>
                       <th className="px-4 py-2.5">Opération</th>
                       <th className="px-4 py-2.5">Modèle</th>
-                      <th className="px-4 py-2.5 text-right">Tokens</th>
-                      <th className="px-4 py-2.5 text-right">Durée</th>
+                       <th className="px-4 py-2.5 text-end">Tokens</th>
+                       <th className="px-4 py-2.5 text-end">Durée</th>
                       <th className="px-4 py-2.5">Statut</th>
                       <th className="px-4 py-2.5">Date</th>
                       <th className="px-4 py-2.5 text-center">Inspecter</th>
@@ -1337,10 +1344,10 @@ export function AdminReGoAiCosts() {
                           <td className="px-4 py-3 font-mono text-[11px] text-[var(--rego-ink-2,#737373)]">
                             {job.provider_label || 'gemini-1.5-flash'}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-[var(--rego-accent,#ad0505)]">
+                           <td className="px-4 py-3 text-end font-mono font-bold text-[var(--rego-accent,#ad0505)]">
                             {job.tokens_consumed ? job.tokens_consumed.toLocaleString('fr-TN') : 0}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-[11px] text-[var(--rego-ink-2,#737373)]">
+                           <td className="px-4 py-3 text-end font-mono text-[11px] text-[var(--rego-ink-2,#737373)]">
                             {job.duration_seconds !== null ? `${job.duration_seconds.toFixed(2)}s` : '-'}
                           </td>
                           <td className="px-4 py-3">
@@ -1453,7 +1460,7 @@ export function AdminReGoAiCosts() {
                           {/* Tier 1: Primary */}
                           <div>
                             <label className="text-[10px] font-bold text-[var(--rego-fg,#111111)] uppercase tracking-wider block mb-1 flex items-center justify-between">
-                              <span className="text-emerald-700 flex items-center gap-1">
+                              <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                                 <Check className="w-3 h-3" /> Tier 1 : Modèle Principal
                               </span>
                             </label>
@@ -1572,7 +1579,7 @@ export function AdminReGoAiCosts() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {providers.length === 0 ? (
                   <div className="col-span-full py-12 text-center text-xs text-[var(--rego-ink-3,#949494)] border border-dashed rounded-[var(--rego-r,8px)]">
-                    Aucun fournisseur d'IA configuré. Cliquez sur "Ajouter un Fournisseur" pour en enregistrer un.
+                    Aucun fournisseur d&apos;IA configuré. Cliquez sur &quot;Ajouter un Fournisseur&quot; pour en enregistrer un.
                   </div>
                 ) : (
                   providers.map((prov) => (
@@ -1589,7 +1596,7 @@ export function AdminReGoAiCosts() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           {prov.is_default && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800">
+                             <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:text-amber-300">
                               Défaut
                             </span>
                           )}
@@ -1607,7 +1614,7 @@ export function AdminReGoAiCosts() {
                         </div>
                         <div className="flex justify-between text-[var(--rego-ink-2,#737373)]">
                           <span>Clé API</span>
-                          <span className={prov.api_key_set ? 'font-semibold text-emerald-600' : 'text-rose-600 font-semibold'}>
+                          <span className={prov.api_key_set ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 font-semibold'}>
                             {prov.api_key_set ? 'Configurée ••••' : 'Non renseignée'}
                           </span>
                         </div>
@@ -1637,7 +1644,7 @@ export function AdminReGoAiCosts() {
                         <button
                           onClick={() => handleDeleteProvider(prov.id, prov.label)}
                           disabled={deletingProviderId === prov.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 hover:bg-rose-100 text-[11px] font-bold text-rose-700 disabled:opacity-50"
+                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-[11px] font-bold text-rose-700 dark:text-rose-300 disabled:opacity-50"
                         >
                           <Trash2 className="w-3 h-3" />
                           <span>Supprimer</span>
@@ -1661,7 +1668,7 @@ export function AdminReGoAiCosts() {
                   <button
                     key={tpl.prompt_key}
                     onClick={() => handleSelectPrompt(tpl.prompt_key)}
-                    className={`w-full text-left p-3 rounded-[var(--rego-r,8px)] border transition-all text-xs ${
+                    className={`w-full text-start p-3 rounded-[var(--rego-r,8px)] border transition-all text-xs ${
                       selectedPromptKey === tpl.prompt_key
                         ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-surface,#f5f5f5)] font-bold'
                         : 'border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] hover:bg-[var(--rego-surface,#f5f5f5)]/50'
@@ -1696,7 +1703,7 @@ export function AdminReGoAiCosts() {
                     {promptTemplates.find((t) => t.prompt_key === selectedPromptKey)?.variables && (
                       <div className="p-2.5 rounded-[var(--rego-r,8px)] bg-[var(--rego-surface,#f5f5f5)]/60 border border-[var(--rego-border,#dedede)] space-y-1.5">
                         <span className="text-[10px] font-bold text-[var(--rego-ink-2,#737373)] uppercase tracking-wider block">
-                          Variables d'injection disponibles (cliquez pour insérer) :
+                          Variables d&apos;injection disponibles (cliquez pour insérer) :
                         </span>
                         <div className="flex flex-wrap gap-1.5">
                           {promptTemplates
@@ -1781,7 +1788,7 @@ export function AdminReGoAiCosts() {
                         max={10000}
                         value={item.tokens_required}
                         onChange={(e) => handlePricingChange(item.job_type, parseInt(e.target.value, 10) || 0)}
-                        className="w-16 p-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-right font-mono font-bold text-xs text-[var(--rego-accent,#ad0505)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                        className="w-16 p-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-end font-mono font-bold text-xs text-[var(--rego-accent,#ad0505)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
                       />
                       <span className="text-[11px] font-semibold text-[var(--rego-ink-2,#737373)]">tok</span>
                     </div>
@@ -1849,8 +1856,8 @@ export function AdminReGoAiCosts() {
                   </div>
 
                   {selectedJob.error_message && (
-                    <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 text-rose-900 space-y-1">
-                      <span className="font-bold block text-[11px]">Message d'Erreur LLM :</span>
+                    <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-300 space-y-1">
+                      <span className="font-bold block text-[11px]">Message d&apos;Erreur LLM :</span>
                       <p className="font-mono text-[11px] whitespace-pre-wrap">{selectedJob.error_message}</p>
                     </div>
                   )}
@@ -1861,7 +1868,7 @@ export function AdminReGoAiCosts() {
               {drawerTab === 'input' && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-[var(--rego-fg,#111111)]">Données d'Entrée (Input Meta)</span>
+                    <span className="font-bold text-[var(--rego-fg,#111111)]">Données d&apos;Entrée (Input Meta)</span>
                     <button
                       onClick={() => copyToClipboard(JSON.stringify(selectedJob.input_meta, null, 2), 'input')}
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--rego-accent,#ad0505)] hover:underline"
@@ -1987,7 +1994,7 @@ export function AdminReGoAiCosts() {
               </div>
 
               {testTelemetry && (
-                <div className="p-2.5 rounded-[var(--rego-r,8px)] bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] flex justify-between font-mono">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 dark:text-emerald-300 text-[11px] flex justify-between font-mono">
                   <span>Modèle : {testTelemetry.provider}</span>
                   <span>Temps : {testTelemetry.duration}ms</span>
                   <span>Tokens : {testTelemetry.tokens}</span>
@@ -2050,7 +2057,7 @@ export function AdminReGoAiCosts() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-[var(--rego-fg,#111111)] block mb-1">Libellé d'Affichage</label>
+                  <label className="font-bold text-[var(--rego-fg,#111111)] block mb-1">Libellé d&apos;Affichage</label>
                   <input
                     type="text"
                     value={providerForm.label}
@@ -2127,6 +2134,17 @@ export function AdminReGoAiCosts() {
               </div>
             </div>
           </ReGoModal>
+
+          <ConfirmDialog
+            isOpen={!!deleteProviderTarget}
+            onClose={() => setDeleteProviderTarget(null)}
+            onConfirm={() => void confirmDeleteProvider()}
+            title="Supprimer le fournisseur IA"
+            description={`Voulez-vous vraiment supprimer le fournisseur IA « ${deleteProviderTarget?.label || ''} » ? Cette action est irréversible.`}
+            confirmLabel="Supprimer"
+            variant="danger"
+            loading={!!deletingProviderId}
+          />
         </>
       }
     />

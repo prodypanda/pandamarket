@@ -182,8 +182,19 @@ export function SellerReGoFinancial({
     return getTunisianBank(accountingProfile.bank_rib);
   }, [accountingProfile.bank_rib]);
 
-  // Aggregate monthly periods from real orders
+  // Aggregate monthly periods from real orders + real wallet commission entries
   const monthlyStatements = useMemo(() => {
+    // Real platform commissions deducted from the wallet, indexed by YYYY-MM
+    const commissionByMonth = new Map<string, number>();
+    transactions.forEach((tx) => {
+      if (tx.type !== 'commission') return;
+      const d = new Date(tx.created_at);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const amount = Math.abs(toNumber(tx.amount));
+      commissionByMonth.set(key, (commissionByMonth.get(key) || 0) + amount);
+    });
+
     const buckets = new Map<string, {
       periodLabel: string;
       orderCount: number;
@@ -213,13 +224,13 @@ export function SellerReGoFinancial({
 
       const gross = toNumber(order.store_total || order.total);
       const shipping = toNumber(order.store_shipping_total);
-      // Platform commission: estimated 8% or based on subtotal
-      const commission = toNumber(order.store_subtotal) * 0.08;
+      // Platform commission: real wallet ledger entries for this month (0 when ledger has none)
+      const commission = commissionByMonth.get(key) || 0;
       const net = Math.max(0, gross - commission);
 
       current.orderCount += 1;
       current.grossSales += gross;
-      current.commissionTotal += commission;
+      current.commissionTotal = commission;
       current.shippingTotal += shipping;
       current.netRevenue += net;
       current.orders.push(order);
@@ -230,7 +241,7 @@ export function SellerReGoFinancial({
     return Array.from(buckets.entries())
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([_, data]) => data);
-  }, [orders, selectedYear, localeStr]);
+  }, [orders, transactions, selectedYear, localeStr]);
 
   // Filtered orders for Grand Livre
   const filteredOrders = useMemo(() => {
@@ -254,11 +265,12 @@ export function SellerReGoFinancial({
       .reduce((acc, o) => acc + toNumber(o.store_total || o.total), 0);
   }, [orders]);
 
+  // Total commissions actually deducted from the wallet ledger
   const totalCommissions = useMemo(() => {
-    return orders
-      .filter((o) => o.payment_status === 'captured')
-      .reduce((acc, o) => acc + toNumber(o.store_subtotal) * 0.08, 0);
-  }, [orders]);
+    return transactions
+      .filter((tx) => tx.type === 'commission')
+      .reduce((acc, tx) => acc + Math.abs(toNumber(tx.amount)), 0);
+  }, [transactions]);
 
   // VAT calculations
   const vatRateNum = Number(accountingProfile.vat_rate) || 19;
@@ -318,14 +330,27 @@ export function SellerReGoFinancial({
         </div>
       }
       primaryAction={
-        <button
-          type="button"
-          onClick={onExportOrders}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Exporter le Grand Livre (CSV)</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onExportOrders}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Exporter le Grand Livre (CSV)</span>
+          </button>
+          {onExportTransactions && (
+            <button
+              type="button"
+              onClick={onExportTransactions}
+              disabled={transactions.length === 0}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Transactions</span>
+            </button>
+          )}
+        </div>
       }
       secondaryAction={
         <button
@@ -389,35 +414,23 @@ export function SellerReGoFinancial({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           <ReGoKpiHero
             label="Chiffre d'Affaires Net Encaissé"
-            value={<ReGoAmtBox amount={totalGrossCaptured > 0 ? totalGrossCaptured : toNumber(orderSummary?.captured_revenue)} />}
+            value={loading ? '—' : <ReGoAmtBox amount={totalGrossCaptured > 0 ? totalGrossCaptured : toNumber(orderSummary?.captured_revenue)} />}
             hint="Fonds validés et payés par les acheteurs"
-            delta={14.8}
-            deltaLabel="ce mois"
-            deltaType="increase"
           />
           <ReGoKpiHero
-            label="Commissions Marketplace Facturées"
-            value={<ReGoAmtBox amount={totalCommissions} />}
-            hint="Frais prélevés sur les commandes finalisées"
-            delta={8.0}
-            deltaLabel="taux moyen"
-            deltaType="neutral"
+            label="Commissions Marketplace Prélevées"
+            value={loading ? '—' : <ReGoAmtBox amount={totalCommissions} />}
+            hint="Retenues réelles du portefeuille vendeur"
           />
           <ReGoKpiHero
             label="TVA Collectée Réversible"
-            value={<ReGoAmtBox amount={totalVatCollected} />}
+            value={loading ? '—' : <ReGoAmtBox amount={totalVatCollected} />}
             hint={isVatRegistered ? `Taux standard appliqué: ${vatRateNum}%` : 'Régime franchise en base'}
-            delta={isVatRegistered ? 19 : 0}
-            deltaLabel={isVatRegistered ? 'Trimestriel' : 'Exonéré'}
-            deltaType="neutral"
           />
           <ReGoKpiHero
-            label="Retenues à la Source Opérées"
-            value={<ReGoAmtBox amount={0} />}
-            hint="Attestations fiscales B2B de retenue"
-            delta={0}
-            deltaLabel="TND"
-            deltaType="neutral"
+            label="Solde Portefeuille Disponible"
+            value={loading ? '—' : <ReGoAmtBox amount={toNumber(wallet?.balance)} />}
+            hint={wallet ? `Escrow en attente: ${toNumber(wallet.pending_balance).toFixed(3)} TND` : 'Portefeuille non initialisé'}
           />
         </div>
       }
@@ -464,13 +477,13 @@ export function SellerReGoFinancial({
 
             {activeTab === 'ledger' && (
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
+                <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
                 <input
                   type="text"
                   placeholder="Rechercher commande, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] outline-none placeholder:text-[var(--rego-ink-2,#737373)] w-52"
+                  className="ps-8 pe-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] outline-none placeholder:text-[var(--rego-ink-2,#737373)] w-52"
                 />
               </div>
             )}
@@ -488,12 +501,12 @@ export function SellerReGoFinancial({
               {monthlyStatements.length === 0 ? (
                 <div className="text-center py-12 text-[var(--rego-ink-2,#737373)]">
                   <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-xs font-bold">Aucune transaction comptable enregistrée pour l'exercice {selectedYear}.</p>
+                  <p className="text-xs font-bold">Aucune transaction comptable enregistrée pour l&apos;exercice {selectedYear}.</p>
                   <p className="text-[11px]">Les commandes livrées et payées alimentent automatiquement ce tableau.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] text-[var(--rego-ink-2,#737373)] font-bold">
                         <th className="py-2.5 px-3">Période Fiscale</th>
@@ -502,7 +515,7 @@ export function SellerReGoFinancial({
                         <th className="py-2.5 px-3">Commissions (TND)</th>
                         <th className="py-2.5 px-3">Frais Livraison (TND)</th>
                         <th className="py-2.5 px-3">Revenu Net Vendeur</th>
-                        <th className="py-2.5 px-3 text-right">Actions & Justificatif</th>
+                        <th className="py-2.5 px-3 text-end">Actions & Justificatif</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -535,7 +548,7 @@ export function SellerReGoFinancial({
                           <td className="py-3 px-3">
                             <ReGoAmtBox amount={statement.netRevenue} />
                           </td>
-                          <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3 px-3 text-end" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => setSelectedPeriod(statement)}
@@ -567,7 +580,7 @@ export function SellerReGoFinancial({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] text-[var(--rego-ink-2,#737373)] font-bold">
                         <th className="py-2.5 px-3">N° Commande</th>
@@ -577,7 +590,7 @@ export function SellerReGoFinancial({
                         <th className="py-2.5 px-3">Sous-total</th>
                         <th className="py-2.5 px-3">Port</th>
                         <th className="py-2.5 px-3">Total TTC</th>
-                        <th className="py-2.5 px-3 text-right">Détail</th>
+                        <th className="py-2.5 px-3 text-end">Détail</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -630,7 +643,7 @@ export function SellerReGoFinancial({
                             <td className="py-3 px-3">
                               <ReGoAmtBox amount={totalAmt} />
                             </td>
-                            <td className="py-3 px-3 text-right">
+                            <td className="py-3 px-3 text-end">
                               <ChevronRight className="w-4 h-4 inline text-[var(--rego-ink-2,#737373)]" />
                             </td>
                           </tr>
@@ -667,13 +680,13 @@ export function SellerReGoFinancial({
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                      <table className="w-full text-start text-xs border-collapse">
                         <thead>
                           <tr className="border-b border-[var(--rego-border,#dedede)] text-[var(--rego-ink-2,#737373)] font-bold">
                             <th className="py-2 px-3">Taux Applicable</th>
                             <th className="py-2 px-3">Base Imposable Hors Taxe (HT)</th>
                             <th className="py-2 px-3">TVA Collectée (TND)</th>
-                            <th className="py-2 px-3 text-right">Total TTC (TND)</th>
+                            <th className="py-2 px-3 text-end">Total TTC (TND)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -688,7 +701,7 @@ export function SellerReGoFinancial({
                               <td className="py-3 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
                                 {totalVatCollected.toFixed(3)} TND
                               </td>
-                              <td className="py-3 px-3 text-right">
+                              <td className="py-3 px-3 text-end">
                                 <ReGoAmtBox amount={totalGrossCaptured} />
                               </td>
                             </tr>
@@ -699,7 +712,7 @@ export function SellerReGoFinancial({
                               </td>
                               <td className="py-3 px-3 font-mono">{totalGrossCaptured.toFixed(3)} TND</td>
                               <td className="py-3 px-3 font-mono">0.000 TND</td>
-                              <td className="py-3 px-3 text-right">
+                              <td className="py-3 px-3 text-end">
                                 <ReGoAmtBox amount={totalGrossCaptured} />
                               </td>
                             </tr>
@@ -719,10 +732,10 @@ export function SellerReGoFinancial({
                       <strong>1. Facturation électronique :</strong> Tout commerçant immatriculé au RNE doit délivrer une facture numérotée selon une suite chronologique ininterrompue.
                     </p>
                     <p>
-                      <strong>2. Timbre fiscal :</strong> Le droit de timbre fiscal tunisien (1.000 TND par facture émise) doit être acquitté conformément à l'article 39 du Code des Droits d'Enregistrement et de Timbre.
+                      <strong>2. Timbre fiscal :</strong> Le droit de timbre fiscal tunisien (1.000 TND par facture émise) doit être acquitté conformément à l&apos;article 39 du Code des Droits d&apos;Enregistrement et de Timbre.
                     </p>
                     <p>
-                      <strong>3. Retenue à la source (B2B) :</strong> Lors de transactions entre professionnels (B2B), une retenue de 1.5% s'applique sur les montants supérieurs à 1,000 TND TTC.
+                      <strong>3. Retenue à la source (B2B) :</strong> Lors de transactions entre professionnels (B2B), une retenue de 1.5% s&apos;applique sur les montants supérieurs à 1,000 TND TTC.
                     </p>
                   </div>
                 </ReGoCard>
@@ -747,7 +760,7 @@ export function SellerReGoFinancial({
                       className="w-full flex items-center justify-center gap-2 py-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] font-bold text-xs hover:opacity-90 transition-opacity"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Télécharger l'Attestation Annuelle</span>
+                      <span>Télécharger l&apos;Attestation Annuelle</span>
                     </button>
                   </div>
                 </ReGoCard>
@@ -851,7 +864,7 @@ export function SellerReGoFinancial({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[var(--rego-fg,#111111)]">
-                        Statut d'Assujettissement
+                        Statut d&apos;Assujettissement
                       </label>
                       <select
                         value={accountingProfile.vat_status || 'not_registered'}
@@ -885,7 +898,7 @@ export function SellerReGoFinancial({
                 {/* Coordonnées Bancaires Tunisiennes */}
                 <div className="space-y-4 pt-4 border-t border-[var(--rego-border,#dedede)]/70">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--rego-accent,#ad0505)]">
-                    3. Relevé d'Identité Bancaire (RIB Tunisien Modulo 97)
+                    3. Relevé d&apos;Identité Bancaire (RIB Tunisien Modulo 97)
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -925,7 +938,7 @@ export function SellerReGoFinancial({
 
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-[var(--rego-fg,#111111)]">
-                        Nom de l'Établissement Bancaire
+                        Nom de l&apos;Établissement Bancaire
                       </label>
                       <input
                         type="text"
@@ -979,7 +992,7 @@ export function SellerReGoFinancial({
               <div className="space-y-6 text-xs">
                 <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Période d'imposition :</span>
+                    <span className="text-[var(--rego-ink-2,#737373)]">Période d&apos;imposition :</span>
                     <span className="font-bold text-[var(--rego-fg,#111111)]">{selectedPeriod.periodLabel}</span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -987,7 +1000,7 @@ export function SellerReGoFinancial({
                     <span className="font-bold text-[var(--rego-fg,#111111)]">{selectedPeriod.orderCount}</span>
                   </div>
                   <div className="flex justify-between items-center border-t border-[var(--rego-border,#dedede)]/60 pt-2">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Chiffre d'Affaires Brut TTC :</span>
+                    <span className="text-[var(--rego-ink-2,#737373)]">Chiffre d&apos;Affaires Brut TTC :</span>
                     <span className="font-mono font-bold text-[var(--rego-fg,#111111)]">
                       {selectedPeriod.grossSales.toFixed(3)} TND
                     </span>
@@ -1056,13 +1069,13 @@ export function SellerReGoFinancial({
                     <span className="font-mono font-bold text-[var(--rego-fg,#111111)]">{selectedOrder.id}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Date d'émission :</span>
+                    <span className="text-[var(--rego-ink-2,#737373)]">Date d&apos;émission :</span>
                     <span className="font-bold text-[var(--rego-fg,#111111)]">
                       {new Date(selectedOrder.created_at).toLocaleString(localeStr)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[var(--rego-ink-2,#737373)]">Passerelle d'encaissement :</span>
+                    <span className="text-[var(--rego-ink-2,#737373)]">Passerelle d&apos;encaissement :</span>
                     <span className="font-bold uppercase text-[var(--rego-fg,#111111)]">
                       {selectedOrder.payment_gateway || 'COD'}
                     </span>

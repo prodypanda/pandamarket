@@ -719,7 +719,7 @@ export default function IntegrationsPage() {
                   Moteur de Routage Intelligent PandaMarket
                 </div>
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
-                  Stratégie d'Expédition & Sélection Automatique des Transporteurs
+                  Stratégie d&apos;Expédition & Sélection Automatique des Transporteurs
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                   Attribuez automatiquement chaque commande au transporteur le plus avantageux selon le gouvernorat de livraison.
@@ -771,7 +771,7 @@ export default function IntegrationsPage() {
                     value={integrations.free_shipping_threshold || ''}
                     onChange={(e) => handleChange('free_shipping_threshold', parseFloat(e.target.value) || 0)}
                     placeholder="Ex: 100 (0 = Désactivé)"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none shadow-2xs"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white outline-none shadow-2xs"
                   />
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 font-mono">DT</span>
                 </div>
@@ -782,7 +782,7 @@ export default function IntegrationsPage() {
 
               <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-1.5">
                 <span className="block text-xs font-semibold text-slate-900 dark:text-white">
-                  Hub & Ville d'Expédition par Défaut
+                  Hub & Ville d&apos;Expédition par Défaut
                 </span>
                 <div className="flex items-center gap-2">
                   <input
@@ -790,7 +790,7 @@ export default function IntegrationsPage() {
                     value={storeCity}
                     disabled
                     aria-label="Ville d'expédition par défaut"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none opacity-80"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none opacity-80"
                   />
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-medium border border-emerald-200/60 dark:border-emerald-800 shrink-0">
                     Actif
@@ -815,7 +815,7 @@ export default function IntegrationsPage() {
                   Testeur de Devis Multi-Transporteurs sur 24 Gouvernorats
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                  Simulez n'importe quelle destination tunisienne pour visualiser les tarifs et les recommandations de routage.
+                  Simulez n&apos;importe quelle destination tunisienne pour visualiser les tarifs et les recommandations de routage.
                 </p>
               </div>
 
@@ -1032,7 +1032,7 @@ export default function IntegrationsPage() {
                     key={carrier.id}
                     className={`p-4 rounded-2xl border transition-all space-y-3 ${
                       isEnabled
-                        ? 'border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-850 shadow-2xs'
+                        ? 'border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xs'
                         : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 opacity-60'
                     }`}
                   >
@@ -1119,7 +1119,7 @@ export default function IntegrationsPage() {
                 Suivi Logistique Multi-Transporteurs
               </div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">
-                Recherche & Suivi d'Expédition en Temps Réel
+                Recherche & Suivi d&apos;Expédition en Temps Réel
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
                 Entrez un numéro de suivi AWB (ex: ARAMEX-TN-..., RP-TN-..., FD-TN-...) pour visualiser les étapes de livraison.
@@ -1201,7 +1201,7 @@ export default function IntegrationsPage() {
               Pixels Publicitaires & Balises de Tracking E-commerce
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-              Renseignez vos identifiants pour activer automatiquement les événements d'achat et de panier.
+              Renseignez vos identifiants pour activer automatiquement les événements d&apos;achat et de panier.
             </p>
           </div>
 
@@ -1287,7 +1287,7 @@ export default function IntegrationsPage() {
               <div className="flex items-center gap-2">
                 <Printer className="w-4 h-4 text-slate-900 dark:text-white" />
                 <h3 id="awb-preview-title" className="text-sm font-semibold text-slate-900 dark:text-white">
-                  Bordereau d'Expédition AWB Standard
+                  Bordereau d&apos;Expédition AWB Standard
                 </h3>
               </div>
               <button
@@ -1301,7 +1301,7 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Standardized AWB Ticket */}
-            <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 space-y-3 font-sans text-xs">
+            <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-3 font-sans text-xs">
               <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
                 <div>
                   <span className="font-semibold text-xs uppercase text-slate-900 dark:text-white">{awbPreviewCarrier.name}</span>
@@ -1362,7 +1362,7 @@ export default function IntegrationsPage() {
                 className="px-4 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Imprimer l'AWB</span>
+                <span>Imprimer l&apos;AWB</span>
               </button>
             </div>
           </div>

@@ -131,7 +131,7 @@ export function AdminReGoKyc({
       </div>
 
       {error && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-semibold">
           {error}
         </div>
       )}
@@ -167,13 +167,13 @@ export function AdminReGoKyc({
         icon={ShieldCheck}
         actions={
           <div className="relative w-64">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
             <input
               type="text"
               placeholder="Rechercher boutique, email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
+              className="w-full ps-8 pe-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
             />
           </div>
         }
@@ -228,7 +228,7 @@ export function AdminReGoKyc({
                       <button
                         type="button"
                         onClick={() => setSelectedKyc(item)}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Inspecter Dossier</span>
@@ -255,7 +255,7 @@ export function AdminReGoKyc({
                           setRejectingId(isRejecting ? null : item.id);
                           setRejectionReason('');
                         }}
-                        className="inline-flex items-center gap-1 text-xs font-bold bg-white text-rose-600 hover:bg-rose-50 border border-rose-200 disabled:opacity-50 px-3 py-1.5 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs font-bold bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 disabled:opacity-50 px-3 py-1.5 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                         <span>Rejeter</span>
@@ -266,20 +266,20 @@ export function AdminReGoKyc({
                   {/* Documents & Verification Details Deck */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-[var(--rego-border,#dedede)]/60 text-xs">
                     {/* Phone */}
-                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white border border-[var(--rego-border,#dedede)]/80">
+                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white dark:bg-slate-900 border border-[var(--rego-border,#dedede)]/80">
                       <div className="flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
                         <span className="font-mono">{item.phone_number || 'Aucun numéro'}</span>
                       </div>
                       {item.phone_verified ? (
-                        <span className="text-[10px] font-bold text-emerald-600">Vérifié OTP</span>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Vérifié OTP</span>
                       ) : (
                         <span className="text-[10px] text-amber-600 font-semibold">Non vérifié</span>
                       )}
                     </div>
 
                     {/* CIN */}
-                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white border border-[var(--rego-border,#dedede)]/80">
+                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white dark:bg-slate-900 border border-[var(--rego-border,#dedede)]/80">
                       <div className="flex items-center gap-2">
                         <FileText className="w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
                         <span>Carte CIN</span>
@@ -299,7 +299,7 @@ export function AdminReGoKyc({
                     </div>
 
                     {/* RC / RNE */}
-                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white border border-[var(--rego-border,#dedede)]/80">
+                    <div className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] bg-white dark:bg-slate-900 border border-[var(--rego-border,#dedede)]/80">
                       <div className="flex items-center gap-2">
                         <Building2 className="w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
                         <span>Registre RNE / RC</span>
@@ -321,7 +321,7 @@ export function AdminReGoKyc({
 
                   {/* Rejection input expansion */}
                   {isRejecting && (
-                    <div className="p-3 rounded-[var(--rego-r,8px)] bg-rose-50/50 border border-rose-200 space-y-2">
+                    <div className="p-3 rounded-[var(--rego-r,8px)] bg-rose-50/50 dark:bg-rose-950/50 border border-rose-200 space-y-2">
                       <p className="text-xs font-bold text-rose-800">
                         Motif du rejet (ce message sera transmis au marchand) :
                       </p>
@@ -331,7 +331,7 @@ export function AdminReGoKyc({
                           placeholder="Ex: Pièce d'identité illisible ou expirée, veuillez soumettre un scan net"
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
-                          className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-rose-300 bg-white text-slate-900 focus:outline-hidden"
+                          className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-rose-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden"
                         />
                         <button
                           type="button"
@@ -344,7 +344,7 @@ export function AdminReGoKyc({
                         <button
                           type="button"
                           onClick={() => setRejectingId(null)}
-                          className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] text-slate-600 hover:bg-slate-200"
+                          className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                         >
                           Annuler
                         </button>
@@ -408,11 +408,11 @@ export function AdminReGoKyc({
                     <span>{selectedKyc.phone_number}</span>
                   </a>
                   {selectedKyc.phone_verified ? (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold">
                       Vérifié
                     </span>
                   ) : (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 font-bold">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold">
                       Non vérifié
                     </span>
                   )}
@@ -426,7 +426,7 @@ export function AdminReGoKyc({
               </h4>
 
               {/* CIN Preview */}
-              <div className="p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white space-y-2">
+              <div className="p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[var(--rego-accent,#ad0505)]" />
@@ -435,11 +435,11 @@ export function AdminReGoKyc({
                     </span>
                   </div>
                   {selectedKyc.cin_document_url ? (
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
                       Fourni
                     </span>
                   ) : (
-                    <span className="text-[10px] text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded">
                       Non fourni
                     </span>
                   )}
@@ -448,7 +448,7 @@ export function AdminReGoKyc({
                   <button
                     type="button"
                     onClick={() => void onOpenDocument(selectedKyc.cin_document_url)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-800 dark:text-slate-100 transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Visualiser la Carte CIN</span>
@@ -457,7 +457,7 @@ export function AdminReGoKyc({
               </div>
 
               {/* RC Preview */}
-              <div className="p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white space-y-2">
+              <div className="p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-[var(--rego-accent,#ad0505)]" />
@@ -466,11 +466,11 @@ export function AdminReGoKyc({
                     </span>
                   </div>
                   {selectedKyc.rc_document_url ? (
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
                       Fourni
                     </span>
                   ) : (
-                    <span className="text-[10px] text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded">
                       Non fourni
                     </span>
                   )}
@@ -479,7 +479,7 @@ export function AdminReGoKyc({
                   <button
                     type="button"
                     onClick={() => void onOpenDocument(selectedKyc.rc_document_url)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-800 transition-colors"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-800 dark:text-slate-100 transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Visualiser l&apos;Extrait RNE / RC</span>

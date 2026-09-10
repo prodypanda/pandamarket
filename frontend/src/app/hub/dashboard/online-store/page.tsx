@@ -207,7 +207,7 @@ export default function OnlineStoreOverviewPage() {
               href={storefrontUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-white hover:text-slate-900 dark:hover:text-white transition shadow-2xs"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-white hover:text-slate-900 dark:hover:text-white transition shadow-2xs"
             >
               <Eye className="h-4 w-4" />
               <span>{t('dashboardPages.onlineStore.visit')}</span>

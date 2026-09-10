@@ -191,7 +191,7 @@ export function WholesaleVolumeTierPricing({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-700">Nom de l'entreprise *</label>
+                    <label className="text-xs font-bold text-slate-700">Nom de l&apos;entreprise *</label>
                     <input
                       type="text"
                       required

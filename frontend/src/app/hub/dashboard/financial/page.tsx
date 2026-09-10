@@ -601,13 +601,13 @@ export default function FinancialPage() {
               <button
                 type="button"
                 onClick={exportOrders}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 <Download className="h-4 w-4" />
                 {t('dashboardPages.financial.exportOrders')}
               </button>
             </div>
-            <div className="mt-6 flex h-72 items-end gap-2 rounded-2xl bg-slate-50/50 dark:bg-slate-850/50 p-4 border border-slate-200/80 dark:border-slate-800">
+            <div className="mt-6 flex h-72 items-end gap-2 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 p-4 border border-slate-200/80 dark:border-slate-800">
               {monthlyBars.length > 0 ? monthlyBars.map((bar) => (
                 <div key={bar.label} className="flex h-full flex-1 flex-col justify-end gap-2 text-center">
                   <div className="rounded-t-xl bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-sm" style={{ height: `${bar.percentage}%` }} />
@@ -691,13 +691,13 @@ export default function FinancialPage() {
                   value={withdrawAmount}
                   onChange={(event) => setWithdrawAmount(event.target.value)}
                   placeholder={t('dashboardPages.financial.amountPlaceholder')}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                 />
                 <input
                   value={withdrawNotes}
                   onChange={(event) => setWithdrawNotes(event.target.value)}
                   placeholder={t('dashboardPages.financial.notesPlaceholder')}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                 />
                 <button
                   type="button"
@@ -721,7 +721,7 @@ export default function FinancialPage() {
               <button
                 type="button"
                 onClick={exportTransactions}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               >
                 <Download className="h-4 w-4" />
                 {t('dashboardPages.financial.csv')}
@@ -803,14 +803,14 @@ export default function FinancialPage() {
                     value={paymentForm.flouci_app_token}
                     onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_token: event.target.value }))}
                     placeholder={t('dashboardPages.financial.flouciAppToken')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                   <input
                     type="password"
                     value={paymentForm.flouci_app_secret}
                     onChange={(event) => setPaymentForm((current) => ({ ...current, flouci_app_secret: event.target.value }))}
                     placeholder={t('dashboardPages.financial.flouciAppSecret')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
               </div>
@@ -822,13 +822,13 @@ export default function FinancialPage() {
                     value={paymentForm.konnect_api_key}
                     onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_api_key: event.target.value }))}
                     placeholder={t('dashboardPages.financial.konnectApiKey')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                   <input
                     value={paymentForm.konnect_receiver_wallet}
                     onChange={(event) => setPaymentForm((current) => ({ ...current, konnect_receiver_wallet: event.target.value }))}
                     placeholder={t('dashboardPages.financial.konnectReceiverWallet')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
               </div>
@@ -870,7 +870,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.legal_name}
                 onChange={(event) => updateAccounting('legal_name', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -878,7 +878,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.tax_identifier}
                 onChange={(event) => updateAccounting('tax_identifier', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -886,7 +886,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.business_registration}
                 onChange={(event) => updateAccounting('business_registration', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -895,7 +895,7 @@ export default function FinancialPage() {
                 type="email"
                 value={accountingForm.accounting_email}
                 onChange={(event) => updateAccounting('accounting_email', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -903,11 +903,11 @@ export default function FinancialPage() {
               <select
                 value={accountingForm.vat_status}
                 onChange={(event) => updateAccounting('vat_status', event.target.value as AccountingProfile['vat_status'])}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               >
-                <option value="not_registered" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatNotRegistered')}</option>
-                <option value="registered" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatRegistered')}</option>
-                <option value="exempt" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatExempt')}</option>
+                <option value="not_registered" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatNotRegistered')}</option>
+                <option value="registered" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatRegistered')}</option>
+                <option value="exempt" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.financial.vatExempt')}</option>
               </select>
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -915,7 +915,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.vat_rate}
                 onChange={(event) => updateAccounting('vat_rate', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -923,7 +923,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.invoice_prefix}
                 onChange={(event) => updateAccounting('invoice_prefix', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -931,7 +931,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.next_invoice_number}
                 onChange={(event) => updateAccounting('next_invoice_number', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -940,7 +940,7 @@ export default function FinancialPage() {
                 value={accountingForm.fiscal_year_start}
                 onChange={(event) => updateAccounting('fiscal_year_start', event.target.value)}
                 placeholder="01-01"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -948,7 +948,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.bank_name}
                 onChange={(event) => updateAccounting('bank_name', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -956,7 +956,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.bank_account_holder}
                 onChange={(event) => updateAccounting('bank_account_holder', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -964,7 +964,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.bank_rib}
                 onChange={(event) => updateAccounting('bank_rib', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300 md:col-span-2">
@@ -972,7 +972,7 @@ export default function FinancialPage() {
               <input
                 value={accountingForm.bank_iban}
                 onChange={(event) => updateAccounting('bank_iban', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300 md:col-span-2">
@@ -981,7 +981,7 @@ export default function FinancialPage() {
                 rows={3}
                 value={accountingForm.billing_address}
                 onChange={(event) => updateAccounting('billing_address', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-300 md:col-span-2">
@@ -990,7 +990,7 @@ export default function FinancialPage() {
                 rows={3}
                 value={accountingForm.invoice_footer}
                 onChange={(event) => updateAccounting('invoice_footer', event.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
               />
             </label>
           </div>

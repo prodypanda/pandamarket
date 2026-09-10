@@ -125,7 +125,7 @@ export function SellerReGoThemes({
             Thème Actif : {activeTheme.name}
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] border border-[var(--rego-border,#dedede)]">
-            20 Thèmes Prêts à l'Emploi
+            20 Thèmes Prêts à l&apos;Emploi
           </span>
         </div>
       }
@@ -224,13 +224,13 @@ export function SellerReGoThemes({
           </div>
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
             <input
               type="text"
               placeholder="Rechercher un thème..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] outline-none placeholder:text-[var(--rego-ink-2,#737373)] w-56"
+              className="ps-8 pe-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] outline-none placeholder:text-[var(--rego-ink-2,#737373)] w-56"
             />
           </div>
         </div>
@@ -438,7 +438,7 @@ export function SellerReGoThemes({
                 <iframe
                   src={storefrontUrl}
                   title={`Aperçu ${previewThemeId}`}
-                  className="w-full h-full border-0 bg-white"
+                  className="w-full h-full border-0 bg-white dark:bg-slate-900"
                 />
               </div>
             </div>

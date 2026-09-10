@@ -158,13 +158,13 @@ export function AdminReGoRefundReview({
       </div>
 
       {error && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold">
           {error}
         </div>
       )}
 
       {feedback && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
           {feedback}
         </div>
       )}
@@ -200,13 +200,13 @@ export function AdminReGoRefundReview({
         icon={Undo2}
         actions={
           <div className="relative w-64">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
             <input
               type="text"
               placeholder="Rechercher commande, boutique..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
+              className="w-full ps-8 pe-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
             />
           </div>
         }
@@ -230,7 +230,7 @@ export function AdminReGoRefundReview({
         ) : (
           <div className="space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[var(--rego-fg,#111111)]">
+              <table className="w-full text-start text-xs text-[var(--rego-fg,#111111)]">
                 <thead className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)]">
                   <tr>
                     <th className="px-3 py-2.5">Date</th>
@@ -239,7 +239,7 @@ export function AdminReGoRefundReview({
                     <th className="px-3 py-2.5">Montant</th>
                     <th className="px-3 py-2.5">Motif</th>
                     <th className="px-3 py-2.5">Statut</th>
-                    <th className="px-3 py-2.5 text-right">Actions</th>
+                    <th className="px-3 py-2.5 text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -285,7 +285,7 @@ export function AdminReGoRefundReview({
                             size="xs"
                           />
                         </td>
-                        <td className="px-3 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-end">
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
@@ -317,7 +317,7 @@ export function AdminReGoRefundReview({
                                 setRejectingRefund(refund);
                                 setRejectNote('');
                               }}
-                              className="inline-flex items-center gap-1 text-xs font-bold bg-white text-rose-600 hover:bg-rose-50 border border-rose-200 disabled:opacity-50 px-2 py-1 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1 text-xs font-bold bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 disabled:opacity-50 px-2 py-1 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
                             >
                               <X className="w-3 h-3" />
                               <span>Rejeter</span>
@@ -337,7 +337,7 @@ export function AdminReGoRefundReview({
                 type="button"
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Précédent</span>
@@ -351,7 +351,7 @@ export function AdminReGoRefundReview({
                 type="button"
                 onClick={() => onPageChange(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <span>Suivant</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -364,7 +364,7 @@ export function AdminReGoRefundReview({
       {/* Reject Modal / Dialog Drawer */}
       {rejectingRefund && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white p-5 shadow-2xl space-y-3">
+          <div className="w-full max-w-md rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-[var(--rego-fg,#111111)]">
                 Rejeter la Demande #{rejectingRefund.id.slice(-8).toUpperCase()}
@@ -372,7 +372,7 @@ export function AdminReGoRefundReview({
               <button
                 type="button"
                 onClick={() => setRejectingRefund(null)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-400"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -387,14 +387,14 @@ export function AdminReGoRefundReview({
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
               placeholder="Ex: Délai de réclamation dépassé ou produit conforme livré..."
-              className="w-full p-2.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-300 bg-white text-slate-900 focus:outline-hidden"
+              className="w-full p-2.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden"
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setRejectingRefund(null)}
-                className="px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-200 text-slate-700 hover:bg-slate-50"
+                className="px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
               >
                 Annuler
               </button>
@@ -457,7 +457,7 @@ export function AdminReGoRefundReview({
 
             <div className="space-y-2 text-xs">
               <h4 className="font-bold text-[var(--rego-fg,#111111)]">Détails de la Réclamation</h4>
-              <div className="space-y-2 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)]">
+              <div className="space-y-2 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)]">
                 <p><strong className="text-[var(--rego-fg,#111111)]">Boutique :</strong> {selectedRefund.store_name || 'Non renseigné'}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">Email Vendeur :</strong> {selectedRefund.owner_email || 'Non renseigné'}</p>
                 <p><Demandeur text={selectedRefund.requested_by} /></p>

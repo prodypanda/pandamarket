@@ -156,7 +156,7 @@ export function SellerReGoWebhooks({
         <button
           onClick={() => void onRefresh()}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
+          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           <span>Actualiser</span>
@@ -174,13 +174,13 @@ export function SellerReGoWebhooks({
                 </div>
                 <button
                   onClick={onClearNewSecret}
-                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold cursor-pointer"
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 font-semibold cursor-pointer"
                 >
                   Fermer
                 </button>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                Utilisez ce secret pour valider l'en-tête HTTP <strong className="font-mono text-slate-800 dark:text-slate-200">X-PandaMarket-Signature</strong> sur votre serveur. Ce secret ne sera plus affiché.
+                Utilisez ce secret pour valider l&apos;en-tête HTTP <strong className="font-mono text-slate-800 dark:text-slate-200">X-PandaMarket-Signature</strong> sur votre serveur. Ce secret ne sera plus affiché.
               </p>
               <div className="flex items-center gap-2 p-3 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl border border-slate-800">
                 <span className="flex-1 select-all break-all">{newSecret}</span>
@@ -236,7 +236,7 @@ export function SellerReGoWebhooks({
             title="Vos Points de Terminaison (Endpoints)"
             subtitle="Adresses cibles notifiées automatiquement à chaque déclenchement d'événement."
             actions={
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {webhooks.length} URL{webhooks.length > 1 ? 's' : ''}
               </span>
             }
@@ -254,7 +254,7 @@ export function SellerReGoWebhooks({
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                     Aucun endpoint webhook configuré
                   </p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                     Abonnez votre serveur aux événements PandaMarket pour automatiser la comptabilité, le fulfillment ou le réapprovisionnement.
                   </p>
                 </div>
@@ -274,7 +274,7 @@ export function SellerReGoWebhooks({
                       key={hook.id}
                       className={`p-4 rounded-2xl border transition-all ${
                         isSelected
-                          ? 'border-slate-900 dark:border-white bg-slate-50/50 dark:bg-slate-850 shadow-xs'
+                          ? 'border-slate-900 dark:border-white bg-slate-50/50 dark:bg-slate-900 shadow-xs'
                           : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                       }`}
                     >
@@ -322,11 +322,11 @@ export function SellerReGoWebhooks({
 
                           <button
                             onClick={() => void onToggleActive(hook.id, hook.is_active)}
-                            className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg transition cursor-pointer"
+                            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition cursor-pointer"
                             title={hook.is_active ? 'Désactiver l\'endpoint' : 'Activer l\'endpoint'}
                           >
                             {hook.is_active ? (
-                              <ToggleRight className="w-5 h-5 text-emerald-600" />
+                              <ToggleRight className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                             ) : (
                               <ToggleLeft className="w-5 h-5 text-slate-400" />
                             )}
@@ -334,7 +334,7 @@ export function SellerReGoWebhooks({
 
                           <button
                             onClick={() => onDeleteTargetIdChange(hook.id)}
-                            className="p-2 text-rose-500 hover:text-rose-700 rounded-lg transition cursor-pointer"
+                            className="p-2 text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 rounded-lg transition cursor-pointer"
                             title="Supprimer cet abonnement"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -384,21 +384,21 @@ export function SellerReGoWebhooks({
               actions={
                 <button
                   onClick={() => onSelectWebhook(null)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                  className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   Fermer
                 </button>
               }
             >
               {deliveries.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-500">
+                <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
                   Aucun log de livraison enregistré pour cet endpoint.
                 </div>
               ) : (
                 <div className="overflow-x-auto -mx-5 sm:mx-0">
-                  <table className="w-full text-left text-xs font-medium">
+                  <table className="w-full text-start text-xs font-medium">
                     <thead>
-                      <tr className="border-b border-slate-200/80 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
+                      <tr className="border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                         <th className="pb-3 px-4">Événement</th>
                         <th className="pb-3 px-4">Tentative</th>
                         <th className="pb-3 px-4">Statut HTTP</th>
@@ -414,7 +414,7 @@ export function SellerReGoWebhooks({
                             <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
                               {d.event_type}
                             </td>
-                            <td className="py-3 px-4 text-slate-500">#{d.attempt}</td>
+                            <td className="py-3 px-4 text-slate-500 dark:text-slate-400">#{d.attempt}</td>
                             <td className="py-3 px-4 font-mono">
                               <span
                                 className={`px-2 py-0.5 rounded font-bold text-[11px] ${
@@ -426,7 +426,7 @@ export function SellerReGoWebhooks({
                                 {d.status_code ?? 'Timeout'}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-slate-500 text-[11px]">
+                            <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-[11px]">
                               {new Date(d.delivered_at).toLocaleDateString('fr-TN', {
                                 day: '2-digit',
                                 month: 'short',
@@ -435,11 +435,11 @@ export function SellerReGoWebhooks({
                                 second: '2-digit',
                               })}
                             </td>
-                            <td className="py-3 px-4 text-slate-500 max-w-xs truncate text-[11px]">
+                            <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate text-[11px]">
                               {d.error ? (
-                                <span className="text-rose-600 font-mono">{d.error}</span>
+                                <span className="text-rose-600 dark:text-rose-400 font-mono">{d.error}</span>
                               ) : (
-                                <span className="text-emerald-600 font-semibold">200 Delivered OK</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">200 Delivered OK</span>
                               )}
                             </td>
                           </tr>
@@ -472,7 +472,7 @@ export function SellerReGoWebhooks({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      URL de Réception (HTTPS recommandé) <span className="text-rose-500">*</span>
+                      URL de Réception (HTTPS recommandé) <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="url"
@@ -485,7 +485,7 @@ export function SellerReGoWebhooks({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      Événements à Écouter <span className="text-rose-500">*</span>
+                      Événements à Écouter <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                       {AVAILABLE_WEBHOOK_EVENTS.map((evt) => {
@@ -503,8 +503,9 @@ export function SellerReGoWebhooks({
                             <input
                               type="checkbox"
                               checked={checked}
-                              onChange={() => {}}
-                              className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-0"
+                              readOnly
+                              tabIndex={-1}
+                              className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-0 pointer-events-none"
                             />
                             <div className="min-w-0">
                               <span className="text-xs font-bold text-slate-900 dark:text-white block">
@@ -513,7 +514,7 @@ export function SellerReGoWebhooks({
                               <span className="font-mono text-[10px] text-slate-400 block mb-0.5">
                                 {evt.value}
                               </span>
-                              <span className="text-[11px] text-slate-500 block leading-tight">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
                                 {evt.desc}
                               </span>
                             </div>
@@ -537,7 +538,7 @@ export function SellerReGoWebhooks({
                     className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 text-white text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
                   >
                     {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>Créer l'Abonnement</span>
+                    <span>Créer l&apos;Abonnement</span>
                   </button>
                 </div>
               </div>

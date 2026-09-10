@@ -263,7 +263,7 @@ export function SellerReGoOnlineStore({
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-[var(--rego-fg,#111111)]">
-                      Carte d'Identité & Accès Direct
+                      Carte d&apos;Identité & Accès Direct
                     </h3>
                     <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
                       Coordonnées publiques de votre boutique en ligne sur le réseau PandaMarket.
@@ -329,7 +329,7 @@ export function SellerReGoOnlineStore({
                       Thème Actif & Personnalisation
                     </h3>
                     <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
-                      Modifiez l'apparence visuelle sans toucher au code.
+                      Modifiez l&apos;apparence visuelle sans toucher au code.
                     </p>
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export function SellerReGoOnlineStore({
             </div>
 
             {/* Mobile Frame Container */}
-            <div className="mx-auto max-w-[390px] border-4 border-slate-900 dark:border-slate-700 rounded-[28px] overflow-hidden shadow-2xl bg-white aspect-[9/16]">
+            <div className="mx-auto max-w-[390px] border-4 border-slate-900 dark:border-slate-700 rounded-[28px] overflow-hidden shadow-2xl bg-white dark:bg-slate-900 aspect-[9/16]">
               <iframe
                 src={storefrontUrl}
                 title="Aperçu Mobile Vitrine"

@@ -130,7 +130,7 @@ export function AdminReGoMandats({
       </div>
 
       {error && (
-        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-semibold">
+        <div className="p-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-semibold">
           {error}
         </div>
       )}
@@ -153,9 +153,9 @@ export function AdminReGoMandats({
           hint="Mandat Minute & Mandat Express"
         />
         <ReGoKpiHero
-          label="Délai Moyen Validation"
-          value="< 2h"
-          hint="Libération rapide des expéditions"
+          label="Mandats Affichés"
+          value={loading ? '—' : filteredMandats.length}
+          hint="Après filtre de recherche"
         />
       </div>
 
@@ -166,13 +166,13 @@ export function AdminReGoMandats({
         icon={Receipt}
         actions={
           <div className="relative w-64">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
             <input
               type="text"
               placeholder="Rechercher commande, email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
+              className="w-full ps-8 pe-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
             />
           </div>
         }
@@ -210,7 +210,7 @@ export function AdminReGoMandats({
                         <button
                           type="button"
                           onClick={() => setSelectedMandat(mandat)}
-                          className="h-14 w-14 shrink-0 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] bg-white p-0.5 hover:opacity-90 transition-opacity cursor-pointer"
+                          className="h-14 w-14 shrink-0 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 p-0.5 hover:opacity-90 transition-opacity cursor-pointer"
                         >
                           <img
                             src={mandat.image_url}
@@ -219,7 +219,7 @@ export function AdminReGoMandats({
                           />
                         </button>
                       ) : (
-                        <div className="h-14 w-14 shrink-0 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                        <div className="h-14 w-14 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                           <Receipt className="w-6 h-6" />
                         </div>
                       )}
@@ -253,7 +253,7 @@ export function AdminReGoMandats({
                       <button
                         type="button"
                         onClick={() => setSelectedMandat(mandat)}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] shadow-2xs transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Agrandir Reçu</span>
@@ -280,7 +280,7 @@ export function AdminReGoMandats({
                           setRejectingId(isRejecting ? null : mandat.id);
                           setRejectionReason('');
                         }}
-                        className="inline-flex items-center gap-1 text-xs font-bold bg-white text-rose-600 hover:bg-rose-50 border border-rose-200 disabled:opacity-50 px-3 py-1.5 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs font-bold bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 disabled:opacity-50 px-3 py-1.5 rounded-[var(--rego-r,8px)] shadow-2xs transition-all cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                         <span>Rejeter</span>
@@ -290,7 +290,7 @@ export function AdminReGoMandats({
 
                   {/* Rejection input expansion */}
                   {isRejecting && (
-                    <div className="p-3 rounded-[var(--rego-r,8px)] bg-rose-50/50 border border-rose-200 space-y-2">
+                    <div className="p-3 rounded-[var(--rego-r,8px)] bg-rose-50/50 dark:bg-rose-950/50 border border-rose-200 space-y-2">
                       <p className="text-xs font-bold text-rose-800">
                         Motif du rejet du mandat (transmis au client) :
                       </p>
@@ -300,7 +300,7 @@ export function AdminReGoMandats({
                           placeholder="Ex: Reçu illisible ou montant différent du total de commande"
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
-                          className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-rose-300 bg-white text-slate-900 focus:outline-hidden"
+                          className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-rose-300 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden"
                         />
                         <button
                           type="button"
@@ -313,7 +313,7 @@ export function AdminReGoMandats({
                         <button
                           type="button"
                           onClick={() => setRejectingId(null)}
-                          className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] text-slate-600 hover:bg-slate-200 cursor-pointer"
+                          className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] text-slate-600 dark:text-slate-400 hover:bg-slate-200 cursor-pointer"
                         >
                           Annuler
                         </button>
@@ -380,7 +380,7 @@ export function AdminReGoMandats({
                   <img
                     src={selectedMandat.image_url}
                     alt="Reçu Mandat Minute"
-                    className="w-full max-h-[380px] object-contain rounded bg-white"
+                    className="w-full max-h-[380px] object-contain rounded bg-white dark:bg-slate-900"
                   />
                   <div className="pt-2 flex justify-end">
                     <a
@@ -401,7 +401,7 @@ export function AdminReGoMandats({
               )}
             </div>
 
-            <div className="text-xs space-y-1 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)]">
+            <div className="text-xs space-y-1 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)]">
               <p><strong className="text-[var(--rego-fg,#111111)]">Téléversé par :</strong> {selectedMandat.uploaded_by}</p>
               <p><strong className="text-[var(--rego-fg,#111111)]">Date :</strong> {new Date(selectedMandat.created_at).toLocaleString('fr-TN')}</p>
             </div>

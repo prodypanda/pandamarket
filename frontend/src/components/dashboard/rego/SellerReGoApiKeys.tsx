@@ -135,7 +135,7 @@ export function SellerReGoApiKeys({
         <button
           onClick={() => void onRefresh()}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
+          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           <span>Actualiser</span>
@@ -153,7 +153,7 @@ export function SellerReGoApiKeys({
                 </div>
                 <button
                   onClick={onClearNewlyCreatedKey}
-                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
                 >
                   Fermer
                 </button>
@@ -222,7 +222,7 @@ export function SellerReGoApiKeys({
             title="Vos Clés d'Accès REST"
             subtitle="Toutes les clés autorisées associées à votre identifiant boutique marchand."
             actions={
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {keys.length} clé{keys.length > 1 ? 's' : ''} enregistrée{keys.length > 1 ? 's' : ''}
               </span>
             }
@@ -240,8 +240,8 @@ export function SellerReGoApiKeys({
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                     Aucune clé API créée
                   </p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Générez votre première clé pour connecter votre logiciel de facturation ou synchroniser vos stocks avec l'API PandaMarket.
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    Générez votre première clé pour connecter votre logiciel de facturation ou synchroniser vos stocks avec l&apos;API PandaMarket.
                   </p>
                 </div>
                 <button
@@ -253,14 +253,14 @@ export function SellerReGoApiKeys({
               </div>
             ) : (
               <div className="overflow-x-auto -mx-5 sm:mx-0">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-start text-xs">
                   <thead>
-                    <tr className="border-b border-slate-200/80 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr className="border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                       <th className="pb-3 px-4">Libellé & Préfixe</th>
                       <th className="pb-3 px-4">Périmètres (Scopes)</th>
                       <th className="pb-3 px-4">Dernier Appel</th>
                       <th className="pb-3 px-4">Statut</th>
-                      <th className="pb-3 px-4 text-right">Actions</th>
+                      <th className="pb-3 px-4 text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -269,7 +269,7 @@ export function SellerReGoApiKeys({
                         <td className="py-3.5 px-4">
                           <div className="space-y-0.5">
                             <span className="font-bold text-slate-900 dark:text-white">{k.label}</span>
-                            <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
+                            <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                               <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700">
                                 {k.key_prefix}...
                               </span>
@@ -288,7 +288,7 @@ export function SellerReGoApiKeys({
                             ))}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500 text-[11px]">
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-[11px]">
                           {k.last_used_at ? (
                             new Date(k.last_used_at).toLocaleDateString('fr-TN', {
                               day: '2-digit',
@@ -308,10 +308,10 @@ export function SellerReGoApiKeys({
                             <ReGoStatusChip status="neutral" label="Désactivée" />
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-end">
                           <button
                             onClick={() => onRevokeIdChange(k.id)}
-                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                             title="Révoquer cette clé"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -333,7 +333,7 @@ export function SellerReGoApiKeys({
           >
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-slate-950 text-slate-200 font-mono text-xs overflow-x-auto border border-slate-800">
-                <p className="text-slate-500 mb-1"># Test d'authentification avec votre clé</p>
+                <p className="text-slate-500 dark:text-slate-400 mb-1"># Test d&apos;authentification avec votre clé</p>
                 <p className="text-emerald-400">
                   curl -X GET https://api.pandamarket.tn/api/pd/vendor/profile \
                 </p>
@@ -344,7 +344,7 @@ export function SellerReGoApiKeys({
                   -H &quot;Content-Type: application/json&quot;
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1">
                   <Info className="w-3.5 h-3.5" />
                   Documentation complète disponible sur docs.pandamarket.tn
@@ -363,7 +363,7 @@ export function SellerReGoApiKeys({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Key className="w-5 h-5 text-slate-900 dark:text-white" />
-                    <h3 className="font-bold text-base text-slate-900 dark:text-white">Créer une Clé d'API</h3>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">Créer une Clé d&apos;API</h3>
                   </div>
                   <button
                     onClick={() => onShowCreateChange(false)}
@@ -382,7 +382,7 @@ export function SellerReGoApiKeys({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Nom / Libellé du Service <span className="text-rose-500">*</span>
+                      Nom / Libellé du Service <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -395,7 +395,7 @@ export function SellerReGoApiKeys({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      Permissions & Périmètres d'accès <span className="text-rose-500">*</span>
+                      Permissions & Périmètres d&apos;accès <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {AVAILABLE_SCOPES.map((scope) => {
@@ -413,14 +413,15 @@ export function SellerReGoApiKeys({
                             <input
                               type="checkbox"
                               checked={checked}
-                              onChange={() => {}}
-                              className="mt-0.5 rounded border-slate-300 text-slate-900 focus:ring-0"
+                              readOnly
+                              tabIndex={-1}
+                              className="mt-0.5 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-0 pointer-events-none"
                             />
                             <div className="min-w-0">
                               <span className="text-xs font-bold text-slate-900 dark:text-white block">
                                 {scope.label}
                               </span>
-                              <span className="text-[11px] text-slate-500 block leading-tight">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">
                                 {scope.desc}
                               </span>
                             </div>
@@ -432,7 +433,7 @@ export function SellerReGoApiKeys({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Date d'Expiration (Optionnelle)
+                      Date d&apos;Expiration (Optionnelle)
                     </label>
                     <input
                       type="date"

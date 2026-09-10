@@ -151,7 +151,7 @@ export default function CreateStorePage() {
             <input
               value={form.name}
               onChange={(event) => updateField('name', event.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               placeholder="My second store"
               required
             />
@@ -159,7 +159,7 @@ export default function CreateStorePage() {
 
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Subdomain</label>
-            <div className="flex overflow-hidden rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 focus-within:border-slate-900 dark:focus-within:border-white focus-within:ring-1 focus-within:ring-slate-900 dark:focus-within:ring-white">
+            <div className="flex overflow-hidden rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-slate-900 dark:focus-within:border-white focus-within:ring-1 focus-within:ring-slate-900 dark:focus-within:ring-white">
               <input
                 value={form.subdomain}
                 onChange={(event) => updateField('subdomain', event.target.value)}
@@ -176,10 +176,10 @@ export default function CreateStorePage() {
             <select
               value={form.seller_type}
               onChange={(event) => updateField('seller_type', event.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white outline-none transition focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {sellerTypes.map((option) => (
-                <option key={option.value} value={option.value} className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{option.label}</option>
+                <option key={option.value} value={option.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{option.label}</option>
               ))}
             </select>
           </div>

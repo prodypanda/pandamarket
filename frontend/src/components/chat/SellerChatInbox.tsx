@@ -697,7 +697,7 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
       {/* Main Dual-Column Inbox Container */}
       <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs lg:grid-cols-[340px_1fr]">
         {/* Left Sidebar (Conversations List) */}
-        <aside className={`flex flex-col border-r border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850/40 ${
+        <aside className={`flex flex-col border-r border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 ${
           mobilePane === 'thread' ? 'hidden lg:flex' : 'flex'
         }`}>
           {/* Search & Filter Bar */}
@@ -776,7 +776,7 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
                     className={`w-full rounded-xl p-3 text-left transition shadow-2xs border cursor-pointer ${
                       selected
                         ? 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xs'
-                        : 'border-transparent bg-white/60 dark:bg-slate-850/60 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-700'
+                        : 'border-transparent bg-white/60 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -896,7 +896,7 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
 
               {/* Order & Product Context Banner (Collapsible) */}
               {orderSummary && orderDrawerOpen && (
-                <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-850/60 p-3.5 animate-in slide-in-from-top-1 duration-150">
+                <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-3.5 animate-in slide-in-from-top-1 duration-150">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -982,7 +982,7 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
                     <Loader2 className="h-5 w-5 animate-spin text-slate-900 dark:text-white" />
                   </div>
                 ) : active.messages.length === 0 ? (
-                  <p className="py-12 text-center text-xs text-slate-400">Aucun message échangé pour l'instant.</p>
+                  <p className="py-12 text-center text-xs text-slate-400">Aucun message échangé pour l&apos;instant.</p>
                 ) : (
                   active.messages.map((m) => {
                     const mine = m.sender_role === 'vendor' || m.sender_role === 'seller';
@@ -1130,7 +1130,7 @@ export function SellerChatInbox({ title, subtitle }: { title?: string; subtitle?
                   Contacter le Support PandaMarket
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                  Ouvrez une discussion privée avec l'équipe de modération de la place de marché.
+                  Ouvrez une discussion privée avec l&apos;équipe de modération de la place de marché.
                 </p>
               </div>
               <button

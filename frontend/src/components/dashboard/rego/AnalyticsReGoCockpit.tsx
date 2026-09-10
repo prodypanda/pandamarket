@@ -96,9 +96,7 @@ export function AnalyticsReGoCockpit({
         <ReGoKpiHero
           label={`Chiffre d'Affaires (${period}j)`}
           value={<ReGoAmtBox amount={totalRevenue} size="md" />}
-          delta="+18.5%"
-          deltaType="increase"
-          deltaLabel="vs période préc."
+          hint="Période analysée"
           icon={DollarSign}
         />
         <ReGoKpiHero
@@ -110,9 +108,7 @@ export function AnalyticsReGoCockpit({
         <ReGoKpiHero
           label="Panier Moyen Client"
           value={<ReGoAmtBox amount={avgOrderValue} size="md" />}
-          delta="+4.2%"
-          deltaType="increase"
-          deltaLabel="optimisation AOV"
+          hint="Valeur moyenne par commande"
           icon={TrendingUp}
         />
         <ReGoKpiHero
@@ -128,7 +124,7 @@ export function AnalyticsReGoCockpit({
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Horizon d'Analyse :
+              Horizon d&apos;Analyse :
             </span>
             <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
               {([7, 30, 90] as const).map((p) => (
@@ -171,7 +167,7 @@ export function AnalyticsReGoCockpit({
                   Top Articles Stars ({topProducts.length})
                 </h3>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold">
                 Contribution CA
               </span>
             </div>
@@ -208,13 +204,13 @@ export function AnalyticsReGoCockpit({
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {p.title}
                           </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {units} unité{units !== 1 ? 's écoulées' : ' écoulée'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
+                      <div className="text-end shrink-0">
                         <ReGoAmtBox amount={rev} size="sm" />
                       </div>
                     </div>
@@ -228,18 +224,18 @@ export function AnalyticsReGoCockpit({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-slate-600" />
+                <BarChart3 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   Courbe de Vélocité des Ventes ({period} derniers jours)
                 </h3>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 font-bold">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-bold">
                 Pic : {maxRev.toFixed(3)} TND
               </span>
             </div>
 
             {/* Vector SVG Chart */}
-            <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/40">
+            <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
               {trend.length > 1 ? (
                 <div className="relative w-full overflow-hidden">
                   <svg viewBox="0 0 500 140" className="w-full h-36 overflow-visible">
@@ -264,7 +260,7 @@ export function AnalyticsReGoCockpit({
                   </svg>
                   <div className="flex justify-between text-[10px] text-slate-400 mt-2 font-mono">
                     <span>Il y a {period} jours</span>
-                    <span>Aujourd'hui</span>
+                    <span>Aujourd&apos;hui</span>
                   </div>
                 </div>
               ) : (

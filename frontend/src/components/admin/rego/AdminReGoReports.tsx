@@ -283,13 +283,13 @@ export function AdminReGoReports({
 
       {/* ─── Feedback Alerts ─── */}
       {error && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle className="w-4 h-4 shrink-0" />
           <span>{success}</span>
         </div>
@@ -421,7 +421,7 @@ export function AdminReGoReports({
 
               <div>
                 <label className="block text-[11px] font-bold text-[var(--rego-ink-2,#737373)] uppercase tracking-wider mb-1">
-                  Catégorie d'infraction
+                  Catégorie d&apos;infraction
                 </label>
                 <input
                   type="text"
@@ -506,7 +506,7 @@ export function AdminReGoReports({
       <ReGoCard noPadding>
         <div className="p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
             <input
               type="text"
               value={search}
@@ -515,7 +515,7 @@ export function AdminReGoReports({
                 onPageChange(1);
               }}
               placeholder="Rechercher par cible, boutique, e-mail ou motif..."
-              className="w-full h-9 pl-9 pr-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
+              className="w-full h-9 ps-9 pe-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
             />
           </div>
 
@@ -635,9 +635,9 @@ export function AdminReGoReports({
                         report.priority === 'critical'
                           ? 'bg-red-600 text-white border-red-600'
                           : report.priority === 'high'
-                          ? 'bg-red-50 text-red-700 border-red-200'
+                          ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200'
                           : report.priority === 'medium'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200'
                           : 'bg-gray-100 text-gray-700 border-gray-200'
                       }`}>
                         {report.priority}
@@ -679,7 +679,7 @@ export function AdminReGoReports({
                   </div>
 
                   {/* Right Column: Inline Quick Actions */}
-                  <div className="flex flex-col gap-2 w-full lg:w-72 shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--rego-border,#dedede)]/70 pt-3 lg:pt-0 lg:pl-4">
+                  <div className="flex flex-col gap-2 w-full lg:w-72 shrink-0 border-t lg:border-t-0 lg:border-s border-[var(--rego-border,#dedede)]/70 pt-3 lg:pt-0 lg:ps-4">
                     {/* Status updater */}
                     <div className="flex items-center gap-1.5">
                       <select
@@ -742,7 +742,7 @@ export function AdminReGoReports({
                         type="button"
                         onClick={() => onSuspendStore(report.store_id!)}
                         disabled={activeAction === `${report.store_id}-suspend`}
-                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-[11px] font-bold text-red-700 hover:bg-red-100 transition disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-[11px] font-bold text-red-700 dark:text-red-300 hover:bg-red-100 transition disabled:opacity-50"
                       >
                         <Ban className="w-3 h-3" />
                         {activeAction === `${report.store_id}-suspend` ? 'Suspension...' : 'Suspendre la boutique'}
@@ -754,7 +754,7 @@ export function AdminReGoReports({
                         type="button"
                         onClick={() => onSuspendBuyer(report.target_user_id!, report.id)}
                         disabled={activeAction === `${report.target_user_id}-suspend-buyer`}
-                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-[11px] font-bold text-red-700 hover:bg-red-100 transition disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-[11px] font-bold text-red-700 dark:text-red-300 hover:bg-red-100 transition disabled:opacity-50"
                       >
                         <UserX className="w-3 h-3" />
                         {activeAction === `${report.target_user_id}-suspend-buyer` ? 'Suspension...' : 'Bloquer cet acheteur'}
@@ -766,7 +766,7 @@ export function AdminReGoReports({
                         type="button"
                         onClick={() => onReactivateBuyer(report.target_user_id!)}
                         disabled={activeAction === `${report.target_user_id}-reactivate-buyer`}
-                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition disabled:opacity-50"
                       >
                         <RotateCcw className="w-3 h-3" />
                         {activeAction === `${report.target_user_id}-reactivate-buyer` ? 'Réactivation...' : 'Réactiver le compte'}
@@ -835,9 +835,9 @@ export function AdminReGoReports({
                 inspectReport.priority === 'critical'
                   ? 'bg-red-600 text-white border-red-600'
                   : inspectReport.priority === 'high'
-                  ? 'bg-red-50 text-red-700 border-red-200'
+                  ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200'
                   : inspectReport.priority === 'medium'
-                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200'
                   : 'bg-gray-100 text-gray-700 border-gray-200'
               }`}>
                 Priorité: {inspectReport.priority}
@@ -882,7 +882,7 @@ export function AdminReGoReports({
               {inspectReport.resolved_at && (
                 <div className="flex justify-between">
                   <span className="text-[var(--rego-ink-2,#737373)] font-semibold">Résolu le :</span>
-                  <span className="text-emerald-700 font-bold">{formatDate(inspectReport.resolved_at)}</span>
+                  <span className="text-emerald-700 dark:text-emerald-300 font-bold">{formatDate(inspectReport.resolved_at)}</span>
                 </div>
               )}
               {inspectReport.resolver_email && (

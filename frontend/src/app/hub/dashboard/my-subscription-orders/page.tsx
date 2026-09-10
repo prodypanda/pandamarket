@@ -406,11 +406,11 @@ export default function SubscriptionOrdersPage() {
                   setStoreFilter(e.target.value);
                   setPage(1);
                 }}
-                className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-slate-900 dark:focus:border-white"
+                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-slate-900 dark:focus:border-white"
               >
-                <option value="all" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.allStoresOption', { count: userStores.length })}</option>
+                <option value="all" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.mySubscriptionOrders.allStoresOption', { count: userStores.length })}</option>
                 {userStores.map((st) => (
-                  <option key={st.id} value={st.id} className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">
+                  <option key={st.id} value={st.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {st.name} {st.subdomain ? `(${st.subdomain})` : ''}
                   </option>
                 ))}
@@ -429,7 +429,7 @@ export default function SubscriptionOrdersPage() {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
           />
         </div>
       </div>
@@ -576,7 +576,7 @@ export default function SubscriptionOrdersPage() {
 
         {/* Footer Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-6 py-4 bg-slate-50/50 dark:bg-slate-850/50">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
               {t('dashboardPages.mySubscriptionOrders.paginationInfo', { page, total: totalPages, records: totalRecords })}
             </div>
@@ -749,7 +749,7 @@ export default function SubscriptionOrdersPage() {
                   value={proofUrl}
                   onChange={(e) => setProofUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                 />
               </div>
             </div>

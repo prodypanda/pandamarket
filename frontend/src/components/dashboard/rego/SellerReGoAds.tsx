@@ -209,7 +209,7 @@ export function SellerReGoAds({
               onClick={onRefill}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors shadow-2xs"
             >
-              <WalletCards className="w-3.5 h-3.5 text-emerald-600" />
+              <WalletCards className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Recharger Solde</span>
             </button>
           </div>
@@ -226,11 +226,11 @@ export function SellerReGoAds({
         alertBanner={
           <div className="space-y-2">
             {isBalanceLow && (
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 text-amber-900 text-xs">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
-                    <strong>Solde publicitaire bas ({balanceNum.toFixed(3)} TND) :</strong> Vos annonces risquent d'être interrompues dès épuisement du solde.
+                    <strong>Solde publicitaire bas ({balanceNum.toFixed(3)} TND) :</strong> Vos annonces risquent d&apos;être interrompues dès épuisement du solde.
                   </span>
                 </div>
                 <button
@@ -242,14 +242,14 @@ export function SellerReGoAds({
               </div>
             )}
             {error && (
-              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-800 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 <span>{error}</span>
               </div>
             )}
             {successMsg && (
-              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <span>{successMsg}</span>
               </div>
             )}
@@ -289,13 +289,13 @@ export function SellerReGoAds({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-1 items-center gap-2 max-w-md">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                 <input
                   type="text"
                   placeholder="Rechercher une campagne ou un article..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
+                  className="w-full ps-8 pe-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
                 />
               </div>
             </div>
@@ -376,7 +376,7 @@ export function SellerReGoAds({
             ) : (
               <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                         <th className="py-3 px-4">Campagne & Produit</th>
@@ -384,7 +384,7 @@ export function SellerReGoAds({
                         <th className="py-3 px-4">Budget Quotidien / Total</th>
                         <th className="py-3 px-4">Dépensé</th>
                         <th className="py-3 px-4">Statut</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4 text-end">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -475,7 +475,7 @@ export function SellerReGoAds({
                               />
                             </td>
 
-                            <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="py-3.5 px-4 text-end" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 {c.status === 'active' ? (
                                   <button
@@ -511,7 +511,7 @@ export function SellerReGoAds({
 
                                 <button
                                   onClick={() => onDeleteCampaign(c)}
-                                  className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50"
+                                  className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
                                   title="Supprimer la campagne"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -543,7 +543,7 @@ export function SellerReGoAds({
                       setSelectedCampaign(null);
                       onDeleteCampaign(c);
                     }}
-                    className="px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                    className="px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors"
                   >
                     Supprimer
                   </button>
@@ -591,9 +591,9 @@ export function SellerReGoAds({
                     <h4 className="font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)] text-[10px] mb-2">
                       Créatif Publicitaire Associé
                     </h4>
-                    <div className="p-3 rounded-md border border-[var(--rego-border,#dedede)] bg-white space-y-2">
+                    <div className="p-3 rounded-md border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-2">
                       {selectedCampaign.creatives[0].image_url && (
-                        <div className="w-full aspect-[2/1] rounded bg-slate-100 overflow-hidden">
+                        <div className="w-full aspect-[2/1] rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={selectedCampaign.creatives[0].image_url}

@@ -199,7 +199,7 @@ export function CourierReGoConsole({
             <div className="flex items-center gap-3">
               <Package className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0" />
               <p className="text-xs text-amber-900 dark:text-amber-300 font-medium">
-                <strong>{pendingCount} colis à livrer contre remboursement :</strong> Assurez-vous d'encaisser le montant exact en espèces avant de valider le code OTP remis par le client.
+                <strong>{pendingCount} colis à livrer contre remboursement :</strong> Assurez-vous d&apos;encaisser le montant exact en espèces avant de valider le code OTP remis par le client.
               </p>
             </div>
           </div>
@@ -286,7 +286,7 @@ export function CourierReGoConsole({
               {search ? 'Aucun colis correspondant aux critères' : 'Aucun colis assigné à cette tournée'}
             </h3>
             <p className="text-xs text-[var(--rego-ink-2,#737373)] max-w-sm mx-auto">
-              Toutes les livraisons de votre secteur sont terminées ou en attente d'attribution logistique.
+              Toutes les livraisons de votre secteur sont terminées ou en attente d&apos;attribution logistique.
             </p>
           </div>
         ) : (
@@ -342,7 +342,7 @@ export function CourierReGoConsole({
                         </h4>
                         <a
                           href={`tel:${pkg.phone}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:underline bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200"
                         >
                           <Phone className="w-3 h-3" />
                           <span>{pkg.phone}</span>
@@ -381,7 +381,7 @@ export function CourierReGoConsole({
                   {/* Actions Strip */}
                   <div className="mt-4 pt-3 border-t border-[var(--rego-border,#dedede)]/60 flex items-center justify-between gap-2">
                     {isDelivered ? (
-                      <div className="w-full flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 py-1.5 rounded-[var(--rego-r,8px)] border border-emerald-200">
+                      <div className="w-full flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 py-1.5 rounded-[var(--rego-r,8px)] border border-emerald-200">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Colis Remis & Fonds Encaissés</span>
                       </div>
@@ -431,7 +431,7 @@ export function CourierReGoConsole({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--rego-ink-2,#737373)] font-bold uppercase text-[10px]">Téléphone :</span>
-                  <a href={`tel:${inspectedPkg.phone}`} className="font-mono text-emerald-700 font-bold underline">
+                  <a href={`tel:${inspectedPkg.phone}`} className="font-mono text-emerald-700 dark:text-emerald-300 font-bold underline">
                     {inspectedPkg.phone}
                   </a>
                 </div>
@@ -488,8 +488,8 @@ export function CourierReGoConsole({
             subtitle={otpPkg?.orderNumber}
           >
             {otpSuccess ? (
-              <div className="p-4 rounded-[var(--rego-r,8px)] bg-emerald-50 text-emerald-800 text-xs font-bold text-center space-y-1">
-                <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600" />
+              <div className="p-4 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold text-center space-y-1">
+                <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600 dark:text-emerald-400" />
                 <p>Livraison validée avec succès ! Les fonds COD sont enregistrés.</p>
               </div>
             ) : (
@@ -522,7 +522,7 @@ export function CourierReGoConsole({
                 </div>
 
                 {otpError && (
-                  <div className="rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-700 font-medium flex items-center gap-2">
+                  <div className="rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50 dark:bg-rose-950/40 p-2.5 text-xs text-rose-700 dark:text-rose-300 font-medium flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>{otpError}</span>
                   </div>
@@ -567,10 +567,10 @@ export function CourierReGoConsole({
                   onChange={(e) => setFailReason(e.target.value)}
                   className="w-full rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] px-3 py-2 text-xs font-medium text-[var(--rego-fg,#111111)] focus:outline-none"
                 >
-                  <option value="Client injoignable">Client injoignable après 3 tentatives d'appel</option>
+                  <option value="Client injoignable">Client injoignable après 3 tentatives d&apos;appel</option>
                   <option value="Client absent">Client absent du domicile</option>
                   <option value="Adresse introuvable">Adresse erronée / introuvable</option>
-                  <option value="Refus du colis">Refus explicite du colis par l'acheteur</option>
+                  <option value="Refus du colis">Refus explicite du colis par l&apos;acheteur</option>
                   <option value="Fonds insuffisants">Fonds COD non disponibles auprès du destinataire</option>
                   <option value="Autre">Autre motif opérationnel</option>
                 </select>

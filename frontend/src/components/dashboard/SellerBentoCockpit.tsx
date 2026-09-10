@@ -278,7 +278,7 @@ export function SellerBentoCockpit({
             <div className="flex justify-between mt-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
               <span>{salesData[0] && new Date(salesData[0].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
               <span>{salesData[14] && new Date(salesData[14].date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })}</span>
-              <span>Aujourd'hui</span>
+              <span>Aujourd&apos;hui</span>
             </div>
           </div>
 
@@ -468,7 +468,7 @@ export function SellerBentoCockpit({
             href="/hub/dashboard/onboarding"
             className="w-full py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-2xs flex items-center justify-center gap-1.5"
           >
-            <span>Guide d'Onboarding Complet</span>
+            <span>Guide d&apos;Onboarding Complet</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </section>
@@ -537,7 +537,7 @@ export function SellerBentoCockpit({
               </div>
               <div>
                 <h2 className="text-xs font-semibold text-slate-900 dark:text-white">Commandes Récentes</h2>
-                <p className="text-[10px] text-slate-400">Flux d'expédition direct</p>
+                <p className="text-[10px] text-slate-400">Flux d&apos;expédition direct</p>
               </div>
             </div>
             <Link

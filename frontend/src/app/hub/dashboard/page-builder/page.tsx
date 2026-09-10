@@ -616,7 +616,7 @@ export default function PageBuilderDashboard() {
           <button
             onClick={() => setShowTemplatePicker(true)}
             disabled={hasReachedPageLimit}
-            className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 text-xs"
+            className="flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 text-xs"
           >
             <LayoutTemplate className="w-4 h-4" />
             {t('dashboardPages.pageBuilder.fromTemplate')}
@@ -671,7 +671,7 @@ export default function PageBuilderDashboard() {
                 href={`/store/${store.subdomain}/pages/${MAINTENANCE_PAGE_SLUG}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <ExternalLink className="h-4 w-4" />
                 {t('dashboardPages.pageBuilder.viewPage')}
@@ -762,7 +762,7 @@ export default function PageBuilderDashboard() {
             <button
               onClick={() => openCreateModal()}
               disabled={hasReachedPageLimit}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-6 py-3 font-semibold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 text-xs"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 font-semibold text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 text-xs"
             >
               <Plus className="w-5 h-5" />
               {t('dashboardPages.pageBuilder.blankPage')}
@@ -786,7 +786,7 @@ export default function PageBuilderDashboard() {
               }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 shadow-2xs">
+                    <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs">
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
@@ -833,11 +833,11 @@ export default function PageBuilderDashboard() {
                       <BarChart3 className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                       {t('dashboardPages.pageBuilder.last30Days')}
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-2 py-1 text-slate-700 dark:text-slate-300">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-slate-700 dark:text-slate-300">
                       <Eye className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                       {statsLabels.views}
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-2 py-1 text-slate-700 dark:text-slate-300">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-slate-700 dark:text-slate-300">
                       <MousePointerClick className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                       {statsLabels.clicks}
                     </span>
@@ -940,7 +940,7 @@ export default function PageBuilderDashboard() {
                   value={newPageTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder={t('dashboardPages.pageBuilder.titlePlaceholder')}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                   autoFocus
                 />
               </div>
@@ -959,7 +959,7 @@ export default function PageBuilderDashboard() {
                     }}
                     placeholder={t('dashboardPages.pageBuilder.slugPlaceholder')}
                     aria-invalid={Boolean(createSlugError)}
-                    className={`w-full rounded-xl border bg-white dark:bg-slate-850 px-4 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors focus:ring-1 ${
+                    className={`w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-colors focus:ring-1 ${
                       createSlugError
                         ? 'border-rose-300 dark:border-rose-700 focus:border-rose-500 focus:ring-rose-500'
                         : 'border-slate-300 dark:border-slate-700 focus:border-slate-900 dark:focus:border-white focus:ring-slate-900 dark:focus:ring-white'
@@ -979,7 +979,7 @@ export default function PageBuilderDashboard() {
                               setNewPageSlug(suggestion);
                               setSlugFieldError('');
                             }}
-                            className="rounded-full border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-850 px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                            className="rounded-full border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 px-2 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40"
                           >
                             {t('dashboardPages.pageBuilder.useSlug', { slug: suggestion })}
                           </button>

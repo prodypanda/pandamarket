@@ -151,10 +151,10 @@ export function AdminReGoCategories({
           <div
             className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--rego-r,8px)] border p-3 transition-all ${
               depth === 0
-                ? 'border-[var(--rego-border,#dedede)] bg-white shadow-2xs hover:border-[var(--rego-accent,#ad0505)]/40'
+                ? 'border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 shadow-2xs hover:border-[var(--rego-accent,#ad0505)]/40'
                 : 'border-[var(--rego-border,#dedede)]/70 bg-[var(--rego-surface,#f5f5f5)]/40 hover:bg-[var(--rego-surface,#f5f5f5)]'
             }`}
-            style={{ marginLeft: `${depth * 1.5}rem` }}
+            style={{ marginInlineStart: `${depth * 1.5}rem` }}
           >
             {/* Left info */}
             <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ export function AdminReGoCategories({
                 <button
                   type="button"
                   onClick={() => onToggleCollapse(node.id)}
-                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                 >
                   <ChevronDown
                     className={`w-4 h-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
@@ -172,7 +172,7 @@ export function AdminReGoCategories({
                 <span className="w-4 text-center text-slate-300 font-mono text-xs">└──</span>
               )}
 
-              <div className="w-8 h-8 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-white shrink-0 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-white dark:bg-slate-900 shrink-0 flex items-center justify-center">
                 {node.image_url ? (
                   <img src={node.image_url} alt={node.name} className="w-full h-full object-cover" />
                 ) : (
@@ -182,14 +182,14 @@ export function AdminReGoCategories({
 
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
                     Niv. {depth + 1}
                   </span>
                   <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">
                     {node.name}
                   </h4>
                   {node.is_default && (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200">
                       Défaut
                     </span>
                   )}
@@ -201,7 +201,7 @@ export function AdminReGoCategories({
                 <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--rego-ink-2,#737373)]">
                   {node.name_fr && <span>🇫🇷 {node.name_fr}</span>}
                   {node.name_ar && <span>🇹🇳 {node.name_ar}</span>}
-                  <span className="font-semibold text-slate-500">
+                  <span className="font-semibold text-slate-500 dark:text-slate-400">
                     · {node.product_count || 0} article{(node.product_count || 0) > 1 ? 's' : ''}
                   </span>
                 </div>
@@ -219,7 +219,7 @@ export function AdminReGoCategories({
                 className={`p-1.5 rounded-[var(--rego-r,6px)] border transition-colors cursor-pointer ${
                   node.show_in_megamenu
                     ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                    : 'border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-slate-200'
                 }`}
               >
                 {node.show_in_megamenu ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -232,21 +232,21 @@ export function AdminReGoCategories({
                 disabled={node.is_default || isActing}
                 className={`text-[10px] font-bold px-2 py-1 rounded transition-colors cursor-pointer ${
                   node.is_active
-                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200'
                 }`}
               >
                 {node.is_active ? 'Actif' : 'Inactif'}
               </button>
 
               {/* Position Reorder */}
-              <div className="flex items-center rounded border border-[var(--rego-border,#dedede)] bg-white">
+              <div className="flex items-center rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => void onMovePosition(node, 'up')}
                   disabled={isActing}
                   title="Monter"
-                  className="p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                  className="p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <ArrowUp className="w-3 h-3" />
                 </button>
@@ -255,7 +255,7 @@ export function AdminReGoCategories({
                   onClick={() => void onMovePosition(node, 'down')}
                   disabled={isActing}
                   title="Descendre"
-                  className="p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                  className="p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <ArrowDown className="w-3 h-3" />
                 </button>
@@ -266,7 +266,7 @@ export function AdminReGoCategories({
                 type="button"
                 onClick={() => onAddSubcategory(node.id)}
                 title="Ajouter une sous-catégorie rattachée"
-                className="inline-flex items-center gap-1 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white px-2 py-1 text-[11px] font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 px-2 py-1 text-[11px] font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
               >
                 <Plus className="w-3 h-3 text-[var(--rego-accent,#ad0505)]" />
                 <span>+ Sous-rayon</span>
@@ -277,7 +277,7 @@ export function AdminReGoCategories({
                 type="button"
                 onClick={() => onEditCategory(node)}
                 title="Modifier les détails de la catégorie"
-                className="p-1.5 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white text-slate-500 hover:text-[var(--rego-accent,#ad0505)] hover:bg-slate-50 cursor-pointer"
+                className="p-1.5 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:text-[var(--rego-accent,#ad0505)] hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
               >
                 <Settings2 className="w-3.5 h-3.5" />
               </button>
@@ -289,7 +289,7 @@ export function AdminReGoCategories({
                   onClick={() => onRequestDelete(node)}
                   disabled={isActing}
                   title="Supprimer la catégorie"
-                  className="p-1.5 rounded-[var(--rego-r,6px)] border border-rose-200 bg-white text-rose-500 hover:bg-rose-50 cursor-pointer"
+                  className="p-1.5 rounded-[var(--rego-r,6px)] border border-rose-200 bg-white dark:bg-slate-900 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -357,14 +357,14 @@ export function AdminReGoCategories({
 
       {/* 2. Feedback alerts */}
       {error && (
-        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>{success}</span>
         </div>
       )}
@@ -403,13 +403,13 @@ export function AdminReGoCategories({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
+            <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Filtrer par nom ou slug..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none"
+              className="w-full ps-9 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none"
             />
           </div>
 
@@ -429,7 +429,7 @@ export function AdminReGoCategories({
                   onClick={() => onTypeFilterChange(f.key)}
                   className={`px-2.5 py-1 text-xs font-bold rounded cursor-pointer transition-colors ${
                     typeFilter === f.key
-                      ? 'bg-white text-[var(--rego-fg,#111111)] shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] shadow-2xs'
                       : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
                   }`}
                 >
@@ -443,14 +443,14 @@ export function AdminReGoCategories({
               <button
                 type="button"
                 onClick={onExpandAll}
-                className="px-2.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
+                className="px-2.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
               >
                 Déplier tout
               </button>
               <button
                 type="button"
                 onClick={onCollapseAll}
-                className="px-2.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
+                className="px-2.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
               >
                 Replier tout
               </button>
@@ -468,7 +468,7 @@ export function AdminReGoCategories({
         {loading ? (
           <div className="p-12 text-center text-[var(--rego-ink-2,#737373)]">
             <Loader2 className="w-8 h-8 mx-auto animate-spin text-[var(--rego-accent,#ad0505)]" />
-            <p className="text-xs font-bold mt-2">Chargement de l'arborescence...</p>
+            <p className="text-xs font-bold mt-2">Chargement de l&apos;arborescence...</p>
           </div>
         ) : categoryTree.length === 0 ? (
           <div className="p-12 text-center text-[var(--rego-ink-2,#737373)] space-y-2">

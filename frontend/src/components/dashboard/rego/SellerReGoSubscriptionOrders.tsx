@@ -325,7 +325,7 @@ export function SellerReGoSubscriptionOrders({
                               {formatGatewayName(order.gateway)}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-slate-500">
+                          <td className="py-3 px-3 text-slate-500 dark:text-slate-400">
                             {new Date(order.created_at).toLocaleDateString(dateLocale, {
                               day: '2-digit',
                               month: 'short',
@@ -353,7 +353,7 @@ export function SellerReGoSubscriptionOrders({
                               <button
                                 type="button"
                                 onClick={() => setSelectedInvoice(order)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                 title="Voir la facture"
                               >
                                 <Eye className="w-4 h-4" />
@@ -366,7 +366,7 @@ export function SellerReGoSubscriptionOrders({
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                        Aucune facture d'abonnement trouvée pour les critères sélectionnés.
+                        Aucune facture d&apos;abonnement trouvée pour les critères sélectionnés.
                       </td>
                     </tr>
                   )}
@@ -375,7 +375,7 @@ export function SellerReGoSubscriptionOrders({
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400">
                 <span>Page {page} sur {totalPages}</span>
                 <div className="flex gap-1">
                   <button
@@ -411,23 +411,23 @@ export function SellerReGoSubscriptionOrders({
             <div className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-300">
               <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Formule :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Formule :</span>
                   <span className="font-bold capitalize text-slate-900 dark:text-white">Plan {selectedInvoice.target_plan}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Montant Net TTC :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Montant Net TTC :</span>
                   <ReGoAmtBox amount={Number(selectedInvoice.amount) || 0} size="sm" />
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">TVA (19%) incluse :</span>
+                  <span className="text-slate-500 dark:text-slate-400">TVA (19%) incluse :</span>
                   <span>{((Number(selectedInvoice.amount) || 0) * 0.19 / 1.19).toFixed(3)} TND</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Mode de Règlement :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Mode de Règlement :</span>
                   <span className="font-bold">{formatGatewayName(selectedInvoice.gateway)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Statut :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Statut :</span>
                   <ReGoStatusChip label={getStatusLabel(selectedInvoice.status)} status={getChipStatus(selectedInvoice.status)} />
                 </div>
               </div>

@@ -322,7 +322,7 @@ export function SellerReGoNavigation({
                             />
                             <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--rego-ink-2,#737373)]">
                               <span className="font-mono">{item.url || '/'}</span>
-                              <span className="px-1.5 py-0.2 rounded bg-[var(--rego-surface,#f5f5f5)] border border-[var(--rego-border,#dedede)] text-[10px] uppercase font-bold">
+                              <span className="px-1.5 py-0.5 rounded bg-[var(--rego-surface,#f5f5f5)] border border-[var(--rego-border,#dedede)] text-[10px] uppercase font-bold">
                                 {item.type}
                               </span>
                             </div>
@@ -351,7 +351,7 @@ export function SellerReGoNavigation({
                           <button
                             type="button"
                             onClick={() => onRemoveItem(activeTab as any, item.id)}
-                            className="p-1.5 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                            className="p-1.5 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                             title="Supprimer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export function SellerReGoNavigation({
                               <button
                                 type="button"
                                 onClick={() => onRemoveItem(activeTab as any, child.id)}
-                                className="p-1 text-rose-600 hover:bg-rose-50"
+                                className="p-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -450,7 +450,7 @@ export function SellerReGoNavigation({
                     <button
                       type="button"
                       onClick={() => onRemoveBlock(block.id)}
-                      className="p-1.5 rounded text-rose-600 hover:bg-rose-50"
+                      className="p-1.5 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -502,7 +502,7 @@ export function SellerReGoNavigation({
               </div>
 
               <div className="space-y-1">
-                <label className="block font-bold text-[var(--rego-fg,#111111)]">Cible d'Ouverture</label>
+                <label className="block font-bold text-[var(--rego-fg,#111111)]">Cible d&apos;Ouverture</label>
                 <select
                   value={editingItem.item.target || '_self'}
                   onChange={(e) => {

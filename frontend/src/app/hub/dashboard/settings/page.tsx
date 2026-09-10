@@ -982,7 +982,7 @@ export default function SettingsPage() {
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Informations de la boutique</h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Présentez votre boutique avec des informations propres, complètes et rassurantes.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/60 p-5">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-5">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Étape d’onboarding</p>
@@ -1028,7 +1028,7 @@ export default function SettingsPage() {
                   type="text"
                   value={storeName}
                   onChange={(e) => setStoreName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
               <div>
@@ -1048,7 +1048,7 @@ export default function SettingsPage() {
                 value={storeDescription}
                 onChange={(e) => setStoreDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none resize-none transition"
+                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none resize-none transition"
               />
             </div>
             <div>
@@ -1103,7 +1103,7 @@ export default function SettingsPage() {
                       className={`rounded-xl border p-4 transition disabled:cursor-not-allowed disabled:opacity-60 ${isRtl ? 'text-right' : 'text-left'} ${
                         selected
                           ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
-                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       <span className="block text-sm font-bold text-slate-900 dark:text-white">{option.label}</span>
@@ -1120,7 +1120,7 @@ export default function SettingsPage() {
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
               <div>
@@ -1129,7 +1129,7 @@ export default function SettingsPage() {
                   type="tel"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
               </div>
             </div>
@@ -1148,7 +1148,7 @@ export default function SettingsPage() {
                     type="text"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div>
@@ -1157,7 +1157,7 @@ export default function SettingsPage() {
                     type="text"
                     value={city}
                     onChange={(event) => setCity(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div>
@@ -1166,7 +1166,7 @@ export default function SettingsPage() {
                     type="text"
                     value={country}
                     onChange={(event) => setCountry(event.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -1176,7 +1176,7 @@ export default function SettingsPage() {
                     value={mapEmbedUrl}
                     onChange={(event) => setMapEmbedUrl(event.target.value)}
                     placeholder="https://www.google.com/maps/embed?pb=..."
-                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                    className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                   />
                   <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Utilisez uniquement une URL d&apos;intégration Google Maps.</p>
                 </div>
@@ -1201,7 +1201,7 @@ export default function SettingsPage() {
                         value={socialLinks[platform.key]}
                         onChange={(event) => updateSocialLink(platform.key, event.target.value)}
                         placeholder={platform.placeholder}
-                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white py-2.5 pl-10 pr-4 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-2.5 pl-10 pr-4 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                       />
                     </div>
                   </div>
@@ -1360,7 +1360,7 @@ export default function SettingsPage() {
                       className={`relative flex cursor-pointer flex-col rounded-xl border p-4 transition ${
                         selected
                           ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
-                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       <input
@@ -1414,7 +1414,7 @@ export default function SettingsPage() {
                           onChange={(e) => setMaintenanceMessage(e.target.value)}
                           placeholder={t('dashboardPages.settings.maintenancePlaceholder')}
                           rows={2}
-                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-3 py-2 text-sm focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 text-sm focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                         />
                       </div>
                     )}
@@ -1496,7 +1496,7 @@ export default function SettingsPage() {
         {activeTab === 'theme' && (
           <div className="space-y-6">
             {/* Dashboard Workspace Style & Theme (ReGo / Bento / Classic) */}
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/60 p-5 space-y-4">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1603,7 +1603,7 @@ export default function SettingsPage() {
                         className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                           accent === item.id
                             ? 'border-slate-900 dark:border-white bg-white dark:bg-slate-800 shadow-2xs font-bold'
-                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-850 hover:bg-white'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-white'
                         }`}
                       >
                         <span
@@ -1730,7 +1730,7 @@ export default function SettingsPage() {
                   value={newDomainHostname}
                   onChange={(e) => setNewDomainHostname(e.target.value)}
                   placeholder="ex: boutique.com ou www.maboutique.tn"
-                  className="flex-1 px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+                  className="flex-1 px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
                 />
                 <button
                   type="button"
@@ -1830,14 +1830,14 @@ export default function SettingsPage() {
                     <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 text-xs space-y-2">
                       <p className="font-bold text-slate-800 dark:text-slate-200">Instructions de configuration DNS chez votre registrar :</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="bg-white dark:bg-slate-850 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
+                        <div className="bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
                           <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Enregistrement CNAME (Recommandé)</span>
                           <p className="mt-1 font-mono text-[11px] text-slate-900 dark:text-white">
                             <strong>Nom/Hôte:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">@</code> ou <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">www</code><br />
                             <strong>Cible:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">cname.garbage.team</code>
                           </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-850 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
+                        <div className="bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-700 rounded-xl">
                           <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 block">Challenge TXT (Alternative)</span>
                           <p className="mt-1 font-mono text-[11px] text-slate-900 dark:text-white">
                             <strong>Nom TXT:</strong> <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">_pandamarket-challenge.{d.hostname}</code><br />
@@ -1867,7 +1867,7 @@ export default function SettingsPage() {
                   className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
                     shippingMode === mode.id
                       ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
-                      : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
                   <input
@@ -1897,7 +1897,7 @@ export default function SettingsPage() {
                     onChange={(event) => setShippingPolicy(event.target.value)}
                     rows={4}
                     placeholder="Délais estimés, zones desservies, suivi, frais ou conditions spécifiques..."
-                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
                 <div>
@@ -1907,7 +1907,7 @@ export default function SettingsPage() {
                     onChange={(event) => setReturnsPolicy(event.target.value)}
                     rows={4}
                     placeholder="Conditions de retour, délais, produits exclus, procédure de contact..."
-                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
                 <div>
@@ -1917,7 +1917,7 @@ export default function SettingsPage() {
                     onChange={(event) => setPaymentPolicy(event.target.value)}
                     rows={4}
                     placeholder="Modes acceptés, paiement à la livraison, Mandat Minute ou consignes publiques..."
-                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
+                    className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-4 py-2.5 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white transition"
                   />
                 </div>
               </div>
@@ -1961,7 +1961,7 @@ export default function SettingsPage() {
                   value={ga4MeasurementId}
                   onChange={(e) => setGa4MeasurementId(e.target.value)}
                   placeholder="G-XXXXXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
@@ -1979,7 +1979,7 @@ export default function SettingsPage() {
                   value={metaPixelId}
                   onChange={(e) => setMetaPixelId(e.target.value)}
                   placeholder="123456789012345"
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
@@ -1997,7 +1997,7 @@ export default function SettingsPage() {
                   value={gtmContainerId}
                   onChange={(e) => setGtmContainerId(e.target.value)}
                   placeholder="GTM-XXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
 
@@ -2015,7 +2015,7 @@ export default function SettingsPage() {
                   value={tiktokPixelId}
                   onChange={(e) => setTiktokPixelId(e.target.value)}
                   placeholder="CXXXXXXXXXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-850 text-slate-900 dark:text-white outline-none transition"
+                  className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-mono focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none transition"
                 />
               </div>
             </div>

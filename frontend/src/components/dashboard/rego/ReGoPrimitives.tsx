@@ -135,7 +135,7 @@ export function ReGoKpiHero({
               {deltaType === 'increase' && <TrendingUp className="w-2.5 h-2.5" />}
               {deltaType === 'decrease' && <TrendingDown className="w-2.5 h-2.5" />}
               {deltaType === 'neutral' && <Minus className="w-2.5 h-2.5" />}
-              <span>{typeof delta === 'number' && delta > 0 ? `+${delta}%` : `${delta}%`}</span>
+              <span>{typeof delta === 'number' ? `${delta > 0 ? '+' : ''}${delta}%` : String(delta)}</span>
             </span>
             {deltaLabel && <span className="text-[10px] text-[var(--rego-ink-3,#949494)]">{deltaLabel}</span>}
           </div>
@@ -171,7 +171,7 @@ export function ReGoAmtBox({
     <span className={`inline-flex items-baseline font-mono font-bold tabular-nums text-[var(--rego-fg,#111111)] ${className}`}>
       <span className={textClasses[size]}>{dinars.toLocaleString('fr-TN')}</span>
       <span className="text-[0.75em] text-[var(--rego-ink-2,#737373)] font-medium">.{millimesStr}</span>
-      <span className="ml-1 text-[0.65em] font-extrabold uppercase text-[var(--rego-ink-3,#949494)] tracking-wider">
+      <span className="ms-1 text-[0.65em] font-extrabold uppercase text-[var(--rego-ink-3,#949494)] tracking-wider">
         TND
       </span>
     </span>
@@ -241,9 +241,9 @@ export function ReGoDrawer({
         className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-200"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div className="fixed inset-y-0 end-0 max-w-full flex ps-10">
         <div
-          className={`w-screen ${width} bg-[var(--rego-bg,#ffffff)] border-l border-[var(--rego-border,#dedede)] shadow-2xl flex flex-col`}
+          className={`w-screen ${width} bg-[var(--rego-bg,#ffffff)] border-s border-[var(--rego-border,#dedede)] shadow-2xl flex flex-col`}
         >
           <div className="flex items-center justify-between border-b border-[var(--rego-border,#dedede)] px-5 py-4">
             <div>

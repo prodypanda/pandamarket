@@ -141,9 +141,9 @@ export function AdminReGoWithdrawals({
           hint="20 enregistrements par page"
         />
         <ReGoKpiHero
-          label="Statut Trésorerie"
-          value="Synchronisé"
-          hint="Ledger bancaire à jour"
+          label="Opérations Affichées"
+          value={loading ? '—' : filteredWithdrawals.length}
+          hint="Après filtre de recherche"
         />
       </div>
 
@@ -154,13 +154,13 @@ export function AdminReGoWithdrawals({
         icon={Wallet}
         actions={
           <div className="relative w-64">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+            <Search className="w-3.5 h-3.5 absolute start-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
             <input
               type="text"
               placeholder="Rechercher boutique, ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
+              className="w-full ps-8 pe-3 py-1 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-hidden focus:border-[var(--rego-accent,#ad0505)] font-medium"
             />
           </div>
         }
@@ -184,7 +184,7 @@ export function AdminReGoWithdrawals({
         ) : (
           <div className="space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[var(--rego-fg,#111111)]">
+              <table className="w-full text-start text-xs text-[var(--rego-fg,#111111)]">
                 <thead className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)]">
                   <tr>
                     <th className="px-3 py-2.5">Date</th>
@@ -193,7 +193,7 @@ export function AdminReGoWithdrawals({
                     <th className="px-3 py-2.5">Solde Après Opération</th>
                     <th className="px-3 py-2.5">Description</th>
                     <th className="px-3 py-2.5">ID Réf</th>
-                    <th className="px-3 py-2.5 text-right">Action</th>
+                    <th className="px-3 py-2.5 text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -220,7 +220,7 @@ export function AdminReGoWithdrawals({
                         </div>
                       </td>
                       <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-1 text-rose-600 font-bold">
+                        <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
                           <ArrowUpRight className="w-3.5 h-3.5" />
                           <span>-{toNumber(w.amount).toFixed(3)} TND</span>
                         </div>
@@ -234,7 +234,7 @@ export function AdminReGoWithdrawals({
                       <td className="px-3 py-2.5 font-mono text-[10px] text-[var(--rego-ink-3,#949494)]">
                         {w.id.slice(-8).toUpperCase()}
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3 py-2.5 text-end">
                         <button
                           type="button"
                           onClick={() => setSelectedWithdrawal(w)}
@@ -256,7 +256,7 @@ export function AdminReGoWithdrawals({
                 type="button"
                 onClick={() => onPageChange(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Précédent</span>
@@ -270,7 +270,7 @@ export function AdminReGoWithdrawals({
                 type="button"
                 onClick={() => onPageChange(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <span>Suivant</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -312,7 +312,7 @@ export function AdminReGoWithdrawals({
 
             <div className="space-y-2 text-xs">
               <h4 className="font-bold text-[var(--rego-fg,#111111)]">Informations Opération</h4>
-              <div className="space-y-1.5 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)]">
+              <div className="space-y-1.5 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)]">
                 <p><strong className="text-[var(--rego-fg,#111111)]">Boutique :</strong> {selectedWithdrawal.store_name}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">ID Portefeuille :</strong> {selectedWithdrawal.wallet_id}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">Type d&apos;opération :</strong> {selectedWithdrawal.type}</p>

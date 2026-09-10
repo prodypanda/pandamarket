@@ -182,7 +182,7 @@ export function AdsCreativeMediaPicker({
                     onSelect(asset.url);
                     onClose();
                   }}
-                  className="group overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 text-left transition hover:border-slate-400 hover:shadow-xs cursor-pointer"
+                  className="group overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-left transition hover:border-slate-400 hover:shadow-xs cursor-pointer"
                 >
                   <img src={asset.url ? getResizedImageUrl(asset.url, 'medium') : ''} alt={name(asset)} className="aspect-square w-full bg-slate-100 dark:bg-slate-800 object-cover" />
                   <p className="truncate p-2.5 text-xs font-medium text-slate-900 dark:text-white">{name(asset)}</p>

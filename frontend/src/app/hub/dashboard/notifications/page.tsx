@@ -279,7 +279,7 @@ export default function NotificationsPage() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               ← {t('dashboardPages.notifications.previous')}
             </button>
@@ -287,7 +287,7 @@ export default function NotificationsPage() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="px-3.5 py-1.5 text-sm font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               {t('dashboardPages.notifications.next')} →
             </button>

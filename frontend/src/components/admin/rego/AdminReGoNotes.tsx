@@ -334,7 +334,7 @@ export function AdminReGoNotes({
             onClick={() => void exportNotes('csv')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <Download className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>CSV</span>
           </button>
           <button
@@ -342,7 +342,7 @@ export function AdminReGoNotes({
             onClick={openNewFolderModal}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-slate-500" />
+            <FolderPlus className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>+ Dossier</span>
           </button>
         </div>
@@ -352,7 +352,7 @@ export function AdminReGoNotes({
           <button
             type="button"
             onClick={() => openNewEditor('reminder')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 shadow-xs transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 shadow-xs transition-all"
           >
             <Bell className="w-3.5 h-3.5 text-amber-600" />
             <span>+ Rappel</span>
@@ -369,9 +369,9 @@ export function AdminReGoNotes({
       }
       alertBanner={
         overdueCount > 0 ? (
-          <div className="p-4 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-900 text-xs font-medium flex items-center justify-between shadow-xs">
+          <div className="p-4 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-900 text-xs font-medium flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
               <span>
                 <strong className="font-bold">{overdueCount} rappel(s) administratif(s) en retard.</strong> Des actions requièrent votre vigilance immédiate.
               </span>
@@ -475,20 +475,20 @@ export function AdminReGoNotes({
 
             {/* Search Input */}
             <div className="relative max-w-xs w-full">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Rechercher par titre, contenu, tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
+                className="w-full ps-8 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
               />
             </div>
           </div>
 
           {/* Folder Pills Bar */}
           <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--rego-border,#dedede)] pt-3">
-            <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)] mr-1 flex items-center gap-1">
+            <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)] me-1 flex items-center gap-1">
               <Folder className="w-3.5 h-3.5" /> Dossiers:
             </span>
             <button
@@ -497,7 +497,7 @@ export function AdminReGoNotes({
               className={`px-2.5 py-1 text-xs font-bold rounded-[var(--rego-r,8px)] transition-all ${
                 activeFolder === 'all'
                   ? 'bg-[var(--rego-accent,#ad0505)] text-white'
-                  : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:bg-slate-50'
+                  : 'border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)] hover:bg-slate-50 dark:hover:bg-slate-900'
               }`}
             >
               Tous
@@ -508,7 +508,7 @@ export function AdminReGoNotes({
               className={`px-2.5 py-1 text-xs font-bold rounded-[var(--rego-r,8px)] transition-all ${
                 activeFolder === 'unorganized'
                   ? 'bg-[var(--rego-accent,#ad0505)] text-white'
-                  : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:bg-slate-50'
+                  : 'border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)] hover:bg-slate-50 dark:hover:bg-slate-900'
               }`}
             >
               Non classés
@@ -521,7 +521,7 @@ export function AdminReGoNotes({
                 className={`px-2.5 py-1 text-xs font-bold rounded-[var(--rego-r,8px)] transition-all ${
                   activeFolder === folder.id
                     ? 'bg-[var(--rego-accent,#ad0505)] text-white'
-                    : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:bg-slate-50'
+                    : 'border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)] hover:bg-slate-50 dark:hover:bg-slate-900'
                 }`}
               >
                 {folder.name}
@@ -533,7 +533,7 @@ export function AdminReGoNotes({
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="px-2.5 py-1 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)]"
+                className="px-2.5 py-1 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)]"
               >
                 <option value="active">Actives</option>
                 <option value="archived">Archivées</option>
@@ -544,7 +544,7 @@ export function AdminReGoNotes({
 
           {/* Batch Actions Toolbar */}
           {selectedIds.size > 0 && (
-            <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] bg-slate-100 border border-slate-200 text-xs font-bold">
+            <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-bold">
               <span>{selectedIds.size} note(s) sélectionnée(s)</span>
               <div className="flex items-center gap-2">
                 {statusFilter === 'active' ? (
@@ -552,14 +552,14 @@ export function AdminReGoNotes({
                     <button
                       type="button"
                       onClick={() => void batchArchive()}
-                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] bg-white border border-slate-300 hover:bg-slate-50"
+                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900"
                     >
                       Archiver la sélection
                     </button>
                     <button
                       type="button"
                       onClick={() => void batchTrash()}
-                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                      className="px-2.5 py-1 rounded-[var(--rego-r,8px)] bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 hover:bg-red-100"
                     >
                       Mettre à la corbeille
                     </button>
@@ -576,7 +576,7 @@ export function AdminReGoNotes({
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set())}
-                  className="px-2 py-1 text-slate-500 hover:text-slate-800"
+                  className="px-2 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                 >
                   Annuler
                 </button>
@@ -625,11 +625,11 @@ export function AdminReGoNotes({
                     onClick={() => openDetail(note)}
                     className={`group relative flex flex-col justify-between rounded-[var(--rego-r,8px)] border p-4 transition-all cursor-pointer shadow-2xs hover:shadow-md ${
                       note.is_completed
-                        ? 'border-emerald-200 bg-emerald-50/20 opacity-75'
+                        ? 'border-emerald-200 bg-emerald-50/20 dark:bg-emerald-950/20 opacity-75'
                         : note.priority === 'urgent'
-                        ? 'border-red-300 bg-red-50/30 hover:border-red-400'
+                        ? 'border-red-300 bg-red-50/30 dark:bg-red-950/30 hover:border-red-400'
                         : note.priority === 'high'
-                        ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400'
+                        ? 'border-amber-300 bg-amber-50/30 dark:bg-amber-950/30 hover:border-amber-400'
                         : 'border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] hover:border-slate-400'
                     } ${isSelected ? 'ring-2 ring-[var(--rego-accent,#ad0505)]' : ''}`}
                   >
@@ -641,8 +641,9 @@ export function AdminReGoNotes({
                             type="checkbox"
                             checked={isSelected}
                             onClick={(e) => handleSelectNote(note.id, e)}
-                            onChange={() => {}}
-                            className="rounded text-[var(--rego-accent,#ad0505)] focus:ring-[var(--rego-accent,#ad0505)]"
+                            readOnly
+                            tabIndex={-1}
+                            className="rounded text-[var(--rego-accent,#ad0505)] focus:ring-[var(--rego-accent,#ad0505)] pointer-events-none"
                           />
                           <ReGoStatusChip
                             status={
@@ -657,7 +658,7 @@ export function AdminReGoNotes({
                             label={note.priority}
                           />
                           {note.type === 'reminder' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 px-1.5 py-0.5 rounded">
                               <Bell className="w-3 h-3" /> Rappel
                             </span>
                           )}
@@ -667,8 +668,8 @@ export function AdminReGoNotes({
                         <button
                           type="button"
                           onClick={(e) => void togglePin(note, e)}
-                          className={`p-1 rounded hover:bg-slate-100 transition-colors ${
-                            note.is_pinned ? 'text-[var(--rego-accent,#ad0505)]' : 'text-slate-300 hover:text-slate-500'
+                          className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                            note.is_pinned ? 'text-[var(--rego-accent,#ad0505)]' : 'text-slate-300 hover:text-slate-500 dark:hover:text-slate-400'
                           }`}
                           title={note.is_pinned ? 'Détacher la note' : 'Épingler en haut'}
                         >
@@ -678,7 +679,7 @@ export function AdminReGoNotes({
 
                       {/* Note Title */}
                       <div>
-                        <h4 className={`text-sm font-bold leading-tight ${note.is_completed ? 'line-through text-slate-500' : 'text-[var(--rego-fg,#111111)]'}`}>
+                        <h4 className={`text-sm font-bold leading-tight ${note.is_completed ? 'line-through text-slate-500 dark:text-slate-400' : 'text-[var(--rego-fg,#111111)]'}`}>
                           {note.title}
                         </h4>
                         <p className="mt-1.5 text-xs text-[var(--rego-ink-2,#737373)] line-clamp-3 leading-relaxed">
@@ -692,7 +693,7 @@ export function AdminReGoNotes({
                           {note.tags.map((tag: string, idx: number) => (
                             <span
                               key={idx}
-                              className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600"
+                              className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                             >
                               #{tag}
                             </span>
@@ -706,8 +707,8 @@ export function AdminReGoNotes({
                           overdue
                             ? 'bg-red-100 text-red-800'
                             : dueSoon
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-amber-100 text-amber-800 dark:text-amber-300'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}>
                           <Clock className="w-3.5 h-3.5" />
                           <span>
@@ -732,7 +733,7 @@ export function AdminReGoNotes({
                         <button
                           type="button"
                           onClick={(e) => void toggleComplete(note, e)}
-                          className={`p-1 rounded hover:bg-slate-100 transition-colors ${
+                          className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
                             note.is_completed ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
                           }`}
                           title={note.is_completed ? 'Marquer non fait' : 'Marquer terminé'}
@@ -745,7 +746,7 @@ export function AdminReGoNotes({
                             e.stopPropagation();
                             openEditEditor(note);
                           }}
-                          className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                           title="Modifier"
                         >
                           <Pencil className="w-4 h-4" />
@@ -754,7 +755,7 @@ export function AdminReGoNotes({
                           <button
                             type="button"
                             onClick={(e) => void archiveNote(note, e)}
-                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                             title="Archiver"
                           >
                             <Archive className="w-4 h-4" />
@@ -763,7 +764,7 @@ export function AdminReGoNotes({
                           <button
                             type="button"
                             onClick={(e) => void restoreNote(note, e)}
-                            className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded transition-colors"
+                            className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                             title="Restaurer"
                           >
                             <ArchiveRestore className="w-4 h-4" />
@@ -772,7 +773,7 @@ export function AdminReGoNotes({
                         <button
                           type="button"
                           onClick={(e) => void trashNote(note, e)}
-                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                           title="Supprimer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -811,14 +812,14 @@ export function AdminReGoNotes({
                   <ReGoStatusChip status="ok" label="Terminée" />
                 )}
                 {detailData.reminder_at && (
-                  <span className="text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-bold">
+                  <span className="text-xs text-amber-800 dark:text-amber-300 bg-amber-100 px-2 py-0.5 rounded font-bold">
                     Rappel: {new Date(detailData.reminder_at).toLocaleString('fr-TN')}
                   </span>
                 )}
               </div>
 
               {/* Note Content */}
-              <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-slate-50/50 text-xs leading-relaxed text-[var(--rego-fg,#111111)] whitespace-pre-wrap">
+              <div className="p-4 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-slate-50/50 dark:bg-slate-900/50 text-xs leading-relaxed text-[var(--rego-fg,#111111)] whitespace-pre-wrap">
                 {detailData.content}
               </div>
 
@@ -826,7 +827,7 @@ export function AdminReGoNotes({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase text-[var(--rego-ink-2,#737373)] flex items-center gap-1.5">
-                    <ListChecks className="w-4 h-4 text-slate-500" />
+                    <ListChecks className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Checklist & Sous-Tâches ({detailData.checklist?.length || 0})</span>
                   </h4>
                 </div>
@@ -835,7 +836,7 @@ export function AdminReGoNotes({
                   {detailData.checklist?.map((item: any) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-xs"
+                      className="flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-xs"
                     >
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -846,7 +847,7 @@ export function AdminReGoNotes({
                           }}
                           className="rounded text-[var(--rego-accent,#ad0505)]"
                         />
-                        <span className={item.is_done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}>
+                        <span className={item.is_done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100 font-medium'}>
                           {item.content}
                         </span>
                       </label>
@@ -896,10 +897,10 @@ export function AdminReGoNotes({
               {detailData.attachments && detailData.attachments.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase text-[var(--rego-ink-2,#737373)] flex items-center gap-1.5">
-                    <Paperclip className="w-4 h-4 text-slate-500" />
+                    <Paperclip className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Pièces Jointes ({detailData.attachments.length})</span>
                   </h4>
-                  <div className="divide-y border rounded-[var(--rego-r,8px)] border-[var(--rego-border,#dedede)] bg-white text-xs">
+                  <div className="divide-y border rounded-[var(--rego-r,8px)] border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-xs">
                     {detailData.attachments.map((att: any) => (
                       <div key={att.id} className="p-2.5 flex justify-between items-center">
                         <span className="font-medium truncate max-w-[200px]">{att.filename}</span>
@@ -924,11 +925,11 @@ export function AdminReGoNotes({
               {activity && activity.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase text-[var(--rego-ink-2,#737373)]">
-                    Journal d'Activité
+                    Journal d&apos;Activité
                   </h4>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
                     {activity.map((act: any) => (
-                      <div key={act.id} className="p-2 rounded bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
+                      <div key={act.id} className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400">
                         <span className="font-bold">{act.action}</span> • {new Date(act.created_at).toLocaleString('fr-TN')}
                       </div>
                     ))}
@@ -956,7 +957,7 @@ export function AdminReGoNotes({
                 value={editorTitle}
                 onChange={(e) => setEditorTitle(e.target.value)}
                 placeholder="ex. Audit conformité Aramex Sfax..."
-                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
+                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
               />
             </div>
 
@@ -968,7 +969,7 @@ export function AdminReGoNotes({
                 <select
                   value={editorType}
                   onChange={(e) => setEditorType(e.target.value as any)}
-                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)]"
+                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)]"
                 >
                   <option value="note">Note Ordinaire</option>
                   <option value="reminder">Rappel Planifié</option>
@@ -983,7 +984,7 @@ export function AdminReGoNotes({
                 <select
                   value={editorPriority}
                   onChange={(e) => setEditorPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)]"
+                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)]"
                 >
                   <option value="low">Basse</option>
                   <option value="normal">Normale</option>
@@ -1002,7 +1003,7 @@ export function AdminReGoNotes({
                   type="datetime-local"
                   value={editorReminderAt}
                   onChange={(e) => setEditorReminderAt(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)]"
+                  className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)]"
                 />
               </div>
             )}
@@ -1016,7 +1017,7 @@ export function AdminReGoNotes({
                 value={editorContent}
                 onChange={(e) => setEditorContent(e.target.value)}
                 placeholder="Détails du dossier, consignes pour l'équipe, décisions d'arbitrage..."
-                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
+                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:outline-none focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)]"
               />
             </div>
 
@@ -1029,7 +1030,7 @@ export function AdminReGoNotes({
                 value={editorTags}
                 onChange={(e) => setEditorTags(e.target.value)}
                 placeholder="Litige, Aramex, KYC, Remboursement..."
-                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)]"
+                className="w-full px-3 py-2 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)]"
               />
             </div>
 
@@ -1037,7 +1038,7 @@ export function AdminReGoNotes({
               <button
                 type="button"
                 onClick={() => setShowEditor(false)}
-                className="px-3.5 py-2 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                className="px-3.5 py-2 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
               >
                 Annuler
               </button>

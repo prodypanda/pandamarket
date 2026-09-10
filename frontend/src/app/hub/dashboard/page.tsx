@@ -404,7 +404,7 @@ export default function DashboardOverview() {
                   key={step.label}
                   href={step.href}
                   onClick={dismissWelcomeModal}
-                  className="group flex items-start gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-3.5 transition-colors hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-850 shadow-2xs"
+                  className="group flex items-start gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-3.5 transition-colors hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800 shadow-2xs"
                 >
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-semibold">
                     {step.completed ? (
@@ -623,7 +623,7 @@ export default function DashboardOverview() {
                   <Link
                     key={step.label}
                     href={step.href}
-                    className="flex items-center gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-3 transition hover:bg-white dark:hover:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
+                    className="flex items-center gap-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3 transition hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
                   >
                     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
                       {step.completed ? (

@@ -278,8 +278,8 @@ export function AdminReGoProducts({
 
       {/* 2. Error banner */}
       {error && (
-        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}
@@ -318,13 +318,13 @@ export function AdminReGoProducts({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
           {/* Search Box */}
           <div className="lg:col-span-4 relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
+            <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Rechercher article, SKU, référence..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none transition-all"
+              className="w-full ps-9 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none transition-all"
             />
           </div>
 
@@ -333,7 +333,7 @@ export function AdminReGoProducts({
             <select
               value={status}
               onChange={(e) => onStatusChange(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
+              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
             >
               <option value="all">Tous les statuts</option>
               <option value="published">Publié</option>
@@ -349,7 +349,7 @@ export function AdminReGoProducts({
             <select
               value={categoryId}
               onChange={(e) => onCategoryChange(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
+              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
             >
               <option value="">Toutes catégories</option>
               {categories.map((cat) => (
@@ -365,7 +365,7 @@ export function AdminReGoProducts({
             <select
               value={stockStatus}
               onChange={(e) => onStockChange(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
+              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
             >
               <option value="all">Tous stocks</option>
               <option value="in_stock">En stock</option>
@@ -379,7 +379,7 @@ export function AdminReGoProducts({
             <select
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
+              className="w-full px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
             >
               <option value="newest">Plus récents</option>
               <option value="oldest">Plus anciens</option>
@@ -419,13 +419,13 @@ export function AdminReGoProducts({
               Aucun produit ne correspond à ces critères
             </h3>
             <p className="text-xs text-[var(--rego-ink-2,#737373)]">
-              Modifiez votre recherche ou réinitialisez les filtres pour afficher l'ensemble du catalogue.
+              Modifiez votre recherche ou réinitialisez les filtres pour afficher l&apos;ensemble du catalogue.
             </p>
           </div>
         ) : (
           <div className="p-4 space-y-4">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-start border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--rego-border,#dedede)] text-[11px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                     <th className="px-3 py-2.5">Article & SKU</th>
@@ -434,7 +434,7 @@ export function AdminReGoProducts({
                     <th className="px-3 py-2.5">Prix & Stock</th>
                     <th className="px-3 py-2.5">Statut</th>
                     <th className="px-3 py-2.5">Tags & IA</th>
-                    <th className="px-3 py-2.5 text-right">Actions</th>
+                    <th className="px-3 py-2.5 text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -453,7 +453,7 @@ export function AdminReGoProducts({
                         {/* 1. Article & SKU */}
                         <td className="px-3 py-2.5 max-w-[260px]">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 shrink-0 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 dark:bg-slate-900 shrink-0 flex items-center justify-center">
                               {prod.thumbnail ? (
                                 <img
                                   src={prod.thumbnail}
@@ -471,7 +471,7 @@ export function AdminReGoProducts({
                               <div className="flex items-center gap-1.5 text-[10px] text-[var(--rego-ink-2,#737373)] font-mono">
                                 <span>{prod.product_reference || prod.slug}</span>
                                 {prod.variants_count !== undefined && prod.variants_count > 1 && (
-                                  <span className="text-[10px] px-1 rounded bg-slate-100 font-sans">
+                                  <span className="text-[10px] px-1 rounded bg-slate-100 dark:bg-slate-800 font-sans">
                                     {prod.variants_count} var.
                                   </span>
                                 )}
@@ -509,11 +509,11 @@ export function AdminReGoProducts({
                           <ReGoAmtBox amount={priceNum} size="sm" />
                           <div className="mt-0.5">
                             <span
-                              className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                 isOutOfStock
-                                  ? 'bg-rose-50 text-rose-700'
+                                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
                                   : isLowStock
-                                  ? 'bg-amber-50 text-amber-700'
+                                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
                                   : 'text-[var(--rego-ink-2,#737373)]'
                               }`}
                             >
@@ -555,7 +555,7 @@ export function AdminReGoProducts({
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-1.5">
                             {vendorTagCount > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                                 <Tag className="w-2.5 h-2.5" />
                                 {vendorTagCount}
                               </span>
@@ -573,7 +573,7 @@ export function AdminReGoProducts({
                         </td>
 
                         {/* 7. Actions */}
-                        <td className="px-3 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-end">
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
@@ -588,10 +588,10 @@ export function AdminReGoProducts({
                               type="button"
                               onClick={(e) => onCopyId(prod.id, e)}
                               title="Copier l'identifiant produit"
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             >
                               {copiedId === prod.id ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
                               )}
@@ -601,7 +601,7 @@ export function AdminReGoProducts({
                               href={`/hub/products/${prod.id}`}
                               target="_blank"
                               title="Voir la fiche sur la marketplace"
-                              className="p-1 rounded text-slate-400 hover:text-[var(--rego-accent,#ad0505)] hover:bg-slate-100 transition-colors"
+                              className="p-1 rounded text-slate-400 hover:text-[var(--rego-accent,#ad0505)] hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </Link>
@@ -620,7 +620,7 @@ export function AdminReGoProducts({
                 type="button"
                 onClick={onPrevPage}
                 disabled={pagination.page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Précédent</span>
@@ -634,7 +634,7 @@ export function AdminReGoProducts({
                 type="button"
                 onClick={onNextPage}
                 disabled={pagination.page >= pagination.total_pages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
               >
                 <span>Suivant</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -685,7 +685,7 @@ export function AdminReGoProducts({
             {drawerTab === 'overview' && (
               <div className="space-y-4">
                 <div className="flex gap-4 items-start">
-                  <div className="w-24 h-24 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 shrink-0">
+                  <div className="w-24 h-24 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 dark:bg-slate-900 shrink-0">
                     {selectedProduct.thumbnail ? (
                       <img
                         src={selectedProduct.thumbnail}
@@ -752,7 +752,7 @@ export function AdminReGoProducts({
                     onClick={() => onTargetTagTypeChange('vendor')}
                     className={`flex-1 py-1 text-xs font-bold rounded cursor-pointer ${
                       targetTagType === 'vendor'
-                        ? 'bg-white shadow-2xs text-[var(--rego-fg,#111111)]'
+                        ? 'bg-white dark:bg-slate-900 shadow-2xs text-[var(--rego-fg,#111111)]'
                         : 'text-[var(--rego-ink-2,#737373)]'
                     }`}
                   >
@@ -763,11 +763,11 @@ export function AdminReGoProducts({
                     onClick={() => onTargetTagTypeChange('ai')}
                     className={`flex-1 py-1 text-xs font-bold rounded cursor-pointer ${
                       targetTagType === 'ai'
-                        ? 'bg-white shadow-2xs text-[var(--rego-accent,#ad0505)]'
+                        ? 'bg-white dark:bg-slate-900 shadow-2xs text-[var(--rego-accent,#ad0505)]'
                         : 'text-[var(--rego-ink-2,#737373)]'
                     }`}
                   >
-                    Tags IA / Centres d'Intérêt ({interestTags.length})
+                    Tags IA / Centres d&apos;Intérêt ({interestTags.length})
                   </button>
                 </div>
 
@@ -779,7 +779,7 @@ export function AdminReGoProducts({
                     onChange={(e) => onNewTagInputChange(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && onAddTag()}
                     placeholder="Nouveau tag..."
-                    className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] outline-none"
+                    className="flex-1 px-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] outline-none"
                   />
                   <button
                     type="button"
@@ -796,7 +796,7 @@ export function AdminReGoProducts({
                     vendorTags.map((tag, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded"
+                        className="inline-flex items-center gap-1 text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2 py-1 rounded"
                       >
                         <span>{tag}</span>
                         <button
@@ -831,12 +831,12 @@ export function AdminReGoProducts({
                 {/* Save tags button */}
                 <div className="pt-2 border-t border-[var(--rego-border,#dedede)] flex items-center justify-between">
                   {tagSaveSuccess && (
-                    <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" /> Enregistré !
                     </span>
                   )}
                   {tagSaveError && (
-                    <span className="text-xs text-rose-600 font-bold">{tagSaveError}</span>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 font-bold">{tagSaveError}</span>
                   )}
                   <button
                     type="button"
@@ -857,14 +857,14 @@ export function AdminReGoProducts({
                 {selectedProduct.variants && selectedProduct.variants.length > 0 ? (
                   <div className="divide-y divide-[var(--rego-border,#dedede)] border border-[var(--rego-border,#dedede)] rounded-[var(--rego-r,8px)] overflow-hidden">
                     {selectedProduct.variants.map((v) => (
-                      <div key={v.id} className="p-3 text-xs flex items-center justify-between bg-white">
+                      <div key={v.id} className="p-3 text-xs flex items-center justify-between bg-white dark:bg-slate-900">
                         <div>
                           <div className="font-bold text-[var(--rego-fg,#111111)]">{v.title}</div>
                           <div className="text-[10px] text-[var(--rego-ink-3,#949494)] font-mono">
                             SKU: {v.sku || 'N/A'}
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-end">
                           <ReGoAmtBox amount={toNumber(v.price)} size="sm" />
                           <span className="text-[10px] text-[var(--rego-ink-2,#737373)] block">
                             {v.inventory_quantity} en stock
@@ -878,6 +878,47 @@ export function AdminReGoProducts({
                     Cet article ne possède pas de déclinaisons de variantes.
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Tab: Specs / Attributes */}
+            {drawerTab === 'specs' && (
+              <div className="space-y-3">
+                {(() => {
+                  const attrs = selectedProduct.attributes;
+                  const entries: Array<{ name: string; value: string }> = [];
+                  if (Array.isArray(attrs)) {
+                    for (const a of attrs) {
+                      if (a && typeof a === 'object' && 'name' in (a as object)) {
+                        const obj = a as { name?: unknown; key?: unknown; value?: unknown };
+                        entries.push({ name: String(obj.name ?? obj.key ?? ''), value: String(obj.value ?? '') });
+                      }
+                    }
+                  } else if (attrs && typeof attrs === 'object') {
+                    for (const [k, v] of Object.entries(attrs as Record<string, unknown>)) {
+                      entries.push({ name: k, value: String(v ?? '') });
+                    }
+                  }
+
+                  if (entries.length === 0) {
+                    return (
+                      <p className="text-xs text-[var(--rego-ink-2,#737373)] text-center py-6">
+                        Aucun attribut technique déclaré pour cet article.
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div className="divide-y divide-[var(--rego-border,#dedede)] border border-[var(--rego-border,#dedede)] rounded-[var(--rego-r,8px)] overflow-hidden">
+                      {entries.map((attr, idx) => (
+                        <div key={`${attr.name}-${idx}`} className="p-3 text-xs flex items-center justify-between gap-3 bg-white dark:bg-slate-900">
+                          <span className="font-bold text-[var(--rego-ink-2,#737373)]">{attr.name}</span>
+                          <span className="font-semibold text-[var(--rego-fg,#111111)] text-end">{attr.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

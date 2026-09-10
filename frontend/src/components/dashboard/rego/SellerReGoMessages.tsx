@@ -101,6 +101,7 @@ export function SellerReGoMessages({
   onRefresh,
 }: SellerReGoMessagesProps) {
   const { t, locale } = useLocale();
+  const timeLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   // Search & Filter
   const [search, setSearch] = useState('');
@@ -229,7 +230,7 @@ export function SellerReGoMessages({
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0" />
               <p className="text-xs text-amber-900 dark:text-amber-300 font-medium">
-                <strong>{unreadTotal} question(s) d'acheteur(s) en attente :</strong> Un temps de réponse inférieur à 15 minutes multiplie vos conversions COD par 3 sur le marché tunisien.
+                <strong>{unreadTotal} question(s) d&apos;acheteur(s) en attente :</strong> Un temps de réponse inférieur à 15 minutes multiplie vos conversions COD par 3 sur le marché tunisien.
               </p>
             </div>
           </div>
@@ -260,8 +261,8 @@ export function SellerReGoMessages({
           />
           <ReGoKpiHero
             label="Validation 1-Clic COD"
-            value={<span className="text-emerald-600 text-lg font-black">Prêt</span>}
-            hint="Anti-Refus & confirmation OTP"
+            value={<span className="text-lg font-black">{onValidateCodOrder ? 'Disponible' : '—'}</span>}
+            hint="Anti-Refus & confirmation directe"
             icon={Zap}
           />
         </>
@@ -270,17 +271,17 @@ export function SellerReGoMessages({
         <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))] overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px]">
           
           {/* Left Pane: Conversations List */}
-          <div className="md:col-span-4 border-b md:border-b-0 md:border-r border-[var(--rego-border,#dedede)]/70 flex flex-col bg-[var(--rego-surface,#f5f5f5)]/30">
+          <div className="md:col-span-4 border-b md:border-b-0 md:border-e border-[var(--rego-border,#dedede)]/70 flex flex-col bg-[var(--rego-surface,#f5f5f5)]/30">
             {/* Filter Bar */}
             <div className="p-3 border-b border-[var(--rego-border,#dedede)]/70 space-y-2">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
+                <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher une conversation..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                  className="w-full ps-8 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
                 />
               </div>
 
@@ -328,7 +329,7 @@ export function SellerReGoMessages({
                       onClick={() => onSelectConversation(c.id)}
                       className={`p-3 cursor-pointer transition-colors flex items-start gap-2.5 ${
                         isSelected
-                          ? 'bg-[var(--rego-bg,#ffffff)] border-l-3 border-l-[var(--rego-accent,#ad0505)] shadow-2xs'
+                          ? 'bg-[var(--rego-bg,#ffffff)] border-s-4 border-s-[var(--rego-accent,#ad0505)] shadow-2xs'
                           : 'hover:bg-[var(--rego-surface,#f5f5f5)]/70'
                       }`}
                     >
@@ -343,7 +344,7 @@ export function SellerReGoMessages({
                           </h4>
                           {c.last_message_at && (
                             <span className="text-[10px] text-[var(--rego-ink-2,#737373)] shrink-0 font-mono">
-                              {new Date(c.last_message_at).toLocaleTimeString('fr-TN', { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(c.last_message_at).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </div>
@@ -384,9 +385,11 @@ export function SellerReGoMessages({
                         <h3 className="text-xs font-bold text-[var(--rego-fg,#111111)] truncate">
                           {activeConversation.buyer_name || activeConversation.buyer_email || 'Client'}
                         </h3>
-                        <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-bold">
-                          Acheteur Vérifié
-                        </span>
+                        {activeConversation.status === 'closed' && (
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold">
+                            Clôturée
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-[var(--rego-ink-2,#737373)] truncate font-mono">
                         {activeConversation.buyer_email}
@@ -394,16 +397,16 @@ export function SellerReGoMessages({
                     </div>
                   </div>
 
-                  {/* 1-Click COD Quick Action Trigger */}
+                  {/* 1-Click COD Quick Action Trigger (only when the thread has an attached order) */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {onValidateCodOrder && (
+                    {onValidateCodOrder && activeConversation.order_id && (
                       <button
                         type="button"
                         onClick={() => setIsCodModalOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-[var(--rego-r,8px)] bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 shadow-xs transition-all cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Créer Commande COD Directe</span>
+                        <span>Valider la Commande COD</span>
                       </button>
                     )}
                   </div>
@@ -413,25 +416,27 @@ export function SellerReGoMessages({
                 {activeConversation.product_title && (
                   <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border-b border-amber-200/80 dark:border-amber-900/50 flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-1.5 rounded bg-white dark:bg-slate-850 border border-amber-200 text-amber-700 shrink-0">
+                      <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-400 shrink-0">
                         <Package className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
-                          Négociation portant sur l'article :
+                          Négociation portant sur l&apos;article :
                         </span>
                         <h5 className="text-xs font-bold text-amber-950 dark:text-amber-100 truncate">
                           {activeConversation.product_title}
                         </h5>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsCodModalOpen(true)}
-                      className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs shrink-0"
-                    >
-                      Proposer un Prix Négocié
-                    </button>
+                    {activeConversation.order_id && onValidateCodOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCodModalOpen(true)}
+                        className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs shrink-0"
+                      >
+                        Valider la commande négociée
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -444,7 +449,7 @@ export function SellerReGoMessages({
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="p-8 text-center text-xs text-[var(--rego-ink-2,#737373)]">
-                      Aucun message pour l'instant. Écrivez le premier message ci-dessous.
+                      Aucun message pour l&apos;instant. Écrivez le premier message ci-dessous.
                     </div>
                   ) : (
                     messages.map((m) => {
@@ -464,7 +469,7 @@ export function SellerReGoMessages({
                             <div className="flex items-center justify-between gap-3 text-[10px] opacity-70 mb-1">
                               <span className="font-bold">{isSeller ? 'Vous (Marchand)' : m.sender_name || 'Acheteur'}</span>
                               <span className="font-mono">
-                                {new Date(m.created_at).toLocaleTimeString('fr-TN', { hour: '2-digit', minute: '2-digit' })}
+                                 {new Date(m.created_at).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                             <p className="whitespace-pre-wrap leading-relaxed">{m.body}</p>
@@ -499,7 +504,7 @@ export function SellerReGoMessages({
                   {selectedFile && (
                     <div className="flex items-center justify-between bg-[var(--rego-surface,#f5f5f5)] px-3 py-1.5 rounded text-xs">
                       <span className="truncate font-mono">{selectedFile.name}</span>
-                      <button type="button" onClick={() => setSelectedFile(null)} className="text-rose-600 hover:opacity-80">
+                      <button type="button" onClick={() => setSelectedFile(null)} className="text-rose-600 dark:text-rose-400 hover:opacity-80">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -540,7 +545,7 @@ export function SellerReGoMessages({
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--rego-ink-2,#737373)] space-y-2">
                 <MessageSquare className="w-8 h-8 text-[var(--rego-ink-2,#737373)]/40" />
-                <p>Sélectionnez une conversation dans la liste pour démarrer l'échange.</p>
+                <p>Sélectionnez une conversation dans la liste pour démarrer l&apos;échange.</p>
               </div>
             )}
           </div>
@@ -550,13 +555,13 @@ export function SellerReGoMessages({
         <ReGoModal
           isOpen={isCodModalOpen}
           onClose={() => setIsCodModalOpen(false)}
-          title="Créer une Commande COD en 1-Clic"
-          subtitle="Validez instantanément la commande négociée pour cet acheteur."
+          title="Validation 1-Clic de la Commande COD"
+          subtitle="Confirmez la commande rattachée à cette conversation pour lancer l'expédition."
         >
           {codSuccess ? (
-            <div className="p-4 rounded-[var(--rego-r,8px)] bg-emerald-50 text-emerald-800 text-xs font-bold text-center space-y-1">
-              <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600" />
-              <p>Commande COD créée et envoyée en préparation d'expédition !</p>
+            <div className="p-4 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold text-center space-y-1">
+              <CheckCircle2 className="w-6 h-6 mx-auto text-emerald-600 dark:text-emerald-400" />
+              <p>Commande COD créée et envoyée en préparation d&apos;expédition !</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -571,9 +576,15 @@ export function SellerReGoMessages({
                     <span className="font-bold truncate max-w-[200px]">{activeConversation.product_title}</span>
                   </div>
                 )}
+                {activeConversation?.order_id && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--rego-ink-2,#737373)]">Commande :</span>
+                    <span className="font-mono font-bold truncate max-w-[200px]">#{activeConversation.order_id.slice(-8).toUpperCase()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-[var(--rego-ink-2,#737373)]">Mode de paiement :</span>
-                  <span className="font-bold text-emerald-700">Contre Remboursement (COD)</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">Contre Remboursement (COD)</span>
                 </div>
               </div>
 

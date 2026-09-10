@@ -324,13 +324,13 @@ export function SellerReGoMedia({
       filterToolbar={
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--rego-ink-2,#737373)]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher par nom de fichier ou titre produit..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
+              className="w-full ps-8 pe-3 py-1.5 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)]"
             />
           </div>
 
@@ -448,7 +448,7 @@ export function SellerReGoMedia({
                         e.stopPropagation();
                         setInspectedItem(item);
                       }}
-                      className="p-1.5 rounded-full bg-white text-slate-900 hover:bg-slate-100 shadow-xs"
+                      className="p-1.5 rounded-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 shadow-xs"
                       title="Inspecter"
                     >
                       <Maximize2 className="w-3.5 h-3.5" />
@@ -459,11 +459,11 @@ export function SellerReGoMedia({
                         e.stopPropagation();
                         void copyUrl(item.url, item.key);
                       }}
-                      className="p-1.5 rounded-full bg-white text-slate-900 hover:bg-slate-100 shadow-xs"
+                      className="p-1.5 rounded-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 shadow-xs"
                       title="Copier URL"
                     >
                       {copiedKey === item.key ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
                       )}
@@ -485,7 +485,7 @@ export function SellerReGoMedia({
                   </div>
 
                   {item.product_title && (
-                    <span className="block text-[9px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded truncate">
+                    <span className="block text-[9px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded truncate">
                       {item.product_title}
                     </span>
                   )}
@@ -496,7 +496,7 @@ export function SellerReGoMedia({
         ) : (
           /* Table View */
           <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] overflow-hidden shadow-2xs">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-ink-2,#737373)] font-bold uppercase tracking-wider text-[10px]">
                   <th className="p-3 w-16">Vignette</th>
@@ -504,7 +504,7 @@ export function SellerReGoMedia({
                   <th className="p-3">Dossier</th>
                   <th className="p-3">Poids</th>
                   <th className="p-3">Date</th>
-                  <th className="p-3 text-right">Actions</th>
+                  <th className="p-3 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -527,7 +527,7 @@ export function SellerReGoMedia({
                         {item.filename}
                       </div>
                       {item.product_title && (
-                        <div className="text-[10px] text-emerald-700 font-normal">
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-normal">
                           Produit : {item.product_title}
                         </div>
                       )}
@@ -543,7 +543,7 @@ export function SellerReGoMedia({
                     <td className="p-3 text-[var(--rego-ink-2,#737373)]">
                       {formatDate(item.created_at)}
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-end">
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           type="button"
@@ -552,7 +552,7 @@ export function SellerReGoMedia({
                           title="Copier l'URL"
                         >
                           {copiedKey === item.key ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
@@ -579,7 +579,7 @@ export function SellerReGoMedia({
                         <button
                           type="button"
                           onClick={() => setDeletingItem(item)}
-                          className="p-1 rounded text-rose-600 hover:bg-rose-50"
+                          className="p-1 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                           title="Supprimer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -605,7 +605,7 @@ export function SellerReGoMedia({
               <button
                 type="button"
                 onClick={() => setDeletingItem(inspectedItem)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Supprimer ce média</span>
@@ -648,7 +648,7 @@ export function SellerReGoMedia({
                   <span className="font-mono">{inspectedItem.content_type}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--rego-ink-2,#737373)] font-bold uppercase text-[10px]">Date d'ajout :</span>
+                  <span className="text-[var(--rego-ink-2,#737373)] font-bold uppercase text-[10px]">Date d&apos;ajout :</span>
                   <span>{formatDate(inspectedItem.created_at)}</span>
                 </div>
               </div>
@@ -668,11 +668,11 @@ export function SellerReGoMedia({
                   <button
                     type="button"
                     onClick={() => void copyUrl(inspectedItem.url, inspectedItem.key)}
-                    className="px-3 py-2 bg-[var(--rego-bg,#ffffff)] border-l border-[var(--rego-border,#dedede)] hover:bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] font-bold flex items-center gap-1 text-xs"
+                    className="px-3 py-2 bg-[var(--rego-bg,#ffffff)] border-s border-[var(--rego-border,#dedede)] hover:bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] font-bold flex items-center gap-1 text-xs"
                   >
                     {copiedKey === inspectedItem.key ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Copié</span>
                       </>
                     ) : (
@@ -691,7 +691,7 @@ export function SellerReGoMedia({
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--rego-fg,#111111)]">
-                      Optimisation de l'Image (Compression WebP)
+                      Optimisation de l&apos;Image (Compression WebP)
                     </h4>
                   </div>
                   <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">

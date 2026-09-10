@@ -240,7 +240,7 @@ export function AdminReGoCms({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[var(--rego-ink-2,#737373)] uppercase font-bold text-[10px] tracking-wider">
-                  <th className="px-4 py-3">Titre de l'Article</th>
+                  <th className="px-4 py-3">Titre de l&apos;Article</th>
                   <th className="px-4 py-3">Slug Canonique</th>
                   <th className="px-4 py-3">Emplacements</th>
                   <th className="px-4 py-3 text-center">Statut</th>
@@ -287,7 +287,7 @@ export function AdminReGoCms({
                             </span>
                           )}
                           {page.show_in_footer && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
                               Footer
                             </span>
                           )}
@@ -328,14 +328,14 @@ export function AdminReGoCms({
                           <Link
                             href={`/hub/pages/${page.slug}`}
                             target="_blank"
-                            className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50"
+                            className="p-1.5 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                             title="Voir la page publique"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Link>
                           <button
                             onClick={() => onDeletePage(page.id)}
-                            className="p-1.5 rounded text-rose-600 hover:bg-rose-50"
+                            className="p-1.5 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                             title="Supprimer la page"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -379,7 +379,7 @@ export function AdminReGoCms({
                   <span>{selectedPage.show_in_footer ? 'Oui (Visible)' : 'Non'}</span>
                 </div>
                 <div className="p-2.5 rounded-[var(--rego-r,8px)] bg-[var(--rego-surface,#f5f5f5)] flex justify-between">
-                  <span className="font-bold text-[var(--rego-fg,#111111)]">Lien dans l'En-Tête :</span>
+                  <span className="font-bold text-[var(--rego-fg,#111111)]">Lien dans l&apos;En-Tête :</span>
                   <span>{selectedPage.show_in_header ? 'Oui (Visible)' : 'Non'}</span>
                 </div>
               </div>
@@ -389,7 +389,7 @@ export function AdminReGoCms({
                   href={`/cms/${selectedPage.id}`}
                   className="flex-1 py-2 text-center font-bold text-xs rounded-[var(--rego-r,8px)] bg-[var(--rego-accent,#ad0505)] text-white hover:opacity-90"
                 >
-                  Ouvrir l'Éditeur Complet
+                  Ouvrir l&apos;Éditeur Complet
                 </Link>
                 <Link
                   href={`/hub/pages/${selectedPage.slug}`}

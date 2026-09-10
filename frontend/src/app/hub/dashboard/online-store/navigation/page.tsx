@@ -469,7 +469,7 @@ export default function NavigationManagerPage() {
               type="button"
               onClick={handleSaveDraft}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
               {saving ? t('storefrontNav.saving') : t('storefrontNav.saveDraft')}
@@ -526,7 +526,7 @@ export default function NavigationManagerPage() {
                   {menuData.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4 sm:flex-row sm:items-center"
+                      className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 sm:flex-row sm:items-center"
                     >
                       <div className="flex-1 space-y-2 sm:space-y-0 sm:flex sm:gap-3">
                         <select
@@ -607,14 +607,14 @@ export default function NavigationManagerPage() {
                                 value={child.localized_label}
                                 onChange={(e) => handleUpdateItem(loc.key, child.id, 'localized_label', e.target.value)}
                                 placeholder={t('storefrontNav.labelPlaceholder')}
-                                className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:outline-none"
+                                className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:outline-none"
                               />
                               <input
                                 type="text"
                                 value={child.url}
                                 onChange={(e) => handleUpdateItem(loc.key, child.id, 'url', e.target.value)}
                                 placeholder={t('storefrontNav.urlPlaceholder')}
-                                className="w-32 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:outline-none"
+                                className="w-32 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:outline-none"
                               />
                               <button
                                 type="button"
@@ -669,7 +669,7 @@ export default function NavigationManagerPage() {
         {footerBlocks.length > 0 ? (
           <div className="space-y-4">
             {footerBlocks.map((block, idx) => (
-              <div key={block.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4">
+              <div key={block.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4">
                 {/* Block header */}
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex flex-col">

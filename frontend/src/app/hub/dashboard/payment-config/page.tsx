@@ -257,7 +257,7 @@ export default function PaymentConfigPage() {
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 text-left text-xs text-slate-700 dark:text-slate-300 space-y-2 max-w-md mx-auto">
-            <p className="font-semibold text-slate-900 dark:text-white text-[11px] uppercase tracking-wider">Avantages de l'encaissement direct :</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-[11px] uppercase tracking-wider">Avantages de l&apos;encaissement direct :</p>
             <ul className="space-y-1.5 text-[11px]">
               <li className="flex items-center gap-2">
                 <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -349,7 +349,7 @@ export default function PaymentConfigPage() {
       </header>
 
       {/* Security Notice */}
-      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/60 p-4 shadow-2xs flex items-start gap-3">
+      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-4 shadow-2xs flex items-start gap-3">
         <div className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 shrink-0 shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         </div>
@@ -525,7 +525,7 @@ export default function PaymentConfigPage() {
                 value={paypalSandboxClientId}
                 onChange={(e) => setPaypalSandboxClientId(e.target.value)}
                 placeholder={t('dashboardPages.paymentConfig.paypalSandboxClientIdPlaceholder') || 'Client ID Sandbox...'}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
               />
             </div>
 
@@ -540,7 +540,7 @@ export default function PaymentConfigPage() {
                   value={paypalSandboxClientSecret}
                   onChange={(e) => setPaypalSandboxClientSecret(e.target.value)}
                   placeholder={t('dashboardPages.paymentConfig.paypalSandboxClientSecretPlaceholder') || 'Client Secret Sandbox...'}
-                  className="w-full px-3 py-2 pr-9 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
+                  className="w-full px-3 py-2 pr-9 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
                 <button
                   type="button"
@@ -577,7 +577,7 @@ export default function PaymentConfigPage() {
                 value={paypalLiveClientId}
                 onChange={(e) => setPaypalLiveClientId(e.target.value)}
                 placeholder={t('dashboardPages.paymentConfig.paypalLiveClientIdPlaceholder') || 'Client ID Live...'}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
               />
             </div>
 
@@ -592,7 +592,7 @@ export default function PaymentConfigPage() {
                   value={paypalLiveClientSecret}
                   onChange={(e) => setPaypalLiveClientSecret(e.target.value)}
                   placeholder={t('dashboardPages.paymentConfig.paypalLiveClientSecretPlaceholder') || 'Client Secret Live...'}
-                  className="w-full px-3 py-2 pr-9 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
+                  className="w-full px-3 py-2 pr-9 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-xs font-mono text-slate-900 dark:text-white outline-none shadow-2xs"
                 />
                 <button
                   type="button"

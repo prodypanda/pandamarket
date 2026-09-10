@@ -98,7 +98,7 @@ export interface SellerReGoSubscriptionProps {
 export function SellerReGoSubscription({
   currentPlan,
   allPlans,
-  loading: _loading,
+  loading,
   changing: _changing,
   error,
   success,
@@ -114,15 +114,10 @@ export function SellerReGoSubscription({
 
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
-  // Format plan prices in TND
+  // Derive monthly price from the API-provided yearly_price (rounded to whole TND)
   const getPlanMonthlyPrice = (planId: string) => {
-    switch (planId) {
-      case 'free': return 0;
-      case 'starter': return 29;
-      case 'pro': return 69;
-      case 'agency': return 149;
-      default: return 49;
-    }
+    const plan = allPlans.find((p) => p.plan_id === planId);
+    return Math.round((plan?.yearly_price || 0) / 12);
   };
 
   const activePlanId = currentPlan?.plan || 'free';
@@ -171,7 +166,7 @@ export function SellerReGoSubscription({
             className={`px-3 py-1 rounded-lg font-bold transition-all ${
               billingCycle === 'monthly'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Mensuel
@@ -182,11 +177,11 @@ export function SellerReGoSubscription({
             className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-all ${
               billingCycle === 'yearly'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Annuel</span>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 rounded font-black">-20%</span>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.5 rounded font-black">Annuel</span>
           </button>
         </div>
       }
@@ -213,7 +208,7 @@ export function SellerReGoSubscription({
               type="button"
               disabled={cancellingIntent}
               onClick={() => onCancelIntent(pendingIntents[0].id)}
-              className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 hover:bg-amber-50 font-bold transition-all"
+              className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 hover:bg-amber-50 dark:hover:bg-amber-950/40 font-bold transition-all"
             >
               {cancellingIntent ? 'Annulation...' : 'Annuler la demande'}
             </button>
@@ -243,7 +238,7 @@ export function SellerReGoSubscription({
           />
           <ReGoKpiHero
             label="Commission Ventes"
-            value={`${currentPlan?.limits?.commission_rate ?? 5.0}%`}
+            value={currentPlan?.limits?.commission_rate != null ? `${currentPlan.limits.commission_rate}%` : '—'}
             hint="Taux préférentiel appliqué"
             icon={Zap}
           />
@@ -257,24 +252,24 @@ export function SellerReGoSubscription({
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                Surclassez votre formule pour débloquer les ventes directes et l'IA illimitée
+                Surclassez votre formule pour débloquer les ventes directes et l&apos;IA illimitée
               </h4>
-              <p className="text-[11px] text-slate-500">
-                Passez au Plan Pro pour réduire vos commissions à 5% et ajouter votre nom de domaine .tn officiel.
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Comparez les formules ci-dessous pour réduire vos commissions et débloquer des fonctionnalités avancées.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <a
               href="/hub/dashboard/subscription/payment-method"
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-300"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-300"
             >
               <CreditCard className="w-3.5 h-3.5" />
               <span>Gérer les Cartes & Mandats</span>
             </a>
             <a
               href="/hub/dashboard/my-subscription-orders"
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-300"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all flex items-center gap-1.5 text-slate-700 dark:text-slate-300"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Historique Factures</span>
@@ -284,61 +279,49 @@ export function SellerReGoSubscription({
       }
       mainContent={
         <div className="space-y-6">
-          {/* SECTION 1: QUOTA CONSUMPTION GAUGES */}
+          {/* SECTION 1: QUOTA ALLOCATIONS */}
           <ReGoCard
-            title="Jauges de Consommation des Quotas de la Boutique"
-            subtitle="Suivi en direct des ressources allouées par votre abonnement"
+            title="Quotas Alloués par votre Abonnement"
+            subtitle="Limites des ressources incluses dans votre formule actuelle"
             icon={Layers}
           >
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-500">Articles Publiés :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Articles Publiés :</span>
                   <span className="text-slate-900 dark:text-white font-black">
-                    {currentPlan?.limits?.max_products === -1 ? 'Illimité' : `${currentPlan?.limits?.max_products ?? 50} max`}
+                    {currentPlan?.limits?.max_products === -1 ? 'Illimité' : `${currentPlan?.limits?.max_products ?? '—'} max`}
                   </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-indigo-600 rounded-full w-2/5" />
                 </div>
                 <p className="text-[10px] text-slate-400">Capacité catalogue boutique</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-500">Jetons IA Mensuels :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Jetons IA Mensuels :</span>
                   <span className="text-slate-900 dark:text-white font-black">
-                    {currentPlan?.limits?.ai_tokens_included?.toLocaleString('fr-TN') ?? '50,000'}
+                    {currentPlan?.limits?.ai_tokens_included != null ? currentPlan.limits.ai_tokens_included.toLocaleString(dateLocale) : '—'}
                   </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-amber-500 rounded-full w-1/4" />
                 </div>
                 <p className="text-[10px] text-slate-400">Descriptions & SEO automatique</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-500">Pages Constructeur :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Pages Constructeur :</span>
                   <span className="text-slate-900 dark:text-white font-black">
-                    {currentPlan?.limits?.max_page_builder_pages ?? 5} pages
+                    {currentPlan?.limits?.max_page_builder_pages != null ? `${currentPlan.limits.max_page_builder_pages} pages` : '—'}
                   </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full w-1/2" />
                 </div>
                 <p className="text-[10px] text-slate-400">Landing pages personnalisées</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-500">Photos par Produit :</span>
+                  <span className="text-slate-500 dark:text-slate-400">Photos par Produit :</span>
                   <span className="text-slate-900 dark:text-white font-black">
-                    {currentPlan?.limits?.max_images_per_product ?? 8} photos
+                    {currentPlan?.limits?.max_images_per_product != null ? `${currentPlan.limits.max_images_per_product} photos` : '—'}
                   </span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full w-3/4" />
                 </div>
                 <p className="text-[10px] text-slate-400">Galerie haute définition</p>
               </div>
@@ -350,85 +333,25 @@ export function SellerReGoSubscription({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  Grille Comparative des Formules d'Abonnement
+                  Grille Comparative des Formules d&apos;Abonnement
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Choisissez la formule qui répond à la croissance de votre entreprise en Tunisie
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(allPlans.length > 0 ? allPlans : [
-                {
-                  plan_id: 'free',
-                  max_products: 15,
-                  max_images_per_product: 3,
-                  max_page_builder_pages: 1,
-                  has_ai_seo: false,
-                  has_image_compression: false,
-                  has_custom_domain: false,
-                  has_page_builder: false,
-                  has_direct_payment: false,
-                  has_white_label: false,
-                  has_own_ai_provider: false,
-                  commission_rate: 10.0,
-                  ai_tokens_included: 5000,
-                  yearly_price: 0,
-                },
-                {
-                  plan_id: 'starter',
-                  max_products: 50,
-                  max_images_per_product: 6,
-                  max_page_builder_pages: 3,
-                  has_ai_seo: true,
-                  has_image_compression: true,
-                  has_custom_domain: false,
-                  has_page_builder: true,
-                  has_direct_payment: false,
-                  has_white_label: false,
-                  has_own_ai_provider: false,
-                  commission_rate: 8.0,
-                  ai_tokens_included: 50000,
-                  yearly_price: 279,
-                },
-                {
-                  plan_id: 'pro',
-                  max_products: 500,
-                  max_images_per_product: 12,
-                  max_page_builder_pages: 10,
-                  has_ai_seo: true,
-                  has_image_compression: true,
-                  has_custom_domain: true,
-                  has_page_builder: true,
-                  has_direct_payment: true,
-                  has_white_label: true,
-                  has_own_ai_provider: true,
-                  commission_rate: 5.0,
-                  ai_tokens_included: 250000,
-                  yearly_price: 662,
-                },
-                {
-                  plan_id: 'agency',
-                  max_products: -1,
-                  max_images_per_product: 25,
-                  max_page_builder_pages: -1,
-                  has_ai_seo: true,
-                  has_image_compression: true,
-                  has_custom_domain: true,
-                  has_page_builder: true,
-                  has_direct_payment: true,
-                  has_white_label: true,
-                  has_own_ai_provider: true,
-                  commission_rate: 3.0,
-                  ai_tokens_included: 1000000,
-                  yearly_price: 1430,
-                },
-              ]).map((plan) => {
+            {allPlans.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-600 text-xs font-semibold">
+                {loading ? 'Chargement des formules disponibles...' : 'Aucune formule disponible pour le moment. Actualisez la page ou contactez le support.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {allPlans.map((plan) => {
                 const isCurrent = activePlanId === plan.plan_id;
-                const priceMonthly = getPlanMonthlyPrice(plan.plan_id);
-                const priceYearly = plan.yearly_price || Math.round(priceMonthly * 12 * 0.8);
-                const displayPrice = billingCycle === 'monthly' ? priceMonthly : Math.round(priceYearly / 12);
+                const priceYearly = plan.yearly_price || 0;
+                const priceMonthly = Math.round(priceYearly / 12);
+                const displayPrice = priceMonthly;
 
                 return (
                   <div
@@ -442,14 +365,14 @@ export function SellerReGoSubscription({
                     }`}
                   >
                     {plan.plan_id === 'pro' && !isCurrent && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-900 shadow-sm">
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-900 dark:text-white shadow-sm">
                         Recommandé
                       </div>
                     )}
 
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           {plan.plan_id}
                         </span>
                         {isCurrent && (
@@ -466,9 +389,9 @@ export function SellerReGoSubscription({
                           </span>
                           <span className="text-xs font-bold text-slate-400">TND / mois</span>
                         </div>
-                        {billingCycle === 'yearly' && displayPrice > 0 && (
+                        {billingCycle === 'yearly' && priceYearly > 0 && (
                           <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                            Facturé {priceYearly} TND / an (2 mois offerts)
+                            Facturé {priceYearly} TND / an
                           </p>
                         )}
                       </div>
@@ -540,15 +463,16 @@ export function SellerReGoSubscription({
                       <button
                         type="button"
                         onClick={() => setSelectedPlanDetails(plan)}
-                        className="w-full text-center text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 py-1"
+                        className="w-full text-center text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 py-1"
                       >
                         Voir toutes les spécifications
                       </button>
-                    </div>
-                  </div>
-                );
+                     </div>
+                   </div>
+                 );
               })}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       }
@@ -563,19 +487,19 @@ export function SellerReGoSubscription({
             <div className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-300">
               <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Taux de Commission :</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Taux de Commission :</span>
                   <span className="font-black text-indigo-600 dark:text-indigo-400">{selectedPlanDetails.commission_rate}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Nombre de Produits Max :</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Nombre de Produits Max :</span>
                   <span className="font-bold">{selectedPlanDetails.max_products === -1 ? 'Illimité' : selectedPlanDetails.max_products}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Photos par Fiche :</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Photos par Fiche :</span>
                   <span className="font-bold">{selectedPlanDetails.max_images_per_product}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-bold text-slate-500">Jetons IA Inclus :</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400">Jetons IA Inclus :</span>
                   <span className="font-bold">{selectedPlanDetails.ai_tokens_included?.toLocaleString('fr-TN')} tokens</span>
                 </div>
               </div>

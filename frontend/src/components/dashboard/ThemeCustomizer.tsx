@@ -197,7 +197,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
           <div key={section.id} className="border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl overflow-hidden">
             <button
               onClick={() => toggleSection(section.id)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-850 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <section.icon className="w-4 h-4 text-[#16C784]" />
@@ -224,7 +224,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                           className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
                             active
                               ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border border-[#16C784]/30 dark:border-[#16C784]/40'
-                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850/60'
+                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60'
                           }`}
                         >
                           <input
@@ -259,7 +259,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                           className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
                             active
                               ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border border-[#16C784]/30 dark:border-[#16C784]/40'
-                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-850/60'
+                              : 'border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60'
                           }`}
                         >
                           <input
@@ -307,7 +307,7 @@ export function ThemeCustomizer({ themeId, initialCustomization, onSave }: Theme
                           className={`p-3 rounded-lg text-center transition-all ${
                             active
                               ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border-2 border-[#16C784]'
-                              : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
+                              : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                           }`}
                         >
                           <span className="text-xl block mb-1">{info.icon}</span>
@@ -429,7 +429,7 @@ function PresetCard({
       className={`p-3 rounded-lg text-left transition-all ${
         active
           ? 'bg-[#16C784]/10 dark:bg-[#16C784]/15 border-2 border-[#16C784]'
-          : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850'
+          : 'border border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
       }`}
     >
       <div className="flex gap-1 mb-2">

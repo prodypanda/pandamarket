@@ -40,6 +40,7 @@ import {
   ReGoAmtBox,
   ReGoStatusChip,
   ReGoDrawer,
+  ReGoModal,
 } from '@/components/dashboard/rego/ReGoPrimitives';
 import { AdsPlatformChart } from '@/components/admin/AdsPlatformChart';
 import { getResizedImageUrl } from '@/lib/image-url';
@@ -211,6 +212,20 @@ export function AdminReGoAds({
   onRefresh,
 }: AdminReGoAdsProps) {
   const [inspectCreative, setInspectCreative] = useState<Campaign | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Campaign | null>(null);
+  const [rejecting, setRejecting] = useState(false);
+
+  const confirmReject = async () => {
+    if (!rejectTarget || !rejectReason.trim()) return;
+    setRejecting(true);
+    try {
+      await onReview(rejectTarget.id, 'rejected', rejectReason.trim());
+      setRejectTarget(null);
+      setRejectReason('');
+    } finally {
+      setRejecting(false);
+    }
+  };
 
   const filteredCampaigns = campaigns.filter((c) => {
     const matchesSearch =
@@ -265,13 +280,13 @@ export function AdminReGoAds({
 
       {/* ─── Feedback Alerts ─── */}
       {error && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {successMsg && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -324,7 +339,7 @@ export function AdminReGoAds({
               <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
               {tab.key === 'moderation' && (summary?.pending_review || 0) > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-red-600 text-white font-bold">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-red-600 text-white font-bold">
                   {summary?.pending_review}
                 </span>
               )}
@@ -369,13 +384,13 @@ export function AdminReGoAds({
           <ReGoCard noPadding>
             <div className="p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
+                <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
                 <input
                   type="text"
                   value={modSearch}
                   onChange={(e) => setModSearch(e.target.value)}
                   placeholder="Rechercher par nom de campagne ou boutique..."
-                  className="w-full h-9 pl-9 pr-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
+                  className="w-full h-9 ps-9 pe-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
                 />
               </div>
 
@@ -393,7 +408,7 @@ export function AdminReGoAds({
                 </select>
 
                 {selectedModCampaigns.length > 0 && (
-                  <div className="flex items-center gap-1.5 pl-2 border-l border-[var(--rego-border,#dedede)]">
+                  <div className="flex items-center gap-1.5 ps-2 border-s border-[var(--rego-border,#dedede)]">
                     <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">
                       {selectedModCampaigns.length} sélectionnée(s)
                     </span>
@@ -455,7 +470,7 @@ export function AdminReGoAds({
 
                         {/* Thumbnail preview */}
                         {creative?.image_url ? (
-                          <div className="w-20 h-20 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] shrink-0 bg-slate-50">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] shrink-0 bg-slate-50 dark:bg-slate-900">
                             <img
                               src={getResizedImageUrl(creative.image_url, 'thumbnail')}
                               alt={creative.title || camp.name}
@@ -490,7 +505,7 @@ export function AdminReGoAds({
 
                           {creative?.description && (
                             <p className="text-xs text-[var(--rego-fg,#111111)] line-clamp-2 italic">
-                              "{creative.description}"
+                              &quot;{creative.description}&quot;
                             </p>
                           )}
 
@@ -526,8 +541,8 @@ export function AdminReGoAds({
                             <button
                               type="button"
                               onClick={() => {
-                                const reason = window.prompt('Motif du refus de la campagne :');
-                                if (reason) void onReview(camp.id, 'rejected', reason);
+                                setRejectTarget(camp);
+                                setRejectReason('');
                               }}
                               className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-[var(--rego-r,8px)] bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition"
                             >
@@ -541,7 +556,7 @@ export function AdminReGoAds({
                           <button
                             type="button"
                             onClick={() => onSuspendCampaign(camp.id)}
-                            className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition"
+                            className="inline-flex items-center justify-center gap-1 h-8 px-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-bold hover:bg-red-100 transition"
                           >
                             <ShieldAlert className="w-3.5 h-3.5" />
                             Suspendre la diffusion
@@ -565,7 +580,7 @@ export function AdminReGoAds({
           icon={Users}
         >
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-start">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] text-[10px] font-black uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                   <th className="pb-2">Boutique</th>
@@ -574,7 +589,7 @@ export function AdminReGoAds({
                   <th className="pb-2">Solde Réservé</th>
                   <th className="pb-2">Dépenses Totales</th>
                   <th className="pb-2">Campagnes</th>
-                  <th className="pb-2 text-right">Gestion</th>
+                  <th className="pb-2 text-end">Gestion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60 font-semibold text-[var(--rego-fg,#111111)]">
@@ -591,11 +606,11 @@ export function AdminReGoAds({
                     <td className="py-2.5 text-[var(--rego-ink-2,#737373)]"><ReGoAmtBox amount={acc.reserved_balance} size="sm" /></td>
                     <td className="py-2.5"><ReGoAmtBox amount={acc.total_spend} size="sm" /></td>
                     <td className="py-2.5">{acc.campaign_count}</td>
-                    <td className="py-2.5 text-right space-x-1.5">
+                    <td className="py-2.5 text-end space-x-1.5">
                       <button
                         type="button"
                         onClick={() => onCreditAccount(acc)}
-                        className="px-2 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] text-[11px] font-bold text-emerald-700 hover:bg-emerald-50"
+                         className="px-2 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                       >
                         + Crédit Promo
                       </button>
@@ -610,7 +625,7 @@ export function AdminReGoAds({
                         type="button"
                         onClick={() => onSetAccountStatus(acc)}
                         className={`px-2 py-1 rounded-[var(--rego-r,8px)] text-[11px] font-bold ${
-                          acc.status === 'active' ? 'text-red-600 hover:bg-red-50' : 'text-emerald-700 hover:bg-emerald-50'
+                          acc.status === 'active' ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40' : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
                         }`}
                       >
                         {acc.status === 'active' ? 'Suspendre' : 'Réactiver'}
@@ -632,7 +647,7 @@ export function AdminReGoAds({
           icon={WalletCards}
         >
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-start">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] text-[10px] font-black uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                   <th className="pb-2">Date</th>
@@ -641,7 +656,7 @@ export function AdminReGoAds({
                   <th className="pb-2">Montant</th>
                   <th className="pb-2">Solde Après</th>
                   <th className="pb-2">Description</th>
-                  <th className="pb-2 text-right">Actions</th>
+                  <th className="pb-2 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60 font-semibold text-[var(--rego-fg,#111111)]">
@@ -659,12 +674,12 @@ export function AdminReGoAds({
                     <td className="py-2.5"><ReGoAmtBox amount={tx.amount} size="sm" /></td>
                     <td className="py-2.5 text-[var(--rego-ink-2,#737373)]"><ReGoAmtBox amount={tx.balance_after} size="sm" /></td>
                     <td className="py-2.5 text-[var(--rego-ink-2,#737373)] truncate max-w-xs">{tx.description || '—'}</td>
-                    <td className="py-2.5 text-right">
+                    <td className="py-2.5 text-end">
                       {!tx.refunded && (
                         <button
                           type="button"
                           onClick={() => onRefundTransaction(tx)}
-                          className="text-[11px] font-bold text-red-600 hover:underline"
+                           className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:underline"
                         >
                           Rembourser
                         </button>
@@ -779,14 +794,14 @@ export function AdminReGoAds({
             icon={Tag}
           >
             <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-xs text-start">
                 <thead>
                   <tr className="border-b border-[var(--rego-border,#dedede)] text-[10px] font-black uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                     <th className="pb-2">Code</th>
                     <th className="pb-2">Crédit</th>
                     <th className="pb-2">Utilisations</th>
                     <th className="pb-2">Statut</th>
-                    <th className="pb-2 text-right">Action</th>
+                    <th className="pb-2 text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60 font-semibold">
@@ -801,7 +816,7 @@ export function AdminReGoAds({
                           label={c.enabled ? 'Actif' : 'Désactivé'}
                         />
                       </td>
-                      <td className="py-2 text-right">
+                      <td className="py-2 text-end">
                         <button
                           type="button"
                           onClick={() => onToggleCoupon(c)}
@@ -875,7 +890,7 @@ export function AdminReGoAds({
                     <button
                       type="button"
                       onClick={() => onUnblockIP(b.ip_hash)}
-                      className="px-2.5 py-1 rounded text-[11px] font-bold border border-[var(--rego-border,#dedede)] hover:bg-red-50 text-red-600"
+                      className="px-2.5 py-1 rounded text-[11px] font-bold border border-[var(--rego-border,#dedede)] hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400"
                     >
                       Débloquer
                     </button>
@@ -933,7 +948,7 @@ export function AdminReGoAds({
                 type="number"
                 value={adsConfig.ads_min_refill_tnd}
                 onChange={(e) => onUpdateConfig({ ads_min_refill_tnd: Number(e.target.value) })}
-                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white font-bold"
+                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 font-bold"
               />
             </div>
             <div>
@@ -942,16 +957,16 @@ export function AdminReGoAds({
                 type="number"
                 value={adsConfig.ads_min_daily_budget_tnd}
                 onChange={(e) => onUpdateConfig({ ads_min_daily_budget_tnd: Number(e.target.value) })}
-                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white font-bold"
+                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 font-bold"
               />
             </div>
             <div>
-              <span className="block text-[10px] font-bold uppercase text-[var(--rego-ink-2,#737373)] mb-1">Fenêtre d'attribution au clic (jours)</span>
+              <span className="block text-[10px] font-bold uppercase text-[var(--rego-ink-2,#737373)] mb-1">Fenêtre d&apos;attribution au clic (jours)</span>
               <input
                 type="number"
                 value={adsConfig.ads_click_attribution_days}
                 onChange={(e) => onUpdateConfig({ ads_click_attribution_days: Number(e.target.value) })}
-                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white font-bold"
+                className="w-full h-8 px-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 font-bold"
               />
             </div>
           </div>
@@ -986,7 +1001,7 @@ export function AdminReGoAds({
             {/* Campaign Details Table */}
             <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-[var(--rego-bg-subtle,#f7f7f7)] border border-[var(--rego-border,#dedede)] space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-[var(--rego-ink-2,#737373)] font-semibold">Titre de l'annonce :</span>
+                <span className="text-[var(--rego-ink-2,#737373)] font-semibold">Titre de l&apos;annonce :</span>
                 <span className="font-bold text-[var(--rego-fg,#111111)]">{inspectCreative.creatives?.[0]?.title || inspectCreative.name}</span>
               </div>
               {inspectCreative.creatives?.[0]?.destination_url && (
@@ -1028,12 +1043,9 @@ export function AdminReGoAds({
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
-                    const reason = window.prompt('Précisez le motif du refus :');
-                    if (reason) {
-                      await onReview(inspectCreative.id, 'rejected', reason);
-                      setInspectCreative(null);
-                    }
+                  onClick={() => {
+                    setRejectTarget(inspectCreative);
+                    setRejectReason('');
                   }}
                   className="py-2.5 px-4 rounded-[var(--rego-r,8px)] bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition"
                 >
@@ -1044,6 +1056,46 @@ export function AdminReGoAds({
           </div>
         )}
       </ReGoDrawer>
+
+      {/* Rejection Reason Modal */}
+      <ReGoModal
+        isOpen={!!rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        title="Motif du refus de la campagne"
+        subtitle={rejectTarget?.name || ''}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setRejectTarget(null)}
+              className="px-4 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-bold text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmReject()}
+              disabled={!rejectReason.trim() || rejecting}
+              className="px-4 py-2 rounded-[var(--rego-r,8px)] bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition"
+            >
+              {rejecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirmer le refus'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-[var(--rego-fg,#111111)]">
+            Motif communiqué au vendeur <span className="text-rose-500 dark:text-rose-400">*</span>
+          </label>
+          <textarea
+            rows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Ex. Visuel non conforme aux règles de la marketplace..."
+            className="w-full p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
+          />
+        </div>
+      </ReGoModal>
     </div>
   );
 }

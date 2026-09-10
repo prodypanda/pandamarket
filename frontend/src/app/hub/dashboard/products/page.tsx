@@ -3450,7 +3450,7 @@ export default function ProductsPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelectOne(product.id)}
-                      className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-850 text-slate-900 dark:text-emerald-500 shadow-2xs"
+                      className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-emerald-500 shadow-2xs"
                     />
                   </div>
 
@@ -6884,7 +6884,7 @@ export default function ProductsPage() {
                           setFreePromptText(sample.text);
                           void handleSmartFill(sample.text);
                         }}
-                        className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-400 dark:hover:border-slate-700 text-left transition shadow-2xs group"
+                        className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700 text-left transition shadow-2xs group"
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">{sample.icon}</span>
@@ -7005,7 +7005,7 @@ export default function ProductsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 text-xs">
                   {/* Title & Price Card */}
-                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -7063,7 +7063,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Categories Card */}
-                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -7124,7 +7124,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* HTML Marketing Description Card */}
-                  <div className="lg:col-span-2 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2 shadow-2xs">
+                  <div className="lg:col-span-2 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-2 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -7152,7 +7152,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Technical Attributes & Tags */}
-                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -7223,7 +7223,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Variants & SEO Card */}
-                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850 space-y-2.5 shadow-2xs">
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-2.5 shadow-2xs">
                     {/* Variants */}
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 cursor-pointer">

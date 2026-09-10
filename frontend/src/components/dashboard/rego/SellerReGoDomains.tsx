@@ -134,20 +134,20 @@ export function SellerReGoDomains({
               <div
                 className={`flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border text-xs font-semibold ${
                   feedback.isError
-                    ? 'border-rose-200 bg-rose-50 text-rose-800'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    ? 'border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-800'
+                    : 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800'
                 }`}
               >
                 {feedback.isError ? (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 )}
                 <span>{feedback.message}</span>
               </div>
             )}
             {!hasCustomDomainAccess && (
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 text-amber-800 text-xs">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
@@ -209,13 +209,13 @@ export function SellerReGoDomains({
                   >
                     {copiedKey === 'subdomain' ? (
                       <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-600">Copié !</span>
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-600 dark:text-emerald-400">Copié !</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3 h-3" />
-                        <span>Copier l'URL</span>
+                        <span>Copier l&apos;URL</span>
                       </>
                     )}
                   </button>
@@ -240,7 +240,7 @@ export function SellerReGoDomains({
                     https://{subdomain}.pandamarket.tn
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>HTTPS Garanti & Certifié</span>
                 </div>
@@ -267,13 +267,13 @@ export function SellerReGoDomains({
                   </label>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <div className="relative flex-1">
-                      <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                      <Globe className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                       <input
                         type="text"
                         value={customDomain}
                         onChange={(e) => onCustomDomainChange(e.target.value)}
                         placeholder="ex: ma-boutique.tn ou www.ma-boutique.tn"
-                        className="w-full pl-9 pr-3 py-2 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all font-mono"
+                        className="w-full ps-9 pe-3 py-2 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all font-mono"
                       />
                     </div>
 
@@ -298,7 +298,7 @@ export function SellerReGoDomains({
                     </div>
                   </div>
                   <p className="text-[11px] text-[var(--rego-ink-3,#949494)] mt-1.5">
-                    Ne saisissez pas le protocole <code>https://</code>. Indiquez simplement le nom d'hôte (ex: <code>boutique.artisan.tn</code> ou <code>artisan.tn</code>).
+                    Ne saisissez pas le protocole <code>https://</code>. Indiquez simplement le nom d&apos;hôte (ex: <code>boutique.artisan.tn</code> ou <code>artisan.tn</code>).
                   </p>
                 </div>
 
@@ -310,7 +310,7 @@ export function SellerReGoDomains({
                         Guide de Configuration DNS (Zone DNS de votre Registrar)
                       </h4>
                       <p className="text-[11px] text-[var(--rego-ink-2,#737373)] mt-0.5">
-                        Ajoutez les enregistrements suivants dans le panneau d'administration de votre registrar pour pointer votre domaine vers PandaMarket.
+                        Ajoutez les enregistrements suivants dans le panneau d&apos;administration de votre registrar pour pointer votre domaine vers PandaMarket.
                       </p>
                     </div>
                     <button
@@ -323,7 +323,7 @@ export function SellerReGoDomains({
                   </div>
 
                   <div className="overflow-x-auto rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)]">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-start text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                           <th className="py-2.5 px-3">Type</th>
@@ -331,7 +331,7 @@ export function SellerReGoDomains({
                           <th className="py-2.5 px-3">Valeur / Cible</th>
                           <th className="py-2.5 px-3">TTL</th>
                           <th className="py-2.5 px-3">Objectif</th>
-                          <th className="py-2.5 px-3 text-right">Action</th>
+                          <th className="py-2.5 px-3 text-end">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60 bg-[var(--rego-bg,#ffffff)]">
@@ -356,7 +356,7 @@ export function SellerReGoDomains({
                             <td className="py-3 px-3 text-[11px] text-[var(--rego-ink-2,#737373)]">
                               {record.purpose}
                             </td>
-                            <td className="py-3 px-3 text-right">
+                            <td className="py-3 px-3 text-end">
                               <button
                                 type="button"
                                 onClick={() => copyToClipboard(record.target, record.id)}
@@ -364,8 +364,8 @@ export function SellerReGoDomains({
                               >
                                 {copiedKey === record.id ? (
                                   <>
-                                    <Check className="w-3 h-3 text-emerald-600" />
-                                    <span className="text-emerald-600">Copié !</span>
+                                    <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-emerald-600 dark:text-emerald-400">Copié !</span>
                                   </>
                                 ) : (
                                   <>
@@ -399,7 +399,7 @@ export function SellerReGoDomains({
                 className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-white hover:opacity-90 transition-all shadow-2xs"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Ouvrir l'outil DNSChecker mondial</span>
+                <span>Ouvrir l&apos;outil DNSChecker mondial</span>
               </a>
             }
           >
@@ -416,21 +416,21 @@ export function SellerReGoDomains({
                   Étapes Recommandées
                 </h4>
                 <ol className="space-y-2.5 text-[var(--rego-fg,#111111)] font-medium list-decimal pl-4">
-                  <li>Connectez-vous à la console d'administration de votre bureau d'enregistrement (.tn ou international).</li>
+                  <li>Connectez-vous à la console d&apos;administration de votre bureau d&apos;enregistrement (.tn ou international).</li>
                   <li>Accédez à la section « Gestion de Zone DNS ».</li>
-                  <li>Créez un enregistrement CNAME pour l'hôte <code>www</code> pointant vers <code>cname.pandamarket.tn</code>.</li>
+                  <li>Créez un enregistrement CNAME pour l&apos;hôte <code>www</code> pointant vers <code>cname.pandamarket.tn</code>.</li>
                   <li>Créez un enregistrement A pour le domaine apex <code>@</code> pointant vers <code>141.95.120.45</code>.</li>
-                  <li>Attendez la validation et vérifiez via l'outil de propagation.</li>
+                  <li>Attendez la validation et vérifiez via l&apos;outil de propagation.</li>
                 </ol>
               </div>
 
-              <div className="p-3 rounded-md bg-sky-50 border border-sky-200 text-sky-800 space-y-1">
+              <div className="p-3 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-200 text-sky-800 space-y-1">
                 <div className="font-bold flex items-center gap-1">
                   <ShieldCheck className="w-4 h-4 text-sky-600" />
                   <span>Certificat SSL Automatique</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  Dès que les serveurs DNS de PandaMarket détectent la propagation correcte de votre domaine, un certificat SSL Let's Encrypt 256-bit est généré automatiquement sous 5 minutes.
+                  Dès que les serveurs DNS de PandaMarket détectent la propagation correcte de votre domaine, un certificat SSL Let&apos;s Encrypt 256-bit est généré automatiquement sous 5 minutes.
                 </p>
               </div>
             </div>

@@ -989,7 +989,7 @@ export default function SellerAdsPage() {
                   Masquer la campagne ?
                 </h2>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
-                  Êtes-vous sûr de vouloir masquer <span className="font-semibold text-slate-900 dark:text-white">"{campaignToHide.name}"</span> de votre tableau de bord ?
+                  Êtes-vous sûr de vouloir masquer <span className="font-semibold text-slate-900 dark:text-white">&quot;{campaignToHide.name}&quot;</span> de votre tableau de bord ?
                 </p>
               </div>
             </div>

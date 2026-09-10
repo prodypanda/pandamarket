@@ -199,7 +199,7 @@ export function SellerReGoDisputeDetail({
 
                 {report?.admin_notes && (
                   <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-900 dark:text-amber-200">
-                    <strong className="block mb-0.5">Directive de l'Arbitre PandaMarket :</strong>
+                    <strong className="block mb-0.5">Directive de l&apos;Arbitre PandaMarket :</strong>
                     {report.admin_notes}
                   </div>
                 )}
@@ -231,7 +231,7 @@ export function SellerReGoDisputeDetail({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Explications factuelles pour l'arbitrage <span className="text-rose-500">*</span>
+                    Explications factuelles pour l&apos;arbitrage <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <textarea
                     rows={4}
@@ -244,7 +244,7 @@ export function SellerReGoDisputeDetail({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Justificatifs / Bordereau d'expédition signé (Photos, PDF)
+                    Justificatifs / Bordereau d&apos;expédition signé (Photos, PDF)
                   </label>
                   <label className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors">
                     <Upload className="w-5 h-5 text-slate-400 mb-1" />
@@ -274,7 +274,7 @@ export function SellerReGoDisputeDetail({
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Transmettre la Réponse Officielle à l'Administration</span>
+                      <span>Transmettre la Réponse Officielle à l&apos;Administration</span>
                     </>
                   )}
                 </button>
@@ -308,7 +308,7 @@ export function SellerReGoDisputeDetail({
                           href={att.file_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           <Download className="w-4 h-4" />
                         </a>

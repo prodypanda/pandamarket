@@ -243,23 +243,23 @@ export function SellerReGoPageBuilder({
         alertBanner={
           <div className="space-y-2">
             {error && (
-              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-800 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                 <span>{error}</span>
               </div>
             )}
             {success && (
-              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <span>{success}</span>
               </div>
             )}
             {hasReachedPageLimit && (
-              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 text-amber-800 text-xs">
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
-                    Quota atteint ({pages.length} / {pageLimitLabel} pages). Passez à l'abonnement supérieur pour créer des pages illimitées.
+                    Quota atteint ({pages.length} / {pageLimitLabel} pages). Passez à l&apos;abonnement supérieur pour créer des pages illimitées.
                   </span>
                 </div>
                 <Link
@@ -306,13 +306,13 @@ export function SellerReGoPageBuilder({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-1 items-center gap-2 max-w-md">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                 <input
                   type="text"
                   placeholder="Rechercher une page créée..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
+                  className="w-full ps-8 pe-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
                 />
               </div>
             </div>
@@ -404,15 +404,15 @@ export function SellerReGoPageBuilder({
             ) : layoutMode === 'list' ? (
               <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                         <th className="py-3 px-4">Titre de la Page</th>
-                        <th className="py-3 px-4">URL d'Accès</th>
+                        <th className="py-3 px-4">URL d&apos;Accès</th>
                         <th className="py-3 px-4">Dernière Modification</th>
                         <th className="py-3 px-4">Statut</th>
                         <th className="py-3 px-4 text-center">Trafic & Clics</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4 text-end">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -433,7 +433,7 @@ export function SellerReGoPageBuilder({
                                     {page.title}
                                   </span>
                                   {page.is_homepage && (
-                                    <span className="px-1.5 py-0.5 text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200 rounded-full flex items-center gap-0.5">
+                                    <span className="px-1.5 py-0.5 text-[9px] font-bold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 rounded-full flex items-center gap-0.5">
                                       <Home className="w-2.5 h-2.5" /> Accueil
                                     </span>
                                   )}
@@ -484,7 +484,7 @@ export function SellerReGoPageBuilder({
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3.5 px-4 text-end" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => onOpenEditor(page)}
@@ -507,7 +507,7 @@ export function SellerReGoPageBuilder({
                                 onClick={() => onSetHomepage(page)}
                                 className={`p-1.5 rounded transition-colors ${
                                   page.is_homepage
-                                    ? 'text-sky-600 hover:bg-sky-50'
+                                    ? 'text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40'
                                     : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)]'
                                 }`}
                                 title={page.is_homepage ? 'Retirer de la page d\'accueil' : 'Définir comme page d\'accueil'}
@@ -538,7 +538,7 @@ export function SellerReGoPageBuilder({
 
                               <button
                                 onClick={() => onDeletePage(page)}
-                                className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50"
+                                className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
                                 title="Supprimer la page"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -581,7 +581,7 @@ export function SellerReGoPageBuilder({
 
                       <div className="flex items-center gap-2 text-[10px] text-[var(--rego-ink-3,#949494)] my-3">
                         {page.is_homepage && (
-                          <span className="px-1.5 py-0.5 font-bold bg-sky-50 text-sky-700 border border-sky-200 rounded-full flex items-center gap-0.5">
+                          <span className="px-1.5 py-0.5 font-bold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 rounded-full flex items-center gap-0.5">
                             <Home className="w-2.5 h-2.5" /> Accueil
                           </span>
                         )}
@@ -631,7 +631,7 @@ export function SellerReGoPageBuilder({
                         <button
                           onClick={() => onSetHomepage(page)}
                           className={`p-1.5 rounded transition-colors ${
-                            page.is_homepage ? 'text-sky-600 hover:bg-sky-50' : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
+                            page.is_homepage ? 'text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40' : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
                           }`}
                           title={page.is_homepage ? 'Retirer accueil' : 'Définir accueil'}
                         >
@@ -647,7 +647,7 @@ export function SellerReGoPageBuilder({
                         </button>
                         <button
                           onClick={() => onDeletePage(page)}
-                          className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50"
+                          className="p-1.5 text-[var(--rego-ink-2,#737373)] hover:text-rose-600 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
                           title="Supprimer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -709,7 +709,7 @@ export function SellerReGoPageBuilder({
                       setSelectedPage(null);
                       onDeletePage(p);
                     }}
-                    className="px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                    className="px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors"
                   >
                     Supprimer la page
                   </button>
@@ -722,7 +722,7 @@ export function SellerReGoPageBuilder({
                     className="inline-flex items-center gap-1 px-4 py-1.5 text-xs font-bold bg-[var(--rego-fg,#111111)] text-white rounded-md hover:opacity-90 transition-all shadow-2xs"
                   >
                     <Pencil className="w-3 h-3" />
-                    <span>Ouvrir dans l'Éditeur</span>
+                    <span>Ouvrir dans l&apos;Éditeur</span>
                   </button>
                 </div>
               )
@@ -740,7 +740,7 @@ export function SellerReGoPageBuilder({
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">Page d'accueil</span>
+                    <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">Page d&apos;accueil</span>
                     <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">
                       {selectedPage.is_homepage ? 'Oui (Prioritaire)' : 'Non'}
                     </span>

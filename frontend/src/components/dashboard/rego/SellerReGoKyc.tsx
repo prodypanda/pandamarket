@@ -121,11 +121,11 @@ export function SellerReGoKyc({
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${
             status === 'approved'
-              ? 'bg-emerald-50 text-emerald-600'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600'
               : status === 'pending'
-              ? 'bg-amber-50 text-amber-600'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600'
               : status === 'rejected'
-              ? 'bg-rose-50 text-rose-600'
+              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600'
               : 'bg-[var(--rego-accent-soft,rgba(173,5,5,0.1))] text-[var(--rego-accent,#ad0505)]'
           }`}>
             {status === 'approved' ? (
@@ -166,7 +166,7 @@ export function SellerReGoKyc({
               />
             </div>
             <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-              Certification légale d\'entreprise · Registre National des Entreprises (RNE) & Banque Centrale de Tunisie
+              Certification légale d\&apos;entreprise · Registre National des Entreprises (RNE) & Banque Centrale de Tunisie
             </p>
           </div>
         </div>
@@ -186,31 +186,31 @@ export function SellerReGoKyc({
 
       {/* 3. Feedback alerts */}
       {error && (
-        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>{success}</span>
         </div>
       )}
 
       {/* Operational Banner depending on status */}
       {status === 'rejected' && verification?.rejection_reason && (
-        <div className="rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50/90 p-4 shadow-2xs">
+        <div className="rounded-[var(--rego-r,8px)] border border-rose-300 bg-rose-50/90 dark:bg-rose-950/40 p-4 shadow-2xs">
           <div className="flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-900">
-                Motif de refus communiqué par l\'administration PandaMarket
+              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-900 dark:text-rose-300">
+                Motif de refus communiqué par l\&apos;administration PandaMarket
               </h3>
               <p className="text-xs text-rose-800 mt-1 font-medium">
                 {verification.rejection_reason}
               </p>
-              <p className="text-[11px] text-rose-700 mt-2">
+              <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-2">
                 Veuillez mettre à jour les documents ci-dessous avec des copies parfaitement lisibles puis re-soumettre le dossier.
               </p>
             </div>
@@ -219,18 +219,18 @@ export function SellerReGoKyc({
       )}
 
       {status === 'pending' && (
-        <div className="rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50/80 p-4 shadow-2xs">
+        <div className="rounded-[var(--rego-r,8px)] border border-amber-300 bg-amber-50/80 dark:bg-amber-950/40 p-4 shadow-2xs">
           <div className="flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">
                 Dossier en attente de vérification manuelle
               </h3>
-              <p className="text-xs text-amber-800 mt-1">
-                Vos pièces justificatives ont bien été transmises au service conformité PandaMarket. L\'examen moyen prend entre 2 et 24 heures ouvrables. Vous recevrez une notification par SMS et email dès validation.
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                Vos pièces justificatives ont bien été transmises au service conformité PandaMarket. L\&apos;examen moyen prend entre 2 et 24 heures ouvrables. Vous recevrez une notification par SMS et email dès validation.
               </p>
               {verification?.created_at && (
-                <p className="text-[11px] text-amber-700 font-mono mt-1.5">
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 font-mono mt-1.5">
                   Dossier déposé le : {new Date(verification.created_at).toLocaleString('fr-TN')}
                 </p>
               )}
@@ -240,18 +240,18 @@ export function SellerReGoKyc({
       )}
 
       {status === 'approved' && (
-        <div className="rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50/80 p-4 shadow-2xs">
+        <div className="rounded-[var(--rego-r,8px)] border border-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 p-4 shadow-2xs">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-900">
                 Boutique Certifiée & Conformité Validée
               </h3>
-              <p className="text-xs text-emerald-800 mt-1">
+              <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1">
                 Félicitations ! Votre statut marchand est pleinement certifié. Vous bénéficiez des virements automatiques de vos soldes séquestre, du badge de confiance sur la marketplace et des plafonds de vente illimités.
               </p>
               {verification?.reviewed_at && (
-                <p className="text-[11px] text-emerald-700 font-mono mt-1.5">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-mono mt-1.5">
                   Validé avec succès le : {new Date(verification.reviewed_at).toLocaleDateString('fr-TN')}
                 </p>
               )}
@@ -325,17 +325,17 @@ export function SellerReGoKyc({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded bg-emerald-100 text-emerald-700">
+                <div className="p-2 rounded bg-emerald-100 text-emerald-700 dark:text-emerald-300">
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Carte d\'Identité Nationale</h4>
+                  <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Carte d\&apos;Identité Nationale</h4>
                   <p className="text-[11px] text-[var(--rego-ink-2,#737373)] font-mono mt-0.5">
                     Document vérifié & scellé
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded">
                 <Check className="w-3.5 h-3.5" />
                 Valide
               </span>
@@ -343,7 +343,7 @@ export function SellerReGoKyc({
 
             <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded bg-emerald-100 text-emerald-700">
+                <div className="p-2 rounded bg-emerald-100 text-emerald-700 dark:text-emerald-300">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
@@ -353,7 +353,7 @@ export function SellerReGoKyc({
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded">
                 <Check className="w-3.5 h-3.5" />
                 Valide
               </span>
@@ -380,7 +380,7 @@ export function SellerReGoKyc({
               onClick={() => setActiveTab('business')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--rego-r,8px)] text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'business'
-                  ? 'bg-white text-[var(--rego-fg,#111111)] shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] shadow-2xs'
                   : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
               }`}
             >
@@ -392,7 +392,7 @@ export function SellerReGoKyc({
               onClick={() => setActiveTab('individual')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--rego-r,8px)] text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'individual'
-                  ? 'bg-white text-[var(--rego-fg,#111111)] shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] shadow-2xs'
                   : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
               }`}
             >
@@ -422,7 +422,7 @@ export function SellerReGoKyc({
                     value={phone}
                     onChange={(e) => onPhoneChange(e.target.value)}
                     disabled={status === 'pending'}
-                    className="w-full pl-14 pr-3 py-2 text-xs font-mono rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)] outline-none"
+                    className="w-full pl-14 pe-3 py-2 text-xs font-mono rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] focus:ring-1 focus:ring-[var(--rego-accent,#ad0505)] outline-none"
                   />
                 </div>
                 <p className="text-[11px] text-[var(--rego-ink-3,#949494)] mt-1">
@@ -436,10 +436,10 @@ export function SellerReGoKyc({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
-                      1. Carte d\'Identité Nationale (CIN) <span className="text-[var(--rego-accent,#ad0505)]">*</span>
+                      1. Carte d\&apos;Identité Nationale (CIN) <span className="text-[var(--rego-accent,#ad0505)]">*</span>
                     </label>
                     {(cinDocUrl || verification?.cin_document_url) && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Prêt
                       </span>
@@ -472,8 +472,8 @@ export function SellerReGoKyc({
                         : cinDragActive
                         ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-accent-soft,rgba(173,5,5,0.05))] cursor-pointer'
                         : cinDocUrl || verification?.cin_document_url
-                        ? 'border-emerald-300 bg-emerald-50/40 cursor-pointer hover:border-emerald-400'
-                        : 'border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] cursor-pointer bg-white'
+                        ? 'border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/40 cursor-pointer hover:border-emerald-400'
+                        : 'border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] cursor-pointer bg-white dark:bg-slate-900'
                     }`}
                   >
                     {uploadingCin ? (
@@ -485,7 +485,7 @@ export function SellerReGoKyc({
                       </div>
                     ) : cinDocUrl || verification?.cin_document_url ? (
                       <div className="flex flex-col items-center gap-2">
-                        <div className="p-2 rounded-full bg-emerald-100 text-emerald-700">
+                        <div className="p-2 rounded-full bg-emerald-100 text-emerald-700 dark:text-emerald-300">
                           <Check className="w-5 h-5" />
                         </div>
                         <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">
@@ -528,7 +528,7 @@ export function SellerReGoKyc({
                       2. Extrait RNE / Registre de Commerce <span className="text-[var(--rego-accent,#ad0505)]">*</span>
                     </label>
                     {(rcDocUrl || verification?.rc_document_url) && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Prêt
                       </span>
@@ -561,8 +561,8 @@ export function SellerReGoKyc({
                         : rcDragActive
                         ? 'border-[var(--rego-accent,#ad0505)] bg-[var(--rego-accent-soft,rgba(173,5,5,0.05))] cursor-pointer'
                         : rcDocUrl || verification?.rc_document_url
-                        ? 'border-emerald-300 bg-emerald-50/40 cursor-pointer hover:border-emerald-400'
-                        : 'border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] cursor-pointer bg-white'
+                        ? 'border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/40 cursor-pointer hover:border-emerald-400'
+                        : 'border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] cursor-pointer bg-white dark:bg-slate-900'
                     }`}
                   >
                     {uploadingRc ? (
@@ -574,7 +574,7 @@ export function SellerReGoKyc({
                       </div>
                     ) : rcDocUrl || verification?.rc_document_url ? (
                       <div className="flex flex-col items-center gap-2">
-                        <div className="p-2 rounded-full bg-emerald-100 text-emerald-700">
+                        <div className="p-2 rounded-full bg-emerald-100 text-emerald-700 dark:text-emerald-300">
                           <Check className="w-5 h-5" />
                         </div>
                         <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">
@@ -603,7 +603,7 @@ export function SellerReGoKyc({
                           </span>
                         </div>
                         <span className="text-[10px] text-[var(--rego-ink-3,#949494)]">
-                          Extrait RNE datant de moins de 3 mois ou déclaration d\'existence
+                          Extrait RNE datant de moins de 3 mois ou déclaration d\&apos;existence
                         </span>
                       </div>
                     )}
@@ -627,7 +627,7 @@ export function SellerReGoKyc({
               {/* Submission Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <div className="text-xs text-[var(--rego-ink-3,#949494)]">
-                  Tous les champs marqués d\'un astérisque sont obligatoires
+                  Tous les champs marqués d\&apos;un astérisque sont obligatoires
                 </div>
 
                 <button

@@ -104,8 +104,10 @@ export function SellerReGoCustomers({
   const totalCount = customers.length;
   const repeatBuyersCount = customers.filter((c) => (c.order_count || 0) > 1).length;
   const vipCount = customers.filter((c) => (c.order_count || 0) >= 5).length;
-  const totalRevenue = customers.reduce((acc, c) => acc + (c.total_spend_tnd || (c.order_count || 0) * 85.0), 0);
-  const averageSpend = totalCount > 0 ? totalRevenue / totalCount : 0;
+  // Only aggregate real spend data reported by the API — never fabricate amounts.
+  const customersWithSpend = customers.filter((c) => typeof c.total_spend_tnd === 'number');
+  const totalRevenue = customersWithSpend.reduce((acc, c) => acc + (c.total_spend_tnd || 0), 0);
+  const averageSpend = customersWithSpend.length > 0 ? totalRevenue / customersWithSpend.length : null;
 
   const handleExportCsv = () => {
     const headers = 'ID,Nom,Prenom,Email,Telephone,Ville,Gouvernorat,Commandes,Depenses_TND,Date_Inscription\n';
@@ -120,7 +122,7 @@ export function SellerReGoCustomers({
           `"${c.city || ''}"`,
           `"${c.governorate || ''}"`,
           c.order_count || 0,
-          (c.total_spend_tnd || (c.order_count || 0) * 85.0).toFixed(3),
+          typeof c.total_spend_tnd === 'number' ? c.total_spend_tnd.toFixed(3) : '',
           c.created_at,
         ].join(',')
       )
@@ -179,7 +181,7 @@ export function SellerReGoCustomers({
             />
             <ReGoKpiHero
               label="Dépense Moyenne par Client"
-              value={<ReGoAmtBox amount={averageSpend} size="lg" />}
+              value={averageSpend !== null ? <ReGoAmtBox amount={averageSpend} size="lg" /> : '—'}
               hint="Panier moyen cumulé par acheteur"
               icon={ShoppingBag}
             />
@@ -195,13 +197,13 @@ export function SellerReGoCustomers({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-1 items-center gap-2 max-w-md">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                 <input
                   type="text"
                   placeholder="Rechercher par nom, email, téléphone ou ville..."
                   value={searchQuery}
                   onChange={(e) => onSearchQueryChange(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
+                  className="w-full ps-8 pe-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
                 />
               </div>
             </div>
@@ -247,23 +249,23 @@ export function SellerReGoCustomers({
             ) : (
               <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)]/60 text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                         <th className="py-3 px-4">Client</th>
                         <th className="py-3 px-4">Téléphone</th>
                         <th className="py-3 px-4">Localisation</th>
                         <th className="py-3 px-4 text-center">Total Commandes</th>
-                        <th className="py-3 px-4">Dépenses Estimées</th>
+                        <th className="py-3 px-4">Dépenses Totales</th>
                         <th className="py-3 px-4">Inscription</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4 text-end">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
                       {filteredCustomers.map((c) => {
                         const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Client Anonyme';
                         const orderCount = c.order_count || 0;
-                        const spend = c.total_spend_tnd || orderCount * 85.0;
+                        const spend = typeof c.total_spend_tnd === 'number' ? c.total_spend_tnd : null;
 
                         return (
                           <tr
@@ -282,7 +284,7 @@ export function SellerReGoCustomers({
                                       {fullName}
                                     </span>
                                     {orderCount >= 5 && (
-                                      <span className="px-1.5 py-0.2 text-[9px] font-black bg-amber-50 text-amber-800 border border-amber-200 rounded-full flex items-center gap-0.5">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-black bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full flex items-center gap-0.5">
                                         <Crown className="w-2.5 h-2.5" /> VIP
                                       </span>
                                     )}
@@ -320,7 +322,11 @@ export function SellerReGoCustomers({
                             </td>
 
                             <td className="py-3.5 px-4 font-bold">
-                              <ReGoAmtBox amount={spend} size="sm" />
+                              {spend !== null ? (
+                                <ReGoAmtBox amount={spend} size="sm" />
+                              ) : (
+                                <span className="text-[var(--rego-ink-3,#949494)]">—</span>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4 text-[11px] text-[var(--rego-ink-2,#737373)]">
@@ -331,14 +337,14 @@ export function SellerReGoCustomers({
                               })}
                             </td>
 
-                            <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="py-3.5 px-4 text-end" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 {c.phone && (
                                   <a
                                     href={`https://wa.me/216${c.phone.replace(/[^0-9]/g, '')}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                    className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded transition-colors"
                                     title="Discuter sur WhatsApp"
                                   >
                                     <MessageSquare className="w-3.5 h-3.5" />
@@ -418,11 +424,15 @@ export function SellerReGoCustomers({
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[var(--rego-ink-2,#737373)]">Chiffre d'affaires généré</span>
-                    <ReGoAmtBox
-                      amount={selectedCustomer.total_spend_tnd || (selectedCustomer.order_count || 0) * 85.0}
-                      size="sm"
-                    />
+                    <span className="font-bold text-[var(--rego-ink-2,#737373)]">Chiffre d&apos;affaires généré</span>
+                    {typeof selectedCustomer.total_spend_tnd === 'number' ? (
+                      <ReGoAmtBox
+                        amount={selectedCustomer.total_spend_tnd}
+                        size="sm"
+                      />
+                    ) : (
+                      <span className="text-[var(--rego-ink-3,#949494)]">—</span>
+                    )}
                   </div>
                 </div>
 
@@ -440,7 +450,7 @@ export function SellerReGoCustomers({
                         onClick={() => copyToClipboard(selectedCustomer.email, 'email')}
                         className="p-1 text-[var(--rego-ink-3,#949494)] hover:text-[var(--rego-fg,#111111)]"
                       >
-                        {copiedKey === 'email' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        {copiedKey === 'email' ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       </button>
                     </div>
                   </div>
@@ -454,7 +464,7 @@ export function SellerReGoCustomers({
                           onClick={() => copyToClipboard(selectedCustomer.phone!, 'phone')}
                           className="p-1 text-[var(--rego-ink-3,#949494)] hover:text-[var(--rego-fg,#111111)]"
                         >
-                          {copiedKey === 'phone' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          {copiedKey === 'phone' ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
                     </div>

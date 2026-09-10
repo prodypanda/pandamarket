@@ -198,7 +198,7 @@ function SearchableParentCategorySelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 p-1.5 shadow-xl space-y-1">
+        <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-xl space-y-1">
           <div className="relative mb-1.5">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
@@ -312,7 +312,7 @@ function IconPickerModal({
                 className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-colors text-center gap-1.5 ${
                   isSelected
                     ? 'border-slate-900 dark:border-white bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs font-semibold'
-                    : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300'
+                    : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
                 }`}
               >
                 <Comp className={`w-4 h-4 ${isSelected ? 'text-white dark:text-slate-900' : 'text-slate-600 dark:text-slate-400'}`} />
@@ -381,7 +381,7 @@ function RecursiveCategoryItem({
         className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors ${
           depth === 0
             ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700'
-            : 'bg-slate-50/60 dark:bg-slate-850/60 border-slate-200/60 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
+            : 'bg-slate-50/60 dark:bg-slate-900/60 border-slate-200/60 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
         }`}
         style={{ marginLeft: `${depth * 20}px` }}
       >
@@ -1006,7 +1006,7 @@ export default function StorefrontCategoriesPage() {
       {/* Main Content Area */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
         {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -1080,7 +1080,7 @@ export default function StorefrontCategoriesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150" role="dialog" aria-modal="true">
           <div className="w-full max-w-xl h-full bg-white dark:bg-slate-900 border-l border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs">
                   <Settings2 className="w-4 h-4" />
@@ -1104,7 +1104,7 @@ export default function StorefrontCategoriesPage() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-100 dark:border-slate-800 px-5 bg-slate-50/30 dark:bg-slate-850/50">
+            <div className="flex border-b border-slate-100 dark:border-slate-800 px-5 bg-slate-50/30 dark:bg-slate-900/50">
               {[
                 { id: 'general', label: 'Général', icon: LayoutList },
                 { id: 'translations', label: 'Traductions', icon: Book },
@@ -1377,7 +1377,7 @@ export default function StorefrontCategoriesPage() {
             </div>
 
             {/* Drawer Footer Actions */}
-            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex justify-between items-center">
+            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex justify-between items-center">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}

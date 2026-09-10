@@ -130,7 +130,6 @@ export function SellerReGoCockpit({
   const dateLocale = locale === 'ar' ? 'ar-TN' : locale === 'en' ? 'en-US' : 'fr-TN';
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [validatedCodIds, setValidatedCodIds] = useState<Record<string, boolean>>({});
 
   // Derive real pending/actionable orders
   const urgentOrders = useMemo(() => {
@@ -150,10 +149,6 @@ export function SellerReGoCockpit({
     if (orderCount > 0 && wallet?.total_earned) return toNumber(wallet.total_earned) / orderCount;
     return 0;
   }, [totalRevenue30d, totalOrders30d, orderCount, wallet]);
-
-  const handleValidateOrder = (orderId: string) => {
-    setValidatedCodIds((prev) => ({ ...prev, [orderId]: true }));
-  };
 
   const storeName = store?.name || t('dashboardPages.overview.yourStore') || 'Ma Boutique';
 
@@ -176,7 +171,7 @@ export function SellerReGoCockpit({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-gradient-to-r from-[var(--rego-surface,#f5f5f5)] via-[var(--rego-bg,#ffffff)] to-[var(--rego-surface,#f5f5f5)] p-4 shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))]">
         <div className="flex items-center gap-3">
           {store?.settings?.logo_url ? (
-            <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] bg-white p-0.5">
+            <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 p-0.5">
               <img
                 src={getResizedImageUrl(store.settings.logo_url, 'thumbnail')}
                 alt=""
@@ -280,7 +275,6 @@ export function SellerReGoCockpit({
             {urgentOrders.length > 0 ? (
               <div className="space-y-2.5">
                 {urgentOrders.map((order) => {
-                  const isValidated = validatedCodIds[order.id];
                   const orderAmt = getOrderTotal(order);
                   return (
                     <div
@@ -315,19 +309,13 @@ export function SellerReGoCockpit({
                           {orderStatusLabel(order.status)}
                         </span>
 
-                        {isValidated ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 px-2.5 py-1 rounded bg-emerald-50">
-                            <Check className="w-3.5 h-3.5" /> Validé
-                          </span>
-                        ) : (
-                          <Link
-                            href={`/hub/dashboard/orders?id=${order.id}`}
-                            className="inline-flex items-center gap-1 text-xs font-bold bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] hover:bg-[var(--rego-accent,#ad0505)] px-3 py-1.5 rounded-[var(--rego-r,8px)] transition-all shadow-2xs"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Traiter</span>
-                          </Link>
-                        )}
+                        <Link
+                          href={`/hub/dashboard/orders?id=${order.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-bold bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] hover:bg-[var(--rego-accent,#ad0505)] px-3 py-1.5 rounded-[var(--rego-r,8px)] transition-all shadow-2xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Traiter</span>
+                        </Link>
                       </div>
                     </div>
                   );
@@ -360,65 +348,28 @@ export function SellerReGoCockpit({
             }
           >
             <div className="space-y-2.5">
-              {/* Aramex */}
-              <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">Aramex Express</span>
-                    <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">24h à 48h · 24 Gouvernorats</p>
+              {[
+                { name: 'Aramex Express', detail: '24h à 48h · 24 Gouvernorats', scope: 'National' },
+                { name: 'Rapid-Poste (Poste Tunisienne)', detail: '24h à 72h · Réseau National Postal', scope: 'Réseau 24 Gouv' },
+                { name: 'Runex Delivery', detail: 'Sfax & Sud Tunisien Express', scope: 'Hub Sud' },
+                { name: 'First Delivery', detail: '12h à 24h · Grand Tunis', scope: 'Grand Tunis' },
+              ].map((carrier) => (
+                <div
+                  key={carrier.name}
+                  className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-md bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-accent,#ad0505)]">
+                      <Truck className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">{carrier.name}</span>
+                      <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">{carrier.detail}</p>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-bold text-[var(--rego-ink-3,#949494)]">{carrier.scope}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-emerald-600">Opérationnel</span>
-                  <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Suivi API</p>
-                </div>
-              </div>
-
-              {/* Rapid-Poste */}
-              <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">Rapid-Poste (Poste Tunisienne)</span>
-                    <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">24h à 72h · Réseau National Postal</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-emerald-600">Opérationnel</span>
-                  <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Réseau 24 Gouv</p>
-                </div>
-              </div>
-
-              {/* Runex */}
-              <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">Runex Delivery</span>
-                    <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">Sfax & Sud Tunisien Express</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-emerald-600">Opérationnel</span>
-                  <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Hub Sud</p>
-                </div>
-              </div>
-
-              {/* First Delivery */}
-              <div className="flex items-center justify-between p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <span className="text-xs font-bold text-[var(--rego-fg,#111111)]">First Delivery</span>
-                    <p className="text-[10px] text-[var(--rego-ink-2,#737373)]">12h à 24h · Grand Tunis</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-emerald-600">Opérationnel</span>
-                  <p className="text-[10px] text-[var(--rego-ink-3,#949494)]">Grand Tunis</p>
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-[var(--rego-border,#dedede)] flex items-center justify-between text-xs text-[var(--rego-ink-2,#737373)]">
@@ -448,7 +399,7 @@ export function SellerReGoCockpit({
       >
         {recentOrders.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-[var(--rego-fg,#111111)]">
+            <table className="w-full text-start text-xs text-[var(--rego-fg,#111111)]">
               <thead className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[11px] font-bold uppercase text-[var(--rego-ink-2,#737373)]">
                 <tr>
                   <th className="px-3 py-2.5">Commande</th>
@@ -456,7 +407,7 @@ export function SellerReGoCockpit({
                   <th className="px-3 py-2.5">Date</th>
                   <th className="px-3 py-2.5">Montant</th>
                   <th className="px-3 py-2.5">Statut</th>
-                  <th className="px-3 py-2.5 text-right">Actions</th>
+                  <th className="px-3 py-2.5 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
@@ -484,7 +435,7 @@ export function SellerReGoCockpit({
                         {orderStatusLabel(order.status)}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-end">
                       <button
                         type="button"
                         onClick={() => setSelectedOrder(order)}
@@ -506,7 +457,7 @@ export function SellerReGoCockpit({
               Aucune commande enregistrée pour le moment
             </p>
             <p className="text-[11px] text-[var(--rego-ink-2,#737373)] max-w-sm mx-auto">
-              Vos nouvelles commandes s'afficheront ici en direct dès qu'un acheteur effectue un achat sur votre boutique.
+              Vos nouvelles commandes s&apos;afficheront ici en direct dès qu&apos;un acheteur effectue un achat sur votre boutique.
             </p>
             <div className="pt-2 flex items-center justify-center gap-2">
               <Link
@@ -571,7 +522,7 @@ export function SellerReGoCockpit({
               <div className="text-xs space-y-1.5 text-[var(--rego-ink-2,#737373)]">
                 <p><strong className="text-[var(--rego-fg,#111111)]">ID Commande :</strong> {selectedOrder.id}</p>
                 <p><strong className="text-[var(--rego-fg,#111111)]">Client :</strong> {selectedOrder.customer_email || 'Non renseigné'}</p>
-                <p><strong className="text-[var(--rego-fg,#111111)]">Date d'enregistrement :</strong> {new Date(selectedOrder.created_at).toLocaleString(dateLocale)}</p>
+                <p><strong className="text-[var(--rego-fg,#111111)]">Date d&apos;enregistrement :</strong> {new Date(selectedOrder.created_at).toLocaleString(dateLocale)}</p>
                 <div className="flex items-center gap-2 pt-1">
                   <strong className="text-[var(--rego-fg,#111111)]">Statut :</strong>
                   <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${ORDER_STATUS_CLASSES[selectedOrder.status] || ''}`}>

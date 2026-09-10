@@ -162,7 +162,7 @@ export function AdminReGoPlans({
             Gestion des Abonnements & Quotas
           </h1>
           <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-            Définissez les paliers d'adhésion, quotas de catalogue, jetons IA et taux de commission par formule
+            Définissez les paliers d&apos;adhésion, quotas de catalogue, jetons IA et taux de commission par formule
           </p>
         </div>
 
@@ -220,13 +220,13 @@ export function AdminReGoPlans({
 
       {/* ─── Feedback Alerts ─── */}
       {error && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {message && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{message}</span>
         </div>
@@ -433,9 +433,9 @@ export function AdminReGoPlans({
       ) : plans.length === 0 ? (
         <div className="text-center p-12 bg-[var(--rego-bg,#ffffff)] border border-[var(--rego-border,#dedede)] rounded-[var(--rego-r,8px)]">
           <Crown className="w-10 h-10 text-[var(--rego-ink-2,#737373)] mx-auto mb-3 opacity-40" />
-          <h3 className="text-sm font-bold text-[var(--rego-fg,#111111)]">Aucun palier d'abonnement configuré</h3>
+          <h3 className="text-sm font-bold text-[var(--rego-fg,#111111)]">Aucun palier d&apos;abonnement configuré</h3>
           <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-1">
-            Cliquez sur "Créer un plan" pour initier le premier niveau de souscription SaaS.
+            Cliquez sur &quot;Créer un plan&quot; pour initier le premier niveau de souscription SaaS.
           </p>
         </div>
       ) : (
@@ -468,7 +468,7 @@ export function AdminReGoPlans({
                           {plan.plan_id}
                         </span>
                         {isDirty && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200">
                             Modifié
                           </span>
                         )}
@@ -489,7 +489,7 @@ export function AdminReGoPlans({
                         onChange={(e) => onUpdatePlan(plan.plan_id, 'is_enabled', e.target.checked)}
                         className="rounded accent-[var(--rego-accent,#ad0505)]"
                       />
-                      <span className={plan.is_enabled ? 'text-emerald-700' : 'text-[var(--rego-ink-2,#737373)]'}>
+                       <span className={plan.is_enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--rego-ink-2,#737373)]'}>
                         {plan.is_enabled ? 'Actif' : 'Inactif'}
                       </span>
                     </label>
@@ -594,13 +594,13 @@ export function AdminReGoPlans({
                           key={f.key}
                           type="button"
                           onClick={() => onUpdatePlan(plan.plan_id, f.key, !enabled)}
-                          className={`flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] border text-left transition ${
-                            enabled
-                              ? 'border-emerald-300 bg-emerald-50/50 text-emerald-900'
+                           className={`flex items-center justify-between p-2 rounded-[var(--rego-r,8px)] border text-start transition ${
+                             enabled
+                               ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900'
                               : 'border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-ink-2,#737373)] opacity-70'
                           }`}
                         >
-                          <span className="text-[11px] font-bold truncate pr-1">{f.label}</span>
+                           <span className="text-[11px] font-bold truncate pe-1">{f.label}</span>
                           <span className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 text-white ${
                             enabled ? 'bg-emerald-600' : 'bg-gray-300'
                           }`}>
@@ -628,7 +628,7 @@ export function AdminReGoPlans({
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(plan.plan_id)}
-                      className="inline-flex items-center gap-1 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 text-[11px] font-bold text-red-600 hover:bg-red-50 transition"
+                       className="inline-flex items-center gap-1 h-7 px-2 rounded-[var(--rego-r,8px)] border border-red-200 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
                       title="Supprimer ce palier"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -679,32 +679,32 @@ export function AdminReGoPlans({
       {deleteTarget && planToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="w-full max-w-md bg-[var(--rego-bg,#ffffff)] border border-[var(--rego-border,#dedede)] rounded-[var(--rego-r,8px)] p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-red-600">
-              <div className="p-2 rounded-full bg-red-50">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="p-2 rounded-full bg-red-50 dark:bg-red-950/40">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-[var(--rego-fg,#111111)]">
-                  Supprimer le plan "{labelFromPlanId(planToDelete.plan_id)}" ?
+                  Supprimer le plan &quot;{labelFromPlanId(planToDelete.plan_id)}&quot; ?
                 </h3>
                 <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-                  Cette action est irréversible pour le catalogue d'abonnements.
+                  Cette action est irréversible pour le catalogue d&apos;abonnements.
                 </p>
               </div>
             </div>
 
             {(planToDelete.stores_count || 0) > 0 && (
-              <div className="p-3 rounded-[var(--rego-r,8px)] bg-amber-50 border border-amber-200 space-y-2">
-                <p className="text-xs font-bold text-amber-800">
+              <div className="p-3 rounded-[var(--rego-r,8px)] bg-amber-50 dark:bg-amber-950/40 border border-amber-200 space-y-2">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
                   ⚠️ {planToDelete.stores_count} boutique(s) utilisent actuellement ce plan.
                 </p>
-                <label className="block text-[11px] font-bold text-amber-900 uppercase">
+                <label className="block text-[11px] font-bold text-amber-900 dark:text-amber-200 uppercase">
                   Migrer automatiquement vers le plan :
                 </label>
                 <select
                   value={replacementPlanId}
                   onChange={(e) => setReplacementPlanId(e.target.value)}
-                  className="w-full h-8 px-2.5 text-xs font-semibold rounded border border-amber-300 bg-white text-[var(--rego-fg,#111111)] outline-none"
+                  className="w-full h-8 px-2.5 text-xs font-semibold rounded border border-amber-300 bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] outline-none"
                 >
                   <option value="">-- Sélectionner un plan de substitution --</option>
                   {plans

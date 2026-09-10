@@ -30,6 +30,8 @@ const isQuiet = args.includes('--quiet');
 const SCAN_TARGETS = [
   path.join(rootDir, 'frontend', 'src', 'app', 'hub', 'dashboard'),
   path.join(rootDir, 'frontend', 'src', 'components', 'dashboard'),
+  path.join(rootDir, 'frontend', 'src', 'components', 'admin', 'rego'),
+  path.join(rootDir, 'frontend', 'src', 'app', 'courier'),
 ];
 
 // Target hex colors for Rule 2
@@ -124,17 +126,37 @@ function scanFile(filePath) {
 
   // Rule 3 check: Dark Mode class pairing & coverage
   const darkMatches = content.match(/\bdark:/g) || [];
+  // Theme CSS-variable tokens (--rego-*) flip automatically in dark mode via
+  // [data-theme="..."].dark rules in globals.css, so files styled exclusively
+  // with them are considered dark-aware.
+  const regoVarMatches = content.match(/var\(--rego-/g) || [];
   const hasStyledContainers = content.includes('className') && (
     content.includes('bg-') || content.includes('border-') || content.includes('text-')
   );
 
   // Check for unpaired major container elements
   const missingDarkContainers = [];
-  if (darkMatches.length === 0 && hasStyledContainers) {
-    // 0 dark classes in an entire styled UI component/page
+  if (darkMatches.length === 0 && regoVarMatches.length === 0 && hasStyledContainers) {
+    // 0 dark classes and 0 theme variables in an entire styled UI component/page
     missingDarkContainers.push({
       line: 1,
       reason: 'Entire styled UI component lacks dark: classes (0 dark: occurrences)',
+    });
+  } else if (darkMatches.length === 0 && hasStyledContainers) {
+    // No dark: classes but theme variables present: verify the major container
+    // lines are actually var-based (dark-aware) rather than light palette classes
+    lines.forEach((line, idx) => {
+      if (!line.includes('className=')) return;
+      for (const pattern of MAJOR_LIGHT_CONTAINER_PATTERNS) {
+        if (pattern.test(line) && !line.includes('dark:') && !line.includes('var(--rego-')) {
+          missingDarkContainers.push({
+            line: idx + 1,
+            reason: 'Container/card element with light background/border lacks dark: pairing',
+            snippet: line.trim(),
+          });
+          break;
+        }
+      }
     });
   } else {
     // Check specific container lines for unpaired light classes

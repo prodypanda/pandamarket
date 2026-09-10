@@ -515,7 +515,7 @@ export function AdminChatInbox({ title, subtitle }: { title?: string; subtitle?:
       {/* Dual Column */}
       <div className="grid min-h-[620px] overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs lg:grid-cols-[340px_1fr]">
         {/* Sidebar */}
-        <aside className={`flex flex-col border-r border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850/40 ${
+        <aside className={`flex flex-col border-r border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 ${
           mobilePane === 'thread' ? 'hidden lg:flex' : 'flex'
         }`}>
           <div className="p-3.5 space-y-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -589,7 +589,7 @@ export function AdminChatInbox({ title, subtitle }: { title?: string; subtitle?:
                     className={`w-full rounded-xl p-3 text-left transition shadow-2xs border cursor-pointer ${
                       selected
                         ? 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xs'
-                        : 'border-transparent bg-white/60 dark:bg-slate-850/60 hover:bg-white dark:hover:bg-slate-800'
+                        : 'border-transparent bg-white/60 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">

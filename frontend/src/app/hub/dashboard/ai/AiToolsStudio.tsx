@@ -624,7 +624,7 @@ export default function AiToolsStudio() {
               {t('dashboardPages.ai.subtitle')}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-xl bg-slate-100 dark:bg-slate-800 p-3 text-slate-900 dark:text-white">
                 <Zap className="h-5 w-5" />
@@ -687,13 +687,13 @@ export default function AiToolsStudio() {
           )}
         </div>
         {isUnlimited ? (
-          <div className="mt-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-4 text-sm font-bold text-slate-800 dark:text-slate-200">
+          <div className="mt-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 text-sm font-bold text-slate-800 dark:text-slate-200">
             {t('dashboardPages.ai.unlimitedIncluded')}
           </div>
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {tokenPacks.map((pack) => (
-              <div key={pack.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-5">
+              <div key={pack.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5">
                 <p className="text-sm font-black text-slate-900 dark:text-white">{pack.label}</p>
                 <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{pack.tokens}</p>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.tokensUnit')}</p>
@@ -746,7 +746,7 @@ export default function AiToolsStudio() {
             <select
               value={providerForm.provider}
               onChange={(e) => setProviderForm((current) => ({ ...current, provider: e.target.value as AiProvider }))}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(providerLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -756,20 +756,20 @@ export default function AiToolsStudio() {
               value={providerForm.model}
               onChange={(e) => setProviderForm((current) => ({ ...current, model: e.target.value }))}
               placeholder={t('dashboardPages.ai.modelPlaceholder')}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               value={providerForm.base_url}
               onChange={(e) => setProviderForm((current) => ({ ...current, base_url: e.target.value }))}
               placeholder={t('dashboardPages.ai.baseUrlPlaceholder')}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               type="password"
               value={providerForm.api_key}
               onChange={(e) => setProviderForm((current) => ({ ...current, api_key: e.target.value }))}
               placeholder={providerState?.config?.api_key_set ? t('dashboardPages.ai.newKeyPlaceholder') : t('dashboardPages.ai.apiKeyPlaceholder')}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <div className="flex gap-2">
               <button
@@ -821,7 +821,7 @@ export default function AiToolsStudio() {
                 setCompressProductId(e.target.value);
                 setCompressUrl('');
               }}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               <option value="">{t('dashboardPages.ai.externalOrNoProduct')}</option>
               {products.map((product) => (
@@ -832,7 +832,7 @@ export default function AiToolsStudio() {
               <select
                 value={compressUrl}
                 onChange={(e) => setCompressUrl(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
               >
                 {imageOptions.map((image) => (
                   <option key={image.url} value={image.url}>{image.label}</option>
@@ -844,7 +844,7 @@ export default function AiToolsStudio() {
               value={compressUrl}
               onChange={(e) => setCompressUrl(e.target.value)}
               placeholder={t('dashboardPages.ai.imageUrlPlaceholder')}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <button
               type="button"
@@ -872,7 +872,7 @@ export default function AiToolsStudio() {
             <select
               value={seoProductId}
               onChange={(e) => setSeoProductId(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               <option value="">{t('dashboardPages.ai.selectProduct')}</option>
               {products.map((product) => (
@@ -882,7 +882,7 @@ export default function AiToolsStudio() {
             <select
               value={seoLanguage}
               onChange={(e) => setSeoLanguage(e.target.value as Language)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(languageLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -916,33 +916,33 @@ export default function AiToolsStudio() {
               value={pageTitle}
               onChange={(e) => setPageTitle(e.target.value)}
               placeholder={t('dashboardPages.ai.pageTitlePlaceholder')}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <input
               type="text"
               value={currentSeoTitle}
               onChange={(e) => setCurrentSeoTitle(e.target.value)}
               placeholder={t('dashboardPages.ai.currentSeoTitlePlaceholder')}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <textarea
               value={currentSeoDescription}
               onChange={(e) => setCurrentSeoDescription(e.target.value)}
               placeholder={t('dashboardPages.ai.currentSeoDescriptionPlaceholder')}
               rows={2}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <textarea
               value={sectionOutline}
               onChange={(e) => setSectionOutline(e.target.value)}
               placeholder={t('dashboardPages.ai.sectionsPlaceholder')}
               rows={3}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             />
             <select
               value={copyLanguage}
               onChange={(e) => setCopyLanguage(e.target.value as Language)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
             >
               {Object.entries(languageLabelKeys).map(([value, key]) => (
                 <option key={value} value={value}>{t(key)}</option>
@@ -962,7 +962,7 @@ export default function AiToolsStudio() {
       </div>
 
       {copySuggestions && (
-        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 p-6">
+        <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('dashboardPages.ai.lastProposalTitle')}</h2>
             <button
@@ -1003,7 +1003,7 @@ export default function AiToolsStudio() {
             <select
               value={historyType}
               onChange={(e) => setHistoryType(e.target.value as 'all' | AiJobType)}
-              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
+              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
             >
               <option value="all">{t('dashboardPages.ai.allTypes')}</option>
               {Object.entries(typeLabelKeys).map(([value, key]) => (
@@ -1013,7 +1013,7 @@ export default function AiToolsStudio() {
             <select
               value={historyStatus}
               onChange={(e) => setHistoryStatus(e.target.value as 'all' | AiJobStatus)}
-              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
+              className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white"
             >
               <option value="all">{t('dashboardPages.ai.allStatuses')}</option>
               {Object.entries(statusLabelKeys).map(([value, key]) => (
@@ -1036,7 +1036,7 @@ export default function AiToolsStudio() {
             <div className="p-10 text-center text-sm font-semibold text-slate-500 dark:text-slate-400">{t('dashboardPages.ai.noJobs')}</div>
           ) : (
             jobs.map((job) => (
-              <div key={job.id} className="p-5 transition hover:bg-slate-50/60 dark:hover:bg-slate-850/60">
+              <div key={job.id} className="p-5 transition hover:bg-slate-50/60 dark:hover:bg-slate-800/60">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1055,7 +1055,7 @@ export default function AiToolsStudio() {
                       <p className="mt-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 p-3 text-xs font-semibold text-rose-700 dark:text-rose-400">{job.error_message}</p>
                     )}
                     {job.status === 'completed' && job.output && (
-                      <div className="mt-3 rounded-xl bg-slate-50/80 dark:bg-slate-850/80 border border-slate-200/80 dark:border-slate-800 p-3 text-xs text-slate-600 dark:text-slate-300">
+                      <div className="mt-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 p-3 text-xs text-slate-600 dark:text-slate-300">
                         {job.type === 'image_compression' && (
                           <div className="space-y-1">
                             <p className="font-bold text-slate-900 dark:text-white">{t('dashboardPages.ai.outputLabels.gain')}: {String(job.output.saved_percent ?? 0)}%</p>

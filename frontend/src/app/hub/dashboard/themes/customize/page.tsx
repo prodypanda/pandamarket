@@ -301,7 +301,7 @@ export default function ThemeCustomizerPage() {
           </div>
 
           {/* Hero Banner */}
-          <div className="p-8 text-center bg-slate-50/50 dark:bg-slate-850/50 border-b border-slate-100 dark:border-slate-800">
+          <div className="p-8 text-center bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-2xl font-black mb-2" style={{ color: config.textColor }}>
               Nouvelle Collection Artisanale
             </h2>
@@ -318,14 +318,14 @@ export default function ThemeCustomizerPage() {
 
           {/* Product Cards Grid Preview */}
           <div className="p-6 grid grid-cols-2 gap-4">
-            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-850 shadow-sm">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-900 shadow-sm">
               <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
                 Image Produit
               </div>
               <h3 className="font-semibold text-xs text-slate-800 dark:text-slate-200">Vase en Céramique Émaillée</h3>
               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">45.000 DT</p>
             </div>
-            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-850 shadow-sm">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-900 shadow-sm">
               <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-md mb-2 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
                 Image Produit
               </div>

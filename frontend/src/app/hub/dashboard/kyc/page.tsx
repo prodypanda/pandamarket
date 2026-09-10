@@ -412,7 +412,7 @@ export default function KycPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder={t('dashboardPages.kyc.phonePlaceholder')}
-              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
+              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none transition"
             />
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('kyc.step3Desc')}</p>
           </div>

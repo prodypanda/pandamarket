@@ -228,15 +228,15 @@ export default function SellerSupportPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(asSellerStatusFilter(e.target.value))}
-          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
         >
-          <option value="all" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.allStatuses')}</option>
-          <option value="open" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusOpen')}</option>
-          <option value="in_progress" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusInProgress')}</option>
-          <option value="waiting_seller" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusWaitingSeller')}</option>
-          <option value="waiting_admin" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusWaitingAdmin')}</option>
-          <option value="resolved" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusResolved')}</option>
-          <option value="closed" className="bg-white dark:bg-slate-850 text-slate-900 dark:text-white">{t('dashboardPages.support.statusClosed')}</option>
+          <option value="all" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.allStatuses')}</option>
+          <option value="open" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusOpen')}</option>
+          <option value="in_progress" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusInProgress')}</option>
+          <option value="waiting_seller" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusWaitingSeller')}</option>
+          <option value="waiting_admin" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusWaitingAdmin')}</option>
+          <option value="resolved" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusResolved')}</option>
+          <option value="closed" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('dashboardPages.support.statusClosed')}</option>
         </select>
       </div>
 
@@ -245,7 +245,7 @@ export default function SellerSupportPage() {
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder={t('dashboardPages.support.subject')}
-          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
           required
           minLength={3}
         />
@@ -253,7 +253,7 @@ export default function SellerSupportPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t('dashboardPages.support.describeIssue')}
-          className="min-h-32 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+          className="min-h-32 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
           required
           minLength={10}
         />
@@ -343,7 +343,7 @@ export default function SellerSupportPage() {
                   value={attachmentName}
                   onChange={(e) => setAttachmentName(e.target.value)}
                   placeholder={t('dashboardPages.support.attachmentName')}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                   required
                   minLength={1}
                 />
@@ -351,7 +351,7 @@ export default function SellerSupportPage() {
                   value={attachmentUrl}
                   onChange={(e) => setAttachmentUrl(e.target.value)}
                   placeholder={t('dashboardPages.support.attachmentUrl')}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                   required
                   type="url"
                 />
@@ -360,14 +360,14 @@ export default function SellerSupportPage() {
                     value={attachmentMimeType}
                     onChange={(e) => setAttachmentMimeType(e.target.value)}
                     placeholder={t('dashboardPages.support.mimeType')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                     required
                   />
                   <input
                     value={attachmentSizeBytes}
                     onChange={(e) => setAttachmentSizeBytes(e.target.value)}
                     placeholder={t('dashboardPages.support.fileSizeBytes')}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                     type="number"
                     min={0}
                   />
@@ -386,7 +386,7 @@ export default function SellerSupportPage() {
                   value={replyBody}
                   onChange={(e) => setReplyBody(e.target.value)}
                   placeholder={t('dashboardPages.support.writeReply')}
-                  className="min-h-24 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
+                  className="min-h-24 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white"
                   required
                   minLength={1}
                 />

@@ -66,7 +66,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
 
   if (format === 'brand_card' || creative.campaign_type === 'sponsored_brand') {
     return (
-      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 p-4 shadow-2xs">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xs">
         <div className="flex items-center gap-3.5">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
             {creative.image_url ? (
@@ -89,7 +89,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
 
   if (format === 'product_card' || creative.campaign_type === 'sponsored_product') {
     return (
-      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-2xs">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <div className="aspect-square max-h-40 bg-slate-100 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
           {creative.image_url ? (
             <img src={creative.image_url ? getResizedImageUrl(creative.image_url, 'medium') : ''} alt="Produit" onError={handleImgError} className="h-full w-full object-cover" />
@@ -110,7 +110,7 @@ function Preview({ format, creative }: { format: string; creative: Creative }) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 shadow-2xs">
+    <div className="relative overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
       <div className="flex min-h-28 gap-3.5 p-3.5">
         <div className="flex w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
           {creative.image_url ? (

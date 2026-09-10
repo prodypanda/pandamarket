@@ -271,7 +271,7 @@ export default function ApiKeysPage() {
                 </code>
                 <button
                   onClick={handleCopyKey}
-                  className="p-2.5 bg-white dark:bg-slate-850 border border-amber-300 dark:border-amber-700/60 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-2.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -306,7 +306,7 @@ export default function ApiKeysPage() {
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder={t('dashboardPages.apiKeys.labelPlaceholder')}
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
               />
             </div>
             <div>
@@ -328,7 +328,7 @@ export default function ApiKeysPage() {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleScope(scope)}
-                        className="mt-0.5 text-slate-900 focus:ring-slate-900 dark:text-white dark:focus:ring-white rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850"
+                        className="mt-0.5 text-slate-900 focus:ring-slate-900 dark:text-white dark:focus:ring-white rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
                       />
                       <div>
                         <p className="text-sm font-medium text-slate-900 dark:text-white">{info.label}</p>
@@ -348,7 +348,7 @@ export default function ApiKeysPage() {
                 value={newExpiresAt}
                 onChange={(e) => setNewExpiresAt(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
               />
             </div>
             <div className="flex items-center gap-3">

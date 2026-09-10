@@ -85,7 +85,7 @@ export function SellerReGoSelectStore({
       secondaryAction={
         <Link
           href="/hub/dashboard/my-subscription-orders"
-          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
+          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition cursor-pointer"
         >
           <ReceiptText className="w-3.5 h-3.5" />
           <span>Abonnements & Factures</span>
@@ -134,7 +134,7 @@ export function SellerReGoSelectStore({
             title="Vos Vitrines Commerciales"
             subtitle="Cliquez sur une boutique pour changer de contexte de gestion ou accéder à sa vitrine publique."
             actions={
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {stores.length} magasin{stores.length > 1 ? 's' : ''}
               </span>
             }
@@ -152,7 +152,7 @@ export function SellerReGoSelectStore({
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                     Aucune boutique enregistrée
                   </p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                     Créez votre première boutique vitrine pour commencer à vendre en ligne sur le marché tunisien.
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export function SellerReGoSelectStore({
                       key={store.id}
                       className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
                         isSelected
-                          ? 'border-slate-900 dark:border-white bg-slate-50/50 dark:bg-slate-850 shadow-xs ring-2 ring-slate-900/15 dark:ring-white/20'
+                          ? 'border-slate-900 dark:border-white bg-slate-50/50 dark:bg-slate-900 shadow-xs ring-2 ring-slate-900/15 dark:ring-white/20'
                           : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                       }`}
                     >
@@ -202,7 +202,7 @@ export function SellerReGoSelectStore({
                         {/* Store URLs */}
                         <div className="space-y-1 text-xs">
                           {store.subdomain && (
-                            <div className="flex items-center gap-1.5 font-mono text-slate-500 truncate">
+                            <div className="flex items-center gap-1.5 font-mono text-slate-500 dark:text-slate-400 truncate">
                               <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span className="truncate">{store.subdomain}.pandamarket.tn</span>
                             </div>
@@ -244,7 +244,7 @@ export function SellerReGoSelectStore({
                             href={storefrontUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
                           >
                             <span>Voir Vitrine</span>
                             <ExternalLink className="w-3 h-3" />
@@ -263,7 +263,7 @@ export function SellerReGoSelectStore({
                           {isSwitching ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : isSelected ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           ) : (
                             <ArrowRight className="w-3.5 h-3.5" />
                           )}

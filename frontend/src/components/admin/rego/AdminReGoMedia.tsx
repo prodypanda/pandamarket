@@ -148,7 +148,7 @@ export function AdminReGoMedia({
               />
             </div>
             <p className="text-xs text-[var(--rego-ink-2,#737373)] mt-0.5">
-              Supervision de l'infrastructure média cloud · Compression WebP, bande passante CDN et variantes d'affichage
+              Supervision de l&apos;infrastructure média cloud · Compression WebP, bande passante CDN et variantes d&apos;affichage
             </p>
           </div>
         </div>
@@ -177,14 +177,14 @@ export function AdminReGoMedia({
 
       {/* 2. Feedback alerts */}
       {error && (
-        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+        <div className="rounded-[var(--rego-r,8px)] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>{success}</span>
         </div>
       )}
@@ -234,12 +234,12 @@ export function AdminReGoMedia({
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--rego-r,8px)] text-xs font-bold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[var(--rego-accent-soft,rgba(173,5,5,0.1))] text-[var(--rego-accent,#ad0505)] border border-[var(--rego-accent,#ad0505)]/30'
-                      : 'border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
+                      : 'border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{f.label}</span>
-                  <span className="text-[10px] px-1 py-0.2 rounded bg-black/5 font-mono">
+                  <span className="text-[10px] px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono">
                     {f.count}
                   </span>
                 </button>
@@ -250,20 +250,20 @@ export function AdminReGoMedia({
           {/* Right Tools: Search, View Mode, Sort */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
+              <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
                 placeholder="Rechercher fichier..."
-                className="pl-9 pr-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none"
+                className="ps-9 pe-3 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:border-[var(--rego-accent,#ad0505)] outline-none"
               />
             </div>
 
             <select
               value={sortBy}
               onChange={(e) => onSortByChange(e.target.value as any)}
-              className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
+              className="px-2.5 py-1.5 text-xs rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-fg,#111111)] focus:border-[var(--rego-accent,#ad0505)] outline-none cursor-pointer"
             >
               <option value="date_desc">Plus récents</option>
               <option value="date_asc">Plus anciens</option>
@@ -271,14 +271,14 @@ export function AdminReGoMedia({
               <option value="name_desc">Nom (Z-A)</option>
             </select>
 
-            <div className="flex items-center rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white p-0.5">
+            <div className="flex items-center rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 p-0.5">
               <button
                 type="button"
                 onClick={() => onViewModeChange('grid')}
                 className={`p-1.5 rounded text-xs cursor-pointer ${
                   viewMode === 'grid'
                     ? 'bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] font-bold'
-                    : 'text-slate-400 hover:text-slate-700'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <Grid className="w-3.5 h-3.5" />
@@ -289,7 +289,7 @@ export function AdminReGoMedia({
                 className={`p-1.5 rounded text-xs cursor-pointer ${
                   viewMode === 'table'
                     ? 'bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] font-bold'
-                    : 'text-slate-400 hover:text-slate-700'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <List className="w-3.5 h-3.5" />
@@ -301,7 +301,7 @@ export function AdminReGoMedia({
               onClick={onBulkOptimize}
               disabled={bulkOptimizing}
               title="Compresser tous les visuels du dossier actuel en WebP"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer disabled:opacity-50"
             >
               {bulkOptimizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sliders className="w-3 h-3 text-amber-600" />}
               <span>Optimiser dossier</span>
@@ -324,7 +324,7 @@ export function AdminReGoMedia({
               Aucun fichier média trouvé
             </h3>
             <p className="text-xs text-[var(--rego-ink-2,#737373)]">
-              Glissez des images directement sur la page ou cliquez sur "Téléverser un média" pour alimenter le CDN.
+              Glissez des images directement sur la page ou cliquez sur &quot;Téléverser un média&quot; pour alimenter le CDN.
             </p>
           </div>
         ) : viewMode === 'grid' ? (
@@ -336,7 +336,7 @@ export function AdminReGoMedia({
               return (
                 <div
                   key={item.key}
-                  className="group rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white overflow-hidden shadow-2xs hover:border-[var(--rego-accent,#ad0505)]/50 transition-all flex flex-col justify-between"
+                  className="group rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 overflow-hidden shadow-2xs hover:border-[var(--rego-accent,#ad0505)]/50 transition-all flex flex-col justify-between"
                 >
                   <div
                     onClick={() => setInspectedItem(item)}
@@ -349,20 +349,20 @@ export function AdminReGoMedia({
                       loading="lazy"
                     />
 
-                    <div className="absolute top-1.5 left-1.5">
+                    <div className="absolute top-1.5 start-1.5">
                       <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur">
                         {item.folder}
                       </span>
                     </div>
 
-                    <div className="absolute bottom-1.5 right-1.5">
+                    <div className="absolute bottom-1.5 end-1.5">
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white backdrop-blur">
                         {formatBytes(item.size)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-2 border-t border-[var(--rego-border,#dedede)]/70 bg-white">
+                  <div className="p-2 border-t border-[var(--rego-border,#dedede)]/70 bg-white dark:bg-slate-900">
                     <p className="text-[11px] font-bold text-[var(--rego-fg,#111111)] truncate" title={item.filename}>
                       {item.filename}
                     </p>
@@ -372,9 +372,9 @@ export function AdminReGoMedia({
                         type="button"
                         onClick={() => onCopyUrl(item.url, item.key)}
                         title="Copier le lien public CDN"
-                        className="p-1 hover:text-slate-800 cursor-pointer"
+                        className="p-1 hover:text-slate-800 dark:hover:text-slate-100 cursor-pointer"
                       >
-                        {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
 
                       <button
@@ -412,7 +412,7 @@ export function AdminReGoMedia({
           </div>
         ) : (
           <div className="p-4 overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-start border-collapse">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] text-[11px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                   <th className="px-3 py-2.5">Aperçu</th>
@@ -420,15 +420,15 @@ export function AdminReGoMedia({
                   <th className="px-3 py-2.5">Dossier</th>
                   <th className="px-3 py-2.5">Type MIME</th>
                   <th className="px-3 py-2.5">Taille</th>
-                  <th className="px-3 py-2.5">Date d'Ajout</th>
-                  <th className="px-3 py-2.5 text-right">Actions</th>
+                  <th className="px-3 py-2.5">Date d&apos;Ajout</th>
+                  <th className="px-3 py-2.5 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
                 {items.map((item) => (
                   <tr key={item.key} className="hover:bg-[var(--rego-surface,#f5f5f5)]/50 transition-colors">
                     <td className="px-3 py-2">
-                      <div className="w-10 h-10 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-[var(--rego-r,6px)] border border-[var(--rego-border,#dedede)] overflow-hidden bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
                         <img src={item.url} alt={item.filename} className="w-full h-full object-cover" />
                       </div>
                     </td>
@@ -436,7 +436,7 @@ export function AdminReGoMedia({
                       {item.filename}
                     </td>
                     <td className="px-3 py-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {item.folder}
                       </span>
                     </td>
@@ -449,20 +449,20 @@ export function AdminReGoMedia({
                     <td className="px-3 py-2 text-xs text-[var(--rego-ink-2,#737373)]">
                       {new Date(item.created_at).toLocaleDateString('fr-TN')}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-end">
                       <div className="inline-flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => onCopyUrl(item.url, item.key)}
-                          className="p-1 rounded text-slate-400 hover:text-slate-800"
+                          className="p-1 rounded text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                           title="Copier URL"
                         >
-                          {copiedKey === item.key ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedKey === item.key ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                         <button
                           type="button"
                           onClick={() => setInspectedItem(item)}
-                          className="p-1 rounded text-slate-400 hover:text-slate-800"
+                          className="p-1 rounded text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                           title="Inspecter"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -514,7 +514,7 @@ export function AdminReGoMedia({
               </div>
             </div>
 
-            <div className="p-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white space-y-1">
+            <div className="p-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-1">
               <span className="text-[10px] uppercase font-bold text-[var(--rego-ink-3,#949494)] block">
                 Clé S3 / CDN
               </span>
@@ -523,7 +523,7 @@ export function AdminReGoMedia({
               </p>
             </div>
 
-            <div className="p-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white space-y-1">
+            <div className="p-2.5 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 space-y-1">
               <span className="text-[10px] uppercase font-bold text-[var(--rego-ink-3,#949494)] block">
                 URL Publique Directe
               </span>

@@ -281,7 +281,7 @@ export default function WebhooksPage() {
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               placeholder="https://your-server.com/webhooks/pandamarket"
-              className="w-full px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
+              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-slate-900 dark:focus:border-white focus:ring-1 focus:ring-slate-900 dark:focus:ring-white outline-none"
             />
           </div>
 
@@ -303,7 +303,7 @@ export default function WebhooksPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleEvent(event.value)}
-                      className="mt-0.5 text-slate-900 focus:ring-slate-900 dark:text-white dark:focus:ring-white rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850"
+                      className="mt-0.5 text-slate-900 focus:ring-slate-900 dark:text-white dark:focus:ring-white rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
                     />
                     <div>
                       <div className="font-medium text-sm text-slate-900 dark:text-white">

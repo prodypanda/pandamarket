@@ -107,7 +107,7 @@ export function SellerReGoLoyalty({
               Programme VIP Marchand
             </span>
             <span className="px-2.5 py-0.5 text-[10px] font-bold bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] border border-[var(--rego-border,#dedede)] rounded-full">
-              Trust Score : {kpis?.trust_score?.overall ?? 100}%
+              Trust Score : {kpis?.trust_score?.overall != null ? `${kpis.trust_score.overall}%` : '—'}
             </span>
           </div>
         }
@@ -121,7 +121,7 @@ export function SellerReGoLoyalty({
                   : 'text-[var(--rego-ink-2,#737373)] hover:text-[var(--rego-fg,#111111)]'
               }`}
             >
-              Vue d'Ensemble
+              Vue d&apos;Ensemble
             </button>
             <button
               onClick={() => onTabChange('broadcasts')}
@@ -150,14 +150,14 @@ export function SellerReGoLoyalty({
             onClick={() => setShowTrustDrawer(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors shadow-2xs"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Détails Trust Score</span>
           </button>
         }
         alertBanner={
           error && (
-            <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <div className="flex items-center gap-3 p-3.5 rounded-[var(--rego-r,8px)] border border-rose-200 bg-rose-50 dark:bg-rose-950/40 text-rose-800 text-xs font-semibold">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{error}</span>
             </div>
           )
@@ -220,7 +220,7 @@ export function SellerReGoLoyalty({
                     <div className="space-y-2.5">
                       {Object.keys(governorates).length === 0 ? (
                         <p className="text-xs text-[var(--rego-ink-3,#949494)] py-6 text-center">
-                          Données géographiques en cours d'agrégation...
+                          Données géographiques en cours d&apos;agrégation...
                         </p>
                       ) : (
                         Object.entries(governorates)
@@ -264,7 +264,7 @@ export function SellerReGoLoyalty({
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-start text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                           <th className="py-2.5 px-3">Titre de la Campagne</th>
@@ -326,12 +326,12 @@ export function SellerReGoLoyalty({
                   <Tag className="w-8 h-8 text-[var(--rego-ink-3,#949494)] mx-auto mb-2" />
                   <h4 className="text-xs font-bold text-[var(--rego-fg,#111111)]">Aucune diffusion</h4>
                   <p className="text-[11px] text-[var(--rego-ink-2,#737373)] mt-0.5">
-                    Utilisez l'onglet Vue d'Ensemble pour envoyer votre premier code promotionnel.
+                    Utilisez l&apos;onglet Vue d&apos;Ensemble pour envoyer votre premier code promotionnel.
                   </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                         <th className="py-2.5 px-3">Titre de la Campagne</th>
@@ -389,13 +389,13 @@ export function SellerReGoLoyalty({
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] shadow-2xs">
                 <div className="relative flex-1 max-w-md">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
+                  <Search className="w-3.5 h-3.5 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
                   <input
                     type="text"
                     placeholder="Rechercher par email, nom ou ville..."
                     value={subscribersSearch}
                     onChange={(e) => onSubscribersSearchChange(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
+                    className="w-full ps-8 pe-3 py-1.5 text-xs rounded-md border border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[var(--rego-fg,#111111)] focus:bg-[var(--rego-bg,#ffffff)] focus:outline-none focus:border-[var(--rego-accent,#ad0505)] transition-all"
                   />
                 </div>
 
@@ -423,7 +423,7 @@ export function SellerReGoLoyalty({
 
               <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-[var(--rego-border,#dedede)] bg-[var(--rego-surface,#f5f5f5)] text-[10px] font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)]">
                         <th className="py-2.5 px-3">Abonné</th>
@@ -431,7 +431,7 @@ export function SellerReGoLoyalty({
                         <th className="py-2.5 px-3">Ville</th>
                         <th className="py-2.5 px-3">Statut Acheteur</th>
                         <th className="py-2.5 px-3">Préférences</th>
-                        <th className="py-2.5 px-3">Date d'Abonnement</th>
+                        <th className="py-2.5 px-3">Date d&apos;Abonnement</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60">
@@ -490,14 +490,14 @@ export function SellerReGoLoyalty({
                       <button
                         onClick={() => onSubscribersPageChange(subscribersPage - 1)}
                         disabled={subscribersPage <= 1}
-                        className="p-1 rounded border border-[var(--rego-border,#dedede)] bg-white disabled:opacity-40"
+                        className="p-1 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 disabled:opacity-40"
                       >
                         <ChevronLeft className="w-3.5 h-3.5 rtl:rotate-180" />
                       </button>
                       <button
                         onClick={() => onSubscribersPageChange(subscribersPage + 1)}
                         disabled={subscribersPage >= subscribersTotalPages}
-                        className="p-1 rounded border border-[var(--rego-border,#dedede)] bg-white disabled:opacity-40"
+                        className="p-1 rounded border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 disabled:opacity-40"
                       >
                         <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180" />
                       </button>
@@ -527,7 +527,7 @@ export function SellerReGoLoyalty({
               <div className="p-3.5 rounded-md bg-[var(--rego-surface,#f5f5f5)] border border-[var(--rego-border,#dedede)] space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[var(--rego-fg,#111111)]">Score de Confiance Global</span>
-                  <span className="text-base font-black text-emerald-600 font-mono">
+                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
                     {kpis?.trust_score?.overall ?? 100} / 100
                   </span>
                 </div>
@@ -543,25 +543,25 @@ export function SellerReGoLoyalty({
                 <div className="space-y-2 text-[var(--rego-fg,#111111)]">
                   <div className="flex items-center justify-between p-2 rounded border border-[var(--rego-border,#dedede)]">
                     <span>Avis & Évaluations Clients</span>
-                    <span className="font-mono font-bold text-emerald-600">
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       +{kpis?.trust_score?.rating_component ?? 40} pts
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded border border-[var(--rego-border,#dedede)]">
-                    <span>Respect des Délais d'Expédition (SLA)</span>
-                    <span className="font-mono font-bold text-emerald-600">
+                    <span>Respect des Délais d&apos;Expédition (SLA)</span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       +{kpis?.trust_score?.sla_component ?? 35} pts
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded border border-[var(--rego-border,#dedede)]">
                     <span>Fidélisation & Rétention des Abonnés</span>
-                    <span className="font-mono font-bold text-emerald-600">
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       +{kpis?.trust_score?.subscribers_log_component ?? 25} pts
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded border border-[var(--rego-border,#dedede)]">
                     <span>Pénalités Litiges / Refus COD</span>
-                    <span className="font-mono font-bold text-rose-600">
+                    <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
                       -{kpis?.trust_score?.dispute_penalty ?? 0} pts
                     </span>
                   </div>

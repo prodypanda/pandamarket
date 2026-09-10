@@ -323,7 +323,7 @@ export function SellerReGoSettings({
                   <div className="space-y-4 pt-2 text-xs">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Nom de la boutique <span className="text-rose-500">*</span>
+                        Nom de la boutique <span className="text-rose-500 dark:text-rose-400">*</span>
                       </label>
                       <input
                         type="text"
@@ -367,7 +367,7 @@ export function SellerReGoSettings({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Histoire & Description de l'Atelier
+                        Histoire & Description de l&apos;Atelier
                       </label>
                       <textarea
                         rows={4}
@@ -470,7 +470,7 @@ export function SellerReGoSettings({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Adresse Physique de l'Atelier / Boutique
+                        Adresse Physique de l&apos;Atelier / Boutique
                       </label>
                       <input
                         type="text"
@@ -484,7 +484,7 @@ export function SellerReGoSettings({
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          Gouvernorat Tunisien <span className="text-rose-500">*</span>
+                          Gouvernorat Tunisien <span className="text-rose-500 dark:text-rose-400">*</span>
                         </label>
                         <select
                           value={governorate}
@@ -526,7 +526,7 @@ export function SellerReGoSettings({
                 >
                   <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-2 text-slate-600 dark:text-slate-400">
                     <p className="font-bold text-slate-900 dark:text-white">Transporteurs Partenaires Intégrés :</p>
-                    <p>Vos colis sont collectés directement à l'adresse de votre atelier par Aramex, Runex, Rapid-Poste ou First Delivery.</p>
+                    <p>Vos colis sont collectés directement à l&apos;adresse de votre atelier par Aramex, Runex, Rapid-Poste ou First Delivery.</p>
                   </div>
                 </ReGoCard>
               </div>
@@ -545,7 +545,7 @@ export function SellerReGoSettings({
                   <div className="space-y-4 pt-2 text-xs">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Horaires d'Ouverture / Service Client
+                        Horaires d&apos;Ouverture / Service Client
                       </label>
                       <input
                         type="text"
@@ -614,40 +614,40 @@ export function SellerReGoSettings({
                   <div className="space-y-4 pt-2 text-xs">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                        Disposition de l'Interface
+                        Disposition de l&apos;Interface
                       </label>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
                           onClick={() => onDashboardStyleChange('rego')}
-                          className={`p-4 rounded-xl border text-left transition-all ${
+                          className={`p-4 rounded-xl border text-start transition-all ${
                             dashboardStyle === 'rego'
                               ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20 font-bold'
                               : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           <div className="text-sm font-black mb-1">ReGo Modernist (Recommandé)</div>
-                          <p className="text-[11px] text-slate-500">Design système officiel standardisé en 8 couches, optimisé pour la Tunisie.</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Design système officiel standardisé en 8 couches, optimisé pour la Tunisie.</p>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => onDashboardStyleChange('classic')}
-                          className={`p-4 rounded-xl border text-left transition-all ${
+                          className={`p-4 rounded-xl border text-start transition-all ${
                             dashboardStyle === 'classic'
                               ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20 font-bold'
                               : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           <div className="text-sm font-black mb-1">Classic Legacy</div>
-                          <p className="text-[11px] text-slate-500">Ancienne mise en page par cartes classiques.</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Ancienne mise en page par cartes classiques.</p>
                         </button>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                        Couleur d'Accentuation ReGo
+                        Couleur d&apos;Accentuation ReGo
                       </label>
                       <div className="flex gap-2">
                         {(

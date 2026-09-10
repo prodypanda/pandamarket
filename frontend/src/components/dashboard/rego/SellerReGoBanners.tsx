@@ -307,7 +307,7 @@ export function SellerReGoBanners({
                       ) : sec.type === 'hero_banner' ? (
                         <Image className="w-4 h-4 text-[var(--rego-accent,#ad0505)]" />
                       ) : sec.type === 'popular_products' ? (
-                        <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                        <ShoppingBag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       ) : (
                         <Star className="w-4 h-4 text-indigo-600" />
                       )}
@@ -350,7 +350,7 @@ export function SellerReGoBanners({
                     <button
                       type="button"
                       onClick={() => handleRemove(sec.id)}
-                      className="p-1 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                      className="p-1 rounded text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                       title="Supprimer ce bloc"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -388,7 +388,7 @@ export function SellerReGoBanners({
 
               {selectedSection.type === 'promo_bar' && (
                 <div className="space-y-1">
-                  <label className="block font-bold text-[var(--rego-fg,#111111)]">Texte d'Annonce</label>
+                  <label className="block font-bold text-[var(--rego-fg,#111111)]">Texte d&apos;Annonce</label>
                   <input
                     type="text"
                     value={selectedSection.content.text || ''}
@@ -504,7 +504,7 @@ export function SellerReGoBanners({
                 key={idx}
                 type="button"
                 onClick={() => handleAddSection(item.type, item.title)}
-                className="w-full p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] text-left transition-colors flex items-center justify-between"
+                className="w-full p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] hover:border-[var(--rego-accent,#ad0505)] text-start transition-colors flex items-center justify-between"
               >
                 <div>
                   <span className="font-bold text-xs text-[var(--rego-fg,#111111)] block">

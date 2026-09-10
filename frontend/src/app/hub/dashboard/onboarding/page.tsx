@@ -761,7 +761,7 @@ export default function SellerOnboardingPage() {
           <div role="dialog" aria-modal="true" aria-label="Assistant d'intégration" className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl flex flex-col md:flex-row h-[90vh]">
             
             {/* Sidebar with Steps progress */}
-            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 p-5 flex flex-col justify-between overflow-y-auto">
+            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 p-5 flex flex-col justify-between overflow-y-auto">
               <div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 font-semibold text-xs text-slate-900 dark:text-white">
@@ -833,7 +833,7 @@ export default function SellerOnboardingPage() {
             {/* Main Interactive Workspace Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900">
               {/* Header */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900">
                 <div>
                   <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                     Étape {currentStep + 1} sur 7
@@ -1023,7 +1023,7 @@ export default function SellerOnboardingPage() {
                             className={`rounded-xl border p-3.5 text-left transition-colors shadow-2xs cursor-pointer ${
                               isSelected
                                 ? 'border-slate-900 dark:border-white bg-slate-50 dark:bg-slate-800'
-                                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
+                                : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                             }`}
                           >
                             <Palette className="h-4 w-4 text-slate-700 dark:text-slate-300" />
@@ -1429,7 +1429,7 @@ export default function SellerOnboardingPage() {
               )}
 
               {/* Bottom Navigation Buttons */}
-              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between">
+              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex items-center justify-between">
                 <div>
                   {!showCoachmark && (
                     <button

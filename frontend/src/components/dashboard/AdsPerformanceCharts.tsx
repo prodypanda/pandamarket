@@ -80,7 +80,7 @@ function SingleChart({
   const hoverPoint = hoverIndex !== null ? daily[hoverIndex] : null;
 
   return (
-    <figure className="min-w-0 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-4 shadow-2xs space-y-3">
+    <figure className="min-w-0 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-4 shadow-2xs space-y-3">
       <figcaption className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-slate-900 dark:text-white">{title}</p>

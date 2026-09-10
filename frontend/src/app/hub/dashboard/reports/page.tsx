@@ -276,7 +276,7 @@ export default function VendorReportsPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedReport(report)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
                     >
                       <Eye className="h-4 w-4" />
                       {t('dashboardPages.reports.quickView')}
@@ -317,7 +317,7 @@ export default function VendorReportsPage() {
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={page <= 1}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition"
             >
               <ChevronLeft className="h-4 w-4" />
               {t('dashboardPages.reports.previous')}
@@ -326,7 +326,7 @@ export default function VendorReportsPage() {
               type="button"
               onClick={() => setPage((current) => Math.min(meta.total_pages || 1, current + 1))}
               disabled={page >= (meta.total_pages || 1)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 transition"
             >
               {t('dashboardPages.reports.next')}
               <ChevronRight className="h-4 w-4" />

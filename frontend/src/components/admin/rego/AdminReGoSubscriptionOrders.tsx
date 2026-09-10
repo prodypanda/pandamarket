@@ -318,7 +318,7 @@ export function AdminReGoSubscriptionOrders({
 
           <Link
             href="/fraud-radar"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 transition shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-xs font-bold text-red-700 dark:text-red-300 hover:bg-red-100 transition shadow-xs"
           >
             <Radar className="w-3.5 h-3.5" />
             Radar Fraude
@@ -347,13 +347,13 @@ export function AdminReGoSubscriptionOrders({
 
       {/* ─── Feedback Alerts ─── */}
       {error && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
       {success && (
-        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+        <div className="p-3.5 rounded-[var(--rego-r,8px)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{success}</span>
         </div>
@@ -397,7 +397,7 @@ export function AdminReGoSubscriptionOrders({
       <ReGoCard noPadding>
         <div className="p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-2,#737373)]" />
             <input
               type="text"
               value={searchTerm}
@@ -406,7 +406,7 @@ export function AdminReGoSubscriptionOrders({
                 setPage(1);
               }}
               placeholder="Recherche par boutique, e-mail vendeur ou sous-domaine..."
-              className="w-full h-9 pl-9 pr-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
+              className="w-full h-9 ps-9 pe-3 text-xs font-medium rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)]"
             />
           </div>
 
@@ -463,7 +463,7 @@ export function AdminReGoSubscriptionOrders({
             </select>
 
             {selectedIds.length > 0 && (
-              <div className="flex items-center gap-1.5 pl-2 border-l border-[var(--rego-border,#dedede)]">
+              <div className="flex items-center gap-1.5 ps-2 border-s border-[var(--rego-border,#dedede)]">
                 <span className="text-xs font-bold text-[var(--rego-ink-2,#737373)]">
                   {selectedIds.length} sélectionnée(s)
                 </span>
@@ -504,7 +504,7 @@ export function AdminReGoSubscriptionOrders({
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs text-left">
+            <table className="w-full text-xs text-start">
               <thead>
                 <tr className="border-b border-[var(--rego-border,#dedede)] text-[10px] font-black uppercase tracking-wider text-[var(--rego-ink-2,#737373)] bg-[var(--rego-bg-subtle,#f7f7f7)]/50">
                   <th className="p-3 w-8">
@@ -521,7 +521,7 @@ export function AdminReGoSubscriptionOrders({
                   <th className="py-3 px-2">Passerelle</th>
                   <th className="py-3 px-2">Statut</th>
                   <th className="py-3 px-2">Créée le</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
+                  <th className="py-3 px-3 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--rego-border,#dedede)]/60 font-semibold text-[var(--rego-fg,#111111)]">
@@ -576,7 +576,7 @@ export function AdminReGoSubscriptionOrders({
                         {new Date(order.created_at).toLocaleDateString('fr-TN')}
                       </td>
 
-                      <td className="py-3 px-3 text-right">
+                      <td className="py-3 px-3 text-end">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
@@ -723,7 +723,7 @@ export function AdminReGoSubscriptionOrders({
               <button
                 type="button"
                 onClick={() => onPauseResumeStore(drawerOrder.store_id, 'pause')}
-                className="py-2 px-3 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 text-xs font-bold text-amber-800 hover:bg-amber-100 transition flex items-center gap-1.5"
+                className="py-2 px-3 rounded-[var(--rego-r,8px)] border border-amber-200 bg-amber-50 dark:bg-amber-950/40 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition flex items-center gap-1.5"
               >
                 <PauseCircle className="w-3.5 h-3.5" />
                 Geler la boutique
@@ -732,7 +732,7 @@ export function AdminReGoSubscriptionOrders({
               <button
                 type="button"
                 onClick={() => onCancelOrder(drawerOrder.id)}
-                className="py-2 px-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 transition flex items-center gap-1.5"
+                className="py-2 px-3 rounded-[var(--rego-r,8px)] border border-red-200 bg-red-50 dark:bg-red-950/40 text-xs font-bold text-red-700 dark:text-red-300 hover:bg-red-100 transition flex items-center gap-1.5"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 Annuler
@@ -766,7 +766,7 @@ export function AdminReGoSubscriptionOrders({
             {/* Activity Stream */}
             <div className="space-y-2 pt-2">
               <h4 className="font-bold uppercase tracking-wider text-[var(--rego-ink-2,#737373)] text-[10px]">
-                Journal d'activité & Audit ({drawerLogs.length})
+                Journal d&apos;activité & Audit ({drawerLogs.length})
               </h4>
               {loadingLogs ? (
                 <div className="p-4 text-center text-[var(--rego-ink-2,#737373)]">
@@ -779,7 +779,7 @@ export function AdminReGoSubscriptionOrders({
               ) : (
                 <div className="divide-y divide-[var(--rego-border,#dedede)]/60 border border-[var(--rego-border,#dedede)] rounded-[var(--rego-r,8px)] overflow-hidden">
                   {drawerLogs.map((log) => (
-                    <div key={log.id} className="p-2.5 bg-white flex items-start justify-between gap-2">
+                    <div key={log.id} className="p-2.5 bg-white dark:bg-slate-900 flex items-start justify-between gap-2">
                       <div>
                         <span className="font-bold text-[var(--rego-fg,#111111)] uppercase text-[10px] block">
                           {log.action}
@@ -833,14 +833,14 @@ export function AdminReGoSubscriptionOrders({
                     href={reviewModalOrder.proof_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-3 rounded border border-blue-200 bg-blue-50 text-blue-700 font-bold hover:underline"
+                    className="block p-3 rounded border border-blue-200 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold hover:underline"
                   >
                     Ouvrir le reçu dans un nouvel onglet ↗
                   </a>
                 </div>
               ) : (
-                <p className="text-amber-800 bg-amber-50 p-3 rounded">
-                  ⚠️ Aucun reçu n'a encore été téléversé par le marchand.
+                <p className="text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-3 rounded">
+                  ⚠️ Aucun reçu n&apos;a encore été téléversé par le marchand.
                 </p>
               )}
 

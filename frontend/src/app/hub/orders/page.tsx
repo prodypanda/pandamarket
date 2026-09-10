@@ -1312,7 +1312,7 @@ export default function CustomerOrdersPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Titre de l'avis (optionnel)</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Titre de l&apos;avis (optionnel)</label>
                   <input
                     type="text"
                     value={reviewTitle}
