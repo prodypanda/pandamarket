@@ -7,7 +7,11 @@ import { fetchWithCsrf } from '@/lib/api';
 import { themes, type ThemeId, type ThemeConfig, type ColorPreset } from '@/lib/themes';
 import { revalidateStoreCache } from '@/lib/store-cache';
 import { useDashboardStyle } from '@/contexts/DashboardStyleContext';
-import { SellerReGoThemes } from '@/components/dashboard/rego/SellerReGoThemes';
+import {
+  SellerReGoThemes,
+  type SellerReGoThemeItem,
+  type ViewportMode,
+} from '@/components/dashboard/rego/SellerReGoThemes';
 import {
   Palette,
   Check,
@@ -26,13 +30,23 @@ import {
   Truck,
   ShieldCheck,
   Clock,
-  ExternalLink,
 } from 'lucide-react';
 
-type ViewportMode = 'desktop' | 'tablet' | 'mobile';
+/** Marketplace theme metadata returned by /api/pd/themes. */
+interface ApiThemeMeta {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  preview_url: string | null;
+  is_free: boolean;
+  is_premium: boolean;
+  price: number;
+  is_active: boolean;
+}
 
 export default function ThemesPage() {
-  const { t, locale, dir } = useLocale();
+  const { t, dir } = useLocale();
   const { dashboardStyle } = useDashboardStyle();
   const [activeThemeId, setActiveThemeId] = useState<ThemeId | null>(null);
   const [subdomain, setSubdomain] = useState('');
@@ -40,6 +54,7 @@ export default function ThemesPage() {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
+  const [apiThemes, setApiThemes] = useState<ApiThemeMeta[]>([]);
 
   // Live preview modal states
   const [previewThemeId, setPreviewThemeId] = useState<ThemeId | null>(null);
@@ -65,6 +80,28 @@ export default function ThemesPage() {
   useEffect(() => {
     fetchStore();
   }, [fetchStore]);
+
+  // Fetch marketplace theme catalog (free/paid metadata). Falls back to the
+  // static themes config when the API is unavailable.
+  useEffect(() => {
+    let active = true;
+    async function loadThemes() {
+      try {
+        const res = await fetchWithCsrf('/api/pd/themes', { credentials: 'include' });
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (active) setApiThemes(data.data || []);
+        }
+      } catch {
+        // Non-critical — the static themes config remains the fallback.
+      }
+    }
+    loadThemes();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Keyboard Escape listener for modal
   useEffect(() => {
@@ -126,7 +163,18 @@ export default function ThemesPage() {
     );
   }
 
-  const themeList = Object.values(themes);
+  // Gallery list: static themes config enriched with marketplace API metadata
+  // (is_free / price). Falls back to "all free" when the API is unavailable.
+  const themeList: SellerReGoThemeItem[] = Object.values(themes).map((cfg) => {
+    const api = apiThemes.find((a) => a.slug === cfg.id);
+    return {
+      ...cfg,
+      isFree: api ? api.is_free : true,
+      isPremium: api ? Boolean(api.is_premium) : false,
+      price: api ? Number(api.price) || 0 : 0,
+      description: api?.description ?? null,
+    };
+  });
   const activePreviewTheme: ThemeConfig | null = previewThemeId ? themes[previewThemeId] : null;
   const activePreviewPreset: ColorPreset | null =
     activePreviewTheme && activePreviewTheme.colorPresets[selectedPresetIndex]
@@ -138,14 +186,21 @@ export default function ThemesPage() {
   if (dashboardStyle === 'rego') {
     return (
       <SellerReGoThemes
+        themeList={themeList}
         activeThemeId={activeThemeId}
         subdomain={subdomain}
         customDomain={customDomain}
-        loading={loading}
         applying={applying}
         feedback={feedback}
+        previewThemeId={previewThemeId}
+        previewViewport={previewViewport}
+        selectedPresetIndex={selectedPresetIndex}
         onApplyTheme={handleApplyTheme}
         onRefresh={fetchStore}
+        onOpenPreview={openPreview}
+        onClosePreview={closePreview}
+        onPreviewViewportChange={setPreviewViewport}
+        onSelectPreset={setSelectedPresetIndex}
         dir={dir}
       />
     );

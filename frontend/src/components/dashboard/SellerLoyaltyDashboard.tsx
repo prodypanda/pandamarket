@@ -288,13 +288,23 @@ export const SellerLoyaltyDashboard: React.FC<{
         subscribersPage={subscribersPage}
         subscribersTotalPages={subscribersTotalPages}
         subscribersSearch={subscribersSearch}
-        onSubscribersSearchChange={setSubscribersSearch}
+        onSubscribersSearchChange={(v) => {
+          setSubscribersSearch(v);
+          setSubscribersPage(1);
+        }}
         subscribersVerifiedFilter={subscribersVerifiedFilter}
-        onSubscribersVerifiedFilterChange={setSubscribersVerifiedFilter}
+        onSubscribersVerifiedFilterChange={(v) => {
+          setSubscribersVerifiedFilter(v);
+          setSubscribersPage(1);
+        }}
         onSubscribersPageChange={setSubscribersPage}
         onExportCsv={handleExportCsv}
         exportingCsv={exportingCsv}
         onRefresh={fetchLoyaltyData}
+        onRefreshSubscribers={() => void fetchSubscribers()}
+        onFlush={handleFlush}
+        flushing={flushing}
+        flushStatus={flushStatus}
         onBroadcastSuccess={handleBroadcastSuccess}
         dir={dir}
       />

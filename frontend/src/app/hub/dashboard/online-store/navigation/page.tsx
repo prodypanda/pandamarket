@@ -438,8 +438,10 @@ export default function NavigationManagerPage() {
         onAddChildItem={handleAddChildItem}
         onAddBlock={handleAddBlock}
         onUpdateBlock={handleUpdateBlock}
+        onUpdateBlockContent={handleUpdateBlockContent}
         onRemoveBlock={handleRemoveBlock}
         onMoveBlock={handleMoveBlock}
+        onReset={handleReset}
         dir={dir}
       />
     );

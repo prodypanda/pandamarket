@@ -880,7 +880,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (dashboardStyle === 'rego' && activeTab === 'store') {
+  if (dashboardStyle === 'rego') {
     return (
       <SellerReGoSettings
         storeName={storeName}
@@ -924,6 +924,49 @@ export default function SettingsPage() {
         tabs={tabs}
         activeMainTab={activeTab}
         onMainTabChange={(t) => handleTabChange(t as Tab)}
+        storeStatus={storeStatus}
+        storeIsVerified={storeIsVerified}
+        marketplaceName={marketplaceName}
+        themeList={themeList}
+        selectedTheme={selectedTheme}
+        onSelectedThemeChange={setSelectedTheme}
+        onApplyTheme={saveTheme}
+        themeCustomization={themeCustomization}
+        onSaveThemeCustomization={saveThemeCustomization}
+        purchasedThemeIds={purchasedThemeIds}
+        purchaseConfirmTheme={purchaseConfirmTheme}
+        onPurchaseConfirmThemeChange={setPurchaseConfirmTheme}
+        onPurchaseTheme={purchaseTheme}
+        purchasing={purchasing}
+        customDomain={customDomain}
+        domainList={domainList}
+        loadingDomains={loadingDomains}
+        newDomainHostname={newDomainHostname}
+        onNewDomainHostnameChange={setNewDomainHostname}
+        addingDomain={addingDomain}
+        onAddDomain={handleAddCustomDomain}
+        verifyingDomainId={verifyingDomainId}
+        onVerifyDomain={handleVerifyDomain}
+        onMakePrimaryDomain={handleMakePrimaryDomain}
+        domainDeleteTargetId={deleteDomainTargetId}
+        onDomainDeleteTargetChange={setDeleteDomainTargetId}
+        onConfirmDomainDelete={confirmDeleteDomain}
+        deletingDomain={deletingDomain}
+        shippingMode={shippingMode}
+        onShippingModeChange={setShippingMode}
+        shippingPolicy={shippingPolicy}
+        onShippingPolicyChange={setShippingPolicy}
+        paymentPolicy={paymentPolicy}
+        onPaymentPolicyChange={setPaymentPolicy}
+        onSaveShipping={saveShipping}
+        ga4MeasurementId={ga4MeasurementId}
+        onGa4MeasurementIdChange={setGa4MeasurementId}
+        metaPixelId={metaPixelId}
+        onMetaPixelIdChange={setMetaPixelId}
+        gtmContainerId={gtmContainerId}
+        onGtmContainerIdChange={setGtmContainerId}
+        tiktokPixelId={tiktokPixelId}
+        onTiktokPixelIdChange={setTiktokPixelId}
       />
     );
   }

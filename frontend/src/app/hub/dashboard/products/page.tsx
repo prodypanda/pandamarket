@@ -3147,6 +3147,8 @@ export default function ProductsPage() {
           onQuickAdjustStock={handleQuickAdjustStock}
           limits={limits ? { maxProducts: limits.max_products, currentProducts: totalProducts } : undefined}
           dir={dir}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           search={search}
           onSearchChange={setSearch}
           statusFilter={statusFilter}

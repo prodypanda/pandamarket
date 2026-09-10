@@ -1221,6 +1221,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [meta, setMeta] = useState<OrderMeta>({ page: 1, limit: 20, total: 0, total_pages: 1 });
   const [search, setSearch] = useState('');
@@ -1332,7 +1333,7 @@ export default function OrdersPage() {
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: '20',
+        limit: String(limit),
       });
       if (statusFilter) params.set('status', statusFilter);
       if (paymentGatewayFilter) params.set('payment_gateway', paymentGatewayFilter);
@@ -1354,7 +1355,7 @@ export default function OrdersPage() {
         const data = await res.json();
         setOrders(data.data || []);
         setTotalPages(data.meta?.total_pages || 1);
-        setMeta(data.meta || { page, limit: 20, total: 0, total_pages: 1 });
+        setMeta(data.meta || { page, limit, total: 0, total_pages: 1 });
       } else {
         setError(await getErrorMessage(res, t('dashboardPages.orders.errorLoadingOrders')));
       }
@@ -1363,7 +1364,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [channelFilter, countryFilter, customerFilter, dateFrom, dateTo, fulfillmentStatusFilter, hasDisputeFilter, page, paymentGatewayFilter, paymentStatusFilter, productFilter, search, statusFilter, t]);
+  }, [channelFilter, countryFilter, customerFilter, dateFrom, dateTo, fulfillmentStatusFilter, hasDisputeFilter, limit, page, paymentGatewayFilter, paymentStatusFilter, productFilter, search, statusFilter, t]);
 
   useEffect(() => {
     fetchOrders();
@@ -1469,6 +1470,11 @@ export default function OrdersPage() {
     setPage(1);
   };
 
+  const handleLimitChange = (value: number) => {
+    setLimit(value);
+    setPage(1);
+  };
+
   const updateAdvancedFilter = (setter: (value: string) => void, value: string) => {
     setter(value);
     setPage(1);
@@ -1562,6 +1568,10 @@ export default function OrdersPage() {
     const visibleIds = orders.map((order) => order.id);
     const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedOrderIds.includes(id));
     setSelectedOrderIds(allVisibleSelected ? [] : visibleIds);
+  };
+
+  const handleToggleSelectAll = (checked: boolean) => {
+    setSelectedOrderIds(checked ? orders.map((order) => order.id) : []);
   };
 
   const openFulfillmentModal = (order: Order) => {
@@ -2012,6 +2022,17 @@ export default function OrdersPage() {
     });
   };
 
+  const startBulkFulfillment = (targets: Order[]) => {
+    setBulkFulfillmentTargets(targets);
+    setBulkFulfillmentDrafts(targets.reduce((acc, order) => {
+      acc[order.id] = {
+        carrier: order.carrier || '',
+        trackingNumber: order.tracking_number || '',
+      };
+      return acc;
+    }, {} as Record<string, BulkFulfillmentDraft>));
+  };
+
   const openBulkFulfillment = () => {
     const fulfillableOrders = selectedOrders.filter(canFulfill);
     if (fulfillableOrders.length === 0) {
@@ -2019,14 +2040,24 @@ export default function OrdersPage() {
       return;
     }
     setError('');
-    setBulkFulfillmentTargets(fulfillableOrders);
-    setBulkFulfillmentDrafts(fulfillableOrders.reduce((acc, order) => {
-      acc[order.id] = {
-        carrier: order.carrier || '',
-        trackingNumber: order.tracking_number || '',
-      };
-      return acc;
-    }, {} as Record<string, BulkFulfillmentDraft>));
+    startBulkFulfillment(fulfillableOrders);
+  };
+
+  // ReGo cockpit entry point: honors the current selection when present,
+  // otherwise targets every fulfillable order on the current page.
+  const handleOpenBulkFulfillment = () => {
+    if (selectedOrderIds.length > 0) {
+      openBulkFulfillment();
+      return;
+    }
+    const fulfillableOrders = orders.filter(canFulfill);
+    if (fulfillableOrders.length === 0) {
+      setError(t('dashboardPages.orders.errorNoFulfillableSelected'));
+      return;
+    }
+    setError('');
+    setSelectedOrderIds(fulfillableOrders.map((order) => order.id));
+    startBulkFulfillment(fulfillableOrders);
   };
 
   const updateBulkFulfillmentDraft = (orderId: string, field: keyof BulkFulfillmentDraft, value: string) => {
@@ -2333,6 +2364,17 @@ export default function OrdersPage() {
     }
   };
 
+  const openReconcileSettlement = (settlement: CourierSettlement) => {
+    const matchOrder = orders.find((order) => order.id === settlement.order_id);
+    if (!matchOrder) return;
+    setReconcileOrderTarget(matchOrder);
+    setReconcileCarrier(settlement.carrier);
+    setReconcileCollectedAmount(String(settlement.collected_amount));
+    setReconcileCourierFee(String(settlement.courier_fee));
+    setReconcileRef(settlement.settlement_reference || '');
+    setReconcileStatus(settlement.status);
+  };
+
   const exportSettlementsCsv = () => {
     if (settlements.length === 0) return;
     const rows = [
@@ -2470,6 +2512,8 @@ export default function OrdersPage() {
           meta={meta}
           loading={loading}
           onRefresh={fetchOrders}
+          mainTab={mainTab}
+          onMainTabChange={setMainTab}
           onSelectOrder={openOrderDetail}
           onFulfillOrder={openFulfillmentModal}
           onGenerateLabel={generateShippingLabel}
@@ -2482,6 +2526,46 @@ export default function OrdersPage() {
           sendingCodOtp={sendingCodOtp}
           codFeedback={codFeedback}
           dir={dir}
+          search={search}
+          onSearchChange={handleSearchChange}
+          statusFilter={statusFilter}
+          onStatusFilterChange={handleStatusChange}
+          paymentGatewayFilter={paymentGatewayFilter}
+          onPaymentGatewayFilterChange={handlePaymentGatewayChange}
+          paymentStatusFilter={paymentStatusFilter}
+          onPaymentStatusFilterChange={handlePaymentStatusChange}
+          fulfillmentStatusFilter={fulfillmentStatusFilter}
+          onFulfillmentStatusFilterChange={handleFulfillmentStatusChange}
+          dateFrom={dateFrom}
+          onDateFromChange={handleDateFromChange}
+          dateTo={dateTo}
+          onDateToChange={handleDateToChange}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={clearFilters}
+          page={page}
+          totalPages={totalPages}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={handleLimitChange}
+          onExportCsv={(scope) => {
+            if (scope === 'selected') exportSelectedOrders();
+            else void exportFilteredOrders();
+          }}
+          exporting={exportingOrders}
+          selectedIds={selectedOrderIds}
+          onToggleSelect={toggleOrderSelection}
+          onToggleSelectAll={handleToggleSelectAll}
+          onOpenBulkFulfillment={handleOpenBulkFulfillment}
+          onPrintSelected={(kind) => void printSelectedOrders(kind)}
+          settlements={settlements}
+          settlementsLoading={settlementsLoading}
+          settlementsSummary={settlementsSummary}
+          settlementCarrierFilter={settlementCarrierFilter}
+          onSettlementCarrierFilterChange={setSettlementCarrierFilter}
+          settlementStatusFilter={settlementStatusFilter}
+          onSettlementStatusFilterChange={setSettlementStatusFilter}
+          onExportSettlementsCsv={exportSettlementsCsv}
+          onReconcileSettlement={openReconcileSettlement}
         />
       ) : dashboardStyle === 'bento' ? (
         <OrdersBentoCockpit
@@ -3637,17 +3721,7 @@ export default function OrdersPage() {
                         <td className="px-4 py-3.5 text-right">
                           <button
                             type="button"
-                            onClick={() => {
-                              const matchOrder = orders.find(o => o.id === st.order_id);
-                              if (matchOrder) {
-                                setReconcileOrderTarget(matchOrder);
-                                setReconcileCarrier(st.carrier);
-                                setReconcileCollectedAmount(String(st.collected_amount));
-                                setReconcileCourierFee(String(st.courier_fee));
-                                setReconcileRef(st.settlement_reference || '');
-                                setReconcileStatus(st.status);
-                              }
-                            }}
+                            onClick={() => openReconcileSettlement(st)}
                             className="px-2.5 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium text-xs hover:bg-slate-800 transition-colors shadow-2xs"
                           >
                             {t('dashboardPages.orders.settlementReconcile')}
