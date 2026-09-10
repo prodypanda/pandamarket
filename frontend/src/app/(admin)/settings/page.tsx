@@ -11,9 +11,9 @@ import { AccountTwoFactorPanel } from '@/components/AccountTwoFactorPanel';
 import { EmailTemplateManager } from '@/components/email/EmailTemplateManager';
 import AdminPlansPage from '../plans/page';
 import Link from 'next/link';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAdminTheme } from '@/contexts/AdminThemeContext';
-import { AdminReGoSettings } from '@/components/admin/rego/AdminReGoSettings';
+import { AdminReGoSettings, type PlatformSettingsSectionId } from '@/components/admin/rego/AdminReGoSettings';
 import { MessageSquare, Settings, Save, RotateCcw, Store, Wallet, Image as ImageIcon, ShieldCheck, ToggleLeft, UploadCloud, Construction, AlertTriangle, Headphones, Mail, Server, Send, CheckCircle2, XCircle, Eye, EyeOff, Shield, Globe2, SlidersHorizontal, CreditCard, Bell, BarChart3, Crown, LayoutGrid, Truck, Gift, Copy, ChevronLeft, ChevronRight, Palette, Sparkles, ExternalLink, Trash2, Plus, ArrowLeft, ArrowRight, Package } from 'lucide-react';
 import { useLocale } from '../../../contexts/LocaleContext';
 import {
@@ -2947,7 +2947,14 @@ export default function SuperAdminSettingsPage() {
     setError('');
   }
 
-  const { adminTheme } = useAdminTheme();
+  const { adminTheme, setAdminTheme } = useAdminTheme();
+  const handleReGoSectionChange = useCallback((section: PlatformSettingsSectionId) => {
+    setActiveTab(section);
+  }, []);
+  const handleOpenEmailSettings = useCallback(() => {
+    setActiveTab('email');
+    setAdminTheme('enterprise');
+  }, [setAdminTheme]);
   if (adminTheme === 'rego') {
     return (
       <>
@@ -2964,6 +2971,8 @@ export default function SuperAdminSettingsPage() {
           onOpenPreviewLab={() => setIsPreviewLabOpen(true)}
           showMaintenanceConfirm={showMaintenanceConfirm}
           setShowMaintenanceConfirm={setShowMaintenanceConfirm}
+          onActiveSectionChange={handleReGoSectionChange}
+          onOpenEmailSettings={handleOpenEmailSettings}
         />
         <HubAppearancePreviewLab
           settings={settings as any}

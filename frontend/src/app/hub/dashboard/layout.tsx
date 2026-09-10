@@ -128,6 +128,7 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
   const isBentoMode = dashboardStyle === 'bento';
   const isCollapsed = isBentoMode && sidebarCollapsed;
+  const isRegoMode = dashboardStyle === 'rego';
 
   useEffect(() => {
     let cancelled = false;
@@ -401,7 +402,11 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
                   collapsed ? 'justify-center p-2.5' : 'px-3 py-2'
                 } ${
                   active
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs font-semibold'
+                    ? isRegoMode
+                      ? 'bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)] shadow-2xs font-semibold'
+                      : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs font-semibold'
+                    : isRegoMode
+                    ? 'text-[var(--rego-ink-2,#737373)] hover:bg-[var(--rego-surface,#f5f5f5)] hover:text-[var(--rego-fg,#111111)]'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
@@ -466,14 +471,23 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div dir={dir} className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white flex">
+    <div
+      dir={dir}
+      className={`min-h-screen flex text-slate-900 dark:text-white ${
+        isRegoMode
+          ? 'bg-[var(--rego-surface,#f5f5f5)]'
+          : 'bg-slate-50/50 dark:bg-slate-950'
+      }`}
+    >
       {/* Desktop Sidebar */}
       <aside
-        className={`bg-white dark:bg-slate-900 border-e border-slate-200/80 dark:border-slate-800 flex-col hidden md:flex fixed inset-y-0 start-0 h-full z-20 shadow-2xs transition-all duration-300 ${
-          isCollapsed ? 'w-16' : 'w-64'
-        }`}
+        className={`flex-col hidden md:flex fixed inset-y-0 start-0 h-full z-20 transition-all duration-300 ${
+          isRegoMode
+            ? 'bg-[var(--rego-bg,#ffffff)] border-e border-[var(--rego-border,#dedede)] shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))]'
+            : 'bg-white dark:bg-slate-900 border-e border-slate-200/80 dark:border-slate-800 shadow-2xs'
+        } ${isCollapsed ? 'w-16' : 'w-64'}`}
       >
-        <div className={`h-16 flex items-center border-b border-slate-200/80 dark:border-slate-800 ${isCollapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
+        <div className={`h-16 flex items-center border-b ${isRegoMode ? 'border-[var(--rego-border,#dedede)]' : 'border-slate-200/80 dark:border-slate-800'} ${isCollapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
           {!isCollapsed && (
             <MarketplaceBrand
               href="/hub/dashboard"
@@ -501,7 +515,7 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 px-3 py-5 overflow-y-auto">{renderNavLinks(isCollapsed)}</nav>
 
-        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 space-y-1">
+        <div className={`p-3 border-t ${isRegoMode ? 'border-[var(--rego-border,#dedede)]' : 'border-slate-200/80 dark:border-slate-800'} space-y-1`}>
           <Link
             href="/hub"
             title={isCollapsed ? (t('common.back') || 'Retour vers la marketplace') : undefined}
@@ -588,7 +602,13 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
         }`}
       >
         {/* Top Header */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 shadow-2xs">
+        <header
+          className={`h-16 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 ${
+            isRegoMode
+              ? 'bg-[var(--rego-bg,#ffffff)] border-b border-[var(--rego-border,#dedede)] shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))]'
+              : 'bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-2xs'
+          }`}
+        >
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -686,7 +706,13 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
         {/* Setup Progress Bar if < 100% */}
         {setupPercentage < 100 && (
-          <div className="border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 sm:px-6 py-2.5 backdrop-blur-xs">
+          <div
+            className={`px-4 sm:px-6 py-2.5 border-b backdrop-blur-xs ${
+              isRegoMode
+                ? 'border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)]/95'
+                : 'border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95'
+            }`}
+          >
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2.5 text-xs">
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800">

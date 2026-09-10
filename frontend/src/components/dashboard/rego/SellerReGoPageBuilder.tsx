@@ -274,7 +274,7 @@ export function SellerReGoPageBuilder({
           </div>
         }
         kpiStrip={
-          <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ReGoKpiHero
               label="Pages Créées"
               value={`${pages.length} / ${pageLimitLabel}`}
@@ -300,7 +300,7 @@ export function SellerReGoPageBuilder({
               hint="Clics boutons & redirections"
               icon={MousePointerClick}
             />
-          </>
+          </div>
         }
         filterToolbar={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

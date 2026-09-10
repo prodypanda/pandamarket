@@ -206,7 +206,7 @@ export function CourierReGoConsole({
         ) : null
       }
       kpiStrip={
-        <>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <ReGoKpiHero
             label="Colis Tournée Aujourd'hui"
             value={packages.length}
@@ -238,7 +238,7 @@ export function CourierReGoConsole({
             icon={DollarSign}
             accent={totalCashCollected > 0}
           />
-        </>
+        </div>
       }
       filterToolbar={
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

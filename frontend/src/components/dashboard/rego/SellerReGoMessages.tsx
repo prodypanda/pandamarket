@@ -237,7 +237,7 @@ export function SellerReGoMessages({
         ) : null
       }
       kpiStrip={
-        <>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <ReGoKpiHero
             label="Total Conversations"
             value={conversations.length}
@@ -265,7 +265,7 @@ export function SellerReGoMessages({
             hint="Anti-Refus & confirmation directe"
             icon={Zap}
           />
-        </>
+        </div>
       }
       mainContent={
         <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))] overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px]">

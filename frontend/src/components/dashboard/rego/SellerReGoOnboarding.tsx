@@ -394,7 +394,7 @@ export function SellerReGoOnboarding({
         ) : null
       }
       kpiStrip={
-        <>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <ReGoKpiHero
             label="Progression du Lancement"
             value={`${completionPercentage}%`}
@@ -439,7 +439,7 @@ export function SellerReGoOnboarding({
             hint={`${store?.subdomain || 'boutique'}.${platformDomain}`}
             icon={ExternalLink}
           />
-        </>
+        </div>
       }
       filterToolbar={
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

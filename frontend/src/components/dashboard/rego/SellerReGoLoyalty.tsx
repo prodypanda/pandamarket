@@ -163,7 +163,7 @@ export function SellerReGoLoyalty({
           )
         }
         kpiStrip={
-          <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ReGoKpiHero
               label="Total Abonnés Boutique"
               value={(kpis?.total_subscribers || 0).toLocaleString('fr-TN')}
@@ -189,7 +189,7 @@ export function SellerReGoLoyalty({
               hint="Notifications directes autorisées"
               icon={Send}
             />
-          </>
+          </div>
         }
         mainContent={
           activeTab === 'overview' ? (

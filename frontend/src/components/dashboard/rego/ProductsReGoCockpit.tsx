@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { Fragment, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Package,
@@ -21,6 +21,8 @@ import {
   Check,
   ArrowUpRight,
   DollarSign,
+  Coins,
+  Download,
   Tag,
   ShieldAlert,
   SlidersHorizontal,
@@ -50,7 +52,7 @@ export interface ProductsReGoCockpitProps {
     draft: number;
     low_stock: number;
   };
-  categories: Category[];
+  categories: Array<Pick<Category, 'id' | 'name'> & { level?: number }>;
   onRefresh: () => Promise<void>;
   onEditProduct: (product: Product) => void;
   onCreateProduct: () => void;
@@ -62,12 +64,41 @@ export interface ProductsReGoCockpitProps {
     currentProducts?: number;
   };
   dir?: 'ltr' | 'rtl';
+
+  // Server-side filters (controlled by the page)
+  search?: string;
+  onSearchChange?: (v: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (v: string) => void;
+  typeFilter?: string;
+  onTypeFilterChange?: (v: string) => void;
+  categoryFilter?: string;
+  onCategoryFilterChange?: (v: string) => void;
+
+  // Server pagination
+  page?: number;
+  totalPages?: number;
+  limit?: number;
+  onPageChange?: (p: number) => void;
+  onLimitChange?: (l: number) => void;
+
+  // Bulk selection & bulk actions
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (checked: boolean) => void;
+  onBulkStatus?: (status: 'published' | 'draft' | 'archived') => void;
+  onOpenBulkPrice?: () => void;
+  onOpenBulkAiCategory?: () => void;
+  onOpenBulkCategory?: () => void;
+  onExportSelected?: () => void;
 }
 
 function toNumber(value: unknown): number {
   const num = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(num) ? num : 0;
 }
+
+const EMPTY_SELECTED_IDS: Set<string> = new Set();
 
 export function ProductsReGoCockpit({
   products,
@@ -83,12 +114,30 @@ export function ProductsReGoCockpit({
   onQuickAdjustStock,
   limits,
   dir = 'ltr',
+  search = '',
+  onSearchChange,
+  statusFilter = 'all',
+  onStatusFilterChange,
+  typeFilter = 'all',
+  onTypeFilterChange,
+  categoryFilter = 'all',
+  onCategoryFilterChange,
+  page = 1,
+  totalPages = 1,
+  limit = 20,
+  onPageChange,
+  onLimitChange,
+  selectedIds = EMPTY_SELECTED_IDS,
+  onToggleSelect,
+  onToggleSelectAll,
+  onBulkStatus,
+  onOpenBulkPrice,
+  onOpenBulkAiCategory,
+  onOpenBulkCategory,
+  onExportSelected,
 }: ProductsReGoCockpitProps) {
   const { t } = useLocale();
 
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'low_stock' | 'published'>('all');
   const [inspectProduct, setInspectProduct] = useState<Product | null>(null);
 
@@ -118,7 +167,8 @@ export function ProductsReGoCockpit({
     }, 0);
   }, [products]);
 
-  // Filtered Products
+  // Quick-view tabs on the current server page — search/status/type/category
+  // filters are owned by the page and applied server-side.
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       if (activeTab === 'low_stock') {
@@ -128,26 +178,9 @@ export function ProductsReGoCockpit({
         if (product.status !== 'published' && product.status !== 'active') return false;
       }
 
-      if (selectedStatus !== 'all') {
-        if (selectedStatus === 'published' && product.status !== 'published' && product.status !== 'active') return false;
-        if (selectedStatus === 'draft' && product.status !== 'draft') return false;
-        if (selectedStatus === 'archived' && product.status !== 'archived') return false;
-      }
-
-      if (selectedCategory !== 'all' && product.marketplace_category_id !== selectedCategory && product.storefront_category_id !== selectedCategory) {
-        return false;
-      }
-
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const titleMatch = (product.title || '').toLowerCase().includes(q);
-        const skuMatch = (product.product_reference || '').toLowerCase().includes(q);
-        if (!titleMatch && !skuMatch) return false;
-      }
-
       return true;
     });
-  }, [products, activeTab, selectedStatus, selectedCategory, search]);
+  }, [products, activeTab]);
 
   const handleOpenStockModal = (product: Product) => {
     setStockModalProduct(product);
@@ -283,28 +316,44 @@ export function ProductsReGoCockpit({
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange?.(e.target.value)}
+              className="px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-bold text-[var(--rego-fg,#111111)] focus:outline-none cursor-pointer"
               title="Filtrer par statut"
             >
-              <option value="all">Tous statuts</option>
-              <option value="published">En vente</option>
+              <option value="all">Tous les Statuts</option>
+              <option value="published">Publiés</option>
               <option value="draft">Brouillons</option>
               <option value="archived">Archivés</option>
+              <option value="pending_approval">En attente</option>
+              <option value="low_stock">Stock Faible (≤5)</option>
+            </select>
+
+            <select
+              value={typeFilter}
+              onChange={(e) => onTypeFilterChange?.(e.target.value)}
+              className="px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-bold text-[var(--rego-fg,#111111)] focus:outline-none cursor-pointer"
+              title="Filtrer par type"
+            >
+              <option value="all">Tous les Types</option>
+              <option value="physical">Physique</option>
+              <option value="bundle">Pack Promo (Lot)</option>
+              <option value="digital">Numérique</option>
+              <option value="serial">Licence / Série</option>
+              <option value="service">Prestation</option>
             </select>
 
             {categories.length > 0 && (
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[160px]"
+                value={categoryFilter}
+                onChange={(e) => onCategoryFilterChange?.(e.target.value)}
+                className="px-2.5 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-bold text-[var(--rego-fg,#111111)] focus:outline-none cursor-pointer max-w-[160px]"
                 title="Filtrer par catégorie"
               >
-                <option value="all">Toutes catégories</option>
+                <option value="all">Toutes les Catégories</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.level && c.level > 0 ? `${'\u00A0\u00A0'.repeat(c.level)}└─ ${c.name}` : c.name}
                   </option>
                 ))}
               </select>
@@ -313,19 +362,19 @@ export function ProductsReGoCockpit({
 
           <div className="flex items-center gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:w-60">
-              <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)]" />
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nom, SKU..."
-                className="w-full ps-9 pe-8 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#ad0505]"
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                placeholder="Rechercher par nom, SKU, catégorie..."
+                className="w-full ps-9 pe-8 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] placeholder:text-[var(--rego-ink-3,#949494)] focus:outline-none focus:ring-2 focus:ring-[var(--rego-accent,#ad0505)]"
               />
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-400"
+                  onClick={() => onSearchChange?.('')}
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-[var(--rego-ink-3,#949494)] hover:text-[var(--rego-ink-2,#737373)]"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -436,8 +485,98 @@ export function ProductsReGoCockpit({
         }
         right={
           <div className="space-y-4">
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-fg,#111111)] bg-[var(--rego-fg,#111111)] px-3.5 py-2 text-[var(--rego-bg,#ffffff)] shadow-lg">
+                <div className="flex items-center gap-1.5 pe-2 me-1 border-e border-[var(--rego-border,#dedede)]">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] font-bold text-[11px]">
+                    {selectedIds.size}
+                  </span>
+                  <span className="text-xs font-medium hidden sm:inline">sélectionné(s)</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onBulkStatus?.('published')}
+                  title="Publier tous les produits sélectionnés"
+                  className="px-2.5 py-1 rounded-lg bg-[var(--rego-accent,#ad0505)] text-white text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                >
+                  Publier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onBulkStatus?.('draft')}
+                  title="Passer en brouillon"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer"
+                >
+                  Brouillon
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onBulkStatus?.('archived')}
+                  title="Archiver"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer hidden md:inline-block"
+                >
+                  Archiver
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenBulkPrice?.()}
+                  title="Ajuster les prix en pourcentage ou montant fixe (ex: soldes)"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>Ajuster Prix</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenBulkAiCategory?.()}
+                  title="Classifier automatiquement les produits sélectionnés avec l'IA"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Classifier IA</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenBulkCategory?.()}
+                  title="Assigner une catégorie Marketplace ou Vitrine à la sélection"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer hidden lg:flex items-center gap-1.5"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Catégories</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onExportSelected?.()}
+                  title="Exporter les produits sélectionnés en CSV"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer hidden sm:flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onToggleSelectAll?.(false)}
+                  title="Désélectionner tout"
+                  className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] text-xs font-medium hover:bg-[var(--rego-bg,#ffffff)] hover:text-[var(--rego-fg,#111111)] transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Désélectionner</span>
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={products.length > 0 && products.every((p) => selectedIds.has(p.id))}
+                  onChange={(e) => onToggleSelectAll?.(e.target.checked)}
+                  className="w-4 h-4 accent-[var(--rego-accent,#ad0505)] cursor-pointer"
+                  title="Sélectionner tous les produits de la page"
+                />
                 <Package className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   Grille des Articles ({filteredProducts.length})
@@ -466,9 +605,21 @@ export function ProductsReGoCockpit({
                     <div
                       key={p.id}
                       onClick={() => setInspectProduct(p)}
-                      className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700 transition-all cursor-pointer shadow-2xs flex flex-col justify-between gap-3"
+                      className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700 transition-all cursor-pointer shadow-2xs flex flex-col justify-between gap-3 ${
+                        selectedIds.has(p.id)
+                          ? 'border-[var(--rego-accent,#ad0505)]'
+                          : 'border-slate-200/80 dark:border-slate-800'
+                      }`}
                     >
                       <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(p.id)}
+                          onChange={() => onToggleSelect?.(p.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 mt-4 accent-[var(--rego-accent,#ad0505)] cursor-pointer shrink-0"
+                          title="Sélectionner le produit"
+                        />
                         <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
                           {thumb ? (
                             <img src={getResizedImageUrl(thumb, 'thumbnail')} alt="" className="w-full h-full object-cover" />
@@ -547,6 +698,75 @@ export function ProductsReGoCockpit({
           </div>
         }
       />
+
+      {/* Pagination Footer */}
+      <div className="rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] px-4 py-3 shadow-[var(--rego-shadow-s,0_1px_2px_rgba(0,0,0,0.05))] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-[var(--rego-ink-2,#737373)]">
+            Affichage {totalProducts === 0 ? 0 : (page - 1) * limit + 1} à {Math.min(page * limit, totalProducts)} sur {totalProducts} références
+          </span>
+          <div className="flex items-center gap-1.5 ps-3 border-s border-[var(--rego-border,#dedede)]">
+            <span className="text-[11px] text-[var(--rego-ink-3,#949494)]">Par page :</span>
+            <select
+              value={limit}
+              onChange={(e) => {
+                onLimitChange?.(Number(e.target.value));
+                onPageChange?.(1);
+              }}
+              className="px-2 py-0.5 rounded-lg border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] outline-none focus:border-[var(--rego-accent,#ad0505)] cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPageChange?.(Math.max(1, page - 1))}
+            disabled={page <= 1 || loading}
+            className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 transition cursor-pointer"
+          >
+            Précédent
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((pNum) => pNum === 1 || pNum === totalPages || Math.abs(pNum - page) <= 2)
+            .map((pNum, idx, arr) => {
+              const prevNum = arr[idx - 1];
+              const showEllipsis = prevNum && pNum - prevNum > 1;
+              return (
+                <Fragment key={pNum}>
+                  {showEllipsis && <span className="px-1 text-[var(--rego-ink-3,#949494)]">...</span>}
+                  <button
+                    type="button"
+                    onClick={() => onPageChange?.(pNum)}
+                    disabled={loading}
+                    className={`h-7 w-7 rounded-lg font-medium text-xs flex items-center justify-center transition cursor-pointer ${
+                      page === pNum
+                        ? 'bg-[var(--rego-fg,#111111)] text-[var(--rego-bg,#ffffff)]'
+                        : 'border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)]'
+                    }`}
+                  >
+                    {pNum}
+                  </button>
+                </Fragment>
+              );
+            })}
+
+          <button
+            type="button"
+            onClick={() => onPageChange?.(Math.min(totalPages, page + 1))}
+            disabled={page >= totalPages || loading}
+            className="px-2.5 py-1 rounded-lg border border-[var(--rego-border,#dedede)] bg-[var(--rego-bg,#ffffff)] text-xs font-medium text-[var(--rego-fg,#111111)] hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 transition cursor-pointer"
+          >
+            Suivant
+          </button>
+        </div>
+      </div>
 
       {/* Stock Adjust Modal */}
       <ReGoModal

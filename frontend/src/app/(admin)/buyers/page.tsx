@@ -221,6 +221,10 @@ export default function AdminBuyersPage() {
     }
   };
 
+  const handleResetTwoFactor = async (buyerId: string) => {
+    await runAction(buyerId, 'reset-2fa');
+  };
+
   const updateEmailVerification = async (buyer: BuyerAccount, nextValue: boolean) => {
     const actionKey = `buyer-${buyer.id}-email-verification`;
     setActiveAction(actionKey);
@@ -298,15 +302,29 @@ export default function AdminBuyersPage() {
           setSearch(nextSearch);
           setPage(1);
         }}
+        status={status}
+        onStatusChange={(nextStatus) => {
+          setStatus(nextStatus);
+          setPage(1);
+        }}
+        emailVerified={emailVerified}
+        onEmailVerifiedChange={(nextEmailVerified) => {
+          setEmailVerified(nextEmailVerified);
+          setPage(1);
+        }}
         withOrdersOnly={hasOrders}
         onWithOrdersOnlyChange={(enabled) => {
           setHasOrders(enabled);
           setPage(1);
         }}
+        onClearFilters={clearFilters}
         onPageChange={setPage}
         onRefresh={fetchBuyers}
         onToggleActive={toggleBuyerActive}
         onSendPasswordReset={sendPasswordReset}
+        onResetTwoFactor={handleResetTwoFactor}
+        onStartChat={startBuyerChat}
+        onUpdateEmailVerification={updateEmailVerification}
         activeAction={activeAction}
         error={error}
         success={success}
@@ -569,7 +587,7 @@ export default function AdminBuyersPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => void runAction(buyer.id, 'reset-2fa')}
+                        onClick={() => void handleResetTwoFactor(buyer.id)}
                         disabled={activeAction === `${actionBase}-reset-2fa` || !buyer.two_factor_enabled}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                       >

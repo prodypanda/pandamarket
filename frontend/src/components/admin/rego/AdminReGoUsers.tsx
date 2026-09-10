@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -8,21 +8,18 @@ import {
   Store,
   KeyRound,
   Ban,
-  CheckCircle2,
   RefreshCw,
   Search,
   Loader2,
   ChevronLeft,
   ChevronRight,
   Eye,
-  Mail,
-  Phone,
-  Lock,
-  DollarSign,
-  Package,
-  ShoppingCart,
   AlertTriangle,
   RotateCcw,
+  MessageSquare,
+  WalletCards,
+  Package,
+  ShoppingCart,
 } from 'lucide-react';
 import {
   ReGoCard,
@@ -31,6 +28,8 @@ import {
   ReGoStatusChip,
   ReGoDrawer,
 } from '@/components/dashboard/rego/ReGoPrimitives';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { AdminUserSecurityActivityPanel } from '@/components/admin/AdminUserSecurityActivityPanel';
 
 export interface VendorAccount {
   id: string;
@@ -77,6 +76,7 @@ export interface AdminReGoUsersProps {
   onRefresh: () => void;
   onToggleActive: (accountId: string, currentlyActive: boolean) => Promise<void>;
   onSendPasswordReset: (accountId: string, email: string) => Promise<void>;
+  onResetTwoFactor: (accountId: string) => Promise<void>;
   activeAction?: string | null;
   error?: string;
   success?: string;
@@ -85,6 +85,22 @@ export interface AdminReGoUsersProps {
 function toNumber(value: unknown): number {
   const numeric = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function buildPageItems(currentPage: number, totalPages: number): Array<number | 'gap'> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+  const visible = new Set([1, 2, totalPages - 1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const items: Array<number | 'gap'> = [];
+  let lastPushed = 0;
+  for (let candidate = 1; candidate <= totalPages; candidate += 1) {
+    if (!visible.has(candidate)) continue;
+    if (lastPushed > 0 && candidate - lastPushed > 1) items.push('gap');
+    items.push(candidate);
+    lastPushed = candidate;
+  }
+  return items;
 }
 
 export function AdminReGoUsers({
@@ -102,11 +118,36 @@ export function AdminReGoUsers({
   onRefresh,
   onToggleActive,
   onSendPasswordReset,
+  onResetTwoFactor,
   activeAction,
   error,
   success,
 }: AdminReGoUsersProps) {
   const [selectedAccount, setSelectedAccount] = useState<VendorAccount | null>(null);
+  const [confirmSuspend, setConfirmSuspend] = useState<VendorAccount | null>(null);
+  const [confirmReset2fa, setConfirmReset2fa] = useState<VendorAccount | null>(null);
+
+  const isAccountActing = (accountId: string) =>
+    Boolean(activeAction && activeAction.startsWith(`vendor-account-${accountId}-`));
+
+  const getAccountName = (account: VendorAccount) =>
+    [account.first_name, account.last_name].filter(Boolean).join(' ') || account.email || 'Marchand sans nom';
+
+  const handleSuspendConfirmed = async () => {
+    if (!confirmSuspend) return;
+    await onToggleActive(confirmSuspend.id, true);
+    setConfirmSuspend(null);
+    setSelectedAccount(null);
+  };
+
+  const handleReset2faConfirmed = async () => {
+    if (!confirmReset2fa) return;
+    await onResetTwoFactor(confirmReset2fa.id);
+    setConfirmReset2fa(null);
+    setSelectedAccount(null);
+  };
+
+  const pageItems = buildPageItems(page, totalPages || 1);
 
   return (
     <div className="space-y-6">
@@ -170,26 +211,42 @@ export function AdminReGoUsers({
       )}
 
       {/* Telemetry Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         <ReGoKpiHero
-          label="Total Comptes Vendeurs"
+          label="Total Comptes"
           value={loading ? '—' : summary.total}
           hint="Propriétaires de boutiques"
+          icon={Users}
         />
         <ReGoKpiHero
           label="Comptes Actifs"
           value={loading ? '—' : summary.active}
           hint="Accès plateforme opérationnels"
+          icon={ShieldCheck}
+        />
+        <ReGoKpiHero
+          label="Comptes Inactifs"
+          value={loading ? '—' : summary.inactive}
+          hint="Comptes suspendus ou désactivés"
+          icon={Ban}
         />
         <ReGoKpiHero
           label="Multi-Boutiques"
           value={loading ? '—' : summary.multi_store_accounts}
           hint="Marchands gérant ≥ 2 boutiques"
+          icon={Store}
         />
         <ReGoKpiHero
-          label="Total Boutiques Gérées"
+          label="Boutiques Gérées"
           value={loading ? '—' : summary.total_stores}
           hint="Volume réseau sous gestion"
+          icon={Store}
+        />
+        <ReGoKpiHero
+          label="Créneaux Libres"
+          value={loading ? '—' : summary.free_store_slots_available}
+          hint="Boutiques gratuites disponibles"
+          icon={WalletCards}
         />
       </div>
 
@@ -198,6 +255,13 @@ export function AdminReGoUsers({
         title="Annuaire des Comptes Marchands"
         subtitle="Contrôlez les accès de connexion, statuts 2FA et réinitialisez les mots de passe"
         icon={Users}
+        badge={
+          <ReGoStatusChip
+            status="neutral"
+            label={`${total} résultat${total > 1 ? 's' : ''}`}
+            size="xs"
+          />
+        }
         actions={
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <button
@@ -249,6 +313,7 @@ export function AdminReGoUsers({
                     <th className="px-3 py-2.5">Contact & 2FA</th>
                     <th className="px-3 py-2.5">Boutiques Gérées</th>
                     <th className="px-3 py-2.5">Volume Ventes</th>
+                    <th className="px-3 py-2.5">Signalements</th>
                     <th className="px-3 py-2.5">Dernière Connexion</th>
                     <th className="px-3 py-2.5">Statut Compte</th>
                     <th className="px-3 py-2.5 text-end">Actions</th>
@@ -256,8 +321,7 @@ export function AdminReGoUsers({
                 </thead>
                 <tbody className="divide-y divide-[var(--rego-border,#dedede)]/70">
                   {accounts.map((account) => {
-                    const fullName = [account.first_name, account.last_name].filter(Boolean).join(' ');
-                    const isActing = activeAction === account.id;
+                    const isActing = isAccountActing(account.id);
 
                     return (
                       <tr
@@ -266,10 +330,13 @@ export function AdminReGoUsers({
                       >
                         <td className="px-3 py-2.5">
                           <div className="font-bold text-xs text-[var(--rego-fg,#111111)]">
-                            {fullName || 'Marchand sans nom'}
+                            {[account.first_name, account.last_name].filter(Boolean).join(' ') || 'Marchand sans nom'}
                           </div>
                           <div className="text-[11px] text-[var(--rego-ink-2,#737373)]">
                             {account.email}
+                          </div>
+                          <div className="text-[10px] font-mono text-[var(--rego-ink-3,#949494)]">
+                            ID: {account.id}
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
@@ -300,6 +367,16 @@ export function AdminReGoUsers({
                             {toNumber(account.order_count)} commandes
                           </span>
                         </td>
+                        <td className="px-3 py-2.5">
+                          {toNumber(account.open_report_count) > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-full px-1.5 py-0.5">
+                              <AlertTriangle className="w-3 h-3" />
+                              {toNumber(account.open_report_count)}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-[var(--rego-ink-3,#949494)]">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5 text-[11px] text-[var(--rego-ink-2,#737373)]">
                           {account.last_login_at
                             ? new Date(account.last_login_at).toLocaleDateString('fr-TN', {
@@ -307,6 +384,12 @@ export function AdminReGoUsers({
                                 month: 'short',
                               })
                             : 'Jamais connecté'}
+                          <span className="block text-[10px] text-[var(--rego-ink-3,#949494)]">
+                            Inscrit le{' '}
+                            {account.created_at
+                              ? new Date(account.created_at).toLocaleDateString('fr-TN')
+                              : '—'}
+                          </span>
                         </td>
                         <td className="px-3 py-2.5">
                           <ReGoStatusChip
@@ -328,19 +411,25 @@ export function AdminReGoUsers({
 
                             <button
                               type="button"
-                              disabled={Boolean(isActing)}
+                              disabled={isActing || !account.email}
                               onClick={() => account.email && void onSendPasswordReset(account.id, account.email)}
                               title="Envoyer lien de réinitialisation de mot de passe"
-                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
                             >
                               <KeyRound className="w-3.5 h-3.5" />
                             </button>
 
                             <button
                               type="button"
-                              disabled={Boolean(isActing)}
-                              onClick={() => void onToggleActive(account.id, Boolean(account.is_active))}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                              disabled={isActing}
+                              onClick={() => {
+                                if (account.is_active === false) {
+                                  void onToggleActive(account.id, false);
+                                } else {
+                                  setConfirmSuspend(account);
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-50 ${
                                 account.is_active
                                   ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100'
                                   : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
@@ -358,30 +447,53 @@ export function AdminReGoUsers({
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between pt-3 border-t border-[var(--rego-border,#dedede)] text-xs text-[var(--rego-ink-2,#737373)]">
-              <button
-                type="button"
-                onClick={() => onPageChange(Math.max(1, page - 1))}
-                disabled={page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Précédent</span>
-              </button>
-
-              <span className="font-medium">
-                Page <strong className="text-[var(--rego-fg,#111111)]">{page}</strong> sur {totalPages || 1} ({total} comptes)
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-[var(--rego-border,#dedede)] text-xs text-[var(--rego-ink-2,#737373)]">
+              <span className="font-medium text-center sm:text-start">
+                Page <strong className="text-[var(--rego-fg,#111111)]">{page}</strong> sur {totalPages || 1} · {total} compte{total > 1 ? 's' : ''}
               </span>
+              <div className="flex items-center justify-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onPageChange(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Précédent</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                disabled={page >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
-              >
-                <span>Suivant</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                {pageItems.map((item, index) =>
+                  item === 'gap' ? (
+                    <span key={`gap-${index}`} className="px-1 font-bold text-[var(--rego-ink-3,#949494)]">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => onPageChange(item)}
+                      disabled={item === page}
+                      className={`min-w-[26px] h-[26px] px-1 rounded-[var(--rego-r,8px)] border text-[11px] font-bold transition-colors ${
+                        item === page
+                          ? 'bg-[var(--rego-accent,#ad0505)] border-[var(--rego-accent,#ad0505)] text-white cursor-default'
+                          : 'border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 hover:bg-[var(--rego-surface,#f5f5f5)] disabled:opacity-40 font-bold cursor-pointer"
+                >
+                  <span>Suivant</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -391,16 +503,50 @@ export function AdminReGoUsers({
       <ReGoDrawer
         isOpen={Boolean(selectedAccount)}
         onClose={() => setSelectedAccount(null)}
-        title={selectedAccount ? ([selectedAccount.first_name, selectedAccount.last_name].filter(Boolean).join(' ') || selectedAccount.email || 'Compte Vendeur') : 'Détails Compte'}
-        subtitle={`ID: ${selectedAccount?.id}`}
+        title={selectedAccount ? getAccountName(selectedAccount) : 'Détails Compte'}
+        subtitle={selectedAccount ? `ID: ${selectedAccount.id}` : undefined}
         footer={
-          <button
-            type="button"
-            onClick={() => setSelectedAccount(null)}
-            className="px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] text-[var(--rego-ink-2,#737373)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
-          >
-            Fermer
-          </button>
+          selectedAccount ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmReset2fa(selectedAccount)}
+                disabled={!selectedAccount.two_factor_enabled || isAccountActing(selectedAccount.id)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Réinitialiser le 2FA</span>
+              </button>
+              {selectedAccount.is_active === false ? (
+                <button
+                  type="button"
+                  onClick={() => void onToggleActive(selectedAccount.id, false)}
+                  disabled={isAccountActing(selectedAccount.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Réactiver le compte</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmSuspend(selectedAccount)}
+                  disabled={isAccountActing(selectedAccount.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Suspendre le compte</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedAccount(null)}
+                className="px-3 py-1.5 text-xs font-bold rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] text-[var(--rego-ink-2,#737373)] hover:bg-[var(--rego-surface,#f5f5f5)] cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          ) : null
         }
       >
         {selectedAccount && (
@@ -418,6 +564,48 @@ export function AdminReGoUsers({
             </div>
 
             <div className="space-y-2 text-xs">
+              <h4 className="font-bold text-[var(--rego-fg,#111111)]">Allocation Boutiques</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-center">
+                  <p className="text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.free_store_count)}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Gratuites</p>
+                </div>
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-center">
+                  <p className="text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.paid_store_count)}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Payantes</p>
+                </div>
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-center">
+                  <p className="text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.free_store_count) === 0 ? 'Oui' : 'Non'}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Créneau libre</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-[var(--rego-ink-2,#737373)]">
+                {toNumber(selectedAccount.verified_store_count)} boutique(s) vérifiée(s) · {toNumber(selectedAccount.suspended_store_count)} suspendue(s)
+              </p>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <h4 className="font-bold text-[var(--rego-fg,#111111)]">Catalogue & Modération</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
+                  <Package className="w-4 h-4 text-[var(--rego-ink-3,#949494)]" />
+                  <p className="mt-1.5 text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.product_count)}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Articles</p>
+                </div>
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
+                  <ShoppingCart className="w-4 h-4 text-[var(--rego-ink-3,#949494)]" />
+                  <p className="mt-1.5 text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.order_count)}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Commandes</p>
+                </div>
+                <div className="p-2.5 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900">
+                  <AlertTriangle className={`w-4 h-4 ${toNumber(selectedAccount.open_report_count) > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-[var(--rego-ink-3,#949494)]'}`} />
+                  <p className="mt-1.5 text-sm font-black text-[var(--rego-fg,#111111)]">{toNumber(selectedAccount.open_report_count)}</p>
+                  <p className="text-[10px] font-bold uppercase text-[var(--rego-ink-3,#949494)]">Signalements</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs">
               <h4 className="font-bold text-[var(--rego-fg,#111111)]">Informations d&apos;Accès</h4>
               <div className="space-y-1.5 p-3 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] bg-white dark:bg-slate-900 text-[var(--rego-ink-2,#737373)]">
                 <p><strong className="text-[var(--rego-fg,#111111)]">Email :</strong> {selectedAccount.email}</p>
@@ -428,18 +616,59 @@ export function AdminReGoUsers({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[var(--rego-border,#dedede)]">
+            <AdminUserSecurityActivityPanel userId={selectedAccount.id} accentClass="bg-[var(--rego-accent,#ad0505)]" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[var(--rego-border,#dedede)]">
               <Link
-                href={`/stores?owner_id=${selectedAccount.id}`}
+                href={`/stores?owner_id=${encodeURIComponent(selectedAccount.id)}&owner=${encodeURIComponent(getAccountName(selectedAccount))}`}
                 className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] bg-[var(--rego-fg,#111111)] text-white text-xs font-bold hover:bg-[var(--rego-accent,#ad0505)] transition-colors"
               >
                 <Store className="w-3.5 h-3.5" />
-                <span>Voir les Boutiques de ce Vendeur</span>
+                <span>Gérer les boutiques</span>
+              </Link>
+              <Link
+                href="/messages"
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-[var(--rego-r,8px)] border border-[var(--rego-border,#dedede)] text-[var(--rego-fg,#111111)] text-xs font-bold hover:bg-[var(--rego-surface,#f5f5f5)] transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Centre de messagerie</span>
               </Link>
             </div>
           </div>
         )}
       </ReGoDrawer>
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmSuspend)}
+        onClose={() => setConfirmSuspend(null)}
+        onConfirm={handleSuspendConfirmed}
+        title="Suspendre le compte vendeur"
+        description={
+          <>
+            Voulez-vous vraiment suspendre le compte de{' '}
+            <strong>{confirmSuspend ? getAccountName(confirmSuspend) : ''}</strong> ? Son accès à la
+            plateforme sera bloqué jusqu&apos;à sa réactivation.
+          </>
+        }
+        confirmLabel="Suspendre le compte"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmReset2fa)}
+        onClose={() => setConfirmReset2fa(null)}
+        onConfirm={handleReset2faConfirmed}
+        title="Réinitialiser le 2FA du compte"
+        description={
+          <>
+            La double authentification de{' '}
+            <strong>{confirmReset2fa ? getAccountName(confirmReset2fa) : ''}</strong> sera désactivée.
+            L&apos;utilisateur devra la reconfigurer à sa prochaine connexion.
+          </>
+        }
+        confirmLabel="Réinitialiser le 2FA"
+        variant="warning"
+      />
     </div>
   );
 }

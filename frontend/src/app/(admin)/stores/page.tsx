@@ -300,6 +300,76 @@ function AdminStoresContent() {
     }
   };
 
+  const handleSellerTypeChange = (vendorId: string, nextSellerType: string) => runAction(
+    `vendor-${vendorId}-seller-type`,
+    `/api/pd/admin/vendors/${vendorId}/seller-type`,
+    {
+      body: { seller_type: nextSellerType },
+      successMessage: t('sellerTypes.approval.updated'),
+    },
+  );
+
+  const handleApproveTypeRequest = (vendorId: string) => runAction(
+    `vendor-${vendorId}-approve-type`,
+    `/api/pd/admin/vendors/${vendorId}/seller-type-request/approve`,
+    { successMessage: t('admin.vendorsPage.sellerTypeApproved') },
+  );
+
+  const handleRejectTypeRequest = (vendorId: string, reason?: string) => runAction(
+    `vendor-${vendorId}-reject-type`,
+    `/api/pd/admin/vendors/${vendorId}/seller-type-request/reject`,
+    {
+      body: { reason: reason || undefined },
+      successMessage: t('admin.vendorsPage.sellerTypeRejected'),
+    },
+  );
+
+  const handleSubscriptionSave = (vendorId: string, override: { plan: string; type: string; expiresAt: string }) => runAction(
+    `vendor-${vendorId}-subscription`,
+    `/api/pd/admin/vendors/${vendorId}/subscription`,
+    {
+      body: {
+        subscription_plan: override.plan,
+        subscription_type: override.type,
+        subscription_expires_at: override.expiresAt ? new Date(`${override.expiresAt}T23:59:59.000Z`).toISOString() : null,
+      },
+      successMessage: 'Subscription updated',
+    },
+  );
+
+  const handleOwnerReactivate = (vendorId: string) => runAction(
+    `vendor-${vendorId}-owner-reactivate`,
+    `/api/pd/admin/vendors/${vendorId}/owner/reactivate`,
+    { successMessage: 'Vendor owner reactivated' },
+  );
+
+  const handleOwnerSuspend = (vendorId: string) => runAction(
+    `vendor-${vendorId}-owner-suspend`,
+    `/api/pd/admin/vendors/${vendorId}/owner/suspend`,
+    {
+      body: { reason: 'Suspended by superadmin from Vendor Management' },
+      successMessage: 'Vendor owner suspended',
+    },
+  );
+
+  const handleResetOwner2FA = (vendorId: string) => runAction(
+    `vendor-${vendorId}-owner-2fa`,
+    `/api/pd/admin/vendors/${vendorId}/owner/reset-2fa`,
+    { successMessage: 'Vendor owner 2FA reset' },
+  );
+
+  const handleClearPaymentConfig = (vendorId: string) => runAction(
+    `vendor-${vendorId}-payment-clear`,
+    `/api/pd/admin/vendors/${vendorId}/payment-config`,
+    { method: 'DELETE', successMessage: 'Payment config cleared' },
+  );
+
+  const handleClearCustomDomain = (vendorId: string) => runAction(
+    `vendor-${vendorId}-domain-clear`,
+    `/api/pd/admin/vendors/${vendorId}/custom-domain`,
+    { method: 'DELETE', successMessage: 'Custom domain cleared' },
+  );
+
   const clearFilters = () => {
     setSearch('');
     setSellerType('');
@@ -390,9 +460,39 @@ function AdminStoresContent() {
           setSearch(nextSearch);
           setPage(1);
         }}
+        sellerTypeFilter={sellerType}
+        onSellerTypeFilterChange={(nextSellerType) => {
+          setSellerType(nextSellerType);
+          setPage(1);
+        }}
+        pendingOnly={pendingOnly}
+        onPendingOnlyChange={(nextPendingOnly) => {
+          setPendingOnly(nextPendingOnly);
+          setPage(1);
+        }}
+        onClearFilters={clearFilters}
+        ownerId={ownerId}
+        ownerName={ownerName}
+        sellerTypeOptions={sellerTypeOptions}
+        availableSubscriptionPlans={availableSubscriptionPlans}
+        subscriptionOverrides={subscriptionOverrides}
+        onSubscriptionOverrideChange={(vendorId, patch) => {
+          const vendor = vendors.find((entry) => entry.id === vendorId);
+          if (vendor) updateSubscriptionOverride(vendor, patch);
+        }}
         onPageChange={setPage}
         onRefresh={fetchVendors}
         onStatusChange={handleStatusUpdate}
+        onSellerTypeChange={handleSellerTypeChange}
+        onApproveTypeRequest={handleApproveTypeRequest}
+        onRejectTypeRequest={handleRejectTypeRequest}
+        onSubscriptionSave={handleSubscriptionSave}
+        onChatStoreOwner={startStoreChat}
+        onOwnerReactivate={handleOwnerReactivate}
+        onOwnerSuspend={handleOwnerSuspend}
+        onResetOwner2FA={handleResetOwner2FA}
+        onClearPaymentConfig={handleClearPaymentConfig}
+        onClearCustomDomain={handleClearCustomDomain}
         updatingStatus={Boolean(activeAction)}
         error={error}
         success={success}
@@ -787,10 +887,7 @@ function AdminStoresContent() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  void runAction(`${actionBase}-reject-type`, `/api/pd/admin/vendors/${vendor.id}/seller-type-request/reject`, {
-                                    body: { reason: rejectReason || undefined },
-                                    successMessage: t('admin.vendorsPage.sellerTypeRejected'),
-                                  });
+                                  void handleRejectTypeRequest(vendor.id, rejectReason || undefined);
                                   setConfirmReject(null);
                                   setRejectReason('');
                                 }}
@@ -814,9 +911,7 @@ function AdminStoresContent() {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
-                                onClick={() => void runAction(`${actionBase}-approve-type`, `/api/pd/admin/vendors/${vendor.id}/seller-type-request/approve`, {
-                                  successMessage: t('admin.vendorsPage.sellerTypeApproved'),
-                                })}
+                                onClick={() => void handleApproveTypeRequest(vendor.id)}
                                 disabled={activeAction === `${actionBase}-approve-type`}
                                 className="inline-flex items-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2 text-xs font-black text-white shadow-lg shadow-red-900/20 disabled:opacity-60"
                               >
@@ -847,10 +942,7 @@ function AdminStoresContent() {
                         </label>
                         <select
                           value={currentSellerType}
-                          onChange={(event) => void runAction(`${actionBase}-seller-type`, `/api/pd/admin/vendors/${vendor.id}/seller-type`, {
-                            body: { seller_type: event.target.value },
-                            successMessage: t('sellerTypes.approval.updated'),
-                          })}
+                          onChange={(event) => void handleSellerTypeChange(vendor.id, event.target.value)}
                           disabled={activeAction === `${actionBase}-seller-type`}
                           className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 outline-none focus:border-[#B91C1C] focus:ring-4 focus:ring-[#B91C1C]/10 disabled:opacity-60"
                         >
@@ -891,14 +983,7 @@ function AdminStoresContent() {
                           />
                           <button
                             type="button"
-                            onClick={() => void runAction(`${actionBase}-subscription`, `/api/pd/admin/vendors/${vendor.id}/subscription`, {
-                              body: {
-                                subscription_plan: subscriptionOverride.plan,
-                                subscription_type: subscriptionOverride.type,
-                                subscription_expires_at: subscriptionOverride.expiresAt ? new Date(`${subscriptionOverride.expiresAt}T23:59:59.000Z`).toISOString() : null,
-                              },
-                              successMessage: 'Subscription updated',
-                            })}
+                            onClick={() => void handleSubscriptionSave(vendor.id, subscriptionOverride)}
                             disabled={activeAction === `${actionBase}-subscription`}
                             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
                           >
@@ -996,9 +1081,7 @@ function AdminStoresContent() {
                         {vendor.owner_is_active === false ? (
                           <button
                             type="button"
-                            onClick={() => void runAction(`${actionBase}-owner-reactivate`, `/api/pd/admin/vendors/${vendor.id}/owner/reactivate`, {
-                              successMessage: 'Vendor owner reactivated',
-                            })}
+                            onClick={() => void handleOwnerReactivate(vendor.id)}
                             disabled={activeAction === `${actionBase}-owner-reactivate`}
                             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B91C1C] px-4 py-3 text-sm font-black text-white transition hover:bg-[#991B1B] disabled:opacity-60"
                           >
@@ -1008,10 +1091,7 @@ function AdminStoresContent() {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => void runAction(`${actionBase}-owner-suspend`, `/api/pd/admin/vendors/${vendor.id}/owner/suspend`, {
-                              body: { reason: 'Suspended by superadmin from Vendor Management' },
-                              successMessage: 'Vendor owner suspended',
-                            })}
+                            onClick={() => void handleOwnerSuspend(vendor.id)}
                             disabled={activeAction === `${actionBase}-owner-suspend`}
                             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm font-black text-red-600 transition hover:bg-red-50 disabled:opacity-60"
                           >
@@ -1021,9 +1101,7 @@ function AdminStoresContent() {
                         )}
                         <button
                           type="button"
-                          onClick={() => void runAction(`${actionBase}-owner-2fa`, `/api/pd/admin/vendors/${vendor.id}/owner/reset-2fa`, {
-                            successMessage: 'Vendor owner 2FA reset',
-                          })}
+                          onClick={() => void handleResetOwner2FA(vendor.id)}
                           disabled={activeAction === `${actionBase}-owner-2fa` || !vendor.owner_two_factor_enabled}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                         >
@@ -1032,10 +1110,7 @@ function AdminStoresContent() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void runAction(`${actionBase}-payment-clear`, `/api/pd/admin/vendors/${vendor.id}/payment-config`, {
-                            method: 'DELETE',
-                            successMessage: 'Payment config cleared',
-                          })}
+                          onClick={() => void handleClearPaymentConfig(vendor.id)}
                           disabled={activeAction === `${actionBase}-payment-clear` || !vendor.payment_config_set}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                         >
@@ -1044,10 +1119,7 @@ function AdminStoresContent() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void runAction(`${actionBase}-domain-clear`, `/api/pd/admin/vendors/${vendor.id}/custom-domain`, {
-                            method: 'DELETE',
-                            successMessage: 'Custom domain cleared',
-                          })}
+                          onClick={() => void handleClearCustomDomain(vendor.id)}
                           disabled={activeAction === `${actionBase}-domain-clear` || !vendor.custom_domain}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                         >

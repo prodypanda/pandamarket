@@ -288,7 +288,7 @@ export function SellerReGoMedia({
         ) : null
       }
       kpiStrip={
-        <>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <ReGoKpiHero
             label="Total Fichiers Médias"
             value={summary.total}
@@ -319,7 +319,7 @@ export function SellerReGoMedia({
             hint={`Capacité max : 2,048 MB`}
             icon={HardDrive}
           />
-        </>
+        </div>
       }
       filterToolbar={
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">

@@ -165,7 +165,7 @@ export function SellerReGoCustomers({
           </button>
         }
         kpiStrip={
-          <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ReGoKpiHero
               label="Total Clients Uniques"
               value={totalCount.toLocaleString('fr-TN')}
@@ -191,7 +191,7 @@ export function SellerReGoCustomers({
               hint="Meilleurs contributeurs au chiffre d'affaires"
               icon={Crown}
             />
-          </>
+          </div>
         }
         filterToolbar={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

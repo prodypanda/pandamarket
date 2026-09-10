@@ -256,7 +256,7 @@ export function SellerReGoAds({
           </div>
         }
         kpiStrip={
-          <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ReGoKpiHero
               label="Solde Publicitaire Disponible"
               value={<ReGoAmtBox amount={account?.balance || 0} size="lg" />}
@@ -283,7 +283,7 @@ export function SellerReGoAds({
               hint={isNetMarginPositive ? 'Bénéfice net après coûts pubs' : 'Coûts supérieurs aux revenus'}
               icon={Percent}
             />
-          </>
+          </div>
         }
         filterToolbar={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

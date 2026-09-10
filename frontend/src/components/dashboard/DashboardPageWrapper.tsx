@@ -82,8 +82,8 @@ export function DashboardPageWrapper({
       {/* Layer 3: Critical Operational Alert Banner (Conditional) */}
       {alertBanner && <div>{alertBanner}</div>}
 
-      {/* Layer 4: Telemetry & KPI Cards Strip */}
-      {kpiStrip && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{kpiStrip}</div>}
+      {/* Layer 4: Telemetry & KPI Cards Strip (component owns its own grid) */}
+      {kpiStrip && <div className="w-full">{kpiStrip}</div>}
 
       {/* Layer 5: Control Bar & Filter Toolbar */}
       {filterToolbar && (

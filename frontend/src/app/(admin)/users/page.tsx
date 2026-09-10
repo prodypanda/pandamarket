@@ -210,6 +210,10 @@ export default function AdminVendorAccountsPage() {
     }
   };
 
+  const handleResetTwoFactor = async (accountId: string) => {
+    await runAction(accountId, 'reset-2fa');
+  };
+
   const metricCards = [
     { label: 'Vendor accounts', value: summary.total, icon: Users, tone: 'from-slate-950 to-slate-700 text-white' },
     { label: 'Active accounts', value: summary.active, icon: ShieldCheck, tone: 'from-[#7F1D1D] to-[#B91C1C] text-white' },
@@ -244,6 +248,7 @@ export default function AdminVendorAccountsPage() {
         onRefresh={fetchAccounts}
         onToggleActive={handleToggleActive}
         onSendPasswordReset={handleSendPasswordReset}
+        onResetTwoFactor={handleResetTwoFactor}
         activeAction={activeAction}
         error={error}
         success={success}
@@ -476,7 +481,7 @@ export default function AdminVendorAccountsPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => void runAction(account.id, 'reset-2fa')}
+                        onClick={() => void handleResetTwoFactor(account.id)}
                         disabled={activeAction === `${actionBase}-reset-2fa` || !account.two_factor_enabled}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-100 bg-white px-4 py-3 text-sm font-black text-[#7F1D1D] transition hover:bg-amber-50 disabled:opacity-50"
                       >

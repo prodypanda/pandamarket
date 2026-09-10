@@ -339,7 +339,7 @@ export function SellerReGoCategories({
         ) : null
       }
       kpiStrip={
-        <>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <ReGoKpiHero
             label="Total Catégories"
             value={categories.length}
@@ -370,7 +370,7 @@ export function SellerReGoCategories({
             hint="Exposés sur la vitrine"
             icon={Eye}
           />
-        </>
+        </div>
       }
       filterToolbar={
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

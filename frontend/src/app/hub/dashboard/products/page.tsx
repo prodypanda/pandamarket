@@ -1987,6 +1987,14 @@ export default function ProductsPage() {
     });
   };
 
+  const toggleSelectAllProducts = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(products.map((p) => p.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
   // -----------------------------------------------------------------------
   // WHOLESALE B2B DYNAMIC DISCOUNT & COHERENCE CALCULATOR ENGINE
   // -----------------------------------------------------------------------
@@ -3127,7 +3135,7 @@ export default function ProductsPage() {
           loading={loading}
           totalProducts={totalProducts}
           storeCounts={storeCounts}
-          categories={marketplaceCategories}
+          categories={hierarchicalMarketplaceCategories}
           onRefresh={fetchProducts}
           onEditProduct={startEdit}
           onCreateProduct={() => {
@@ -3139,6 +3147,33 @@ export default function ProductsPage() {
           onQuickAdjustStock={handleQuickAdjustStock}
           limits={limits ? { maxProducts: limits.max_products, currentProducts: totalProducts } : undefined}
           dir={dir}
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          page={page}
+          totalPages={totalPages}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => {
+            setLimit(l);
+            setPage(1);
+          }}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelectOne}
+          onToggleSelectAll={toggleSelectAllProducts}
+          onBulkStatus={(s) => void handleBulkStatusChange(s)}
+          onOpenBulkPrice={() => setShowBulkPriceModal(true)}
+          onOpenBulkAiCategory={() => {
+            setBulkAiProgress(null);
+            setShowBulkAiCategoryModal(true);
+          }}
+          onOpenBulkCategory={() => setShowBulkCategoryModal(true)}
+          onExportSelected={() => handleExportCSV('selected')}
         />
       ) : dashboardStyle === 'bento' ? (
         <ProductsBentoCockpit
