@@ -6,7 +6,7 @@
     "description": "Complete interactive OpenAPI 3.0.3 specification for the PandaMarket Marketplace as a Service (MaaS) multi-vendor engine. Covers Storefront, Vendor Hub, Super Admin Governance, Payments, AI, Logistics, Ads, Real-Time Messaging, and ERP API.",
     "contact": {
       "name": "PandaMarket Engineering Team",
-      "url": "https://garbage.team"
+      "url": "https://www.garbage.team"
     },
     "license": {
       "name": "Proprietary"
@@ -14,12 +14,8 @@
   },
   "servers": [
     {
-      "url": "https://api.garbage.team/api/pd",
-      "description": "Production API Server"
-    },
-    {
-      "url": "https://pandamarket-backend.onrender.com/api/pd",
-      "description": "Render Staging Server"
+      "url": "https://pandamarket-backend-fjom.onrender.com/api/pd",
+      "description": "Render Production Backend (pandamarket-backend-fjom)"
     },
     {
       "url": "http://localhost:5000/api/pd",
@@ -99,6 +95,10 @@
     {
       "name": "AI Token Credits",
       "description": "Operations for AI Token Credits"
+    },
+    {
+      "name": "API Documentation",
+      "description": "Operations for API Documentation"
     },
     {
       "name": "Admin \u2014 AI Telemetry, Routing & Pricing",
@@ -301,6 +301,10 @@
       "description": "Operations for Search (Meilisearch)"
     },
     {
+      "name": "Seller Loyalty & Broadcasts",
+      "description": "Operations for Seller Loyalty & Broadcasts"
+    },
+    {
       "name": "Shipping & Delivery",
       "description": "Operations for Shipping & Delivery"
     },
@@ -331,6 +335,10 @@
     {
       "name": "Support Tickets",
       "description": "Operations for Support Tickets"
+    },
+    {
+      "name": "System & Diagnostics",
+      "description": "Operations for System & Diagnostics"
     },
     {
       "name": "Theme Engine & Customizer",
@@ -32716,10 +32724,865 @@
           }
         }
       }
+    },
+    "/files/upload-s3-mock/{bucket}/{key}": {
+      "put": {
+        "tags": [
+          "File Uploads (S3 Presigned)"
+        ],
+        "summary": "Update or replace Upload s3 mock",
+        "description": "Endpoint for update or replace upload s3 mock in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target bucket"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target key"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/download-s3-mock/{bucket}/{key}": {
+      "get": {
+        "tags": [
+          "File Uploads (S3 Presigned)"
+        ],
+        "summary": "Retrieve details of Download s3 mock",
+        "description": "Endpoint for retrieve details of download s3 mock in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target bucket"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target key"
+          }
+        ]
+      }
+    },
+    "/seller/subscribers/broadcast": {
+      "post": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Create or execute Broadcast",
+        "description": "Endpoint for create or execute broadcast in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/subscribers/analytics": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list Analytics",
+        "description": "Endpoint for get or list analytics in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/subscribers/broadcasts": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list Broadcasts",
+        "description": "Endpoint for get or list broadcasts in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/subscribers/history": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list History",
+        "description": "Endpoint for get or list history in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/subscribers": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list Subscribers",
+        "description": "Endpoint for get or list subscribers in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/subscribers/export": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list Export",
+        "description": "Endpoint for get or list export in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/orders": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Get or list Orders",
+        "description": "Endpoint for get or list orders in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/orders/{id}": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Retrieve details of Orders",
+        "description": "Endpoint for retrieve details of orders in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target id"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/orders/{id}/fulfill": {
+      "patch": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Partially update Fulfill",
+        "description": "Endpoint for partially update fulfill in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target id"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seller/orders/{id}/invoice.pdf": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Retrieve details of Invoice.pdf",
+        "description": "Endpoint for retrieve details of invoice.pdf in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target id"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/seller/orders/{id}/packing-slip.pdf": {
+      "get": {
+        "tags": [
+          "Seller Loyalty & Broadcasts"
+        ],
+        "summary": "Retrieve details of Packing slip.pdf",
+        "description": "Endpoint for retrieve details of packing slip.pdf in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target id"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/object/public/{bucket}/{key}": {
+      "get": {
+        "tags": [
+          "System & Diagnostics"
+        ],
+        "summary": "Retrieve details of Public",
+        "description": "Endpoint for retrieve details of public in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target bucket"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target key"
+          }
+        ]
+      }
+    },
+    "/api/docs.json": {
+      "get": {
+        "tags": [
+          "API Documentation"
+        ],
+        "summary": "Get or list Docs.json",
+        "description": "Endpoint for get or list docs.json in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "System & Diagnostics"
+        ],
+        "summary": "Get or list Health",
+        "description": "Endpoint for get or list health in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "System & Diagnostics"
+        ],
+        "summary": "Get or list Ready",
+        "description": "Endpoint for get or list ready in the PandaMarket MaaS platform.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "404": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      }
     }
   },
   "externalDocs": {
     "description": "PandaMarket Platform Documentation & Guides",
-    "url": "https://garbage.team"
+    "url": "https://www.garbage.team"
   }
 }
