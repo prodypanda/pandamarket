@@ -222,6 +222,14 @@ async function bootstrap() {
           return callback(null, true);
         }
 
+        // Allow PandaMarket Swagger UI documentation (Vercel & Render)
+        if (
+          origin === 'https://pandamarketapi.vercel.app' ||
+          /^https:\/\/(pandamarketapi[a-zA-Z0-9-]*\.vercel\.app)$/.test(origin)
+        ) {
+          return callback(null, true);
+        }
+
         // Check configured admin/store CORS lists
         if (
           allowed.includes(origin) ||
@@ -394,7 +402,20 @@ async function bootstrap() {
       customSiteTitle: 'PandaMarket API Documentation',
     }),
   );
-  app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
+  const sendDocsJson = (_req: express.Request, res: express.Response) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-PD-API-Key');
+    res.json(swaggerSpec);
+  };
+  app.options(['/api/docs.json', '/api/pd/docs.json'], (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-PD-API-Key');
+    res.sendStatus(204);
+  });
+  app.get('/api/docs.json', sendDocsJson);
+  app.get('/api/pd/docs.json', sendDocsJson);
 
   // Health check (liveness)
   app.get('/health', (_req, res) => {
