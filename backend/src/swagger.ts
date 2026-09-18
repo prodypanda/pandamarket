@@ -19,7 +19,7 @@ const options: swaggerJsdoc.Options = {
         'Supports Flouci, Konnect, Mandat Minute, and COD payment gateways.',
       contact: {
         name: 'PandaMarket Team',
-        url: 'https://pandamarket.tn',
+        url: 'https://garbage.team',
       },
       license: {
         name: 'Proprietary',
